@@ -16,8 +16,8 @@ class PageParamTest {
     @Test
     void offsetCalculation() {
         PageParam param = new PageParam();
-        param.setCurrent(3);
-        param.setSize(20);
+        param.setCurrent(3L);
+        param.setSize(20L);
         assertEquals(40, param.getOffset());
     }
 }
