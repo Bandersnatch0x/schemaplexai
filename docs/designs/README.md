@@ -1,3 +1,8 @@
+---
+topic: designs-index
+type: index
+---
+
 # Designs / 架构设计文档
 
 架构设计是编码的前置条件。新模块或重大重构必须有设计评审通过后才能进入实现阶段。
@@ -21,5 +26,6 @@
 
 | 文档 | 版本 | 状态 | 说明 |
 |------|------|------|------|
-| [`system-architecture.md`](system-architecture.md) | v1.1 | 已批准 | SchemaPlexAI 系统架构设计 |
-| [`agent-runtime-task-board.md`](agent-runtime-task-board.md) | v1.0 | 草稿 | Agent Runtime 平台 + Task Board 设计 |
+| [`2026-04-29-v1.0-system-architecture.md`](2026-04-29-v1.0-system-architecture.md) | v1.1 | 已批准 | SchemaPlexAI 系统架构设计 |
+| [`2026-04-30-v1.0-agent-runtime-task-board.md`](2026-04-30-v1.0-agent-runtime-task-board.md) | v1.0 | 草稿 | Agent Runtime 平台 + Task Board 设计 |
+| [`2026-04-30-v1.0-workflow-task-orchestration.md`](2026-04-30-v1.0-workflow-task-orchestration.md) | v1.0 | 草稿 | 工作流任务编排设计 |

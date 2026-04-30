@@ -1,3 +1,8 @@
+---
+topic: specs-index
+type: index
+---
+
 # Specs / 技术规格说明书
 
 技术规格（Spec）是设计与实现的契约。任何超过 50 行代码的变更或新模块开发，必须先有 Spec。
@@ -30,3 +35,4 @@ YYYY-MM-DD[-vX.Y]-<topic>.md
 | [`2026-04-30-v1.0-integration-layer.md`](2026-04-30-v1.0-integration-layer.md) | v1.0 | 已批准 | 集成层技术规格（Git/Jenkins/MCP/Skill/API Gateway） |
 | [`2026-04-30-v1.0-spec-management.md`](2026-04-30-v1.0-spec-management.md) | v1.0 | 已批准 | Spec 管理技术规格（版本控制、评审工作流、Steering 文档） |
 | [`2026-04-30-v1.0-open-source-agent-architecture-research.md`](2026-04-30-v1.0-open-source-agent-architecture-research.md) | v1.0 | 已批准 | 开源 AI Agent 架构调研与设计借鉴 |
+| [`2026-05-01-v1.0-notification.md`](2026-05-01-v1.0-notification.md) | v1.0 | 已批准 | 通知系统技术规格（站内信、邮件、Webhook、模板引擎） |
