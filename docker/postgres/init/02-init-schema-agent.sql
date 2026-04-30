@@ -150,6 +150,22 @@ CREATE TABLE sf_agent_memory (
 );
 
 -- Indexes
+CREATE TABLE sf_prompt_version (
+    id              BIGSERIAL PRIMARY KEY,
+    tenant_id       BIGINT NOT NULL,
+    config_id       BIGINT NOT NULL,
+    agent_id        BIGINT NOT NULL,
+    version         INT NOT NULL,
+    content         TEXT NOT NULL,
+    label           VARCHAR(64),
+    change_note     VARCHAR(256),
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by      BIGINT,
+    updated_by      BIGINT,
+    deleted         INT NOT NULL DEFAULT 0
+);
+
 CREATE INDEX idx_agent_tenant ON sf_agent(tenant_id);
 CREATE INDEX idx_agent_config_agent ON sf_agent_config(agent_id);
 CREATE INDEX idx_execution_agent ON sf_agent_execution(agent_id);
@@ -157,3 +173,4 @@ CREATE INDEX idx_execution_conversation ON sf_agent_execution(conversation_id);
 CREATE INDEX idx_execution_state ON sf_agent_execution(state);
 CREATE INDEX idx_execution_log_execution ON sf_agent_execution_log(execution_id);
 CREATE INDEX idx_memory_agent ON sf_agent_memory(agent_id);
+CREATE INDEX idx_prompt_version_config ON sf_prompt_version(config_id, version);
