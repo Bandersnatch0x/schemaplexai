@@ -10,7 +10,8 @@
   },
   "features": {
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
-      "dockerDashComposeVersion": "v2"
+      "dockerDashComposeVersion": "v2",
+      "moby": false
     },
     "ghcr.io/devcontainers/features/sshd:1": {}
   },

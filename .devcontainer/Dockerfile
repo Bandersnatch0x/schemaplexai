@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/java:21
+FROM mcr.microsoft.com/devcontainers/java:21-bookworm
 
 # Maven (included in some JDK images, install to be sure)
 RUN apt-get update && apt-get install -y maven && apt-get clean
