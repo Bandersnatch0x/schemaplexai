@@ -66,3 +66,6 @@ build/
 # Docker volumes
 docker/*/data/
 .worktrees/
+
+# LLM Wiki search index (QMD or similar)
+wiki/.qmd/

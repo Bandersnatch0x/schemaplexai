@@ -18,7 +18,29 @@
       "Bash(docker compose *)",
       "Bash(mvn test *)",
       "Bash(curl -sL \"https://raw.githubusercontent.com/cursor/cookbook/main/sdk/quickstart/package.json\")",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(claude --version)",
+      "WebFetch(domain:hackernoon.com)",
+      "Bash(mkdir -p ~/.claude/plugins/cache/ralph-wiggum/ralph-wiggum/1.0.0)",
+      "Bash(cp -r ~/.claude/plugins/marketplaces/ralph-wiggum/* ~/.claude/plugins/cache/ralph-wiggum/ralph-wiggum/1.0.0/)",
+      "Bash(javac -version)",
+      "Bash(xargs grep *)",
+      "Bash(wsl --list --running)",
+      "Bash(wsl --list)",
+      "Bash(wsl *)",
+      "Bash(gh auth *)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '=== Wiki Index (top) ===' && head -n 60 wiki/index.md && echo '' && echo '=== Wiki Log (recent) ===' && tail -n 15 wiki/log.md"
+          }
+        ]
+      }
     ]
   }
 }

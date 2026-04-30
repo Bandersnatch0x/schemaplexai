@@ -23,3 +23,7 @@
 |------|------|------|------|
 | [`project-plan.md`](project-plan.md) | v1.1 | 已批准 | 修订版项目计划书（30 周） |
 | [`unified-dev-plan.md`](unified-dev-plan.md) | v1.0 | 草稿 | 统一开发实施计划（47 任务） |
+| [`tech-research-plan.md`](tech-research-plan.md) | v1.0 | 已批准 | 技术预研计划（LangChain4j / OpenSandbox / Embedding） |
+| [`sprint-plan.md`](sprint-plan.md) | v1.0 | 有条件通过 | Sprint 迭代计划（15 个 Sprint） |
+| [`PLAN-REVIEW-v1.0.md`](PLAN-REVIEW-v1.0.md) | v1.0 | 已批准 | Plan 评审记录 |
+| [`claude-code-harness-research.md`](claude-code-harness-research.md) | v1.0 | 草稿 | 《御舆：解码 Agent Harness》技术预研报告 |

@@ -13,8 +13,12 @@
 | [`designs/`](designs/) | 架构设计文档（Design） | 架构师、开发 |
 | [`plans/`](plans/) | 实施计划（Plan） | TL、开发 |
 | [`decisions/`](decisions/) | 架构决策记录（ADR） | 全团队 |
-| [`standards/`](standards/) | 开发规范与流程 | 全团队 |
+| [`standards/`](standards/) | 开发规范与流程、审计与评审报告 | 全团队 |
 | [`archive/`](archive/) | 已归档的旧版文档 | 参考查阅 |
+
+## 统一评审入口
+
+- [`standards/unified-review-v1.0.md`](standards/unified-review-v1.0.md) — 文档统一评审与归档报告（Specs + Plans + UI + 审计汇总）
 
 ---
 
