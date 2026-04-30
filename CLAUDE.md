@@ -153,9 +153,62 @@ GitHub Actions (`.github/workflows/ci.yml`) runs:
 4. `mvn spotbugs:check` (non-blocking)
 5. `mvn checkstyle:check` (non-blocking)
 
+## Development Workflow / 开发流程规范
+
+### SDD + TDD 双轨流程
+
+本项目采用 **Specification-Driven Development（规格驱动开发）** + **Test-Driven Development（测试驱动开发）**。
+
+```
+需求(requirements) → 规格(specs) → 设计(designs) → 计划(plans) → 编码+测试 → 评审
+                                    ↑___________________________|
+                                          TDD: RED → GREEN → REFACTOR
+```
+
+**核心规则**：
+- 任何超过 50 行的代码变更必须有对应的 `docs/specs/` 或 `docs/designs/` 文档支撑
+- 任何新模块必须有 `docs/designs/` 设计评审通过后才能编码
+- 所有代码必须通过 TDD 流程（先写测试，再写实现，后重构）
+- 无测试的代码不允许提交
+
+详细规范见：
+- [`docs/standards/sdd-process.md`](docs/standards/sdd-process.md) — SDD 阶段定义、触发条件、文档规范
+- [`docs/standards/tdd-guide.md`](docs/standards/tdd-guide.md) — TDD 循环、测试类型、命名规范、CI 门禁
+
+### 文档目录规范
+
+所有项目文档必须按统一结构存放，禁止 plugin 随意写入：
+
+```
+docs/
+├── requirements/     # 产品需求（PRD）
+├── specs/            # 技术规格说明书
+├── designs/          # 架构设计文档
+├── plans/            # 实施计划
+├── decisions/        # ADR（架构决策记录）
+├── standards/        # 开发规范与流程
+├── archive/          # 已归档旧文档
+└── README.md         # 文档总览
+```
+
+**文件命名**：`YYYY-MM-DD[-vX.Y]-<topic>.md`
+
+详细规范见 [`docs/standards/directory-structure.md`](docs/standards/directory-structure.md)。
+
+### Plugin 输出约束
+
+- **禁止** plugin 在 `docs/` 根目录或创建 plugin 专属子目录（如 `docs/superpowers/`、`docs/ecc/`）直接输出
+- Plugin 生成的 plan/spec 先输出到临时位置（如 `.claude/outputs/`）
+- 经人工评审后，按统一规范重命名并移入对应的 `docs/` 子目录
+- 旧版 plugin 输出归档到 `docs/archive/`
+
 ## Reference Documentation
 
 - `README.md` — quick start, service list, access URLs
 - `AGENTS.md` — detailed agent development guide for this project
-- `docs/design/DESIGN_REVISED.md` — architecture design document (v1.1)
-- `docs/PROJECT_PLAN_REVISED.md` — project plan
+- `docs/designs/2026-04-29-v1.1-system-architecture.md` — architecture design document (v1.1)
+- `docs/designs/2026-04-30-agent-runtime-task-board.md` — Agent Runtime Platform + Task Board design
+- `docs/plans/2026-04-29-v1.1-project-plan.md` — revised project plan (v1.1, 30 weeks)
+- `docs/plans/2026-04-30-unified-dev-plan.md` — unified development implementation plan (47 tasks)
+- `docs/standards/sdd-process.md` — SDD process specification
+- `docs/standards/tdd-guide.md` — TDD guide
