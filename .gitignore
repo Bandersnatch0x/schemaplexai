@@ -65,3 +65,4 @@ build/
 
 # Docker volumes
 docker/*/data/
+.worktrees/
