@@ -1,0 +1,17 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: schemaplexai-web
+  websocket:
+    message-buffer-size: 8192
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+
+logging:
+  level:
+    com.schemaplexai.web: DEBUG

@@ -1,0 +1,85 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: schemaplexai-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: system-route
+          uri: http://localhost:8081
+          predicates:
+            - Path=/system/**,/auth/**
+        - id: web-route
+          uri: http://localhost:8082
+          predicates:
+            - Path=/web/**
+        - id: agent-config-route
+          uri: http://localhost:8083
+          predicates:
+            - Path=/agent-config/**
+        - id: agent-engine-route
+          uri: http://localhost:8084
+          predicates:
+            - Path=/agents/**,/agent-engine/**
+        - id: context-route
+          uri: http://localhost:8085
+          predicates:
+            - Path=/context/**
+        - id: spec-route
+          uri: http://localhost:8086
+          predicates:
+            - Path=/spec/**
+        - id: workflow-route
+          uri: http://localhost:8087
+          predicates:
+            - Path=/workflow/**
+        - id: integration-route
+          uri: http://localhost:8088
+          predicates:
+            - Path=/integration/**
+        - id: ops-route
+          uri: http://localhost:8089
+          predicates:
+            - Path=/ops/**
+        - id: quality-route
+          uri: http://localhost:8090
+          predicates:
+            - Path=/quality/**
+        - id: task-route
+          uri: http://localhost:8091
+          predicates:
+            - Path=/task/**
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      timeout: 5s
+      lettuce:
+        pool:
+          max-active: 100
+          max-idle: 50
+          min-idle: 10
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: 86400000
+
+rate-limit:
+  enabled: true
+  default-limit: 100
+  window-size: 60
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG

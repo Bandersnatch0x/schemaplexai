@@ -1,0 +1,200 @@
+version: '3.8'
+
+services:
+  # PostgreSQL - Main OLTP Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: sf-postgres
+    environment:
+      POSTGRES_DB: schemaplexai
+      POSTGRES_USER: sf_user
+      POSTGRES_PASSWORD: sf_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d
+    networks:
+      - sf-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sf_user -d schemaplexai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis - Cache / ChatMemory L1 / Session / RateLimit
+  redis:
+    image: redis:7-alpine
+    container_name: sf-redis
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - sf-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # RabbitMQ - Message Queue
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: sf-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: sf_user
+      RABBITMQ_DEFAULT_PASS: sf_password
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - sf-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # MinIO - Object Storage
+  minio:
+    image: minio/minio:latest
+    container_name: sf-minio
+    environment:
+      MINIO_ROOT_USER: sf_admin
+      MINIO_ROOT_PASSWORD: sf_admin_password
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - sf-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # Milvus - Vector Database
+  milvus-standalone:
+    image: milvusdb/milvus:v2.3.5
+    container_name: sf-milvus
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      - etcd
+      - minio
+    networks:
+      - sf-network
+    restart: unless-stopped
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    container_name: sf-etcd
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+    ports:
+      - "2379:2379"
+    volumes:
+      - etcd_data:/etcd
+    networks:
+      - sf-network
+    restart: unless-stopped
+
+  # ClickHouse - Analytics Warehouse
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3
+    container_name: sf-clickhouse
+    ports:
+      - "8123:8123"
+      - "9004:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    networks:
+      - sf-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Elasticsearch - Logs / Audit Search
+  elasticsearch:
+    image: elasticsearch:8.12.0
+    container_name: sf-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - sf-network
+    restart: unless-stopped
+
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: prom/prometheus:v2.50.0
+    container_name: sf-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - sf-network
+    restart: unless-stopped
+
+  # Grafana - Visualization
+  grafana:
+    image: grafana/grafana:10.3.0
+    container_name: sf-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - sf-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+  minio_data:
+  etcd_data:
+  clickhouse_data:
+  elasticsearch_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  sf-network:
+    driver: bridge

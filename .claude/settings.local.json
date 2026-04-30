@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find schemaplexai-*/src/main/java -type f)",
+      "Bash(mvn clean *)",
+      "Bash(java *)",
+      "Bash(mvn compile *)",
+      "WebFetch(domain:github.com)",
+      "Bash(gh --version)",
+      "WebSearch",
+      "Bash(gh repo *)",
+      "Bash(gh api *)",
+      "Bash(curl -sL https://raw.githubusercontent.com/cursor/cookbook/main/README.md)",
+      "Bash(curl -sL https://raw.githubusercontent.com/multica-ai/multica/main/README.md)",
+      "Bash(curl -sL https://raw.githubusercontent.com/multica-ai/multica/main/AGENTS.md)",
+      "Bash(curl -sL https://raw.githubusercontent.com/multica-ai/multica/main/CLI_AND_DAEMON.md)",
+      "Bash(docker-compose -f docker/docker-compose.yml config)",
+      "Bash(docker compose *)",
+      "Bash(mvn test *)",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/cursor/cookbook/main/sdk/quickstart/package.json\")",
+      "Bash(git *)"
+    ]
+  }
+}
