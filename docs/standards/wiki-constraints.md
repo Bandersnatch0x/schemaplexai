@@ -1,0 +1,121 @@
+---
+topic: wiki-constraints
+stage: standard
+version: v1.0
+status: 已批准
+supersedes: ""
+---
+
+# Wiki / 知识库管理规范
+
+> **主题**: `wiki-constraints`
+> **阶段**: `standard`
+> **版本**: v1.0
+> **状态**: 已批准
+> **日期**: 2026-05-01
+
+---
+
+## 1. 定位与边界
+
+`wiki/` 是 AI 知识库（Layer 3），与 `docs/`（权威基线）的分工：
+
+| 维度 | `docs/` | `wiki/` |
+|------|---------|---------|
+| 读者 | 全团队 | AI Agent / 开发者快速查询 |
+| 权威性 | 高（评审后冻结） | 中（持续更新，允许滞后） |
+| 格式 | 标准 SDD 文档（YAML front-matter + 章节） | 独立 YAML front-matter + 知识片段 |
+| 生命周期 | 创建 → 评审 → 批准 → 归档 | 持续演化，无明确归档 |
+| 内容 | 规格、设计、计划、决策 | 代码洞察、数据模型、API 速查、已知问题 |
+
+**关键原则**：`wiki/` 不得与 `docs/` 内容重复。`docs/` 写"应该怎么做"，`wiki/` 写"实际上是怎么做的"。
+
+## 2. 文件格式
+
+所有 wiki 文件必须使用 YAML front-matter：
+
+```yaml
+---
+title: <简短标题>
+type: <index | entity | service | controller | project | reference>
+source: <信息来源：git log / codebase / docs / manual>
+creation_date: YYYY-MM-DD
+update_date: YYYY-MM-DD
+tags: [tag1, tag2]
+confidence: <high | medium | low>
+---
+```
+
+字段说明：
+- `type`: 文件类型（见第 3 节）
+- `source`: 信息来源，便于追溯
+- `confidence`: 信息可信度，低可信度需标注不确定性
+
+## 3. 目录结构与命名
+
+```
+wiki/
+├── index.md              # wiki 总索引
+├── active-areas.md       # 当前开发热点（每周更新）
+├── gaps.md               # 知识缺口（持续补充）
+├── log.md                # 变更日志（每次 Archive 更新）
+├── technical-debt.md     # 技术债务清单
+├── roadmap.md            # 路线图速查
+├── decisions.md          # 决策速查（指向 docs/decisions/）
+├── architecture.md       # 架构总览
+├── data-model.md         # 数据模型索引
+├── routes.md             # 路由索引
+├── schema-evolution.md   # Schema 变更历史
+├── controllers/          # Controller 速查
+├── entities/             # Entity 速查
+├── services/             # Service 速查
+├── frontend/             # 前端结构速查
+└── ideas/                # 架构想法与调研（归档后移到 docs/archive/）
+```
+
+**命名规范**：
+- 使用 kebab-case（短横线分隔小写）
+- 文件名反映内容主题，不含日期前缀
+- 子目录按类型划分，不按模块划分
+
+## 4. 更新触发条件
+
+| 场景 | 必须更新的 wiki 文件 | 更新内容 |
+|------|---------------------|---------|
+| 新增 Entity | `wiki/entities/<entity>.md` | 字段、类型、关系、索引 |
+| 新增 Controller | `wiki/controllers/<controller>.md` | 端点、方法、路径 |
+| 新增 Service | `wiki/services/<service>.md` | 职责、方法签名 |
+| Schema 变更 | `wiki/entities/<entity>.md` + `wiki/schema-evolution.md` | 变更记录 |
+| 完成一个 Feature | `wiki/log.md` + `wiki/active-areas.md` | 做了什么、学到了什么 |
+| 发现未文档化的代码 | `wiki/gaps.md` | 缺口描述 |
+| 架构决策生效 | `wiki/decisions.md` | 决策摘要 + 指向 ADR |
+
+## 5. 与 docs/ 的同步规则
+
+```
+docs/ 权威文档          wiki/ 知识库
+     │                      │
+     │── 评审批准后 ───────>│ 创建/更新速查页
+     │── 归档旧版后 ───────>│ 更新索引指向
+     │<── 发现不一致 ───────│ 标注 gaps
+```
+
+- `docs/` 是**单向权威源**：评审通过后，AI 将关键信息提炼到 `wiki/`
+- `wiki/` 发现与代码不一致时，不直接修改代码，而是记录到 `wiki/gaps.md`，由开发确认后更新 `docs/`
+- `wiki/ideas/` 中的调研结果如需纳入基线，必须走完整 SDD 流程进入 `docs/`
+
+## 6. 禁止行为
+
+- 禁止在 `wiki/` 中写实现代码或可直接执行的脚本
+- 禁止将 `wiki/` 作为需求文档的正式评审场所
+- 禁止在 `wiki/` 中保留已废弃的、与当前代码严重不符的信息（更新或删除）
+- 禁止在 `wiki/` 中复制粘贴 `docs/specs/` 的完整内容（应提炼为速查格式）
+
+## 7. 质量检查
+
+每次 Archive 阶段，检查以下 wiki 文件是否同步：
+- [ ] `wiki/log.md` — 记录了本次变更的关键决策和发现
+- [ ] `wiki/gaps.md` — 新增的未文档化区域已记录
+- [ ] `wiki/active-areas.md` — 当前热点已更新
+- [ ] 新增/修改的 Entity 有对应 `wiki/entities/*.md`
+- [ ] 新增/修改的 Controller 有对应 `wiki/controllers/*.md`

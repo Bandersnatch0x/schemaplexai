@@ -41,7 +41,32 @@
       "Bash(curl -s \"https://api.github.com/repos/zerobootdev/zeroboot/git/trees/main?recursive=1\")",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(x['path']\\) for x in d['tree']]\")",
       "Bash(curl *)",
-      "Read(//mnt/d/code_space/frige/**)"
+      "Read(//mnt/d/code_space/frige/**)",
+      "Bash(echo \"EXIT: $?\")",
+      "mcp__plugin_everything-claude-code_exa__web_fetch_exa",
+      "mcp__plugin_everything-claude-code_exa__web_search_exa",
+      "WebFetch(domain:maxlv.net)",
+      "WebFetch(domain:r.jina.ai)",
+      "WebFetch(domain:hashrocket.com)",
+      "WebFetch(domain:redreamality.com)",
+      "WebFetch(domain:intent-driven.dev)",
+      "WebFetch(domain:github.blog)",
+      "Bash(reg query *)",
+      "Bash(sdk version *)",
+      "Bash(docker --version)",
+      "Bash(docker info *)",
+      "Skill(claude-api)",
+      "Bash(/e/jdk/microsoft-jdk-21.0.10-windows-x64/bin/java.exe -version)",
+      "Bash(/e/jdk/microsoft-jdk-21.0.10-windows-x64/bin/java.exe *)",
+      "Bash(/e/jdk/microsoft-jdk-21.0.10-windows-x64/jdk-21.0.10+7/bin/java.exe *)",
+      "Bash(export JAVA_HOME=\"/e/jdk/microsoft-jdk-21.0.10-windows-x64/jdk-21.0.10+7\")",
+      "Bash(export PATH=\"$JAVA_HOME/bin:$PATH\")",
+      "Bash(gh search *)",
+      "Bash(mvn install *)",
+      "WebFetch(domain:www.multica.ai)",
+      "Bash(mvn -version)",
+      "Bash(ls -la \"E:\\\\\\\\jdk\\\\\\\\microsoft-jdk-21.0.10-windows-x64\\\\\\\\bin\\\\\\\\java.exe\")",
+      "Bash(bash *)"
     ]
   },
   "hooks": {
@@ -50,7 +75,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '=== Wiki Index (top) ===' && head -n 60 wiki/index.md && echo '' && echo '=== Wiki Log (recent) ===' && tail -n 15 wiki/log.md"
+            "command": "echo '=== Wiki Index (top) ===' && head -n 60 wiki/index.md && echo '' && echo '=== Wiki Log (recent) ===' && tail -n 15 wiki/log.md && echo '' && echo '=== Active Changes ===' && bash .claude/workflow/scripts/change-status.sh 2>/dev/null || echo 'No active changes'"
           }
         ]
       }

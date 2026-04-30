@@ -89,6 +89,24 @@ Raw Idea → Record in ideas/YYYYMMDD-*.md → Agent Research → Architecture F
 **Operation**: Updated `docs/specs/open-source-agent-architecture-research.md` — Phase 3 sandbox design changed from Docker to zeroboot CoW VM. Rewrote Debate 3 (sandbox technology selection), added Debate 6 (zeroboot vs Docker), updated implementation path.
 **Impact**: Phase 3 sandbox implementation cost reduced from 3-4 person-weeks to 1-2 person-weeks, sandbox creation latency from ~500ms to ~0.8ms (600x improvement), memory per sandbox from ~20MB to ~265KB.
 
+## 2026-05-01 — Workflow Validation: System Notification Module
+
+**Trigger**: Validated the newly built `.claude/` six-phase workflow with a real feature.
+**Operation**: Walked through Propose → Spec → Plan → Apply → Archive for "system notification module".
+**Files created**:
+- `schemaplexai-model/.../Notification.java` — Entity extending BaseEntity
+- `schemaplexai-dao/.../NotificationMapper.java` — Mapper with custom @Update methods
+- `schemaplexai-web/.../NotificationService.java` — Service interface + implementation
+- `schemaplexai-web/.../NotificationController.java` — 3 REST endpoints
+- `schemaplexai-web/.../NotificationVO.java` — Response VO
+- `schemaplexai-ui/src/types/notification.ts` — Frontend types
+- `schemaplexai-ui/src/api/notification.ts` — Frontend API client
+- `docker/postgres/init/04-notification.sql` — DB schema
+- `schemaplexai-web/.../NotificationServiceTest.java` — 3 unit tests (all pass)
+
+**Discovery**: `schemaplexai-web` pom.xml was missing `schemaplexai-dao` dependency (fixed). Existing `schemaplexai-common` PageParamTest has compile errors (pre-existing, unrelated). Java 21 required via `JAVA_HOME` export.
+**Workflow notes**: Graphify task graph worked well for identifying parallel groups. Gateguard hook requires fact verification on every write — adds friction but ensures discipline.
+
 ## 2026-04-30 — De-duplicated wiki/plans-and-initiatives.md
 
 **Trigger**: User identified redundancy between `wiki/plans-and-initiatives.md` and `docs/plans/README.md`.
