@@ -5,6 +5,7 @@ import com.schemaplexai.agent.engine.admission.TokenBudget;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.memory.CompositeChatMemoryStore;
 import com.schemaplexai.agent.engine.model.LlmMessage;
+import com.schemaplexai.agent.engine.observability.ObservabilityRecorder;
 import com.schemaplexai.agent.engine.state.AgentExecutionState;
 import com.schemaplexai.agent.engine.state.AgentStateMachine;
 import com.schemaplexai.common.constants.CommonConstants;
@@ -22,10 +23,20 @@ public class AgentRuntimeOrchestrator {
     private final AgentStateMachine stateMachine;
     private final ExecutionAdmissionService admissionService;
     private final CompositeChatMemoryStore chatMemoryStore;
+    private final ObservabilityRecorder observabilityRecorder;
 
     private static final int MAX_ITERATIONS = 50;
 
     public void run(SfAgentExecution execution, String tenantId, String prompt) {
+        String traceId = observabilityRecorder.startTrace(
+            String.valueOf(execution.getId()),
+            "agent-execution",
+            String.valueOf(execution.getCreatedBy()),
+            execution.getConversationId(),
+            prompt
+        ).getTraceId();
+
+        int roundCount = 0;
         try {
             // Initialize token budget
             TokenBudget tokenBudget = new TokenBudget(
@@ -58,6 +69,7 @@ public class AgentRuntimeOrchestrator {
                 stateMachine.transition(currentState, execution);
                 iteration++;
             }
+            roundCount = iteration;
 
             if (iteration >= MAX_ITERATIONS) {
                 log.warn("Execution {} hit max iterations, forcing completion", execution.getId());
@@ -71,6 +83,8 @@ public class AgentRuntimeOrchestrator {
                 log.error("Failed to transition execution {} to FAILED", execution.getId(), ex);
             }
         } finally {
+            observabilityRecorder.endTrace(traceId,
+                "{\"state\":\"" + execution.getState() + "\",\"rounds\":" + roundCount + "}");
             admissionService.releaseConcurrency(tenantId, execution.getAgentId());
         }
     }
