@@ -1,6 +1,7 @@
 package com.schemaplexai.web.sse;
 
 import com.schemaplexai.common.exception.BaseException;
+import com.schemaplexai.common.message.UnifiedMessage;
 import com.schemaplexai.common.result.ResultCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -63,6 +64,24 @@ public class AgentSseEmitter {
         SseEmitter emitter = emitters.remove(clientId);
         if (emitter != null) {
             emitter.completeWithError(ex);
+        }
+    }
+
+    public void sendUnified(String clientId, UnifiedMessage message) {
+        SseEmitter emitter = emitters.get(clientId);
+        if (emitter == null) {
+            return;
+        }
+        try {
+            SseEmitter.SseEventBuilder event = SseEmitter.event()
+                    .data(message);
+            if (message.getEventName() != null) {
+                event.name(message.getEventName());
+            }
+            emitter.send(event);
+        } catch (IOException e) {
+            log.error("Failed to send unified message to {}", clientId, e);
+            emitters.remove(clientId);
         }
     }
 }
