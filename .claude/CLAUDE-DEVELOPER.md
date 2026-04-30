@@ -34,6 +34,8 @@ All changes execute in `.claude/changes/<feat>/`.
 
 **Apply**: `git checkout -b feature/<feat>`. Use `EnterWorktree` for complex changes. Execute tasks: parallel independent groups via OMC multi-agent, serial tasks sequentially. TDD for every task.
 
+> **Environment checks before coding**: `JAVA_HOME` → JDK 21; target module `pom.xml` includes `schemaplexai-dao` and required starters; frontend changes: `npm run lint` passes in `schemaplexai-ui/`.
+
 **Archive**: Run `.claude/workflow/scripts/change-archive.sh <feat>`. Move to `archive/`. Sync spec/design to `docs/`. Update `wiki/log.md` and `wiki/gaps.md`.
 
 ## Command Quick Reference

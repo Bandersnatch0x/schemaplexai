@@ -95,6 +95,8 @@ Task 1 → Task 2 → Task 4 → Task 6
 - [ ] 代码变更 > 30 行触发 /verify-quality
 - [ ] 涉及安全敏感代码触发 /verify-security
 - [ ] 最终 Code Review（code-reviewer agent）
+- [ ] 后端变更：目标模块 pom.xml 已包含 schemaplexai-dao 及必要依赖
+- [ ] 前端变更：cd schemaplexai-ui && npm run lint 通过
 
 ## 文档同步任务
 

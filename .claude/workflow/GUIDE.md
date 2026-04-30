@@ -56,6 +56,8 @@ All changes execute in `.claude/changes/<feat>/`.
 
 **Apply/Build**: `git checkout -b feature/<feat>`. Use `EnterWorktree` for complex changes. Execute tasks: parallel independent groups via OMC multi-agent, serial tasks sequentially. TDD for every task. In v2, sub-agents must read `.claude/changes/<feat>/spec.md` before executing. >30 lines: trigger `/verify-change`, `/verify-quality`, `/verify-security`.
 
+> **Environment checks before coding**: `JAVA_HOME` → JDK 21; target module `pom.xml` includes `schemaplexai-dao` and required starters; frontend changes: `npm run lint` passes in `schemaplexai-ui/`.
+
 **Deliver** (v2 only): Self-test (unit + integration + manual golden path + boundary + multi-tenant). Verification gate: `/verify-change`, `/verify-quality`, `/verify-security`, ≥80% coverage. Code Review: `code-reviewer` agent (general), `security-reviewer` agent (security-sensitive). CI gate: `mvn test`, `mvn jacoco:check`, `npm run test:run`. Must pass all gates before Archive.
 
 **Archive**: Run `.claude/workflow/scripts/change-archive.sh <feat>`. Move to `archive/`. Sync spec/design to `docs/`. Update `wiki/log.md` and `wiki/gaps.md`.
