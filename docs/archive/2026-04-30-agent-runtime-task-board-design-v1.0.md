@@ -1,9 +1,27 @@
+---
+topic: agent-runtime-task-board
+stage: design
+version: v1.0
+status: 草稿
+supersedes: ""
+---
+
 # SchemaPlexAI — Agent Runtime 平台与 Task Board 设计
 
+> **主题**：`agent-runtime-task-board`
+> **阶段**：`design`
 > **版本**：v1.0
+> **状态**：草稿
 > **日期**：2026-04-30
-> **状态**：设计草案，待评审
-> **关联文档**：DESIGN_REVISED.md (v1.1)、PROJECT_PLAN_REVISED.md (v1.1)
+> **关联文档**：`docs/designs/system-architecture.md` (v1.1)
+
+---
+
+## 变更历史
+
+| 版本 | 日期 | 变更内容 | 作者 |
+|------|------|---------|------|
+| v1.0 | 2026-04-30 | 初始创建 | — |
 
 ---
 

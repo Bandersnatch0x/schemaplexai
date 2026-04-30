@@ -26,8 +26,9 @@
 ### 2.1 需求（Requirements）
 
 - **位置**：`docs/requirements/`
-- **命名**：`YYYY-MM-DD-<feature>-prd.md`
+- **命名**：`<topic>.md`
 - **必填内容**：
+  - YAML 状态头部（`topic` / `stage: requirement` / `version` / `status` / `supersedes`）
   - 用户故事（As a ... I want ... So that ...）
   - 验收标准（Given/When/Then）
   - 非功能需求（性能、安全、兼容性）
@@ -35,8 +36,9 @@
 ### 2.2 规格（Specs）
 
 - **位置**：`docs/specs/`
-- **命名**：`YYYY-MM-DD-<topic>-spec.md`
+- **命名**：`<topic>.md`
 - **必填内容**：
+  - YAML 状态头部
   - 接口定义（URL / Method / Request / Response / Error Code）
   - 数据模型（Entity / DTO / VO，含字段类型/约束）
   - 状态机（如有）
@@ -45,18 +47,31 @@
 ### 2.3 设计（Designs）
 
 - **位置**：`docs/designs/`
-- **命名**：`YYYY-MM-DD[-vX.Y]-<topic>-design.md`
+- **命名**：`<topic>.md`
 - **必填内容**：
+  - YAML 状态头部
   - 架构图（C4 Model 或等效）
   - 模块边界与接口
   - 数据流图
   - 部署/运维考虑
 
-### 2.4 计划（Plans）
+### 2.4 UI/UX 设计（UI）
+
+- **位置**：`docs/ui/`
+- **命名**：`<topic>.md`
+- **必填内容**：
+  - YAML 状态头部
+  - 页面结构与布局（Wireframe / Layout）
+  - 组件拆分与复用策略
+  - 交互流程与状态转换
+  - 响应式与可访问性（a11y）要求
+
+### 2.5 计划（Plans）
 
 - **位置**：`docs/plans/`
-- **命名**：`YYYY-MM-DD-<topic>-plan.md`
+- **命名**：`<topic>.md`
 - **必填内容**：
+  - YAML 状态头部
   - 任务分解（Task 级别）
   - 工期估算（理想人天 + 缓冲）
   - 依赖关系与阻塞项
@@ -84,11 +99,22 @@
 
 ---
 
-## 4. Plugin 生成内容的处理
+## 4. 文档变更与归档流程
+
+```
+创建（草稿） → 评审（评审中） → 批准（已批准） → 变更（新版本） → 归档旧版
+```
+
+1. **创建**：按 `docs/DOCUMENT-TEMPLATE.md` 新建活跃文档，`status: 草稿`
+2. **评审**：`status: 评审中` → 收集反馈 → `status: 已批准`
+3. **变更**：将当前活跃文档复制到 `docs/archive/`，文件名格式 `YYYY-MM-DD-<topic>-<stage>-vX.Y.md`，然后修改活跃文档内容，更新 `version` 和 `supersedes`
+4. **作废**：若主题废弃，将活跃文档移入 `archive/`，状态改为 `已作废`
+
+## 5. Plugin 生成内容的处理
 
 Claude Code plugins（superpowers、ccg 等）生成的 plan/spec 属于**草案**，**不等于项目基线**：
 
 1. Plugin 输出到临时位置（推荐 `.claude/outputs/` 或 plugin 自己的缓存目录）
-2. 人工评审后，按本规范命名并移入对应 `docs/` 子目录
-3. 未经评审的 plugin 输出不得作为编码依据
-4. 旧版 plugin 输出归档到 `docs/archive/`
+2. 人工评审后，按本规范创建或更新活跃文档（`<topic>.md`）
+3. 若替换了旧版活跃文档，旧版按规范归档到 `docs/archive/`
+4. 未经评审的 plugin 输出不得作为编码依据

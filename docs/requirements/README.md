@@ -9,11 +9,13 @@
 - 非功能需求（性能、安全、可用性）
 - 业务流程图
 
-## 格式
+## 命名规范
 
 ```
-YYYY-MM-DD-<feature-name>-prd.md
+<topic>.md
 ```
+
+`topic` 为短横线分隔的英文小写主题词，与对应 `specs/`、`designs/`、`plans/`、`ui/` 文档保持一致。
 
 ## 当前文档
 

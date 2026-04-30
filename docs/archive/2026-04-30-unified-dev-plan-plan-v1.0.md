@@ -1,4 +1,27 @@
+---
+topic: unified-dev-plan
+stage: plan
+version: v1.0
+status: 草稿
+supersedes: ""
+---
+
 # SchemaPlexAI Unified Development Plan
+
+> **主题**：`unified-dev-plan`
+> **阶段**：`plan`
+> **版本**：v1.0
+> **状态**：草稿
+
+---
+
+## 变更历史
+
+| 版本 | 日期 | 变更内容 | 作者 |
+|------|------|---------|------|
+| v1.0 | 2026-04-30 | 初始创建 | — |
+
+---
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

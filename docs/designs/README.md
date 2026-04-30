@@ -9,15 +9,17 @@
 - 数据流与时序图
 - 部署架构
 
-## 格式
+## 命名规范
 
 ```
-YYYY-MM-DD[-vX.Y]-<topic>-design.md
+<topic>.md
 ```
+
+`topic` 为短横线分隔的英文小写主题词，与对应 `specs/`、`plans/`、`ui/` 文档保持一致。
 
 ## 当前文档
 
-| 文档 | 日期 | 状态 | 说明 |
+| 文档 | 版本 | 状态 | 说明 |
 |------|------|------|------|
-| [`2026-04-29-v1.1-system-architecture.md`](2026-04-29-v1.1-system-architecture.md) | 2026-04-29 | 已评审 | SchemaPlexAI 系统架构设计 v1.1 |
-| [`2026-04-30-agent-runtime-task-board.md`](2026-04-30-agent-runtime-task-board.md) | 2026-04-30 | 草案 | Agent Runtime 平台 + Task Board 设计 |
+| [`system-architecture.md`](system-architecture.md) | v1.1 | 已批准 | SchemaPlexAI 系统架构设计 |
+| [`agent-runtime-task-board.md`](agent-runtime-task-board.md) | v1.0 | 草稿 | Agent Runtime 平台 + Task Board 设计 |

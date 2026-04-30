@@ -185,15 +185,22 @@ docs/
 ├── specs/            # 技术规格说明书
 ├── designs/          # 架构设计文档
 ├── plans/            # 实施计划
+├── ui/               # UI/UX 设计文档
 ├── decisions/        # ADR（架构决策记录）
 ├── standards/        # 开发规范与流程
 ├── archive/          # 已归档旧文档
 └── README.md         # 文档总览
 ```
 
-**文件命名**：`YYYY-MM-DD[-vX.Y]-<topic>.md`
+**文件命名**：
+- **活跃文档**：`<topic>.md`（每个主题在每个阶段只有一份活跃文档）
+- **归档文档**：`YYYY-MM-DD-<topic>-<stage>-vX.Y.md`
 
-详细规范见 [`docs/standards/directory-structure.md`](docs/standards/directory-structure.md)。
+**文档头部**：每份活跃文档必须使用 YAML front-matter 标注 `topic` / `stage` / `version` / `status` / `supersedes`
+
+**变更流程**：活跃文档被新版本取代时，旧版复制到 `archive/` 并按归档格式命名，新版替换活跃文档。
+
+详细规范与模板见 [`docs/standards/directory-structure.md`](docs/standards/directory-structure.md)、[`docs/DOCUMENT-TEMPLATE.md`](docs/DOCUMENT-TEMPLATE.md)。
 
 ### Plugin 输出约束
 
@@ -206,9 +213,10 @@ docs/
 
 - `README.md` — quick start, service list, access URLs
 - `AGENTS.md` — detailed agent development guide for this project
-- `docs/designs/2026-04-29-v1.1-system-architecture.md` — architecture design document (v1.1)
-- `docs/designs/2026-04-30-agent-runtime-task-board.md` — Agent Runtime Platform + Task Board design
-- `docs/plans/2026-04-29-v1.1-project-plan.md` — revised project plan (v1.1, 30 weeks)
-- `docs/plans/2026-04-30-unified-dev-plan.md` — unified development implementation plan (47 tasks)
+- `docs/designs/system-architecture.md` — architecture design document (v1.1)
+- `docs/designs/agent-runtime-task-board.md` — Agent Runtime Platform + Task Board design (v1.0)
+- `docs/plans/project-plan.md` — revised project plan (v1.1, 30 weeks)
+- `docs/plans/unified-dev-plan.md` — unified development implementation plan (v1.0, 47 tasks)
 - `docs/standards/sdd-process.md` — SDD process specification
 - `docs/standards/tdd-guide.md` — TDD guide
+- `docs/DOCUMENT-TEMPLATE.md` — active document standard template
