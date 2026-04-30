@@ -1,18 +1,22 @@
 {
   "name": "SchemaPlexAI Dev",
   "image": "mcr.microsoft.com/devcontainers/java:21",
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "16gb",
+    "storage": "32gb"
+  },
   "features": {
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "20",
-      "nvmVersion": "latest"
-    },
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
       "version": "latest",
       "dockerDashComposeVersion": "v2"
     },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/java:1": {
-      "version": "none",
+      "version": "21",
       "installMaven": "true",
       "mavenVersion": "3.9.6"
     }
@@ -28,7 +32,6 @@
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
         "bradlc.vscode-tailwindcss",
-        "ms-vscode.vscode-typescript-next",
         "eamodio.gitlens",
         "GitHub.copilot",
         "GitHub.copilot-chat"
@@ -46,37 +49,13 @@
       }
     }
   },
-  "forwardPorts": [
-    3000,
-    8080,
-    8081,
-    8082,
-    8083,
-    8084,
-    8085,
-    8086,
-    8087,
-    8088,
-    8089,
-    8090,
-    8091
-  ],
+  "forwardPorts": [3000, 8080, 8081, 8082, 8083, 8084, 8085, 8086, 8087, 8088, 8089, 8090, 8091],
   "portsAttributes": {
-    "3000": {
-      "label": "Frontend Dev Server",
-      "onAutoForward": "openBrowser"
-    },
-    "8080": {
-      "label": "API Gateway"
-    },
-    "8082": {
-      "label": "Web / Knife4j Docs"
-    }
+    "3000": { "label": "Frontend Dev Server", "onAutoForward": "openBrowser" },
+    "8080": { "label": "API Gateway" },
+    "8082": { "label": "Web / Knife4j Docs" }
   },
-  "postCreateCommand": "java -version && mvn -version && node -v",
+  "postCreateCommand": "java -version && mvn -version && node -v && docker --version && docker-compose --version",
   "postStartCommand": "git config --global --add safe.directory /workspaces/schemaplexai",
-  "remoteUser": "vscode",
-  "mounts": [
-    "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
-  ]
+  "remoteUser": "vscode"
 }
