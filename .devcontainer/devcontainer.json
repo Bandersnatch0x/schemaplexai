@@ -1,5 +1,46 @@
 {
   "name": "SchemaPlexAI Dev",
-  "image": "mcr.microsoft.com/devcontainers/java:21",
-  "postCreateCommand": "java -version && echo 'DEV_CONTAINER_BUILT_SUCCESSFULLY'"
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "16gb",
+    "storage": "32gb"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+      "dockerDashComposeVersion": "v2"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "vmware.vscode-spring-boot",
+        "redhat.vscode-xml",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "eamodio.gitlens",
+        "GitHub.copilot",
+        "GitHub.copilot-chat"
+      ],
+      "settings": {
+        "java.compile.nullAnalysis.mode": "automatic",
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+  "forwardPorts": [3000, 8080, 8081, 8082, 8083, 8084, 8085, 8086, 8087, 8088, 8089, 8090, 8091],
+  "portsAttributes": {
+    "3000": { "label": "Frontend Dev Server", "onAutoForward": "openBrowser" },
+    "8080": { "label": "API Gateway" },
+    "8082": { "label": "Web / Knife4j Docs" }
+  },
+  "postCreateCommand": "java -version && mvn -version && node -v && docker --version && docker-compose --version",
+  "postStartCommand": "git config --global --add safe.directory /workspaces/schemaplexai",
+  "remoteUser": "vscode"
 }
