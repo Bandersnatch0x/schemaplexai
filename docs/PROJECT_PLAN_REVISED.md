@@ -371,4 +371,27 @@ schemaplexai/
 
 ---
 
+---
+
+## 附录 B：方向更新（2026-04-30）
+
+### Runtime 架构重大调整
+
+经深入调研，**放弃 Cursor SDK 接入方案**，转向**自建 Agent Runtime 基础设施**。
+
+| 原方案 | 新方案 | 原因 |
+|--------|--------|------|
+| Cursor SDK (`@cursor/sdk`) 作为外部 Runtime Daemon | OpenSandbox 作为沙箱底座 + 自有 agent-engine 作为智能核心 | Cursor SDK 强制依赖 Cursor API Key 和控制平面，无法满足"自主可控、不受第三方约束"的底线要求 |
+| 无 Task Board | 新增 Task Board（看板）核心编排层 | 支持人工/AI 自动任务分配，实现 Iterative Kanban 人机协作模式 |
+| `ToolCallingStateHandler` 空实现 | 工具调用在 OpenSandbox 隔离沙箱中真实执行 | 支持文件系统、浏览器、终端、代码执行等 Computer Use 能力 |
+
+### 影响评估
+
+- **Phase 2（Agent 引擎）**：增加 OpenSandbox Java SDK 集成任务，预计 +1~2 周
+- **Phase 6~7（工作流/集成）**：Task Board 与 Sandbox 节点执行器并行开发
+- **新增文档**：`docs/design/AGENT_RUNTIME_AND_TASK_BOARD_DESIGN.md`
+- **兼容现有资产**：agent-engine 状态机、TokenBudget、AdmissionControl 全部保留，仅执行后端从"本地 JVM 空跑"升级为"沙箱真实执行"
+
+---
+
 *本修订版项目计划基于 DESIGN_REVISED.md 架构修订内容制定。所有调整均以"降低核心链路风险、提升可观测性、保障数据一致性"为原则。*
