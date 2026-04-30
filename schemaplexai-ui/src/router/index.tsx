@@ -14,6 +14,7 @@ const QualityCenter = lazy(() => import('@/pages/QualityCenter'))
 const IntegrationCenter = lazy(() => import('@/pages/IntegrationCenter'))
 const OpsCenter = lazy(() => import('@/pages/OpsCenter'))
 const SystemSettings = lazy(() => import('@/pages/SystemSettings'))
+const NotificationCenter = lazy(() => import('@/pages/NotificationCenter'))
 const NotFound = lazy(() => import('@/pages/NotFound'))
 
 export interface RouteConfig {
@@ -53,6 +54,7 @@ const RouterConfig: RouteConfig[] = [
       { path: 'quality', element: <QualityCenter /> },
       { path: 'integrations', element: <IntegrationCenter /> },
       { path: 'ops', element: <OpsCenter /> },
+      { path: 'notifications', element: <NotificationCenter /> },
       { path: 'settings', element: <SystemSettings /> },
     ],
   },

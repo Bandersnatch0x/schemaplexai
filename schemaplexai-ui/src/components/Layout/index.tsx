@@ -37,6 +37,7 @@ const menuItems = [
   { key: '/quality', icon: <SafetyOutlined />, label: '质量与安全' },
   { key: '/integrations', icon: <ApiOutlined />, label: '集成与工具' },
   { key: '/ops', icon: <CloudServerOutlined />, label: '交付与运营' },
+  { key: '/notifications', icon: <BellOutlined />, label: '通知中心' },
   { key: '/settings', icon: <SettingOutlined />, label: '系统设置' },
 ]
 
@@ -128,7 +129,10 @@ export default function Layout() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <TenantSelector />
             <Badge count={5} size="small">
-              <BellOutlined style={{ fontSize: 18, cursor: 'pointer' }} />
+              <BellOutlined
+                style={{ fontSize: 18, cursor: 'pointer' }}
+                onClick={() => navigate('/notifications')}
+              />
             </Badge>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
