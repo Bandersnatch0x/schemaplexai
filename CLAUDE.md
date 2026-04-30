@@ -265,4 +265,8 @@ When asked about:
 
 If the wiki doesn't have the answer, update it after researching the code.
 
+### Wiki-to-Docs Fallback
+
+Wiki pages are AI-optimized quick-lookup summaries. When a task requires detailed information (full design rationale, version history, ADR context), follow the `source:` field in the wiki page's front-matter to locate the corresponding `docs/` source file. The wiki is an index — `docs/` is the authoritative record. Always prefer `docs/` for depth; use wiki only for orientation and cross-linking.
+
 > 所有参考文档（设计文档、计划、规范、模板）统一通过 `wiki/index.md` > Project Management > Reference Documentation 查阅。
