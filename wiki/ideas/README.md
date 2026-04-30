@@ -52,9 +52,20 @@ Examples:
 | `raw` | Just captured, no analysis | Agent research |
 | `researching` | Under investigation | Wait for analysis |
 | `assessing` | Research complete, evaluating fit | Architecture review |
-| `adopted` | Approved for implementation | Move to roadmap/technical-debt |
+| `adopted` | Approved for implementation | Handoff to `.claude/` workflow |
 | `deferred` | Valid but not now | Revisit in future sprint |
 | `rejected` | Doesn't fit architecture or priorities | Archive with rationale |
+
+## Workflow Bridge
+
+When an idea reaches `adopted` status, it transitions into the `.claude/` feature workflow.
+
+```
+Impact < 50 lines? ──→ Skip Propose/Spec/Design ──→ tasks.md + Apply + Archive
+Impact ≥ 50 lines? ──→ Full six-phase workflow ──→ Propose → Spec → Design → Plan → Apply → Archive
+```
+
+See `.claude/workflow/GUIDE.md` §9 "Ideas / Research → Feature Workflow Bridge" for full rules.
 
 ## Backlinks
 

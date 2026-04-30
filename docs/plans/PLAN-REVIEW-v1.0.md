@@ -1,6 +1,6 @@
 ---
 topic: plan-review
-stage: review
+stage: plan
 version: v1.0
 status: 已批准
 supersedes: ""

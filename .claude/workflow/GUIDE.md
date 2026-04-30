@@ -216,3 +216,54 @@ If `EnterWorktree` fails:
 1. Check `git worktree list` for orphaned worktrees.
 2. Clean up with `git worktree remove <path>`.
 3. Ensure the branch name does not already exist.
+
+---
+
+## 9. Ideas / Research → Feature Workflow Bridge
+
+`wiki/ideas/` captures raw sparks before they become formal features. When an idea is **adopted**, it must transition into the `.claude/` six-phase workflow.
+
+### Adoption Decision Tree
+
+```
+wiki/ideas/YYYYMMDD-*.md (status: adopted)
+            │
+            ▼
+    ┌───────────────┐
+    │ Impact < 50 lines? │
+    └───────────────┘
+       │           │
+      Yes          No
+       │           │
+       ▼           ▼
+   Skip Propose    Run full six-phase
+   Skip Spec       Propose → Spec → Design → Plan → Apply → Archive
+   Skip Design
+   tasks.md + Apply only
+```
+
+### Rules
+
+| Scenario | Action | Skip | Must Keep |
+|----------|--------|------|-----------|
+| Adopted idea, < 50 lines, single module | Init `.claude/changes/<feat>/`, write `tasks.md`, apply | Propose, Spec, Design | tasks.md + Apply + Archive |
+| Adopted idea, 50–200 lines, single module | Init `.claude/changes/<feat>/`, write `proposal.md` + `spec.md` (light) + `tasks.md`, apply | Design | Propose, Spec, tasks, Apply, Archive |
+| Adopted idea, > 200 lines or cross-module | Full six-phase | — | All phases |
+| Adopted idea, new service/module | Full six-phase + ADR | — | All phases + ADR |
+
+### Handoff Checklist
+
+Before moving an adopted idea from `wiki/ideas/` to `.claude/changes/`:
+- [ ] Idea file updated with `status: adopted` and rationale
+- [ ] Architecture fit documented (why this fits current system)
+- [ ] Rough scope estimate (lines/modules touched)
+- [ ] Linked from `wiki/roadmap.md` or `wiki/technical-debt.md`
+
+After Archive phase completes:
+- [ ] Idea file updated with `status: adopted` → implementation reference
+- [ ] `wiki/log.md` updated with lessons learned
+- [ ] If idea evolved significantly during implementation, update original idea file with delta
+
+### Research Docs
+
+Pre-research documents (tech spikes, architecture evaluations) live in `docs/plans/` with `stage: research`. They are **not executable plans** — they feed into the Propose phase of the feature workflow. When research concludes and a feature is greenlit, create a fresh `.claude/changes/<feat>/proposal.md` rather than reusing the research doc.
