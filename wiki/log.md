@@ -3,7 +3,7 @@ title: Wiki Operation Log
 type: log
 source: wiki/log.md
 creation_date: 2026-04-30
-update_date: 2026-04-30
+update_date: 2026-05-01
 tags: [wiki, log, maintenance]
 confidence: high
 ---
@@ -67,3 +67,29 @@ Raw Idea → Record in ideas/YYYYMMDD-*.md → Agent Research → Architecture F
 ```
 
 **Status flow**: raw → researching → assessing → adopted/deferred/rejected
+
+## 2026-04-30 — Open Source Agent Architecture Research
+
+**Trigger**: User requested research on 6 open-source AI Agent projects for architecture design reference.
+**Operation**: Researched via WebSearch + GitHub API, created ideas files, ran multi-perspective roundtable debate, produced spec and implementation plan.
+**Pages created**:
+- `wiki/ideas/2026-04-30-open-agents-architecture.md` — Vercel Labs cloud agent template
+- `wiki/ideas/2026-04-30-deer-flow-architecture.md` — ByteDance SuperAgent harness
+- `wiki/ideas/2026-04-30-langfuse-architecture.md` — LLM observability platform
+- `wiki/ideas/2026-04-30-holyclaude-architecture.md` — Containerized AI workstation
+- `wiki/ideas/2026-04-30-aionui-architecture.md` — Multi-agent desktop orchestrator
+- `wiki/ideas/2026-04-30-zeroboot-architecture.md` — Sub-millisecond CoW VM sandbox
+- `docs/specs/open-source-agent-architecture-research.md` — Formal spec with 3-phase design roadmap
+- `docs/plans/2026-04-30-phase1-observability-foundation.md` — Phase 1 implementation plan (10 tasks, TDD)
+**Key decisions**: Phase 1 — observability + prompt versioning + skill spec + unified messaging. Phase 3 sandbox updated from Docker to zeroboot CoW VM (~0.8ms fork, hardware isolation).
+
+## 2026-04-30 — Phase 3 Sandbox Design Updated
+
+**Trigger**: User identified zeroboot as a superior sandbox solution and requested spec update.
+**Operation**: Updated `docs/specs/open-source-agent-architecture-research.md` — Phase 3 sandbox design changed from Docker to zeroboot CoW VM. Rewrote Debate 3 (sandbox technology selection), added Debate 6 (zeroboot vs Docker), updated implementation path.
+**Impact**: Phase 3 sandbox implementation cost reduced from 3-4 person-weeks to 1-2 person-weeks, sandbox creation latency from ~500ms to ~0.8ms (600x improvement), memory per sandbox from ~20MB to ~265KB.
+
+## 2026-04-30 — De-duplicated wiki/plans-and-initiatives.md
+
+**Trigger**: User identified redundancy between `wiki/plans-and-initiatives.md` and `docs/plans/README.md`.
+**Operation**: Deleted `wiki/plans-and-initiatives.md` — it was a redundant index of docs/plans/ content. Updated all backlinks in wiki/index.md, wiki/active-areas.md, wiki/roadmap.md, wiki/technical-debt.md to point to `docs/plans/README.md`. Added Wiki-to-Docs Fallback rule to CLAUDE.md.

@@ -48,6 +48,6 @@ confidence: high
 
 ## Backlinks
 
-- See [[plans-and-initiatives]] for active work
+- See `docs/plans/README.md` for active work
 - See [[gaps]] for undocumented areas
 - See [[roadmap]] for planned resolution

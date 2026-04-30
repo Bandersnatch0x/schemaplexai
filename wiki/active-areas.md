@@ -3,7 +3,7 @@ title: Active Development Areas
 type: project
 source: git log, codebase analysis, docs/plans/
 creation_date: 2026-04-30
-update_date: 2026-04-30
+update_date: 2026-05-01
 tags: [active, development, focus, hotspots]
 confidence: high
 ---
@@ -45,6 +45,13 @@ Last significant commits:
 - Axios interceptors and auth flow ready
 - Page components likely need business logic
 
+### 5. Open Source Architecture Research (High Activity — 2026-04-30)
+- 6 open-source AI Agent projects researched (open-agents, deer-flow, langfuse, holyclaude, aionui, zeroboot)
+- Multi-perspective roundtable debate completed (architecture/engineering/product)
+- Formal spec produced: `docs/specs/open-source-agent-architecture-research.md`
+- Phase 1 implementation plan ready: `docs/plans/2026-04-30-phase1-observability-foundation.md`
+- Phase 3 sandbox design: zeroboot CoW VM (Rust + Firecracker + KVM, ~0.8ms fork, 265KB RSS)
+
 ## Inactive/Stale Areas
 
 - `schemaplexai-admin` — completely empty
@@ -53,6 +60,6 @@ Last significant commits:
 
 ## Backlinks
 
-- Plans: [[plans-and-initiatives]]
+- Plans: `docs/plans/README.md`
 - Debt: [[technical-debt]]
 - Roadmap: [[roadmap]]

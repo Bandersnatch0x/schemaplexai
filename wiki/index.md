@@ -3,7 +3,7 @@ title: SchemaPlexAI Wiki Index
 type: index
 source: wiki/
 creation_date: 2026-04-30
-update_date: 2026-04-30
+update_date: 2026-05-01
 tags: [wiki, index, schemaplexai]
 confidence: high
 ---
@@ -54,7 +54,7 @@ confidence: high
 
 ## Project Management
 
-- [[plans-and-initiatives]] — Active plans grouped by status and priority
+- Active plans: see `docs/plans/README.md` (formal index)
 - [[technical-debt]] — Known technical debt and deferred tasks
 - [[roadmap]] — Overall development vision
 - [[active-areas]] — Current development focus based on recent activity
@@ -77,7 +77,16 @@ confidence: high
 
 - [[ideas/README]] — Ideas collection process and status definitions
 - [[ideas/idea-template]] — Template for recording new ideas
-- **Raw Ideas** — captured idea files following `YYYYMMDD-*.md` naming
+- [[ideas/2026-04-30-open-agents-architecture]] — open-agents 云 Agent 模板（Vercel Labs）
+- [[ideas/2026-04-30-deer-flow-architecture]] — DeerFlow 超级 Agent Harness（字节跳动）
+- [[ideas/2026-04-30-langfuse-architecture]] — Langfuse LLM 可观测性平台
+- [[ideas/2026-04-30-holyclaude-architecture]] — HolyClaude AI 编程工作站
+- [[ideas/2026-04-30-aionui-architecture]] — AionUi 多 Agent 桌面编排
+- [[ideas/2026-04-30-zeroboot-architecture]] — zeroboot 亚毫秒 CoW VM 沙箱
+
+## Specs & Plans
+
+- [[../docs/specs/open-source-agent-architecture-research]] — 开源 AI Agent 架构调研与设计借鉴 Spec
 
 ## System
 

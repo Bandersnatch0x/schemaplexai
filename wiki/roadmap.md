@@ -58,6 +58,6 @@ confidence: medium
 
 ## Backlinks
 
-- Detailed plans: [[plans-and-initiatives]]
+- Detailed plans: `docs/plans/README.md`
 - Technical debt: [[technical-debt]]
 - Active work: [[active-areas]]
