@@ -28,6 +28,29 @@ supersedes: ""
 
 **任何新功能或超过 50 行代码的变更必须遵循此流程。**
 
+### 与 .claude/ 执行层的关系
+
+本规范定义了**权威流程**（门禁、评审标准、产出要求）。实际执行时，Claude Code 在 `.claude/changes/<feat>/` 工作区中按六阶段驱动：
+
+```
+Propose → Spec → Design → Plan → Apply → Archive
+  ↑        ↑       ↑       ↑      ↑        ↑
+.claude/ 执行层加速    →    docs/ 权威沉淀
+```
+
+详见 `.claude/CLAUDE-DEVELOPER.md`。两者的映射关系：
+
+| 本规范阶段 | .claude/ 阶段 | 产出位置 |
+|-----------|--------------|---------|
+| Phase 1-2: 需求澄清 + 编写 Spec | **Propose** + **Spec** | `.claude/changes/<f>/proposal.md` + `spec.md` |
+| Phase 3: 评审 Spec | **Spec 门禁** | 评审通过后可选沉淀到 `docs/specs/` |
+| Phase 4-5: Overview + 设计 | **Design** | `.claude/changes/<f>/design.md` → `docs/designs/` |
+| Phase 6-7: 编写 Plan + 评审 | **Plan** | `.claude/changes/<f>/tasks.md`（Graphify 图结构） |
+| Phase 8-9: 开发 + 自测 | **Apply** | 代码 + 测试 |
+| Phase 10: 合并归档 | **Archive** | `.claude/changes/archive/` + `docs/` 更新 |
+
+**原则**: `.claude/` 是执行加速器，`docs/` 是权威基线。执行层不替代本规范，而是提供结构化加速。
+
 ## 2. 阶段详解
 
 ### Phase 1: 需求澄清
@@ -225,8 +248,7 @@ supersedes: ""
    - 添加快照持久化
    - 补充单元测试
 
-   Co-Authored-By: Claude
-   ```
+      ```
 
 5. **质量门禁**（代码变更 > 30 行时触发）
    - `/verify-change` → 分析变更影响

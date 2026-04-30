@@ -1,6 +1,6 @@
 ---
 topic: spec-review
-stage: review
+stage: spec
 version: v1.0
 status: 已批准
 supersedes: ""

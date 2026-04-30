@@ -1,3 +1,8 @@
+---
+topic: requirements-index
+type: index
+---
+
 # Requirements / 需求文档
 
 产品需求文档（PRD）存放目录。
@@ -21,4 +26,4 @@
 
 | 文档 | 版本 | 状态 | 说明 |
 |------|------|------|------|
-| [`prd-core.md`](prd-core.md) | v1.0 | 草稿 | SchemaPlexAI 核心功能需求文档（MVP 功能、用户角色、里程碑） |
+| [`2026-04-29-v1.0-prd-core.md`](2026-04-29-v1.0-prd-core.md) | v1.0 | 草稿 | SchemaPlexAI 核心功能需求文档（MVP 功能、用户角色、里程碑） |

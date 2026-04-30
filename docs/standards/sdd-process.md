@@ -110,11 +110,29 @@
 3. **变更**：将当前活跃文档复制到 `docs/archive/`，文件名格式 `YYYY-MM-DD-<topic>-<stage>-vX.Y.md`，然后修改活跃文档内容，更新 `version` 和 `supersedes`
 4. **作废**：若主题废弃，将活跃文档移入 `archive/`，状态改为 `已作废`
 
-## 5. Plugin 生成内容的处理
+## 5. Plugin 生成内容与 .claude/ 执行层的集成
 
 Claude Code plugins（superpowers、ccg 等）生成的 plan/spec 属于**草案**，**不等于项目基线**：
 
-1. Plugin 输出到临时位置（推荐 `.claude/outputs/` 或 plugin 自己的缓存目录）
-2. 人工评审后，按本规范创建或更新活跃文档（`<topic>.md`）
-3. 若替换了旧版活跃文档，旧版按规范归档到 `docs/archive/`
-4. 未经评审的 plugin 输出不得作为编码依据
+### 处理流程
+
+1. **Plugin 输出** → `.claude/changes/<feat>/plugin-output/`（或 plugin 自己的缓存目录）
+2. **人工评审** → 按本规范整合到 `.claude/changes/<feat>/` 的对应文件中：
+   - 规格内容 → `spec.md`
+   - 设计内容 → `design.md`
+   - 任务分解 → `tasks.md`
+3. **执行评审** → 走完整的 `.claude/` 六阶段流程（Propose → Spec → Design → Plan → Apply → Archive）
+4. **权威沉淀** → 评审通过后，按本规范创建/更新 `docs/` 活跃文档，旧版归档到 `docs/archive/`
+5. **禁止** → 未经评审的 plugin 输出不得直接作为编码依据
+
+### .claude/changes/ → docs/ 沉淀规则
+
+| .claude/ 产出 | 沉淀目标 | 触发条件 |
+|--------------|---------|---------|
+| `spec.md` | `docs/specs/<topic>.md` | 涉及公共接口/数据模型变更 |
+| `design.md` | `docs/designs/<topic>.md` | 涉及架构/模块边界变更 |
+| `tasks.md` | `docs/plans/<topic>-plan.md` | 计划被批准执行 |
+| 执行中的决策记录 | `docs/decisions/ADR-NNN-xxx.md` | 引入新架构决策 |
+| 执行发现 | `wiki/log.md` + `wiki/gaps.md` | 每次 Archive 阶段 |
+
+**归档命名**: 旧版活跃文档按 `YYYY-MM-DD-<topic>-<stage>-vX.Y.md` 格式放入 `docs/archive/`。

@@ -63,10 +63,10 @@ confidence: high
 
 | Document | Path | Description |
 |----------|------|-------------|
-| System Architecture | `docs/designs/system-architecture.md` | v1.1 架构设计文档 |
-| Agent Runtime + Task Board | `docs/designs/agent-runtime-task-board.md` | v1.0 Agent Runtime Platform 设计 |
-| Project Plan | `docs/plans/project-plan.md` | v1.1 30 周修订计划 |
-| Unified Dev Plan | `docs/plans/unified-dev-plan.md` | v1.0 47 任务实施计划 |
+| System Architecture | `docs/designs/2026-04-29-v1.0-system-architecture.md` | v1.1 架构设计文档 |
+| Agent Runtime + Task Board | `docs/designs/2026-04-30-v1.0-agent-runtime-task-board.md` | v1.0 Agent Runtime Platform 设计 |
+| Project Plan | `docs/plans/2026-04-29-v1.0-project-plan.md` | v1.1 30 周修订计划 |
+| Unified Dev Plan | `docs/plans/2026-04-30-v1.0-unified-dev-plan.md` | v1.0 47 任务实施计划 |
 | SDD Process | `docs/standards/sdd-process.md` | 规格驱动开发流程规范 |
 | TDD Guide | `docs/standards/tdd-guide.md` | 测试驱动开发指南 |
 | Document Template | `docs/DOCUMENT-TEMPLATE.md` | 活跃文档标准模板 |
@@ -86,7 +86,7 @@ confidence: high
 
 ## Specs & Plans
 
-- [[../docs/specs/open-source-agent-architecture-research]] — 开源 AI Agent 架构调研与设计借鉴 Spec
+- [[../docs/specs/2026-04-30-v1.0-open-source-agent-architecture-research]] — 开源 AI Agent 架构调研与设计借鉴 Spec
 
 ## System
 
