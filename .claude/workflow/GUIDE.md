@@ -165,6 +165,46 @@ After each change cycle, update:
 
 ---
 
+## 5.5 LLM-as-Judge Quality Gate (CEK Reflexion)
+
+At each phase transition, an LLM-as-Judge evaluates output quality before proceeding. This is a **hard gate** — Judge FAIL blocks phase advancement regardless of checklist status.
+
+### Scoring Dimensions
+
+| Dimension | Weight | What It Measures |
+|-----------|--------|------------------|
+| Instruction Following | 30% | Does output match the phase prompt requirements? |
+| Output Completeness | 25% | Are all required sections/files present and populated? |
+| Solution Quality | 25% | Is the approach sound, idiomatic, and maintainable? |
+| Reasoning Quality | 10% | Is the logic coherent and well-justified? |
+| Response Coherence | 10% | Is the output well-structured and readable? |
+
+### Phase Thresholds
+
+| Phase | Min Score | Notes |
+|-------|-----------|-------|
+| Propose | 3.5 | Scope clarity, problem framing |
+| Spec | 4.0 | Contract precision — highest bar |
+| Design | 4.0 | Architecture soundness |
+| Plan | 3.5 | Task decomposition quality |
+| Build | 3.5 | Implementation quality |
+| Deliver | 4.0 | Production readiness |
+
+### Execution
+
+1. Phase output is generated normally
+2. Judge sub-agent scores output on 5 dimensions (1–5 scale)
+3. Weighted score computed
+4. If score < threshold → FAIL, return to phase with specific improvement instructions
+5. If score ≥ threshold → PASS, proceed to next phase
+6. Judge report persisted to `.claude/changes/<feat>/judge-report-<phase>.md`
+
+### Reports
+
+Judge reports accumulate across phases. At Archive, all reports merge into `docs/archive/<feature>-<date>/reflexion-report.md` for continuous improvement tracking.
+
+---
+
 ## 6. Skip Rules
 
 | Scenario | Can Skip | Must Keep |
