@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 public class ToolSafetyGuard {
 
     private static final Set<String> IRREVERSIBLE_TOOLS = Set.of(
-        "volumeDelete", "databaseDrop", "delete", "destroy", "purge"
+        "volumeDelete", "databaseDrop", "destroy", "purge", "hardDelete", "permanentDelete"
     );
 
     private static final Pattern IRREVERSIBLE_PATTERN = Pattern.compile(
@@ -23,16 +23,16 @@ public class ToolSafetyGuard {
         // Check 1: Irreversible tool names
         if (IRREVERSIBLE_TOOLS.contains(toolName)) {
             return SafetyCheckResult.reject(
-                ToolErrorCategory.UNAUTHORIZED_SCOPE,
-                "Tool '" + toolName + "' performs irreversible operations. Explicit user confirmation required."
+                ToolErrorCategory.IRREVERSIBLE_OPERATION,
+                "Operation blocked by safety policy."
             );
         }
 
         // Check 2: Irreversible commands in arguments
         if (arguments != null && IRREVERSIBLE_PATTERN.matcher(arguments).find()) {
             return SafetyCheckResult.reject(
-                ToolErrorCategory.UNAUTHORIZED_SCOPE,
-                "Arguments contain irreversible operation pattern. Explicit user confirmation required."
+                ToolErrorCategory.IRREVERSIBLE_OPERATION,
+                "Operation blocked by safety policy."
             );
         }
 
@@ -40,8 +40,8 @@ public class ToolSafetyGuard {
         if (expectedEnvironment != null && arguments != null) {
             if (arguments.contains("prod") && !expectedEnvironment.contains("prod")) {
                 return SafetyCheckResult.reject(
-                    ToolErrorCategory.UNAUTHORIZED_SCOPE,
-                    "Credential/environment mismatch: attempting production operation in non-production context."
+                    ToolErrorCategory.ENVIRONMENT_MISMATCH,
+                    "Operation blocked by safety policy."
                 );
             }
         }

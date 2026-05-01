@@ -33,10 +33,10 @@ class ToolExecutionResultTest {
     @Test
     void shouldCreateBlockedResult() {
         ToolExecutionResult result = ToolExecutionResult.blocked(
-            "volumeDelete", ToolErrorCategory.UNAUTHORIZED_SCOPE, "Irreversible operation blocked by safety guard");
+            "volumeDelete", ToolErrorCategory.IRREVERSIBLE_OPERATION, "Irreversible operation blocked by safety guard");
 
         assertFalse(result.success());
         assertTrue(result.blocked());
-        assertEquals(ToolErrorCategory.UNAUTHORIZED_SCOPE, result.errorCategory());
+        assertEquals(ToolErrorCategory.IRREVERSIBLE_OPERATION, result.errorCategory());
     }
 }

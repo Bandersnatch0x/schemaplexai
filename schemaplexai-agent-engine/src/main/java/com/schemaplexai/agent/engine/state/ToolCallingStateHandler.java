@@ -53,7 +53,7 @@ public class ToolCallingStateHandler implements AgentStateHandler {
             }
 
             for (ToolCall toolCall : toolCalls) {
-                ToolExecutionResult result = executeToolWithGuard(toolCall);
+                ToolExecutionResult result = executeToolWithGuard(execution, toolCall);
                 executionRecorder.record(execution.getId(), result);
 
                 if (result.blocked()) {
@@ -79,8 +79,10 @@ public class ToolCallingStateHandler implements AgentStateHandler {
         }
     }
 
-    private ToolExecutionResult executeToolWithGuard(ToolCall toolCall) {
-        ToolSafetyGuard.SafetyCheckResult safety = safetyGuard.check(toolCall.name, toolCall.arguments);
+    private ToolExecutionResult executeToolWithGuard(SfAgentExecution execution, ToolCall toolCall) {
+        // TODO: Integrate with tenant environment configuration for accurate env mismatch detection
+        String environment = execution.getTenantId();
+        ToolSafetyGuard.SafetyCheckResult safety = safetyGuard.check(toolCall.name, toolCall.arguments, environment);
         if (safety.blocked()) {
             return ToolExecutionResult.blocked(toolCall.name, safety.errorCategory(), safety.reason());
         }

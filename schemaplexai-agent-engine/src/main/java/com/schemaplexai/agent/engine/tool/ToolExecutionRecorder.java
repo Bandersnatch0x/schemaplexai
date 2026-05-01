@@ -23,6 +23,10 @@ public class ToolExecutionRecorder {
             logMapper.insert(logEntry);
         } catch (Exception e) {
             log.error("Failed to persist tool execution log for executionId={}", executionId, e);
+            if (result.errorCategory() != null && result.errorCategory().isSecurityRelated()) {
+                throw new ToolExecutionAuditException(
+                    "Security-related tool execution audit log failed for execution " + executionId, e);
+            }
         }
     }
 

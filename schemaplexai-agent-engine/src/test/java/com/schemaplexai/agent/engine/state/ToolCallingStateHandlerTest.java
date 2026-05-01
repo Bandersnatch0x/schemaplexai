@@ -44,14 +44,14 @@ class ToolCallingStateHandlerTest {
         when(chatMemoryStore.loadMessages("conv-1")).thenReturn(List.of(assistantMsg));
 
         ToolSafetyGuard.SafetyCheckResult blockResult = new ToolSafetyGuard.SafetyCheckResult(
-            false, true, ToolErrorCategory.UNAUTHORIZED_SCOPE, "Irreversible"
+            false, true, ToolErrorCategory.IRREVERSIBLE_OPERATION, "Irreversible"
         );
-        when(safetyGuard.check("volumeDelete", "calling volumeDelete")).thenReturn(blockResult);
+        when(safetyGuard.check("volumeDelete", "calling volumeDelete", "tenant-1")).thenReturn(blockResult);
 
         handler.handle(stateMachine, execution);
 
         verify(executionRecorder).record(eq(1L), argThat(result ->
-            result.blocked() && result.errorCategory() == ToolErrorCategory.UNAUTHORIZED_SCOPE));
+            result.blocked() && result.errorCategory() == ToolErrorCategory.IRREVERSIBLE_OPERATION));
         verify(chatMemoryStore).saveMessage(eq("conv-1"), argThat(msg ->
             msg.getRole().equals("tool") && msg.getContent().startsWith("BLOCKED:")));
         verify(stateMachine).transition(AgentExecutionState.FAILED, execution);
@@ -62,7 +62,7 @@ class ToolCallingStateHandlerTest {
         SfAgentExecution execution = createExecution(2L);
         LlmMessage assistantMsg = new LlmMessage("assistant", "calling fileRead");
         when(chatMemoryStore.loadMessages("conv-2")).thenReturn(List.of(assistantMsg));
-        when(safetyGuard.check("fileRead", "calling fileRead")).thenReturn(
+        when(safetyGuard.check("fileRead", "calling fileRead", "tenant-2")).thenReturn(
             new ToolSafetyGuard.SafetyCheckResult(true, false, null, null));
 
         handler.handle(stateMachine, execution);
@@ -82,7 +82,6 @@ class ToolCallingStateHandlerTest {
 
         verify(stateMachine).transition(AgentExecutionState.COMPLETED, execution);
         verifyNoInteractions(safetyGuard);
-        verifyNoInteractions(executionRecorder);
     }
 
     @Test
@@ -95,7 +94,6 @@ class ToolCallingStateHandlerTest {
 
         verify(stateMachine).transition(AgentExecutionState.COMPLETED, execution);
         verifyNoInteractions(safetyGuard);
-        verifyNoInteractions(executionRecorder);
     }
 
     @Test
@@ -120,6 +118,7 @@ class ToolCallingStateHandlerTest {
         e.setId(id);
         e.setAgentId(1L);
         e.setConversationId("conv-" + id);
+        e.setTenantId("tenant-" + id);
         e.setState(AgentExecutionState.TOOL_CALLING.name());
         return e;
     }

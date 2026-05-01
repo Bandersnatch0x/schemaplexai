@@ -64,7 +64,7 @@ class ToolExecutionRecorderTest {
     @Test
     void recordBlockedShouldPersistToolBlockedStateWithCategory() {
         ToolExecutionResult result = ToolExecutionResult.blocked(
-            "volumeDelete", ToolErrorCategory.UNAUTHORIZED_SCOPE, "Irreversible operation blocked");
+            "volumeDelete", ToolErrorCategory.IRREVERSIBLE_OPERATION, "Irreversible operation blocked");
 
         recorder.record(300L, result);
 
@@ -76,20 +76,34 @@ class ToolExecutionRecorderTest {
         assertEquals("TOOL_BLOCKED", log.getState());
         assertTrue(log.getMessage().contains("tool=volumeDelete"));
         assertTrue(log.getMessage().contains("status=BLOCKED"));
-        assertTrue(log.getMessage().contains("category=UNAUTHORIZED_SCOPE"));
+        assertTrue(log.getMessage().contains("category=IRREVERSIBLE_OPERATION"));
         assertTrue(log.getMessage().contains("error=\"Irreversible operation blocked\""));
         assertTrue(log.getMessage().contains("latencyMs=0"));
         assertTrue(log.getMessage().contains("tokens=0"));
     }
 
     @Test
-    void recordShouldNotThrowWhenMapperFails() {
+    void recordShouldNotThrowWhenMapperFailsForNonSecurityEvent() {
         doThrow(new RuntimeException("DB down")).when(logMapper).insert(any(SfAgentExecutionLog.class));
 
         ToolExecutionResult result = ToolExecutionResult.success("fileRead", "content", 100, 10);
 
         assertDoesNotThrow(() -> recorder.record(400L, result));
 
+        verify(logMapper, times(1)).insert(any(SfAgentExecutionLog.class));
+    }
+
+    @Test
+    void recordShouldThrowWhenMapperFailsForSecurityEvent() {
+        doThrow(new RuntimeException("DB down")).when(logMapper).insert(any(SfAgentExecutionLog.class));
+
+        ToolExecutionResult result = ToolExecutionResult.blocked(
+            "volumeDelete", ToolErrorCategory.IRREVERSIBLE_OPERATION, "Blocked");
+
+        ToolExecutionAuditException exception = assertThrows(ToolExecutionAuditException.class,
+            () -> recorder.record(500L, result));
+
+        assertTrue(exception.getMessage().contains("Security-related tool execution audit log failed"));
         verify(logMapper, times(1)).insert(any(SfAgentExecutionLog.class));
     }
 }

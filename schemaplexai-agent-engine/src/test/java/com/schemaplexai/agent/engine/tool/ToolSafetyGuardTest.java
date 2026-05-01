@@ -12,8 +12,7 @@ class ToolSafetyGuardTest {
         ToolSafetyGuard.SafetyCheckResult result = guard.check("volumeDelete", "{\"id\":\"vol-123\"}");
         assertFalse(result.allowed());
         assertTrue(result.blocked());
-        assertEquals(ToolErrorCategory.UNAUTHORIZED_SCOPE, result.errorCategory());
-        assertTrue(result.reason().contains("irreversible"));
+        assertEquals(ToolErrorCategory.IRREVERSIBLE_OPERATION, result.errorCategory());
     }
 
     @Test
@@ -21,6 +20,7 @@ class ToolSafetyGuardTest {
         ToolSafetyGuard.SafetyCheckResult result = guard.check("executeSql", "DROP TABLE users");
         assertFalse(result.allowed());
         assertTrue(result.blocked());
+        assertEquals(ToolErrorCategory.IRREVERSIBLE_OPERATION, result.errorCategory());
     }
 
     @Test
@@ -38,10 +38,28 @@ class ToolSafetyGuardTest {
     }
 
     @Test
+    void shouldAllowGenericDeleteOperations() {
+        ToolSafetyGuard.SafetyCheckResult result = guard.check("deleteCacheEntry", "{\"key\":\"temp\"}");
+        assertTrue(result.allowed(), "Generic delete tool names should not be blocked");
+    }
+
+    @Test
     void shouldBlockWhenCredentialsMismatch() {
         ToolSafetyGuard.SafetyCheckResult result = guard.check("deploy", "{\"env\":\"production\",\"token\":\"prod-token\"}", "staging");
         assertFalse(result.allowed());
         assertTrue(result.blocked());
-        assertEquals(ToolErrorCategory.UNAUTHORIZED_SCOPE, result.errorCategory());
+        assertEquals(ToolErrorCategory.ENVIRONMENT_MISMATCH, result.errorCategory());
+    }
+
+    @Test
+    void shouldAllowWhenEnvironmentMatches() {
+        ToolSafetyGuard.SafetyCheckResult result = guard.check("deploy", "{\"env\":\"production\"}", "production");
+        assertTrue(result.allowed());
+    }
+
+    @Test
+    void shouldAllowWhenArgumentsAreNull() {
+        ToolSafetyGuard.SafetyCheckResult result = guard.check("fileRead", null);
+        assertTrue(result.allowed());
     }
 }
