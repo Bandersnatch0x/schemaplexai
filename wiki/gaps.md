@@ -59,21 +59,21 @@ The following controllers exist but have no dedicated wiki pages (most are stand
 
 ## Undocumented Services
 
-- `AgentRuntimeOrchestrator` — core orchestration (only referenced, not read)
-- `AgentExecutionLifecycleService` — pause/resume/cancel logic
+- ~~`AgentRuntimeOrchestrator`~~ — documented in [[services/agent-runtime-orchestrator]]
+- ~~`AgentExecutionLifecycleService`~~ — documented in [[services/agent-execution-lifecycle-service]]
 - `QualityOrchestrator` — quality gate orchestration
 - `FlowableDelegateAdapter` — Flowable integration adapter
 - All `*ServiceImpl` classes (implementation details)
 
 ## Open Questions
 
-1. **How does JWT authentication work at the Gateway?** — `JwtAuthenticationFilter` file not found/read
-2. **What is the complete agent execution flow?** — `AgentRuntimeOrchestrator` not explored
+1. ~~**How does JWT authentication work at the Gateway?**~~ — documented in [[services/jwt-auth-filter]] and [[services/auth-service]]
+2. ~~**What is the complete agent execution flow?**~~ — documented in [[services/agent-runtime-orchestrator]] and [[services/agent-state-machine]]
 3. **How are Flowable BPMN processes defined and deployed?** — No BPMN files found
 4. **What is the ClickHouse schema for cost analytics?** — No init scripts found
 5. **How does the RAG embedding pipeline work end-to-end?** — Only service interfaces read
 6. **What are the 7 node executor implementations?** — Only registry pattern read
-7. **How is tenant data physically isolated?** — `TenantLineInterceptor` not explored
+7. ~~**How is tenant data physically isolated?**~~ — documented in [[services/tenant-line-interceptor]]
 8. **What MQ exchanges and queues are configured?** — RabbitMQ config not explored
 9. **What is the frontend page implementation status?** — Page components not read
 

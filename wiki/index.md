@@ -36,6 +36,7 @@ confidence: high
 - [[routes]] — Gateway routes, frontend routes, and auth requirements
 - **Controllers**
   - [[controllers/agent-execution-controller]] — Agent execution lifecycle (start/pause/resume/cancel/snapshot)
+  - [[controllers/auth-controller]] — Login, JWT refresh, logout
   - [[controllers/sse-controller]] — SSE subscription and event push
   - [[controllers/system-controllers]] — Auth, tenant, user, role, permission, AI model
 
@@ -45,6 +46,13 @@ confidence: high
 - [[dependencies]] — Full tech stack and library versions
 - [[decisions]] — Architectural Decision Records (ADRs)
 - [[services/agent-execution-engine]] — Core agent execution engine
+- [[services/agent-runtime-orchestrator]] — Agent runtime orchestration loop
+- [[services/agent-execution-lifecycle-service]] — Pause/resume/cancel/snapshot
+- [[services/agent-state-machine]] — Execution state machine
+- [[services/execution-admission-service]] — Multi-dimensional admission control
+- [[services/jwt-auth-filter]] — Gateway JWT validation filter
+- [[services/auth-service]] — Login/refresh/logout business logic
+- [[services/tenant-line-interceptor]] — Multi-tenant SQL injection
 - [[services/workflow-node-engine]] — Flowable BPMN + AI node engine
 - [[services/rag-service]] — RAG pipeline and Milvus integration
 
