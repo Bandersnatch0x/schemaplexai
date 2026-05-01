@@ -11,7 +11,7 @@ export interface HexIconProps {
 }
 
 export const HexIcon: React.FC<HexIconProps> = ({
-  size = 36,
+  size = 40,
   color = '#00d4aa',
   active = false,
   className = '',
@@ -25,10 +25,13 @@ export const HexIcon: React.FC<HexIconProps> = ({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
-    border: `1px solid ${active ? color : '#1e2a33'}`,
-    background: active ? `${color}20` : '#111827',
-    boxShadow: active ? `0 0 8px ${color}30` : 'none',
+    clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+    border: `1px solid ${color}`,
+    backgroundColor: active ? `${color}20` : 'transparent',
+    boxShadow: active ? `0 0 12px ${color}30` : 'none',
+    color,
+    fontSize: size * 0.4,
+    fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
     transition: 'all 0.2s ease',
     cursor: 'pointer',
     ...style,
@@ -36,9 +39,7 @@ export const HexIcon: React.FC<HexIconProps> = ({
 
   return (
     <div className={className} style={baseStyle} data-testid={testId}>
-      {children || (
-        <span style={{ color, fontSize: size * 0.45 }}>⬡</span>
-      )}
+      {children}
     </div>
   )
 }
