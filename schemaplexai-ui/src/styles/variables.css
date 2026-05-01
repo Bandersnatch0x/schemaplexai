@@ -1,0 +1,46 @@
+/* Abyss Hive CSS Variables */
+:root {
+  /* Backgrounds */
+  --abyss-bg: #0a0e1a;
+  --abyss-sidebar: #0d1117;
+  --abyss-card: #111827;
+  --abyss-border: #1e2a33;
+  --abyss-hover: #1e3a5f;
+
+  /* Bioluminescent accents */
+  --hive-cyan: #00d4aa;
+  --hive-amber: #ff9f43;
+  --hive-red: #ff4757;
+
+  /* Text */
+  --text-primary: #e2e8f0;
+  --text-secondary: #64748b;
+  --text-tertiary: #475569;
+
+  /* Typography */
+  --font-sans: 'Inter', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  /* Glow shadows */
+  --glow-cyan: 0 0 12px #00d4aa30;
+  --glow-amber: 0 0 12px #ff9f4330;
+  --glow-red: 0 0 12px #ff475730;
+  --focus-cyan: 0 0 0 1px #00d4aa20, 0 0 12px #00d4aa15;
+}

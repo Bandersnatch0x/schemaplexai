@@ -1,0 +1,47 @@
+/* Abyss Hive Global Overrides */
+html, body, #root {
+  background: var(--abyss-bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  height: 100%;
+}
+
+/* Minimal scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--abyss-border);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--hive-cyan);
+}
+
+/* Text selection */
+::selection {
+  background: #00d4aa40;
+  color: var(--text-primary);
+}
+
+/* Remove default AntD layout backgrounds */
+.ant-layout {
+  background: var(--abyss-bg);
+}
+
+.ant-layout-sider {
+  background: var(--abyss-sidebar) !important;
+}
+
+.ant-layout-header {
+  background: var(--abyss-sidebar) !important;
+}
+
+/* Font loading fallback */
+.font-mono {
+  font-family: var(--font-mono);
+}
