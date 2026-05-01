@@ -69,7 +69,37 @@
       "Bash(bash *)",
       "Bash(npx tsc *)",
       "Bash(find .claude/changes/core-ai-engine-design -type f -newer .claude/changes/core-ai-engine-design/proposal.md)",
-      "Bash(ls -la .claude/changes/core-ai-engine-design/notes/)"
+      "Bash(ls -la .claude/changes/core-ai-engine-design/notes/)",
+      "Bash(npm install *)",
+      "Bash(npx vitest *)",
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(npm ls *)",
+      "Bash(cp .claude/changes/core-ai-engine-design/spec.md docs/specs/core-ai-engine.md)",
+      "Bash(cp .claude/changes/core-ai-engine-design/design.md docs/designs/core-ai-engine.md)",
+      "Bash(cp D:/code_space/frige/.claude/changes/core-ai-engine-design/spec.md D:/code_space/frige/docs/specs/core-ai-engine.md)",
+      "Bash(cp D:/code_space/frige/.claude/changes/core-ai-engine-design/design.md D:/code_space/frige/docs/designs/core-ai-engine.md)",
+      "Bash(npm test *)",
+      "Bash(cd /d \"D:\\\\code_space\\\\frige\")",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Program Files \\(x86\\)/**)",
+      "Bash(where javac *)",
+      "Bash(export JAVA_HOME=/e/jdk/microsoft-jdk-21.0.10-windows-x64)",
+      "Bash(export JAVA_HOME=/e/jdk/microsoft-jdk-21.0.10-windows-x64/jdk-21.0.10+7)",
+      "WebFetch(domain:yage.ai)",
+      "Bash(export JAVA_HOME=\"/e/jdk/microsoft-jdk-21.0.10-windows-x64\")",
+      "Bash(tool)",
+      "Bash(E:\\\\jdk\\\\microsoft-jdk-21.0.10-windows-x64\\\\bin\\\\java *)",
+      "Bash(/e/jdk/microsoft-jdk-21.0.10-windows-x64/bin/java *)",
+      "Bash(/e/jdk/microsoft-jdk-21.0.10-windows-x64/jdk-21.0.10+7/bin/java *)",
+      "Bash(mv .claude/changes/core-ai-engine-week1/* docs/archive/core-ai-engine-week1/)",
+      "Bash(rmdir .claude/changes/core-ai-engine-week1)",
+      "Bash(mv .claude/outputs/* docs/archive/roundtable-2026-05-01/)",
+      "Bash(rmdir .claude/outputs)",
+      "Bash(mv .claude/outputs/roundtable-status-2026-05-01.md docs/archive/roundtable-2026-05-01/)",
+      "Bash(chmod +x *)",
+      "Skill(update-config)",
+      "Bash(mkdir -p scripts/lib)",
+      "Bash(mkdir -p .claude/hooks)"
     ]
   },
   "hooks": {
@@ -79,6 +109,27 @@
           {
             "type": "command",
             "command": "echo '=== Wiki Index (top) ===' && head -n 60 wiki/index.md && echo '' && echo '=== Wiki Log (recent) ===' && tail -n 15 wiki/log.md && echo '' && echo '=== Active Changes ===' && bash .claude/workflow/scripts/change-status.sh 2>/dev/null || echo 'No active changes'"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"$TOOL_INPUT\" | grep -q 'git commit' && bash .claude/hooks/pre-commit-wiki-sync.sh || true"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/stop-gen-status.sh"
           }
         ]
       }
