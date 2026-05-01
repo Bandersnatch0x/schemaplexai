@@ -1,7 +1,8 @@
 package com.schemaplexai.agent.engine.context;
 
 import com.schemaplexai.agent.engine.model.LlmMessage;
-import com.schemaplexai.agent.engine.tool.ValidationResult;
+import com.schemaplexai.agent.engine.rag.MilvusIsolationService;
+import com.schemaplexai.agent.engine.rag.SearchResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -21,16 +22,47 @@ public class ContextInjector {
         Pattern.compile("you\\s+are\\s+now", Pattern.CASE_INSENSITIVE)
     );
 
-    private final List<InputValidator> validators;
+    private MilvusIsolationService ragService;
+    private EmbeddingService embeddingService;
 
-    public ContextInjector(List<InputValidator> validators) {
-        this.validators = validators;
+    public ContextInjector() {
+        // No-arg constructor for Spring; RAG services wired via setters when available
+    }
+
+    public ContextInjector(MilvusIsolationService ragService, EmbeddingService embeddingService) {
+        this.ragService = ragService;
+        this.embeddingService = embeddingService;
+    }
+
+    public void setRagService(MilvusIsolationService ragService) {
+        this.ragService = ragService;
+    }
+
+    public void setEmbeddingService(EmbeddingService embeddingService) {
+        this.embeddingService = embeddingService;
     }
 
     public void inject(List<LlmMessage> messages, Long agentId) {
         log.info("Injecting context for agent {}", agentId);
         // Load team context, knowledge docs, memory summaries
         // Prepend system context message if needed
+    }
+
+    /**
+     * Inject RAG-retrieved context into the prompt.
+     * RAG failures are non-blocking: if retrieval fails, the original prompt is returned.
+     *
+     * @param prompt  user prompt
+     * @param context agent context with tenant/project info
+     * @return enriched prompt with knowledge-base context
+     */
+    public String injectWithContext(String prompt, AgentContext context) {
+        if (context == null || context.getTenantId() == null) {
+            return prompt;
+        }
+
+        String ragContext = retrieveRagContext(prompt, context);
+        return combineContexts(prompt, ragContext);
     }
 
     public void injectVariables(List<LlmMessage> messages, Map<String, Object> variables) {
@@ -73,17 +105,45 @@ public class ContextInjector {
         return sanitized;
     }
 
-    /**
-     * 使用所有注册的 InputValidator 验证输入
-     * @param input 待验证文本
-     * @throws IllegalArgumentException 验证失败时抛出
-     */
-    public void validateInput(String input) {
-        for (InputValidator validator : validators) {
-            ValidationResult result = validator.validate(input);
-            if (!result.isValid()) {
-                throw new IllegalArgumentException("Input validation failed: " + result.errorMessage());
+    private String retrieveRagContext(String prompt, AgentContext context) {
+        if (ragService == null || embeddingService == null) {
+            log.debug("RAG services not available, skipping context retrieval");
+            return "";
+        }
+        try {
+            float[] queryEmbedding = embeddingService.embed(prompt);
+            List<SearchResult> results = ragService.searchWithIsolation(
+                    context.getTenantId(),
+                    context.getProjectId(),
+                    queryEmbedding
+            );
+            return formatSearchResults(results);
+        } catch (Exception e) {
+            log.warn("RAG retrieval failed for tenant={}, proceeding without context",
+                    context.getTenantId(), e);
+            return "";
+        }
+    }
+
+    private String combineContexts(String prompt, String ragContext) {
+        if (ragContext == null || ragContext.isBlank()) {
+            return prompt;
+        }
+        return "Context from knowledge base:\n" + ragContext + "\n\nUser query:\n" + prompt;
+    }
+
+    private String formatSearchResults(List<SearchResult> results) {
+        if (results == null || results.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < results.size(); i++) {
+            SearchResult result = results.get(i);
+            sb.append(i + 1).append(". ").append(result.getContent()).append("\n");
+            if (result.getSource() != null) {
+                sb.append("   Source: ").append(result.getSource()).append("\n");
             }
         }
+        return sb.toString();
     }
 }
