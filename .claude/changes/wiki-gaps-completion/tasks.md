@@ -1,6 +1,6 @@
 ---
 change_id: wiki-gaps-completion
-status: in_progress
+status: completed
 created_at: 2026-05-01
 updated_at: 2026-05-01
 author: wangbinyu
