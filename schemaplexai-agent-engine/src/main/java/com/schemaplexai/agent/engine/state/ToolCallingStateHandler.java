@@ -65,6 +65,15 @@ public class ToolCallingStateHandler implements AgentStateHandler {
                     return;
                 }
 
+                if (!result.success()) {
+                    log.error("Tool {} failed for execution {}: category={}",
+                        toolCall.name, execution.getId(), result.errorCategory());
+                    chatMemoryStore.saveMessage(execution.getConversationId(),
+                        new LlmMessage("tool", "ERROR: " + result.errorMessage()));
+                    stateMachine.transition(AgentExecutionState.FAILED, execution);
+                    return;
+                }
+
                 chatMemoryStore.saveMessage(execution.getConversationId(),
                     new LlmMessage("tool", result.output()));
             }
@@ -99,12 +108,14 @@ public class ToolCallingStateHandler implements AgentStateHandler {
         }
     }
 
+    // TODO(stub): Replace with structured parsing when ToolRegistry is implemented.
+    // Current heuristic only supports test messages in format "calling <toolName>".
+    // Real implementations must parse OpenAI function calls, Anthropic tool use XML,
+    // or other structured formats, extracting name and arguments separately.
     private List<ToolCall> parseToolCalls(String content) {
         if (content == null || content.isBlank()) {
             return List.of();
         }
-        // Stub: parse tool name from content for testing purposes
-        // Look for pattern "calling <toolName>" in the message
         String trimmed = content.trim();
         if (trimmed.startsWith("calling ")) {
             String toolName = trimmed.substring(8).trim();
@@ -113,7 +124,12 @@ public class ToolCallingStateHandler implements AgentStateHandler {
         return List.of();
     }
 
+    // TODO(stub): Replace with real tool registry invocation.
+    // Throws when toolName equals "failStub" to allow testing the error path.
     private String executeToolStub(ToolCall toolCall) {
+        if ("failStub".equals(toolCall.name)) {
+            throw new RuntimeException("Simulated tool execution failure");
+        }
         return "Tool " + toolCall.name + " executed with args: " + toolCall.arguments;
     }
 

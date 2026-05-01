@@ -109,6 +109,21 @@ class ToolCallingStateHandlerTest {
     }
 
     @Test
+    void shouldHandleToolExecutionFailureAndRecordIt() {
+        SfAgentExecution execution = createExecution(6L);
+        LlmMessage assistantMsg = new LlmMessage("assistant", "calling failStub");
+        when(chatMemoryStore.loadMessages("conv-6")).thenReturn(List.of(assistantMsg));
+        when(safetyGuard.check("failStub", "calling failStub", "tenant-6")).thenReturn(
+            new ToolSafetyGuard.SafetyCheckResult(true, false, null, null));
+
+        handler.handle(stateMachine, execution);
+
+        verify(executionRecorder).record(eq(6L), argThat(result ->
+            !result.success() && result.errorCategory() == ToolErrorCategory.UNEXPECTED_ENVIRONMENT));
+        verify(stateMachine).transition(AgentExecutionState.FAILED, execution);
+    }
+
+    @Test
     void getStateShouldReturnToolCalling() {
         assertEquals(AgentExecutionState.TOOL_CALLING, handler.getState());
     }
