@@ -12,6 +12,7 @@ export interface TerminalLogProps {
   logs: LogEntry[]
   className?: string
   style?: React.CSSProperties
+  'data-testid'?: string
 }
 
 const LEVEL_COLORS: Record<LogLevel, string> = {
@@ -25,6 +26,7 @@ export const TerminalLog: React.FC<TerminalLogProps> = ({
   logs,
   className = '',
   style,
+  'data-testid': testId,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -38,6 +40,7 @@ export const TerminalLog: React.FC<TerminalLogProps> = ({
     <div
       ref={scrollRef}
       className={className}
+      data-testid={testId}
       style={{
         background: '#0a0e1a',
         border: '1px solid #1e2a33',
