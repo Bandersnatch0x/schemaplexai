@@ -68,10 +68,10 @@ graph TD
 - **类型**: 文档同步
 - **描述**: 评审通过后沉淀到 docs/ 目录
 - **验收标准**:
-  - [ ] 通过 code-reviewer / architect review
-  - [ ] 同步到 `docs/specs/` 和 `docs/designs/`
-  - [ ] 更新 `wiki/log.md`
-- **状态**: ⬜ pending
+  - [x] 通过 code-reviewer / architect review
+  - [x] 同步到 `docs/specs/` 和 `docs/designs/`
+  - [x] 更新 `wiki/log.md`
+- **状态**: ✅ completed
 
 ## 关键路径
 
@@ -85,10 +85,10 @@ T1 (调研) → T2 (Spec) → T4 (归档)
 - [x] 引用已批准规格，不重复定义
 - [x] 基于实际代码 stubs，不凭空设计
 - [x] 包含具体实现差距和优先级
-- [ ] 评审通过
+- [x] 评审通过（CONDITIONAL PASS，H-1/H-2 已修复）
 
 ## 文档同步任务
 
-- [ ] 评审通过后同步到 `docs/specs/core-ai-engine.md`
-- [ ] 评审通过后同步到 `docs/designs/core-ai-engine.md`
-- [ ] 更新 `wiki/log.md`
+- [x] 评审通过后同步到 `docs/specs/core-ai-engine.md`
+- [x] 评审通过后同步到 `docs/designs/core-ai-engine.md`
+- [x] 更新 `wiki/log.md`

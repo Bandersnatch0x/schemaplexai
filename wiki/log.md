@@ -141,6 +141,55 @@ Raw Idea → Record in ideas/YYYYMMDD-*.md → Agent Research → Architecture F
 
 **Change workspace**: `.claude/changes/abyss-hive-ui/`
 
+## 2026-05-01 — Wiki Gaps Completion (Priority Services)
+
+**Trigger**: Team lead assigned wiki gaps completion task — fill undocumented services and controllers from `wiki/gaps.md`.
+**Operation**: Read gaps.md, explored 7 key source files, generated 8 wiki pages, updated index and gaps.
+**Pages created**:
+- `wiki/services/agent-runtime-orchestrator.md` — Core execution loop (trace, admission, state machine, 50-iteration guard)
+- `wiki/services/agent-execution-lifecycle-service.md` — Pause/resume/cancel/snapshot with Redis state
+- `wiki/services/agent-state-machine.md` — In-memory state machine with terminal state guard
+- `wiki/services/execution-admission-service.md` — 4-dimension admission (rate, concurrency, token, cost)
+- `wiki/services/jwt-auth-filter.md` — Gateway global filter with whitelist and claim injection
+- `wiki/services/auth-service.md` — BCrypt login, JWT generation, Redis blacklist
+- `wiki/services/tenant-line-interceptor.md` — MyBatis-Plus tenant SQL injection with global table bypass
+- `wiki/controllers/auth-controller.md` — `/auth/login`, `/auth/refresh`, `/auth/logout` endpoints
+
+**Pages updated**:
+- `wiki/index.md` — Added 7 new service links + AuthController link
+- `wiki/gaps.md` — Marked 4 Open Questions as resolved (JWT auth, execution flow, tenant isolation)
+
+**Discovery**:
+- `JwtAuthenticationFilter` was renamed to `JwtAuthFilter` in gateway module
+- `AgentRuntimeOrchestrator` is synchronous (comment says "async in production" but not implemented)
+- `ExecutionAdmissionService` uses 4 Redis key prefixes for rate/concurrency/token/cost
+- `TenantLineInterceptor` ignores `sf_tenant` and `act_*` tables (global tables)
+- `AuthService` stores access tokens in `sf:memory:chat:{userId}` key (chat memory namespace reuse)
+
+**Remaining gaps** (not in scope for this pass):
+- `QualityOrchestrator`, `FlowableDelegateAdapter` — undocumented services
+- ClickHouse schema, Milvus collections — no init scripts found
+- Flowable BPMN process definitions — no BPMN files found
+- MQ exchanges/queues config — not explored
+- Frontend page components — not explored
+
+## 2026-05-01 — Core AI Engine Design Phase 2 (archive)
+
+**Trigger**: Team lead requested T4 archive for Core AI Engine Design Phase 2 spec and design.
+**Operation**: Code review agent completed review, fixed 2 HIGH issues, and archived to docs/.
+**Files archived**:
+- `docs/specs/core-ai-engine.md` — Phase 2 technical spec (11-state machine, data model, API, component gaps)
+- `docs/designs/core-ai-engine.md` — Phase 2 architecture design (C4 L1-L3, sequence diagrams, Token Budget, Chat Memory)
+
+**Review findings**:
+- H-1: Spec state machine had 7 states, code has 11 — fixed by syncing to full state enum
+- H-2: Spec data model fields mismatched code entities — fixed by aligning with SfAgentExecution/SfAgentExecutionSnapshot
+- M-1: resume transition target was THINKING, code uses READY — fixed
+- M-2: C4 Container diagram missed 7 existing handlers — fixed by adding all 9 handlers
+
+**Change workspace**: `.claude/changes/core-ai-engine-design/`
+**Review report**: `.claude/changes/core-ai-engine-design/review.md`
+
 ## 2026-04-30 — De-duplicated wiki/plans-and-initiatives.md
 
 **Trigger**: User identified redundancy between `wiki/plans-and-initiatives.md` and `docs/plans/README.md`.
