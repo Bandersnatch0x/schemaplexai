@@ -60,6 +60,30 @@ public class AiModelRouter {
         }
     }
 
+    public String generateWithMessages(List<LlmMessage> messages, String modelId, Double temperature) {
+        LlmProvider primary = null;
+        try {
+            primary = route(modelId);
+            return primary.generateWithMessages(messages, modelId, temperature);
+        } catch (Exception e) {
+            log.error("Primary provider failed for messages, attempting fallback", e);
+            if (primary != null) {
+                activateCooldown(primary.getProviderName());
+            }
+            for (LlmProvider fallback : providers) {
+                if (fallback.isHealthy()) {
+                    try {
+                        return fallback.generateWithMessages(messages, modelId, temperature);
+                    } catch (Exception ex) {
+                        log.error("Fallback provider {} failed", fallback.getProviderName(), ex);
+                        activateCooldown(fallback.getProviderName());
+                    }
+                }
+            }
+            throw new IllegalStateException("All LLM providers failed for messages");
+        }
+    }
+
     private boolean isOnCooldown(String providerName) {
         String key = String.format(CommonConstants.REDIS_KEY_MODEL_COOLDOWN, providerName);
         return Boolean.TRUE.equals(redisTemplate.hasKey(key));
