@@ -10,6 +10,7 @@ export interface PillNavProps {
   activeKey: string
   onChange: (key: string) => void
   className?: string
+  'data-testid'?: string
 }
 
 export const PillNav: React.FC<PillNavProps> = ({
@@ -17,13 +18,15 @@ export const PillNav: React.FC<PillNavProps> = ({
   activeKey,
   onChange,
   className = '',
+  'data-testid': testId,
 }) => {
   return (
     <div
       className={className}
+      data-testid={testId}
       style={{
         display: 'flex',
-        background: '#0d1117',
+        backgroundColor: '#0d1117',
         border: '1px solid #1e2a33',
         borderRadius: 20,
         padding: 3,
@@ -35,7 +38,11 @@ export const PillNav: React.FC<PillNavProps> = ({
         return (
           <button
             key={item.key}
-            onClick={() => onChange(item.key)}
+            onClick={() => {
+              if (!isActive) {
+                onChange(item.key)
+              }
+            }}
             style={{
               padding: '5px 16px',
               borderRadius: 16,
