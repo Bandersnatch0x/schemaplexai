@@ -1,0 +1,88 @@
+<h2>三种设计方案</h2>
+<p class="subtitle">基于你的需求（TeamCity 三栏 + 驾驶舱/蜂巢/黑镜融合 + 双轨交付），以下是三种方向</p>
+
+<div class="options" data-multiselect>
+  <div class="option" data-choice="gradual" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>渐进黑镜 · 功能优先</h3>
+      <p>保留三栏骨架的清晰可识别性，黑镜元素作为<strong>视觉层覆盖</strong>在功能骨架之上。</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>用户学习成本低，功能一目了然</li>
+            <li>Ant Design 改造量可控（覆盖 token + 少量自定义组件）</li>
+            <li>开发周期短，可快速落地</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>视觉冲击力较弱，"黑镜感"不够极致</li>
+            <li>蜂巢隐喻停留在图标/装饰层面</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="immersive" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>沉浸蜂巢 · 视觉优先</h3>
+      <p>最大化黑镜沉浸感，<strong>六边形网格作为底层视觉语言</strong>贯穿所有页面，控件极致隐藏。</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>视觉冲击力极强，品牌辨识度最高</li>
+            <li>蜂巢/蚁穴隐喻深入骨髓，叙事完整</li>
+            <li>大屏展示效果震撼</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>开发成本高，大量自定义组件需从零构建</li>
+            <li>新手用户可能迷失在隐藏式导航中</li>
+            <li>表单/表格等管理页面的效率可能受损</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="adaptive" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>场景自适应 · 平衡方案（推荐）</h3>
+      <p><strong>核心页面沉浸式</strong>（驾驶舱、编排画布用全黑镜），<strong>管理页面渐进式</strong>（列表、表单保留功能性骨架）。</p>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>关键页面有极致视觉，日常操作不失效率</li>
+            <li>统一设计语言（配色/字体/图标一致），仅布局弹性适应</li>
+            <li>开发风险可控，可分批迭代</li>
+            <li>4 个标志性页面中，B/A 沉浸式，D/C 渐进式，天然匹配</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>需要设计"场景切换"的规则（何时沉浸式、何时渐进）</li>
+            <li>两种布局模式需保持视觉一致性</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px">
+  <p class="label">我的推荐</p>
+  <p><strong>方案 C（场景自适应）</strong>最适合本项目：驾驶舱和编排画布是"展示+操作"混合场景，适合沉浸式；Agent 详情页和工作流监控有较多表格/日志/时间线数据，渐进式更利于信息密度。两套模式共享同一套设计系统（深渊背景 + 荧光色 + 六边形图标），仅在布局框架和控件显隐策略上有区别。</p>
+</div>
+
+<p class="subtitle" style="margin-top:24px">请在终端告诉我你的选择（A / B / C，或混合思路）。</p>

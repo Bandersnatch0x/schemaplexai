@@ -52,6 +52,18 @@ Last significant commits:
 - Phase 1 implementation plan ready: `docs/plans/2026-04-30-phase1-observability-foundation.md`
 - Phase 3 sandbox design: zeroboot CoW VM (Rust + Firecracker + KVM, ~0.8ms fork, 265KB RSS)
 
+### 6. Abyss Hive UI Design System (New — 2026-05-01)
+- **Design spec complete**: `docs/superpowers/specs/2026-05-01-abyss-hive-ui-design.md`
+- **Implementation plan ready**: `docs/superpowers/plans/2026-05-01-abyss-hive-ui.md` (17 tasks)
+- **Scope**: Global design system (colors, typography, AntD theme tokens) + 4 signature pages
+  - Cockpit (immersive) — Agent swarm visualization with orchestrator hub
+  - Agent Canvas (immersive) — DAG workflow editor with topology/list/code views
+  - Workflow Monitor (progressive) — Gantt chart + detail table
+  - Agent Detail (progressive) — Real-time metrics, terminal logs, tabs
+- **Style**: TeamCity layout × cockpit immersion × hive metaphor × Black Mirror futurism
+- **Tech approach**: Ant Design 5 ConfigProvider token override + CSS variables, no custom component library
+- **Status**: Spec and plan complete, awaiting execution
+
 ## Inactive/Stale Areas
 
 - `schemaplexai-admin` — completely empty

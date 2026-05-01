@@ -1,0 +1,62 @@
+<h2>布局范式确认</h2>
+<p class="subtitle">已选择：<strong>B + C</strong> — TeamCity 三栏结构 × 全黑镜沉浸式</p>
+
+<div class="section">
+  <p class="label">核心布局架构</p>
+  <ul>
+    <li><strong>左侧边栏</strong>：可折叠的项目/Agent 树（类似 TeamCity Project Tree），深色底，高亮选中态带荧光边框</li>
+    <li><strong>中央画布</strong>：无边框沉浸式主工作区，内容即背景，仅保留微妙网格线</li>
+    <li><strong>右侧面板</strong>：可滑出的属性/详情面板，默认隐藏，选中节点时浮现</li>
+    <li><strong>顶部悬浮条</strong>：极简状态栏（全局健康度、告警数、租户切换），鼠标远离时自动淡出</li>
+  </ul>
+</div>
+
+<div class="section">
+  <p class="label">黑镜化细节</p>
+  <ul>
+    <li>无边框卡片，内容直接浮于深渊背景之上</li>
+    <li>控件仅在 hover 时高亮，平时融入背景</li>
+    <li>导航隐藏/浮现动画（类似 macOS Dock 的自动隐藏）</li>
+    <li>滚动条极致纤细，或完全隐藏</li>
+    <li>全屏模式为默认，最大化内容展示面积</li>
+  </ul>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">Preview: 布局骨架</div>
+  <div class="mockup-body" style="background:#050507;padding:0;overflow:hidden">
+    <div style="display:flex;height:300px">
+      <!-- Left sidebar -->
+      <div style="width:60px;background:#0a0a0f;border-right:1px solid #1e2a33;display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:16px">
+        <div style="width:32px;height:32px;background:#00e5c9;border-radius:6px;opacity:0.8"></div>
+        <div style="width:32px;height:32px;background:#1e2a33;border-radius:6px"></div>
+        <div style="width:32px;height:32px;background:#1e2a33;border-radius:6px"></div>
+      </div>
+      <!-- Center canvas -->
+      <div style="flex:1;background:#050507;position:relative">
+        <div style="position:absolute;top:12px;left:50%;transform:translateX(-50%);background:#0f1419;border:1px solid #1e2a33;border-radius:20px;padding:6px 20px;color:#64748b;font-size:12px">
+          SchemaPlexAI · 12 Agents Active
+        </div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
+          <div style="width:80px;height:80px;border:2px solid #00e5c9;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;box-shadow:0 0 20px #00e5c930">
+            <span style="color:#00e5c9;font-size:24px">◉</span>
+          </div>
+          <div style="color:#00e5c9;font-size:12px;margin-top:12px;letter-spacing:2px">ORCHESTRATOR</div>
+        </div>
+        <!-- Floating nodes -->
+        <div style="position:absolute;top:30%;left:30%;width:48px;height:48px;background:#0f1419;border:1px solid #ffb800;border-radius:8px;box-shadow:0 0 12px #ffb80030;display:flex;align-items:center;justify-content:center">
+          <span style="color:#ffb800;font-size:16px">◆</span>
+        </div>
+        <div style="position:absolute;top:60%;left:60%;width:48px;height:48px;background:#0f1419;border:1px solid #00e5c9;border-radius:8px;box-shadow:0 0 12px #00e5c930;display:flex;align-items:center;justify-content:center">
+          <span style="color:#00e5c9;font-size:16px">◆</span>
+        </div>
+      </div>
+      <!-- Right panel (collapsed) -->
+      <div style="width:8px;background:#0a0a0f;border-left:1px solid #1e2a33"></div>
+    </div>
+  </div>
+</div>
+
+<div style="display:flex;align-items:center;justify-content:center;min-height:10vh">
+  <p class="subtitle">继续下一问题...</p>
+</div>

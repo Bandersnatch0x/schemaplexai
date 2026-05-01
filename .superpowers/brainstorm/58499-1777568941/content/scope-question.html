@@ -1,0 +1,57 @@
+<h2>设计范围确认</h2>
+<p class="subtitle">你选择了：先出全局规范，再重点设计 1-2 个标志性页面</p>
+
+<div class="section">
+  <p class="label">当前项目状态</p>
+  <p>基于已有探索，本项目是 <strong>Ant Design v5 + React 18</strong> 的中后台系统，现有布局为经典侧边栏+内容区。本次设计将升级为 <strong>TeamCity 式布局 + 驾驶舱/蜂巢主题</strong>。</p>
+</div>
+
+<div class="section">
+  <p class="label">全局规范将覆盖</p>
+  <ul>
+    <li>布局框架（导航/画布/面板的组织方式）</li>
+    <li>色彩系统（暗色驾驶舱主题 token）</li>
+    <li>字体与间距体系</li>
+    <li>组件风格（卡片/按钮/表格/表单等 AntD 组件覆写）</li>
+    <li>数据可视化组件规范</li>
+    <li>动效与交互规范</li>
+  </ul>
+</div>
+
+<div class="section">
+  <p class="label">标志性页面待选</p>
+  <p>请在终端回答：你希望哪 1-2 个页面作为<strong>设计样板</strong>优先深度设计？</p>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="agent-canvas" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Agent 编排画布</h3>
+      <p>中央可视化 DAG 编排区，节点=Agent，连线=消息传递，类似 TeamCity Pipeline Editor</p>
+    </div>
+  </div>
+  <div class="option" data-choice="cockpit-dashboard" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>全局驾驶舱大屏</h3>
+      <p>系统级监控视图，蜂巢热力图展示 Agent 集群、实时指标、告警、资源消耗</p>
+    </div>
+  </div>
+  <div class="option" data-choice="agent-detail" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Agent 详情/终端页</h3>
+      <p>单个 Agent 的实时监控、执行日志流（xterm.js 风格）、性能曲线、配置面板</p>
+    </div>
+  </div>
+  <div class="option" data-choice="workflow-monitor" onclick="toggleSelect(this)">
+    <div class="letter">D</div>
+    <div class="content">
+      <h3>工作流执行监控</h3>
+      <p>甘特图 + DAG 混合视图，展示多 Agent 协作的任务时间线、依赖关系、执行状态</p>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top: 24px;">可单选或多选（推荐选 2 个），在终端回复你的选择。</p>

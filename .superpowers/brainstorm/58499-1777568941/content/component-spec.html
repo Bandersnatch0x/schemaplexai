@@ -1,0 +1,214 @@
+<h2>组件规范：Ant Design 覆写策略</h2>
+<p class="subtitle">基于参考图"深渊蜂巢"的融合方案，保持 AntD 结构，覆写视觉层</p>
+
+<div class="section">
+  <p class="label">设计原则</p>
+  <ul style="color:#64748b;font-size:13px">
+    <li><strong style="color:#e2e8f0">结构保留</strong>：AntD 组件的 DOM 结构、交互逻辑、API 不变</li>
+    <li><strong style="color:#e2e8f0">视觉覆写</strong>：通过 ConfigProvider theme token + 全局 CSS 变量 + 少量自定义 class 实现风格转换</li>
+    <li><strong style="color:#e2e8f0">无边框化</strong>：尽可能弱化边框，用背景色差异和微间距建立层次</li>
+  </ul>
+</div>
+
+<div class="section">
+  <p class="label">1. 卡片 Card</p>
+  <div class="mockup">
+    <div class="mockup-header">Card 覆写效果</div>
+    <div class="mockup-body" style="background:#050507;padding:20px">
+      <!-- 统计卡片（参考图提取） -->
+      <div style="display:flex;gap:12px">
+        <div style="flex:1;background:#0f1419;border-radius:8px;padding:16px;position:relative;overflow:hidden">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#00d4aa"></div>
+          <div style="color:#64748b;font-size:11px;margin-bottom:8px">Active Agents</div>
+          <div style="color:#e2e8f0;font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace">7,843</div>
+          <div style="color:#00d4aa;font-size:12px;margin-top:4px">↑ 12.5%</div>
+          <div style="margin-top:12px;height:32px;display:flex;align-items:flex-end;gap:2px">
+            <div style="width:8px;height:40%;background:#00d4aa30;border-radius:1px"></div>
+            <div style="width:8px;height:60%;background:#00d4aa40;border-radius:1px"></div>
+            <div style="width:8px;height:45%;background:#00d4aa50;border-radius:1px"></div>
+            <div style="width:8px;height:80%;background:#00d4aa60;border-radius:1px"></div>
+            <div style="width:8px;height:55%;background:#00d4aa50;border-radius:1px"></div>
+            <div style="width:8px;height:70%;background:#00d4aa40;border-radius:1px"></div>
+            <div style="width:8px;height:90%;background:#00d4aa70;border-radius:1px"></div>
+          </div>
+        </div>
+        <div style="flex:1;background:#0f1419;border-radius:8px;padding:16px;position:relative;overflow:hidden">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#ff9f43"></div>
+          <div style="color:#64748b;font-size:11px;margin-bottom:8px">Task Queue</div>
+          <div style="color:#e2e8f0;font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace">3,291</div>
+          <div style="color:#ff9f43;font-size:12px;margin-top:4px">↑ 8.2%</div>
+          <div style="margin-top:12px;height:32px;display:flex;align-items:flex-end;gap:2px">
+            <div style="width:8px;height:30%;background:#ff9f4330;border-radius:1px"></div>
+            <div style="width:8px;height:50%;background:#ff9f4340;border-radius:1px"></div>
+            <div style="width:8px;height:40%;background:#ff9f4350;border-radius:1px"></div>
+            <div style="width:8px;height:70%;background:#ff9f4360;border-radius:1px"></div>
+            <div style="width:8px;height:60%;background:#ff9f4350;border-radius:1px"></div>
+            <div style="width:8px;height:85%;background:#ff9f4370;border-radius:1px"></div>
+          </div>
+        </div>
+        <div style="flex:1;background:#0f1419;border-radius:8px;padding:16px;position:relative;overflow:hidden">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#ff4757"></div>
+          <div style="color:#64748b;font-size:11px;margin-bottom:8px">Failed Tasks</div>
+          <div style="color:#e2e8f0;font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace">47</div>
+          <div style="color:#ff4757;font-size:12px;margin-top:4px">↓ 2.1%</div>
+          <div style="margin-top:12px;height:32px;display:flex;align-items:flex-end;gap:2px">
+            <div style="width:8px;height:20%;background:#ff475730;border-radius:1px"></div>
+            <div style="width:8px;height:35%;background:#ff475740;border-radius:1px"></div>
+            <div style="width:8px;height:15%;background:#ff475750;border-radius:1px"></div>
+            <div style="width:8px;height:25%;background:#ff475760;border-radius:1px"></div>
+            <div style="width:8px;height:10%;background:#ff475750;border-radius:1px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:8px;color:#64748b;font-size:12px">
+    <code style="background:#0f1419;padding:2px 6px;border-radius:4px">border: none</code> ·
+    <code style="background:#0f1419;padding:2px 6px;border-radius:4px">background: #0f1419</code> ·
+    <code style="background:#0f1419;padding:2px 6px;border-radius:4px">border-radius: 8px</code> ·
+    左侧 3px 色带作为状态标识，底部微柱状图替代 sparkline
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px">
+  <p class="label">2. 按钮 Button</p>
+  <div class="mockup">
+    <div class="mockup-header">Button 覆写效果</div>
+    <div class="mockup-body" style="background:#050507;padding:20px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+      <!-- Primary -->
+      <div style="padding:8px 20px;background:#00d4aa;border-radius:6px;color:#050507;font-size:13px;font-weight:600;box-shadow:0 0 12px #00d4aa30">
+        主按钮
+      </div>
+      <!-- Default -->
+      <div style="padding:8px 20px;background:#0f1419;border:1px solid #1e2a33;border-radius:6px;color:#e2e8f0;font-size:13px">
+        默认按钮
+      </div>
+      <!-- Ghost -->
+      <div style="padding:8px 20px;background:transparent;border:1px solid #00d4aa;border-radius:6px;color:#00d4aa;font-size:13px;box-shadow:0 0 8px #00d4aa15">
+        幽灵按钮
+      </div>
+      <!-- Danger -->
+      <div style="padding:8px 20px;background:#ff4757;border-radius:6px;color:#050507;font-size:13px;font-weight:600;box-shadow:0 0 12px #ff475730">
+        危险按钮
+      </div>
+      <!-- Icon button (hexagon) -->
+      <div style="width:36px;height:36px;background:#0f1419;border:1px solid #1e2a33;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#00d4aa;font-size:16px">
+        ⬡
+      </div>
+      <!-- Icon button active -->
+      <div style="width:36px;height:36px;background:#00d4aa15;border:1px solid #00d4aa;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#00d4aa;font-size:16px;box-shadow:0 0 8px #00d4aa30">
+        ⬡
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:8px;color:#64748b;font-size:12px">
+    Primary 用荧光色实体填充 + 暗文字；Default 用蜂房底 + 菌丝边框；Ghost 用透明底 + 荧光边框；Danger 用红色实体。
+    六边形图标按钮作为 Agent 类型选择器（参考图提取）。
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px">
+  <p class="label">3. 表格 Table</p>
+  <div class="mockup">
+    <div class="mockup-header">Table 覆写效果</div>
+    <div class="mockup-body" style="background:#050507;padding:20px">
+      <div style="background:#0f1419;border:1px solid #1e2a33;border-radius:8px;overflow:hidden">
+        <!-- Header -->
+        <div style="display:flex;padding:10px 16px;background:#0a0a0f;border-bottom:1px solid #1e2a33;color:#64748b;font-size:11px;font-weight:500">
+          <div style="flex:2">AGENT NAME</div>
+          <div style="flex:1">STATUS</div>
+          <div style="flex:1">TYPE</div>
+          <div style="flex:1">LAST ACTIVE</div>
+          <div style="flex:1">ACTIONS</div>
+        </div>
+        <!-- Row 1 -->
+        <div style="display:flex;padding:12px 16px;border-bottom:1px solid #1e2a3380;color:#e2e8f0;font-size:12px;align-items:center;transition:background 0.2s">
+          <div style="flex:2;display:flex;align-items:center;gap:8px">
+            <span style="color:#00d4aa">⬡</span> data-processor-alpha
+          </div>
+          <div style="flex:1"><span style="color:#00d4aa">●</span> 运行中</div>
+          <div style="flex:1"><span style="background:#00d4aa20;color:#00d4aa;padding:2px 8px;border-radius:4px;font-size:11px">Worker</span></div>
+          <div style="flex:1;color:#64748b">2m ago</div>
+          <div style="flex:1;color:#00d4aa">详情 →</div>
+        </div>
+        <!-- Row 2 hover -->
+        <div style="display:flex;padding:12px 16px;border-bottom:1px solid #1e2a3380;color:#e2e8f0;font-size:12px;align-items:center;background:#0f1419">
+          <div style="flex:2;display:flex;align-items:center;gap:8px">
+            <span style="color:#ff9f43">⬡</span> model-trainer-beta
+          </div>
+          <div style="flex:1"><span style="color:#ff9f43">●</span> 等待中</div>
+          <div style="flex:1"><span style="background:#ff9f4320;color:#ff9f43;padding:2px 8px;border-radius:4px;font-size:11px">Executor</span></div>
+          <div style="flex:1;color:#64748b">5m ago</div>
+          <div style="flex:1;color:#00d4aa">详情 →</div>
+        </div>
+        <!-- Row 3 -->
+        <div style="display:flex;padding:12px 16px;color:#e2e8f0;font-size:12px;align-items:center">
+          <div style="flex:2;display:flex;align-items:center;gap:8px">
+            <span style="color:#ff4757">⬡</span> gateway-gamma
+          </div>
+          <div style="flex:1"><span style="color:#ff4757">●</span> 异常</div>
+          <div style="flex:1"><span style="background:#ff475720;color:#ff4757;padding:2px 8px;border-radius:4px;font-size:11px">Guard</span></div>
+          <div style="flex:1;color:#64748b">1h ago</div>
+          <div style="flex:1;color:#00d4aa">详情 →</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:8px;color:#64748b;font-size:12px">
+    表头全大写 + 字间距 + 菌丝灰；行 hover 背景变为 <code style="background:#0f1419;padding:2px 6px;border-radius:4px">#0f1419</code>（与卡片底同色，形成高亮）；
+    状态列用荧光圆点 + 文字；Tag 用透明底 + 荧光文字 + 圆角 4px；行分隔线用 <code style="background:#0f1419;padding:2px 6px;border-radius:4px">#1e2a3380</code>（半透明）。
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px">
+  <p class="label">4. 输入框 Input / 表单 Form</p>
+  <div class="mockup">
+    <div class="mockup-header">Input & Form 覆写效果</div>
+    <div class="mockup-body" style="background:#050507;padding:20px">
+      <div style="max-width:400px">
+        <div style="color:#64748b;font-size:11px;margin-bottom:6px">AGENT NAME</div>
+        <div style="padding:10px 14px;background:#0a0a0f;border:1px solid #1e2a33;border-radius:6px;color:#e2e8f0;font-size:13px">
+          data-processor-alpha
+        </div>
+        <div style="color:#64748b;font-size:11px;margin:16px 0 6px">DESCRIPTION</div>
+        <div style="padding:10px 14px;background:#0a0a0f;border:1px solid #1e2a33;border-radius:6px;color:#e2e8f0;font-size:13px;min-height:80px">
+          负责数据清洗与预处理...
+        </div>
+        <div style="display:flex;gap:12px;margin-top:16px">
+          <div style="flex:1;padding:10px 14px;background:#0a0a0f;border:1px solid #1e2a33;border-radius:6px;color:#e2e8f0;font-size:13px;display:flex;justify-content:space-between;align-items:center">
+            <span>Worker</span>
+            <span style="color:#64748b">▼</span>
+          </div>
+          <div style="flex:1;padding:10px 14px;background:#0a0a0f;border:1px solid #00d4aa;border-radius:6px;color:#e2e8f0;font-size:13px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 0 8px #00d4aa20">
+            <span>Enabled</span>
+            <span style="color:#00d4aa">●</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:8px;color:#64748b;font-size:12px">
+    输入框：暗底 <code style="background:#0f1419;padding:2px 6px;border-radius:4px">#0a0a0f</code> + 菌丝边框；focus 状态边框变为荧光色 + 微光晕；
+    标签全大写 + 字间距；Select 保持同 Input 风格。
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px">
+  <p class="label">5. 药丸导航（视图切换器）</p>
+  <div class="mockup">
+    <div class="mockup-header">Pill Navigation</div>
+    <div class="mockup-body" style="background:#050507;padding:20px;display:flex;gap:16px;align-items:center;justify-content:center">
+      <div style="display:flex;background:#0a0a0f;border:1px solid #1e2a33;border-radius:20px;padding:3px;gap:3px">
+        <div style="padding:6px 16px;background:#00d4aa;border-radius:16px;color:#050507;font-size:12px;font-weight:600">拓扑视图</div>
+        <div style="padding:6px 16px;color:#64748b;font-size:12px">列表视图</div>
+        <div style="padding:6px 16px;color:#64748b;font-size:12px">甘特图</div>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:8px;color:#64748b;font-size:12px">
+    参考图提取：药丸形容器（暗底 + 菌丝边框），激活项为荧光色实体 + 暗文字，非激活项为透明 + 灰文字。
+    用于编排画布/监控页的视图模式切换。
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:24px">组件规范如上。确认后我将展示 <strong>四个标志性页面</strong> 的设计概念。</p>

@@ -1,0 +1,423 @@
+
+<h2>四个标志性页面设计概念</h2>
+<p class="subtitle">全局驾驶舱 + Agent 编排画布 + 工作流监控 + Agent 详情页</p>
+
+<!-- ========== PAGE 1: 驾驶舱 ========== -->
+<div class="section" style="margin-top:32px">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+    <div style="width:36px;height:36px;background:#00d4aa20;border:1px solid #00d4aa;border-radius:8px;display:flex;align-items:center;justify-content:center"><span style="color:#00d4aa;font-size:18px">◉</span></div>
+    <div>
+      <div style="color:#e2e8f0;font-size:16px;font-weight:600">B. 全局驾驶舱大屏 · 沉浸式</div>
+      <div style="color:#64748b;font-size:12px">Swarm Overview / 蜂巢全景</div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">驾驶舱布局概念</div>
+    <div class="mockup-body" style="background:#050507;padding:0;overflow:hidden">
+      <div style="display:flex;height:380px">
+        <!-- Left sidebar (icon only, auto-expand) -->
+        <div style="width:52px;background:#0a0a0f;border-right:1px solid #1e2a33;display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:10px">
+          <div style="width:32px;height:32px;background:#00d4aa;border-radius:6px;display:flex;align-items:center;justify-content:center"><span style="color:#050507;font-size:12px;font-weight:bold">S</span></div>
+          <div style="width:32px;height:32px;background:#00d4aa20;border:1px solid #00d4aa;border-radius:6px;display:flex;align-items:center;justify-content:center"><span style="color:#00d4aa;font-size:14px">◉</span></div>
+          <div style="width:32px;height:32px;background:#1e2a33;border-radius:6px;display:flex;align-items:center;justify-content:center"><span style="color:#64748b;font-size:14px">◆</span></div>
+          <div style="width:32px;height:32px;background:#1e2a33;border-radius:6px;display:flex;align-items:center;justify-content:center"><span style="color:#64748b;font-size:14px">▲</span></div>
+          <div style="width:32px;height:32px;background:#1e2a33;border-radius:6px;display:flex;align-items:center;justify-content:center"><span style="color:#64748b;font-size:14px">●</span></div>
+          <div style="margin-top:auto;margin-bottom:8px;width:28px;height:28px;background:#1e2a33;border-radius:50%"></div>
+        </div>
+
+        <!-- Main canvas -->
+        <div style="flex:1;background:#050507;position:relative;overflow:hidden">
+          <!-- Hex grid background -->
+          <div style="position:absolute;inset:0;opacity:0.02;background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2292%22 viewBox=%220 0 80 92%22><path d=%22M40 0L80 23v46L40 92 0 69V23z%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%221%22/%3e</svg%3E');background-size:80px 92px"></div>
+
+          <!-- Floating header -->
+          <div style="position:absolute;top:12px;left:50%;transform:translateX(-50%);background:#0f1419cc;border:1px solid #1e2a33;border-radius:20px;padding:8px 24px;color:#64748b;font-size:12px;backdrop-filter:blur(12px);display:flex;gap:20px;align-items:center">
+            <span>SchemaPlexAI</span>
+            <span style="color:#1e2a33">|</span>
+            <span><span style="color:#00d4aa">●</span> 12 Agents</span>
+            <span><span style="color:#ff9f43">●</span> 3 Executing</span>
+            <span><span style="color:#ff4757">●</span> 1 Alert</span>
+            <span style="color:#1e2a33">|</span>
+            <span>2025.05.01 14:32:08</span>
+          </div>
+
+          <!-- Center: Hive heatmap area -->
+          <div style="position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);text-align:center">
+            <div style="width:200px;height:200px;position:relative;margin:0 auto">
+              <!-- Center node -->
+              <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:80px;height:80px;background:#00d4aa15;border:2px solid #00d4aa;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 40px #00d4aa20,0 0 80px #00d4aa10">
+                <span style="color:#00d4aa;font-size:28px">◉</span>
+              </div>
+              <!-- Orbiting nodes -->
+              <div style="position:absolute;top:10%;left:20%;width:36px;height:36px;background:#0f1419;border:1px solid #00d4aa;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 12px #00d4aa30"><span style="color:#00d4aa;font-size:12px">◆</span></div>
+              <div style="position:absolute;top:70%;left:5%;width:36px;height:36px;background:#0f1419;border:1px solid #ff9f43;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 12px #ff9f4330"><span style="color:#ff9f43;font-size:12px">◆</span></div>
+              <div style="position:absolute;top:15%;right:15%;width:36px;height:36px;background:#0f1419;border:1px solid #00d4aa;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 12px #00d4aa30"><span style="color:#00d4aa;font-size:12px">◆</span></div>
+              <div style="position:absolute;top:60%;right:5%;width:36px;height:36px;background:#0f1419;border:1px solid #ff4757;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 12px #ff475730"><span style="color:#ff4757;font-size:12px">◆</span></div>
+              <div style="position:absolute;bottom:5%;left:45%;width:36px;height:36px;background:#0f1419;border:1px solid #00d4aa;border-radius:50%;display:flex;align-items:center;justify-center:center;box-shadow:0 0 12px #00d4aa30"><span style="color:#00d4aa;font-size:12px">◆</span></div>
+            </div>
+            <div style="color:#00d4aa;font-size:11px;margin-top:16px;letter-spacing:3px">SWARM CONSENSUS</div>
+            <div style="color:#64748b;font-size:10px;margin-top:4px">click node to inspect</div>
+          </div>
+
+          <!-- Bottom stats row -->
+          <div style="position:absolute;bottom:16px;left:16px;right:16px;display:flex;gap:12px">
+            <div style="flex:1;background:#0f1419;border:1px solid #1e2a33;border-radius:8px;padding:12px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div style="color:#64748b;font-size:10px">THROUGHPUT</div>
+                <div style="color:#00d4aa;font-size:10px">↑ 12.5%</div>
+              </div>
+              <div style="color:#e2e8f0;font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;margin-top:4px">2,847</div>
+              <div style="color:#64748b;font-size:10px">tasks/min</div>
+            </div>
+            <div style="flex:1;background:#0f1419;border:1px solid #1e2a33;border-radius:8px;padding:12px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div style="color:#64748b;font-size:10px">LATENCY</div>
+                <div style="color:#00d4aa;font-size:10px">↓ 8.2%</div>
+              </div>
+              <div style="color:#e2e8f0;font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;margin-top:4px">124</div>
+              <div style="color:#64748b;font-size:10px">ms avg</div>
+            </div>
+            <div style="flex:1;background:#0f1419;border:1px solid #1e2a33;border-radius:8px;padding:12px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div style="color:#64748b;font-size:10px">SUCCESS RATE</div>
+                <div style="color:#00d4aa;font-size:10px">↑ 0.3%</div>
+              </div>
+              <div style="color:#e2e8f0;font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;margin-top:4px">99.7%</div>
+              <div style="color:#64748b;font-size:10px">last 24h</div>
+            </div>
+            <div style="flex:1;background:#0f1419;border:1px solid #1e2a33;border-radius:8px;padding:12px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div style="color:#64748b;font-size:10px">TOKEN USAGE</div>
+                <div style="color:#ff9f43;font-size:10px">↑ 23.1%</div>
+              </div>
+              <div style="color:#e2e8f0;font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;margin-top:4px">4.2M</div>
+              <div style="color:#64748b;font-size:10px">tokens today</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:12px;color:#64748b;font-size:12px">
+    <strong style="color:#e2e8f0">布局</strong>：左侧图标栏 + 中央蜂巢热力图（力导向布局）+ 底部 4 指标卡片 + 顶部悬浮状态条。
+    中央 Agent 节点按环形轨道排列，中心为 Orchestrator，连线为信息素虚线轨迹。
+  </div>
+
+  <div style="background:#0a0a0f;border:1px solid #1e2a33;border-radius:8px;padding:12px;margin-top:12px">
+    <div style="color:#00d4aa;font-size:11px;font-weight:600;margin-bottom:6px">🎨 Midjourney 提示词 v1</div>
+    <div style="color:#64748b;font-size:11px;line-height:1.5;font-style:italic">"Dark futuristic command center dashboard, hexagonal honeycomb grid background faintly visible, central glowing orb node labeled 'ORCHESTRATOR' surrounded by smaller orbiting agent nodes in teal and amber, thin pheromone trail lines connecting nodes, bottom row of minimal dark data cards showing metrics, floating translucent header bar with system status, deep void black background #050507, bioluminescent accents, clean HUD interface, no borders, sterile clinical aesthetic inspired by Black Mirror, 8k, octane render, UI/UX design mockup --ar 16:9 --style raw"</div>
+  </div>
+</div>
+
+<!-- ========== PAGE 2: 编排画布 ========== -->
+<div class="section" style="margin-top:40px">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+    <div style="width:36px;height:36px;background:#00d4aa20;border:1px solid #00d4aa;border-radius:8px;display:flex;align-items:center;justify-content:center"><span style="color:#00d4aa;font-size:18px">◆</span></div>
+    <div>
+      <div style="color:#e2e8f0;font-size:16px;font-weight:600">A. Agent 编排画布 · 沉浸式</div>
+      <div style="color:#64748b;font-size:12px">Task Hive / 任务蜂巢</div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">编排画布布局概念</div>
+    <div class="mockup-body" style="background:#050507;padding:0;overflow:hidden">
+      <div style="display:flex;height:380px">
+        <!-- Left: Agent palette (collapsed) -->
+        <div style="width:48px;background:#0a0a0f;border-right:1px solid #1e2a33;display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:10px">
+          <div style="width:32px;height:32px;background:#00d4aa;border-radius:6px;display:flex;align-items:center;justify-content:center"><span style="color:#050507;font-size:12px;font-weight:bold">S</span></div>
+          <div style="width:32px;height:32px;background:#1e2a33;border-radius:6px;display:flex;align-items:center;justify-content:center"><span style="color:#64748b;font-size:14px">◉</span></div>
+          <div style="width:32px;height:32px;background:#00d4aa20;border:1px solid #00d4aa;border-radius:6px;display:flex;align-items:center;justify-content:center"><span style="color:#00d4aa;font-size:14px">◆</span></div>
+          <div style="width:32px;height:32px;background:#1e2a33;border-radius:6px;display:flex;align-items:center;justify-content:center"><span style="color:#64748b;font-size:14px">▲</span></div>
+          <div style="margin-top:auto;margin-bottom:8px"></div>
+        </div>
+
+        <!-- Center: DAG canvas -->
+        <div style="flex:1;background:#050507;position:relative;overflow:hidden">
+          <div style="position:absolute;inset:0;opacity:0.02;background-image:linear-gradient(#1e2a33 1px,transparent 1px),linear-gradient(90deg,#1e2a33 1px,transparent 1px);background-size:40px 40px"></div>
+
+          <!-- View switcher (pill nav) -->
+          <div style="position:absolute;top:12px;left:50%;transform:translateX(-50%);background:#0a0a0f;border:1px solid #1e2a33;border-radius:20px;padding:3px;display:flex;gap:3px">
+            <div style="padding:5px 14px;background:#00d4aa;border-radius:16px;color:#050507;font-size:11px;font-weight:600">拓扑</div>
+            <div style="padding:5px 14px;color:#64748b;font-size:11px">列表</div>
+            <div style="padding:5px 14px;color:#64748b;font-size:11px">代码</div>
+          </div>
+
+          <!-- DAG Nodes -->
+          <div style="position:absolute;top:20%;left:30%;width:120px;background:#0f1419;border:1px solid #00d4aa;border-radius:8px;padding:12px;box-shadow:0 0 16px #00d4aa20">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <span style="color:#00d4aa">⬡</span>
+              <span style="color:#e2e8f0;font-size:12px;font-weight:500">Data Ingestion</span>
+            </div>
+            <div style="color:#64748b;font-size:10px">Worker Agent</div>
+            <div style="margin-top:8px;height:3px;background:#1e2a33;border-radius:2px;overflow:hidden"><div style="width:70%;height:100%;background:#00d4aa"></div></div>
+          </div>
+
+          <div style="position:absolute;top:50%;left:50%;width:120px;background:#0f1419;border:1px solid #ff9f43;border-radius:8px;padding:12px;box-shadow:0 0 16px #ff9f4320;transform:translate(-50%,-50%)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <span style="color:#ff9f43">⬡</span>
+              <span style="color:#e2e8f0;font-size:12px;font-weight:500">Orchestrator</span>
+            </div>
+            <div style="color:#64748b;font-size:10px">Central Hub</div>
+            <div style="margin-top:8px;height:3px;background:#1e2a33;border-radius:2px;overflow:hidden"><div style="width:90%;height:100%;background:#ff9f43"></div></div>
+          </div>
+
+          <div style="position:absolute;top:65%;left:25%;width:120px;background:#0f1419;border:1px solid #00d4aa;border-radius:8px;padding:12px;box-shadow:0 0 16px #00d4aa20">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <span style="color:#00d4aa">⬡</span>
+              <span style="color:#e2e8f0;font-size:12px;font-weight:500">Preprocessor</span>
+            </div>
+            <div style="color:#64748b;font-size:10px">Executor Agent</div>
+          </div>
+
+          <div style="position:absolute;top:65%;left:65%;width:120px;background:#0f1419;border:1px solid #00d4aa;border-radius:8px;padding:12px;box-shadow:0 0 16px #00d4aa20">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <span style="color:#00d4aa">⬡</span>
+              <span style="color:#e2e8f0;font-size:12px;font-weight:500">Validator</span>
+            </div>
+            <div style="color:#64748b;font-size:10px">Guard Agent</div>
+          </div>
+
+          <!-- Connection lines (SVG) -->
+          <div style="position:absolute;inset:0;pointer-events:none">
+            <svg width="100%" height="100%">
+              <line x1="35%" y1="28%" x2="48%" y2="45%" stroke="#ff9f43" stroke-width="1.5" stroke-dasharray="6 3" opacity="0.5"/>
+              <line x1="50%" y1="55%" x2="32%" y2="62%" stroke="#00d4aa" stroke-width="1.5" stroke-dasharray="6 3" opacity="0.5"/>
+              <line x1="52%" y1="55%" x2="68%" y2="62%" stroke="#00d4aa" stroke-width="1.5" stroke-dasharray="6 3" opacity="0.5"/>
+            </svg>
+          </div>
+
+          <!-- Toolbar -->
+          <div style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:8px">
+            <div style="width:36px;height:36px;background:#0f1419;border:1px solid #1e2a33;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:14px">+</div>
+            <div style="width:36px;height:36px;background:#0f1419;border:1px solid #1e2a33;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:14px">⟷</div>
+            <div style="width:36px;height:36px;background:#0f1419;border:1px solid #1e2a33;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:14px">⌫</div>
+            <div style="width:36px;height:36px;background:#0f1419;border:1px solid #1e2a33;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:14px">▶</div>
+          </div>
+        </div>
+
+        <!-- Right panel (agent config, hidden by default) -->
+        <div style="width:0;overflow:hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:12px;color:#64748b;font-size:12px">
+    <strong style="color:#e2e8f0">布局</strong>：左侧 Agent 类型面板（拖拽创建）+ 中央 DAG 画布（节点可拖拽、连线可创建）+ 底部工具栏 + 顶部药丸导航（拓扑/列表/代码）。选中节点右侧滑出属性面板。
+  </div>
+
+  <div style="background:#0a0a0f;border:1px solid #1e2a33;border-radius:8px;padding:12px;margin-top:12px">
+    <div style="color:#00d4aa;font-size:11px;font-weight:600;margin-bottom:6px">🎨 Midjourney 提示词 v1</div>
+    <div style="color:#64748b;font-size:11px;line-height:1.5;font-style:italic">"Node-based visual workflow editor interface, dark void background, rectangular agent nodes with hexagonal icons connected by dashed pheromone trail lines, top pill-shaped view switcher (topology/list/code), bottom floating toolbar with minimal icons, translucent property panel sliding from right, subtle 40px grid lines, bioluminescent teal and amber accents on deep black #050507, clean futuristic UI inspired by Black Mirror and TeamCity pipeline editor, 8k, UI/UX design mockup --ar 16:9 --style raw"</div>
+  </div>
+</div>
+
+<!-- ========== PAGE 3: 工作流监控 ========== -->
+<div class="section" style="margin-top:40px">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+    <div style="width:36px;height:36px;background:#ff9f4320;border:1px solid #ff9f43;border-radius:8px;display:flex;align-items:center;justify-content:center"><span style="color:#ff9f43;font-size:18px">▲</span></div>
+    <div>
+      <div style="color:#e2e8f0;font-size:16px;font-weight:600">D. 工作流执行监控 · 渐进式</div>
+      <div style="color:#64748b;font-size:12px">Task Timeline / 任务时间线</div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">工作流监控布局概念</div>
+    <div class="mockup-body" style="background:#050507;padding:0;overflow:hidden">
+      <div style="display:flex;height:380px">
+        <!-- Left sidebar (expanded) -->
+        <div style="width:170px;background:#0a0a0f;border-right:1px solid #1e2a33;display:flex;flex-direction:column;padding:12px 0">
+          <div style="padding:0 16px 12px;color:#00d4aa;font-size:14px;font-weight:600;border-bottom:1px solid #1e2a33">SchemaPlexAI</div>
+          <div style="padding:8px 16px;color:#e2e8f0;font-size:13px;display:flex;align-items:center;gap:8px"><span style="color:#64748b">◉</span> 驾驶舱</div>
+          <div style="padding:8px 16px;color:#e2e8f0;font-size:13px;display:flex;align-items:center;gap:8px"><span style="color:#64748b">◆</span> 编排画布</div>
+          <div style="padding:8px 16px;color:#e2e8f0;font-size:13px;display:flex;align-items:center;gap:8px;background:#0f1419;border-left:2px solid #ff9f43"><span style="color:#ff9f43">▲</span> 工作流监控</div>
+          <div style="padding:8px 16px;color:#e2e8f0;font-size:13px;display:flex;align-items:center;gap:8px"><span style="color:#64748b">●</span> Agent 详情</div>
+        </div>
+
+        <!-- Main content -->
+        <div style="flex:1;background:#050507;padding:20px;overflow:auto">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div style="color:#e2e8f0;font-size:18px;font-weight:600">工作流执行监控</div>
+            <div style="display:flex;gap:8px">
+              <div style="padding:5px 14px;background:#0a0a0f;border:1px solid #1e2a33;border-radius:20px;color:#64748b;font-size:11px">全部</div>
+              <div style="padding:5px 14px;background:#00d4aa;border-radius:20px;color:#050507;font-size:11px;font-weight:600">运行中</div>
+              <div style="padding:5px 14px;background:#0a0a0f;border:1px solid #1e2a33;border-radius:20px;color:#64748b;font-size:11px">已完成</div>
+            </div>
+          </div>
+
+          <!-- Gantt-like timeline -->
+          <div style="background:#0f1419;border:1px solid #1e2a33;border-radius:8px;padding:16px">
+            <div style="display:flex;padding:8px 0;border-bottom:1px solid #1e2a33;color:#64748b;font-size:10px">
+              <div style="width:120px">WORKFLOW</div>
+              <div style="flex:1;display:flex;gap:4px">
+                <div style="flex:1;text-align:center">00:00</div>
+                <div style="flex:1;text-align:center">00:30</div>
+                <div style="flex:1;text-align:center">01:00</div>
+                <div style="flex:1;text-align:center">01:30</div>
+                <div style="flex:1;text-align:center">02:00</div>
+              </div>
+            </div>
+
+            <div style="display:flex;padding:10px 0;border-bottom:1px solid #1e2a3380;align-items:center">
+              <div style="width:120px;color:#e2e8f0;font-size:12px"><span style="color:#00d4aa">◆</span> data-pipeline</div>
+              <div style="flex:1;position:relative;height:20px">
+                <div style="position:absolute;left:10%;width:35%;height:16px;background:#00d4aa30;border:1px solid #00d4aa;border-radius:4px;top:2px;display:flex;align-items:center;justify-content:center"><span style="color:#00d4aa;font-size:9px">ingestion</span></div>
+                <div style="position:absolute;left:48%;width:25%;height:16px;background:#ff9f4330;border:1px solid #ff9f43;border-radius:4px;top:2px;display:flex;align-items:center;justify-content:center"><span style="color:#ff9f43;font-size:9px">process</span></div>
+                <div style="position:absolute;left:76%;width:15%;height:16px;background:#00d4aa30;border:1px solid #00d4aa;border-radius:4px;top:2px;display:flex;align-items:center;justify-content:center"><span style="color:#00d4aa;font-size:9px">validate</span></div>
+              </div>
+            </div>
+
+            <div style="display:flex;padding:10px 0;border-bottom:1px solid #1e2a3380;align-items:center">
+              <div style="width:120px;color:#e2e8f0;font-size:12px"><span style="color:#ff9f43">◆</span> model-training</div>
+              <div style="flex:1;position:relative;height:20px">
+                <div style="position:absolute;left:5%;width:60%;height:16px;background:#ff9f4330;border:1px solid #ff9f43;border-radius:4px;top:2px;display:flex;align-items:center;justify-content:center"><span style="color:#ff9f43;font-size:9px">training...</span></div>
+              </div>
+            </div>
+
+            <div style="display:flex;padding:10px 0;align-items:center">
+              <div style="width:120px;color:#e2e8f0;font-size:12px"><span style="color:#ff4757">◆</span> sync-job</div>
+              <div style="flex:1;position:relative;height:20px">
+                <div style="position:absolute;left:20%;width:30%;height:16px;background:#ff475730;border:1px solid #ff4757;border-radius:4px;top:2px;display:flex;align-items:center;justify-content:center"><span style="color:#ff4757;font-size:9px">failed</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:12px;color:#64748b;font-size:12px">
+    <strong style="color:#e2e8f0">布局</strong>：左侧展开导航 + 顶部标题+药丸过滤 + 甘特图时间线（工作流为行，时间为列，任务段为色块）。
+    点击任务段下钻到 Agent 详情页。
+  </div>
+
+  <div style="background:#0a0a0f;border:1px solid #1e2a33;border-radius:8px;padding:12px;margin-top:12px">
+    <div style="color:#00d4aa;font-size:11px;font-weight:600;margin-bottom:6px">🎨 Midjourney 提示词 v1</div>
+    <div style="color:#64748b;font-size:11px;line-height:1.5;font-style:italic">"Dark admin dashboard with Gantt chart timeline, workflow rows with colored task segments in teal amber and red, left expanded navigation sidebar, top pill filter buttons, structured data table aesthetic, deep black background #050507, minimal borders, clean monospace data typography, clinical futuristic interface inspired by Black Mirror, 8k, UI/UX design mockup --ar 16:9 --style raw"</div>
+  </div>
+</div>
+
+<!-- ========== PAGE 4: Agent 详情 ========== -->
+<div class="section" style="margin-top:40px">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+    <div style="width:36px;height:36px;background:#ff475720;border:1px solid #ff4757;border-radius:8px;display:flex;align-items:center;justify-content:center"><span style="color:#ff4757;font-size:18px">●</span></div>
+    <div>
+      <div style="color:#e2e8f0;font-size:16px;font-weight:600">C. Agent 详情/终端页 · 渐进式</div>
+      <div style="color:#64748b;font-size:12px">Cell Detail / 蜂房特写</div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Agent 详情页布局概念</div>
+    <div class="mockup-body" style="background:#050507;padding:0;overflow:hidden">
+      <div style="display:flex;height:380px">
+        <!-- Left sidebar (expanded) -->
+        <div style="width:170px;background:#0a0a0f;border-right:1px solid #1e2a33;display:flex;flex-direction:column;padding:12px 0">
+          <div style="padding:0 16px 12px;color:#00d4aa;font-size:14px;font-weight:600;border-bottom:1px solid #1e2a33">SchemaPlexAI</div>
+          <div style="padding:8px 16px;color:#e2e8f0;font-size:13px;display:flex;align-items:center;gap:8px"><span style="color:#64748b">◉</span> 驾驶舱</div>
+          <div style="padding:8px 16px;color:#e2e8f0;font-size:13px;display:flex;align-items:center;gap:8px"><span style="color:#64748b">◆</span> 编排画布</div>
+          <div style="padding:8px 16px;color:#e2e8f0;font-size:13px;display:flex;align-items:center;gap:8px"><span style="color:#64748b">▲</span> 工作流监控</div>
+          <div style="padding:8px 16px;color:#e2e8f0;font-size:13px;display:flex;align-items:center;gap:8px;background:#0f1419;border-left:2px solid #ff4757"><span style="color:#ff4757">●</span> Agent 详情</div>
+        </div>
+
+        <!-- Main content -->
+        <div style="flex:1;background:#050507;padding:20px;overflow:auto">
+          <!-- Header -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="width:40px;height:40px;background:#00d4aa20;border:1px solid #00d4aa;border-radius:8px;display:flex;align-items:center;justify-content:center"><span style="color:#00d4aa;font-size:20px">⬡</span></div>
+              <div>
+                <div style="color:#e2e8f0;font-size:16px;font-weight:600">data-processor-alpha</div>
+                <div style="color:#64748b;font-size:11px">Worker · ID: #7A3F-9021</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <div style="padding:5px 12px;background:#0f1419;border:1px solid #1e2a33;border-radius:6px;color:#64748b;font-size:11px">重启</div>
+              <div style="padding:5px 12px;background:#ff4757;border-radius:6px;color:#050507;font-size:11px;font-weight:600">终止</div>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <div style="display:flex;gap:4px;border-bottom:1px solid #1e2a33;margin-bottom:16px">
+            <div style="padding:8px 16px;color:#00d4aa;font-size:12px;font-weight:500;border-bottom:2px solid #00d4aa">实时监控</div>
+            <div style="padding:8px 16px;color:#64748b;font-size:12px">执行日志</div>
+            <div style="padding:8px 16px;color:#64748b;font-size:12px">性能曲线</div>
+            <div style="padding:8px 16px;color:#64748b;font-size:12px">配置</div>
+          </div>
+
+          <!-- Content: Real-time monitor -->
+          <div style="display:flex;gap:16px">
+            <!-- Left: Metrics -->
+            <div style="width:280px">
+              <div style="background:#0f1419;border:1px solid #1e2a33;border-radius:8px;padding:16px;margin-bottom:12px">
+                <div style="color:#64748b;font-size:10px;margin-bottom:8px">CPU USAGE</div>
+                <div style="color:#e2e8f0;font-size:24px;font-weight:700;font-family:'JetBrains Mono',monospace">67.3%</div>
+                <div style="margin-top:8px;height:4px;background:#1e2a33;border-radius:2px;overflow:hidden"><div style="width:67%;height:100%;background:#00d4aa"></div></div>
+              </div>
+              <div style="background:#0f1419;border:1px solid #1e2a33;border-radius:8px;padding:16px;margin-bottom:12px">
+                <div style="color:#64748b;font-size:10px;margin-bottom:8px">MEMORY</div>
+                <div style="color:#e2e8f0;font-size:24px;font-weight:700;font-family:'JetBrains Mono',monospace">2.1 GB</div>
+                <div style="margin-top:8px;height:4px;background:#1e2a33;border-radius:2px;overflow:hidden"><div style="width:45%;height:100%;background:#ff9f43"></div></div>
+              </div>
+              <div style="background:#0f1419;border:1px solid #1e2a33;border-radius:8px;padding:16px">
+                <div style="color:#64748b;font-size:10px;margin-bottom:8px">UPTIME</div>
+                <div style="color:#e2e8f0;font-size:24px;font-weight:700;font-family:'JetBrains Mono',monospace">14:32:08</div>
+              </div>
+            </div>
+
+            <!-- Right: Terminal-like log stream -->
+            <div style="flex:1;background:#0a0a0f;border:1px solid #1e2a33;border-radius:8px;padding:16px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.8;overflow:auto">
+              <div><span style="color:#64748b">[14:30:01]</span> <span style="color:#00d4aa">INFO</span> Agent initialized, config loaded from /etc/schemaplex/agent.yml</div>
+              <div><span style="color:#64748b">[14:30:02]</span> <span style="color:#00d4aa">INFO</span> Connected to RabbitMQ broker at amqp://mq:5672</div>
+              <div><span style="color:#64748b">[14:30:15]</span> <span style="color:#ff9f43">WARN</span> Queue depth exceeding threshold: 1,247 messages</div>
+              <div><span style="color:#64748b">[14:30:22]</span> <span style="color:#00d4aa">INFO</span> Task batch-20250501-001 received, processing...</div>
+              <div><span style="color:#64748b">[14:30:45]</span> <span style="color:#00d4aa">INFO</span> Step 1/4: Data ingestion complete (2.3s)</div>
+              <div><span style="color:#64748b">[14:31:02]</span> <span style="color:#00d4aa">INFO</span> Step 2/4: Preprocessing complete (17.1s)</div>
+              <div><span style="color:#64748b">[14:31:18]</span> <span style="color:#ff9f43">WARN</span> Step 3/4: Model inference slower than expected (45.2s)</div>
+              <div><span style="color:#64748b">[14:32:08]</span> <span style="color:#00d4aa">INFO</span> Step 4/4: Validation passed, output written to S3</div>
+              <div style="margin-top:8px"><span style="color:#00d4aa">▌</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:12px;color:#64748b;font-size:12px">
+    <strong style="color:#e2e8f0">布局</strong>：左侧展开导航 + 顶部 Agent 身份卡（六边形头像+名称+ID+操作按钮）+ Tab 切换（监控/日志/性能/配置）。
+    监控页左侧指标卡片（CPU/内存/运行时间），右侧终端式日志流（xterm.js 风格，深色底 + 荧光色分级）。
+  </div>
+
+  <div style="background:#0a0a0f;border:1px solid #1e2a33;border-radius:8px;padding:12px;margin-top:12px">
+    <div style="color:#00d4aa;font-size:11px;font-weight:600;margin-bottom:6px">🎨 Midjourney 提示词 v1</div>
+    <div style="color:#64748b;font-size:11px;line-height:1.5;font-style:italic">"Dark admin agent detail page with hexagonal avatar icon, left metrics cards showing CPU memory and uptime with progress bars, right terminal window with color-coded log stream in teal amber and red, tab navigation below header, structured sidebar navigation, deep black background #050507, clean monospace typography, clinical futuristic interface, 8k, UI/UX design mockup --ar 16:9 --style raw"</div>
+  </div>
+</div>
+
+<!-- ========== SUMMARY ========== -->
+<div class="section" style="margin-top:40px;background:#0f1419;border:1px solid #1e2a33;border-radius:12px;padding:24px">
+  <p class="label">交付物清单</p>
+  <div style="display:flex;flex-direction:column;gap:12px;margin-top:16px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:24px;height:24px;background:#00d4aa;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#050507;font-size:12px;font-weight:bold">1</div>
+      <div style="color:#e2e8f0;font-size:14px">全局 UI/UE 规范文档（色彩 / 字体 / 间距 / 布局 / 组件 / 动效）</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:24px;height:24px;background:#00d4aa;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#050507;font-size:12px;font-weight:bold">2</div>
+      <div style="color:#e2e8f0;font-size:14px">4 个标志性页面 × 2-3 版 Midjourney 提示词（共 8-12 组提示词）</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:24px;height:24px;background:#00d4aa;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#050507;font-size:12px;font-weight:bold">3</div>
+      <div style="color:#e2e8f0;font-size:14px">4 个高保真 HTML 可交互原型</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:24px;height:24px;background:#00d4aa;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#050507;font-size:12px;font-weight:bold">4</div>
+      <div style="color:#e2e8f0;font-size:14px">Ant Design 5 主题 token 配置代码（可直接用于项目）</div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:24px">四个页面设计概念 + 文生图提示词草案已完整展示。请确认整体方向，我将进入 <strong>设计文档撰写</strong> 阶段。</p>

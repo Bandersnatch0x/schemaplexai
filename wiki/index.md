@@ -51,6 +51,7 @@ confidence: high
 ## Frontend
 
 - [[frontend/structure]] — React + Vite project structure, routing, state management
+- [[frontend/abyss-hive-design]] — Abyss Hive UI/UE design system (colors, typography, layout, components)
 
 ## Project Management
 

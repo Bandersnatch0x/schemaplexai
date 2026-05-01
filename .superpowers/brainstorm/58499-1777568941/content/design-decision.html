@@ -1,0 +1,95 @@
+<h2>设计决策：参考图融合方案</h2>
+<p class="subtitle">基于参考图"深渊蜂巢"的提取与融合决策</p>
+
+<div class="section">
+  <p class="label">色彩方案 — 采用参考图色值（更沉稳黑镜感）</p>
+  <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap">
+    <div style="flex:1;min-width:120px;background:#050507;border:1px solid #1e2a33;border-radius:8px;padding:12px">
+      <div style="height:40px;background:#00d4aa;border-radius:4px;margin-bottom:8px;box-shadow:0 0 12px #00d4aa40"></div>
+      <div style="font-size:12px;color:#e2e8f0;font-weight:500">信息素青</div>
+      <div style="font-size:11px;color:#64748b">#00d4aa · 正常/通信/主品牌色</div>
+      <div style="font-size:11px;color:#64748b;margin-top:4px">图中提取，比我原方案更沉稳</div>
+    </div>
+    <div style="flex:1;min-width:120px;background:#050507;border:1px solid #1e2a33;border-radius:8px;padding:12px">
+      <div style="height:40px;background:#ff9f43;border-radius:4px;margin-bottom:8px;box-shadow:0 0 12px #ff9f4340"></div>
+      <div style="font-size:12px;color:#e2e8f0;font-weight:500">琥珀能量</div>
+      <div style="font-size:11px;color:#64748b">#ff9f43 · 执行/警告/能量</div>
+      <div style="font-size:11px;color:#64748b;margin-top:4px">图中提取，更暖更真实</div>
+    </div>
+    <div style="flex:1;min-width:120px;background:#050507;border:1px solid #1e2a33;border-radius:8px;padding:12px">
+      <div style="height:40px;background:#ff4757;border-radius:4px;margin-bottom:8px;box-shadow:0 0 12px #ff475740"></div>
+      <div style="font-size:12px;color:#e2e8f0;font-weight:500">危险红</div>
+      <div style="font-size:11px;color:#64748b">#ff4757 · 异常/危险/告警</div>
+      <div style="font-size:11px;color:#64748b;margin-top:4px">图中提取，经典警报红</div>
+    </div>
+  </div>
+  <p style="color:#64748b;font-size:12px;margin-top:12px">背景层保持原方案（<code>#050507</code> 深渊黑 比图中 <code>#1a1a2e</code> 更深更纯粹），分隔线保持 <code>#1e2a33</code> 菌丝灰蓝。</p>
+</div>
+
+<div class="section">
+  <p class="label">直接引用的元素</p>
+  <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px">
+    <div style="background:#0f1419;border:1px solid #1e2a33;border-radius:8px;padding:12px;display:flex;gap:12px;align-items:center">
+      <div style="width:48px;height:48px;background:#00d4aa20;border:1px solid #00d4aa;border-radius:8px;display:flex;align-items:center;justify-content:center">
+        <span style="color:#00d4aa;font-size:20px">⬡</span>
+      </div>
+      <div>
+        <div style="color:#e2e8f0;font-size:13px;font-weight:500">六边形蜂巢 Logo</div>
+        <div style="color:#64748b;font-size:12px">系统 Logo + favicon + 加载动画核心图形</div>
+      </div>
+    </div>
+    <div style="background:#0f1419;border:1px solid #1e2a33;border-radius:8px;padding:12px;display:flex;gap:12px;align-items:center">
+      <div style="width:48px;height:48px;background:#0a0a0f;border:1px solid #1e2a33;border-radius:8px;display:flex;align-items:center;justify-content:center">
+        <div style="text-align:center">
+          <div style="color:#00d4aa;font-size:18px;font-weight:700">7,843</div>
+          <div style="color:#64748b;font-size:8px">Active Agents</div>
+        </div>
+      </div>
+      <div>
+        <div style="color:#e2e8f0;font-size:13px;font-weight:500">统计卡片样式</div>
+        <div style="color:#64748b;font-size:12px">深色底 + 左侧色带 + 大数字 + 底部微折线图，驾驶舱指标卡片直接复用</div>
+      </div>
+    </div>
+    <div style="background:#0f1419;border:1px solid #1e2a33;border-radius:8px;padding:12px;display:flex;gap:12px;align-items:center">
+      <div style="width:120px;height:32px;background:#0a0a0f;border:1px solid #1e2a33;border-radius:16px;display:flex;align-items:center;padding:0 4px;gap:4px">
+        <div style="flex:1;height:24px;background:#00d4aa;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#050507;font-size:10px;font-weight:600">拓扑</div>
+        <div style="flex:1;height:24px;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:10px">列表</div>
+      </div>
+      <div>
+        <div style="color:#e2e8f0;font-size:13px;font-weight:500">药丸导航切换器</div>
+        <div style="color:#64748b;font-size:12px">视图切换（拓扑/列表/甘特图），带发光激活态</div>
+      </div>
+    </div>
+    <div style="background:#0f1419;border:1px solid #1e2a33;border-radius:8px;padding:12px;display:flex;gap:12px;align-items:center">
+      <div style="width:48px;height:48px;background:#0a0a0f;border:1px solid #00d4aa;border-radius:8px;display:flex;align-items:center;justify-content:center">
+        <span style="color:#00d4aa;font-size:20px">⬡</span>
+      </div>
+      <div>
+        <div style="color:#e2e8f0;font-size:13px;font-weight:500">六边形图标按钮</div>
+        <div style="color:#64748b;font-size:12px">Agent 类型选择器 / 快捷操作按钮，默认态 border + 激活态 glow</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <p class="label">不采用的元素（及原因）</p>
+  <ul style="color:#64748b;font-size:13px">
+    <li><span style="color:#e2e8f0">底部标签栏</span>：图中底部导航类似移动端 Tab Bar，桌面后台场景下效率低于侧边栏导航，暂不采用</li>
+    <li><span style="color:#e2e8f0">背景纹理密度</span>：图中六边形网格较密，实际使用中会降低内容可读性，调整为更稀疏的 80px 间距</li>
+  </ul>
+</div>
+
+<div class="section" style="margin-top:24px">
+  <p class="label">下一步</p>
+  <p style="color:#e2e8f0">决策已确定，继续推进：</p>
+  <ol style="color:#64748b;font-size:13px">
+    <li>组件规范（卡片 / 按钮 / 表格 / 表单覆写）</li>
+    <li>四个标志性页面设计</li>
+    <li>文生图提示词（Midjourney）</li>
+    <li>HTML 高保真原型</li>
+    <li>汇总为 UI/UE 规范文档</li>
+  </ol>
+</div>
+
+<p class="subtitle" style="margin-top:24px">设计决策已确定。是否继续推进到 <strong>组件规范</strong> 和 <strong>四个页面设计</strong>？</p>

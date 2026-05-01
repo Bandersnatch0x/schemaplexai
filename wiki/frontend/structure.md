@@ -3,7 +3,7 @@ title: Frontend Structure
 type: architecture
 source: schemaplexai-ui/src/
 creation_date: 2026-04-30
-update_date: 2026-04-30
+update_date: 2026-05-01
 tags: [frontend, react, vite, typescript, ant-design]
 confidence: high
 ---
@@ -38,19 +38,34 @@ src/
 
 ## Pages
 
-| Route | Component | Lazy |
-|-------|-----------|------|
-| `/login` | Login | Yes |
-| `/dashboard` | Dashboard | Yes |
-| `/agents` | AgentManager | Yes |
-| `/agents/executor` | AgentExecutor | Yes |
-| `/specs` | SpecCenter | Yes |
-| `/workflows` | WorkflowCenter | Yes |
-| `/contexts` | ContextCenter | Yes |
-| `/quality` | QualityCenter | Yes |
-| `/integrations` | IntegrationCenter | Yes |
-| `/ops` | OpsCenter | Yes |
-| `/settings` | SystemSettings | Yes |
+| Route | Component | Lazy | Layout |
+|-------|-----------|------|--------|
+| `/login` | Login | Yes | — |
+| `/dashboard` | Dashboard | Yes | Progressive |
+| `/cockpit` | Cockpit | Yes | Immersive |
+| `/canvas` | AgentCanvas | Yes | Immersive |
+| `/workflows` | WorkflowMonitor | Yes | Progressive |
+| `/agents` | AgentDetail | Yes | Progressive |
+| `/agents/executor` | AgentExecutor | Yes | Progressive |
+| `/specs` | SpecCenter | Yes | Progressive |
+| `/workflows-old` | WorkflowCenter | Yes | Progressive |
+| `/contexts` | ContextCenter | Yes | Progressive |
+| `/quality` | QualityCenter | Yes | Progressive |
+| `/integrations` | IntegrationCenter | Yes | Progressive |
+| `/ops` | OpsCenter | Yes | Progressive |
+| `/settings` | SystemSettings | Yes | Progressive |
+
+## Design System
+
+Abyss Hive design system — see [[frontend/abyss-hive-design]] for full spec.
+
+**Key tokens**:
+- Background: `#0a0e1a` (abyss), `#0d1117` (sidebar), `#111827` (card)
+- Primary: `#00d4aa` (cyan), `#ff9f43` (amber), `#ff4757` (red)
+- Text: `#e2e8f0` (primary), `#64748b` (secondary)
+- Font: Inter + Noto Sans SC + JetBrains Mono
+- Border radius: 8px standard, 12px max
+- Layout modes: Immersive (borderless, hidden nav) vs Progressive (structured, persistent nav)
 
 ## Auth Flow
 

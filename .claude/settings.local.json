@@ -67,7 +67,9 @@
       "Bash(mvn -version)",
       "Bash(ls -la \"E:\\\\\\\\jdk\\\\\\\\microsoft-jdk-21.0.10-windows-x64\\\\\\\\bin\\\\\\\\java.exe\")",
       "Bash(bash *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(find .claude/changes/core-ai-engine-design -type f -newer .claude/changes/core-ai-engine-design/proposal.md)",
+      "Bash(ls -la .claude/changes/core-ai-engine-design/notes/)"
     ]
   },
   "hooks": {

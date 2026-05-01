@@ -3,6 +3,8 @@ package com.schemaplexai.web.sse;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.message.UnifiedMessage;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.web.security.JwtValidator;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -14,16 +16,16 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class AgentSseEmitter {
 
+    private final JwtValidator jwtValidator;
     private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
 
     public SseEmitter createEmitter(String clientId, String token) {
-        if (!StringUtils.hasText(token) || !token.startsWith("Bearer ")) {
+        if (!StringUtils.hasText(token) || !jwtValidator.validateToken(token)) {
             throw new BaseException(ResultCode.UNAUTHORIZED);
         }
-        // Full JWT signature and expiry validation is performed by the Gateway layer (JwtAuthFilter).
-        // The downstream web service receives pre-validated tokens via X-User-Id / X-Tenant-Id headers.
         SseEmitter emitter = new SseEmitter(0L);
         emitters.put(clientId, emitter);
 

@@ -2,18 +2,24 @@ package com.schemaplexai.web.sse;
 
 import com.schemaplexai.common.message.MessageType;
 import com.schemaplexai.common.message.UnifiedMessage;
+import com.schemaplexai.web.security.JwtValidator;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class AgentSseEmitterTest {
 
+    private JwtValidator jwtValidator = mock(JwtValidator.class);
+
     @Test
     void shouldSendUnifiedMessageViaSseEmitter() throws IOException {
-        AgentSseEmitter emitterManager = new AgentSseEmitter();
+        when(jwtValidator.validateToken("Bearer valid-token")).thenReturn(true);
+        AgentSseEmitter emitterManager = new AgentSseEmitter(jwtValidator);
         SseEmitter emitter = emitterManager.createEmitter("client-1", "Bearer valid-token");
         assertThat(emitter).isNotNull();
 
@@ -33,7 +39,8 @@ class AgentSseEmitterTest {
 
     @Test
     void shouldSendSseEventTypeMessage() throws IOException {
-        AgentSseEmitter emitterManager = new AgentSseEmitter();
+        when(jwtValidator.validateToken("Bearer valid-token")).thenReturn(true);
+        AgentSseEmitter emitterManager = new AgentSseEmitter(jwtValidator);
         SseEmitter emitter = emitterManager.createEmitter("client-2", "Bearer valid-token");
         assertThat(emitter).isNotNull();
 
@@ -52,7 +59,8 @@ class AgentSseEmitterTest {
 
     @Test
     void shouldSendErrorTypeMessage() throws IOException {
-        AgentSseEmitter emitterManager = new AgentSseEmitter();
+        when(jwtValidator.validateToken("Bearer valid-token")).thenReturn(true);
+        AgentSseEmitter emitterManager = new AgentSseEmitter(jwtValidator);
         SseEmitter emitter = emitterManager.createEmitter("client-3", "Bearer valid-token");
         assertThat(emitter).isNotNull();
 
@@ -69,7 +77,7 @@ class AgentSseEmitterTest {
 
     @Test
     void shouldIgnoreSendUnifiedWhenClientNotFound() {
-        AgentSseEmitter emitterManager = new AgentSseEmitter();
+        AgentSseEmitter emitterManager = new AgentSseEmitter(jwtValidator);
 
         UnifiedMessage message = UnifiedMessage.builder()
             .type(MessageType.SYSTEM)

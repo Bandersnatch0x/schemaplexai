@@ -1,0 +1,101 @@
+<h2>设计系统：基础层</h2>
+<p class="subtitle">方案 C — 场景自适应 · 全局共享的设计语言</p>
+
+<div class="section">
+  <p class="label">色彩系统</p>
+  <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:12px">
+    <div style="flex:1;min-width:140px;background:#050507;border:1px solid #1e2a33;border-radius:8px;padding:12px">
+      <div style="height:40px;background:#050507;border-radius:4px;margin-bottom:8px;border:1px solid #333"></div>
+      <div style="font-size:12px;color:#e2e8f0;font-weight:500">深渊背景</div>
+      <div style="font-size:11px;color:#64748b">#050507 · 页面底</div>
+    </div>
+    <div style="flex:1;min-width:140px;background:#050507;border:1px solid #1e2a33;border-radius:8px;padding:12px">
+      <div style="height:40px;background:#0a0a0f;border-radius:4px;margin-bottom:8px"></div>
+      <div style="font-size:12px;color:#e2e8f0;font-weight:500">巢穴壁</div>
+      <div style="font-size:11px;color:#64748b">#0a0a0f · 侧边栏</div>
+    </div>
+    <div style="flex:1;min-width:140px;background:#050507;border:1px solid #1e2a33;border-radius:8px;padding:12px">
+      <div style="height:40px;background:#0f1419;border-radius:4px;margin-bottom:8px"></div>
+      <div style="font-size:12px;color:#e2e8f0;font-weight:500">蜂房卡片</div>
+      <div style="font-size:11px;color:#64748b">#0f1419 · 容器底</div>
+    </div>
+    <div style="flex:1;min-width:140px;background:#050507;border:1px solid #1e2a33;border-radius:8px;padding:12px">
+      <div style="height:40px;background:#1e2a33;border-radius:4px;margin-bottom:8px"></div>
+      <div style="font-size:12px;color:#e2e8f0;font-weight:500">菌丝分隔</div>
+      <div style="font-size:11px;color:#64748b">#1e2a33 · 边框线</div>
+    </div>
+    <div style="flex:1;min-width:140px;background:#050507;border:1px solid #1e2a33;border-radius:8px;padding:12px">
+      <div style="height:40px;background:#00e5c9;border-radius:4px;margin-bottom:8px;box-shadow:0 0 8px #00e5c940"></div>
+      <div style="font-size:12px;color:#e2e8f0;font-weight:500">信息素青</div>
+      <div style="font-size:11px;color:#64748b">#00e5c9 · 正常/通信</div>
+    </div>
+    <div style="flex:1;min-width:140px;background:#050507;border:1px solid #1e2a33;border-radius:8px;padding:12px">
+      <div style="height:40px;background:#ffb800;border-radius:4px;margin-bottom:8px;box-shadow:0 0 8px #ffb80040"></div>
+      <div style="font-size:12px;color:#e2e8f0;font-weight:500">琥珀能量</div>
+      <div style="font-size:11px;color:#64748b">#ffb800 · 执行/警告</div>
+    </div>
+    <div style="flex:1;min-width:140px;background:#050507;border:1px solid #1e2a33;border-radius:8px;padding:12px">
+      <div style="height:40px;background:#e63946;border-radius:4px;margin-bottom:8px;box-shadow:0 0 8px #e6394640"></div>
+      <div style="font-size:12px;color:#e2e8f0;font-weight:500">告警红</div>
+      <div style="font-size:11px;color:#64748b">#e63946 · 异常/危险</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <p class="label">字体系统</p>
+  <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap">
+    <div style="flex:1;min-width:200px">
+      <div style="color:#64748b;font-size:11px;margin-bottom:4px">标题字体</div>
+      <div style="color:#e2e8f0;font-family:system-ui,sans-serif;font-size:18px;font-weight:600">Inter / PingFang SC</div>
+      <div style="color:#64748b;font-size:12px;margin-top:4px">思源黑体作为中文回退，字重 500/600</div>
+    </div>
+    <div style="flex:1;min-width:200px">
+      <div style="color:#64748b;font-size:11px;margin-bottom:4px">数据字体</div>
+      <div style="color:#00e5c9;font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:500">JetBrains Mono</div>
+      <div style="color:#64748b;font-size:12px;margin-top:4px">等宽字体用于数字、代码、状态标识</div>
+    </div>
+    <div style="flex:1;min-width:200px">
+      <div style="color:#64748b;font-size:11px;margin-bottom:4px">正文字号梯度</div>
+      <div style="color:#e2e8f0;font-size:14px">12px / 14px / 16px / 20px / 24px / 32px</div>
+      <div style="color:#64748b;font-size:12px;margin-top:4px">行高 1.5（正文）/ 1.2（标题）</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <p class="label">间距系统（8px 基准）</p>
+  <div style="display:flex;gap:8px;margin-top:12px;align-items:flex-end">
+    <div style="width:8px;height:8px;background:#1e2a33;border-radius:2px"></div><span style="color:#64748b;font-size:11px">8</span>
+    <div style="width:16px;height:16px;background:#1e2a33;border-radius:2px"></div><span style="color:#64748b;font-size:11px">16</span>
+    <div style="width:24px;height:24px;background:#1e2a33;border-radius:2px"></div><span style="color:#64748b;font-size:11px">24</span>
+    <div style="width:32px;height:32px;background:#1e2a33;border-radius:2px"></div><span style="color:#64748b;font-size:11px">32</span>
+    <div style="width:48px;height:48px;background:#1e2a33;border-radius:2px"></div><span style="color:#64748b;font-size:11px">48</span>
+    <div style="width:64px;height:64px;background:#1e2a33;border-radius:2px"></div><span style="color:#64748b;font-size:11px">64</span>
+  </div>
+</div>
+
+<div class="section">
+  <p class="label">圆角与阴影</p>
+  <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="width:40px;height:40px;background:#0f1419;border:1px solid #1e2a33;border-radius:4px"></div>
+      <span style="color:#64748b;font-size:12px">4px · 数据单元</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="width:40px;height:40px;background:#0f1419;border:1px solid #1e2a33;border-radius:8px"></div>
+      <span style="color:#64748b;font-size:12px">8px · 卡片/面板</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="width:40px;height:40px;background:#0f1419;border:1px solid #1e2a33;border-radius:12px"></div>
+      <span style="color:#64748b;font-size:12px">12px · 模态框/大面板</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="width:40px;height:40px;background:#0f1419;border:1px solid #1e2a33;border-radius:50%"></div>
+      <span style="color:#64748b;font-size:12px">50% · 头像/状态点</span>
+    </div>
+  </div>
+  <div style="margin-top:12px;color:#64748b;font-size:12px">阴影策略：无弥散阴影，仅用 <code style="background:#1e2a33;padding:2px 6px;border-radius:4px">box-shadow: 0 0 12px {color}30</code> 实现荧光晕光，无实体阴影</div>
+</div>
+
+<p class="subtitle" style="margin-top:24px">设计系统基础层如上。确认后我将进入<strong>布局框架</strong>（沉浸式 vs 渐进式两种模式）。</p>

@@ -107,6 +107,24 @@ Raw Idea → Record in ideas/YYYYMMDD-*.md → Agent Research → Architecture F
 **Discovery**: `schemaplexai-web` pom.xml was missing `schemaplexai-dao` dependency (fixed). Existing `schemaplexai-common` PageParamTest has compile errors (pre-existing, unrelated). Java 21 required via `JAVA_HOME` export.
 **Workflow notes**: Graphify task graph worked well for identifying parallel groups. Gateguard hook requires fact verification on every write — adds friction but ensures discipline.
 
+## 2026-05-01 — Abyss Hive UI Design System Spec & Plan
+
+**Trigger**: User requested a comprehensive UI/UE design system for SchemaPlexAI frontend with "hive/ant colony" metaphor and Black Mirror futurism.
+**Operation**: Brainstorming session with visual companion, design doc writing, implementation plan writing.
+**Pages created**:
+- `docs/superpowers/specs/2026-05-01-abyss-hive-ui-design.md` — Full UI/UE design spec (9 chapters: design system, layout, components, 4 signature pages, AntD theme, Midjourney prompts)
+- `docs/superpowers/plans/2026-05-01-abyss-hive-ui.md` — 17-task implementation plan (TDD, bite-sized, exact code)
+- `wiki/frontend/abyss-hive-design.md` — Wiki entry for design system
+
+**Key design decisions**:
+- Color: Blue-black `#0a0e1a` over pure black (extracted from AI-generated concept art)
+- Fonts: Inter + Noto Sans SC + JetBrains Mono (all SIL OFL open source)
+- Input style: x.com-inspired transparent background + floating labels + 8px radius
+- Layout: Scene-adaptive — Immersive for cockpit/canvas, Progressive for monitor/detail
+- Components: HexIcon, StatCard, PillNav, TerminalLog (all with tests)
+
+**Change workspace**: `.claude/changes/abyss-hive-ui/`
+
 ## 2026-04-30 — De-duplicated wiki/plans-and-initiatives.md
 
 **Trigger**: User identified redundancy between `wiki/plans-and-initiatives.md` and `docs/plans/README.md`.
