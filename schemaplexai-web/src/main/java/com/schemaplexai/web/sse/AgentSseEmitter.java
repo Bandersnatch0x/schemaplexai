@@ -19,9 +19,11 @@ public class AgentSseEmitter {
     private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
 
     public SseEmitter createEmitter(String clientId, String token) {
-        if (!StringUtils.hasText(token)) {
+        if (!StringUtils.hasText(token) || !token.startsWith("Bearer ")) {
             throw new BaseException(ResultCode.UNAUTHORIZED);
         }
+        // Full JWT signature and expiry validation is performed by the Gateway layer (JwtAuthFilter).
+        // The downstream web service receives pre-validated tokens via X-User-Id / X-Tenant-Id headers.
         SseEmitter emitter = new SseEmitter(0L);
         emitters.put(clientId, emitter);
 
@@ -63,7 +65,8 @@ public class AgentSseEmitter {
     public void completeWithError(String clientId, Throwable ex) {
         SseEmitter emitter = emitters.remove(clientId);
         if (emitter != null) {
-            emitter.completeWithError(ex);
+            log.error("SSE emitter error for client: {}", clientId, ex);
+            emitter.completeWithError(new RuntimeException("SSE connection error"));
         }
     }
 

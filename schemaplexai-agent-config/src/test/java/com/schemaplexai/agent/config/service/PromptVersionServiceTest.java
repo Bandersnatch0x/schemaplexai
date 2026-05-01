@@ -27,7 +27,9 @@ class PromptVersionServiceTest {
 
     @Test
     void shouldCreateVersionWithIncrementedNumber() {
-        when(promptVersionMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(2L);
+        SfPromptVersion latest = new SfPromptVersion();
+        latest.setVersion(2);
+        when(promptVersionMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(latest);
 
         SfPromptVersion result = promptVersionService.createVersion(
                 1L, 10L, "Content v3", "review", "Ready for review");

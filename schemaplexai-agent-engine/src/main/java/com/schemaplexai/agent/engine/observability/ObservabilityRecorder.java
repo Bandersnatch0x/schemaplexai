@@ -1,5 +1,6 @@
 package com.schemaplexai.agent.engine.observability;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.schemaplexai.agent.engine.mapper.ObservabilitySpanMapper;
 import com.schemaplexai.agent.engine.mapper.ObservabilityTraceMapper;
 import com.schemaplexai.model.entity.observability.ObservabilitySpan;
@@ -25,7 +26,7 @@ public class ObservabilityRecorder {
         trace.setName(name + "-" + executionId);
         trace.setUserId(userId);
         trace.setSessionId(sessionId);
-        trace.setInput(input);
+        trace.setInput(PiiRedactor.redact(input));
         traceMapper.insert(trace);
         return trace;
     }
@@ -33,10 +34,10 @@ public class ObservabilityRecorder {
     @Transactional
     public void endTrace(String traceId, String output) {
         ObservabilityTrace trace = traceMapper.selectOne(
-            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ObservabilityTrace>()
+            new LambdaQueryWrapper<ObservabilityTrace>()
                 .eq(ObservabilityTrace::getTraceId, traceId));
         if (trace != null) {
-            trace.setOutput(output);
+            trace.setOutput(PiiRedactor.redact(output));
             traceMapper.updateById(trace);
         }
     }
@@ -54,8 +55,8 @@ public class ObservabilityRecorder {
         span.setType(type);
         span.setStartTime(startTime);
         span.setEndTime(endTime);
-        span.setInput(input);
-        span.setOutput(output);
+        span.setInput(PiiRedactor.redact(input));
+        span.setOutput(PiiRedactor.redact(output));
         span.setStatus(status);
         spanMapper.insert(span);
         return span;

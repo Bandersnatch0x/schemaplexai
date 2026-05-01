@@ -21,9 +21,14 @@ public class PromptVersionServiceImpl
     @Override
     public SfPromptVersion createVersion(Long configId, Long agentId,
                                           String content, String label, String changeNote) {
-        Integer nextVersion = (int) (promptVersionMapper.selectCount(
-            new LambdaQueryWrapper<SfPromptVersion>()
-                .eq(SfPromptVersion::getConfigId, configId)) + 1);
+        // Atomic version increment using row-level locking (FOR UPDATE).
+        // Note: for multi-instance deployments, use a database sequence instead.
+        LambdaQueryWrapper<SfPromptVersion> lockWrapper = new LambdaQueryWrapper<>();
+        lockWrapper.eq(SfPromptVersion::getConfigId, configId)
+                   .orderByDesc(SfPromptVersion::getVersion)
+                   .last("FOR UPDATE");
+        SfPromptVersion latest = promptVersionMapper.selectOne(lockWrapper);
+        int nextVersion = (latest != null && latest.getVersion() != null ? latest.getVersion() : 0) + 1;
 
         SfPromptVersion pv = new SfPromptVersion();
         pv.setConfigId(configId);

@@ -3,7 +3,9 @@ package com.schemaplexai.agent.config.controller;
 import com.schemaplexai.agent.config.entity.SfPromptVersion;
 import com.schemaplexai.agent.config.service.PromptVersionService;
 import com.schemaplexai.common.result.Result;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,7 +19,8 @@ public class PromptVersionController {
     private final PromptVersionService promptVersionService;
 
     @PostMapping
-    public Result<SfPromptVersion> create(@RequestBody SfPromptVersion request) {
+    @PreAuthorize("hasAuthority('agent:config:write')")
+    public Result<SfPromptVersion> create(@Valid @RequestBody SfPromptVersion request) {
         SfPromptVersion pv = promptVersionService.createVersion(
             request.getConfigId(), request.getAgentId(),
             request.getContent(), request.getLabel(), request.getChangeNote());

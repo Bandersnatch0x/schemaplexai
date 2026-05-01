@@ -14,7 +14,7 @@ class AgentSseEmitterTest {
     @Test
     void shouldSendUnifiedMessageViaSseEmitter() throws IOException {
         AgentSseEmitter emitterManager = new AgentSseEmitter();
-        SseEmitter emitter = emitterManager.createEmitter("client-1", "valid-token");
+        SseEmitter emitter = emitterManager.createEmitter("client-1", "Bearer valid-token");
         assertThat(emitter).isNotNull();
 
         UnifiedMessage message = UnifiedMessage.builder()
@@ -34,7 +34,7 @@ class AgentSseEmitterTest {
     @Test
     void shouldSendSseEventTypeMessage() throws IOException {
         AgentSseEmitter emitterManager = new AgentSseEmitter();
-        SseEmitter emitter = emitterManager.createEmitter("client-2", "valid-token");
+        SseEmitter emitter = emitterManager.createEmitter("client-2", "Bearer valid-token");
         assertThat(emitter).isNotNull();
 
         UnifiedMessage message = UnifiedMessage.builder()
@@ -53,7 +53,7 @@ class AgentSseEmitterTest {
     @Test
     void shouldSendErrorTypeMessage() throws IOException {
         AgentSseEmitter emitterManager = new AgentSseEmitter();
-        SseEmitter emitter = emitterManager.createEmitter("client-3", "valid-token");
+        SseEmitter emitter = emitterManager.createEmitter("client-3", "Bearer valid-token");
         assertThat(emitter).isNotNull();
 
         UnifiedMessage message = UnifiedMessage.builder()

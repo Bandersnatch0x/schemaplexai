@@ -3,6 +3,7 @@ package com.schemaplexai.web.controller;
 import com.schemaplexai.common.result.Result;
 import com.schemaplexai.web.sse.AgentSseEmitter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -20,6 +21,7 @@ public class SseController extends BaseController {
     }
 
     @PostMapping("/send/{clientId}")
+    @PreAuthorize("hasAuthority('sse:admin:send')")
     public Result<Void> sendEvent(@PathVariable String clientId, @RequestParam String event, @RequestParam String data) {
         agentSseEmitter.sendEvent(clientId, event, data);
         return Result.success();
