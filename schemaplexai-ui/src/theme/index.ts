@@ -99,7 +99,7 @@ export const abyssHiveTheme: ThemeConfig = {
       itemColor: '#64748b',
     },
     Tooltip: {
-      colorBgDefault: '#111827',
+      colorBgSpotlight: '#111827',
       colorTextLightSolid: '#e2e8f0',
     },
     Menu: {
