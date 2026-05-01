@@ -8,12 +8,18 @@ export interface StatCardProps {
   sparkline?: number[]
   color?: 'cyan' | 'amber' | 'red'
   className?: string
+  'data-testid'?: string
 }
 
 const COLOR_MAP = {
   cyan: '#00d4aa',
   amber: '#ff9f43',
   red: '#ff4757',
+}
+
+function formatValue(value: string | number): string {
+  if (typeof value === 'string') return value
+  return value.toLocaleString('en-US')
 }
 
 export const StatCard: React.FC<StatCardProps> = ({
@@ -24,6 +30,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   sparkline,
   color = 'cyan',
   className = '',
+  'data-testid': testId,
 }) => {
   const c = COLOR_MAP[color]
   const changeText = change !== undefined
@@ -33,26 +40,18 @@ export const StatCard: React.FC<StatCardProps> = ({
   return (
     <div
       className={className}
+      data-testid={testId}
       style={{
-        background: '#111827',
+        backgroundColor: '#111827',
+        border: '1px solid #1e2a33',
         borderRadius: 8,
         padding: 16,
         position: 'relative',
         overflow: 'hidden',
+        borderLeftWidth: 3,
+        borderLeftColor: c,
       }}
     >
-      {/* Left accent bar */}
-      <div
-        style={{
-          position: 'absolute',
-          left: 0,
-          top: 0,
-          bottom: 0,
-          width: 3,
-          background: c,
-        }}
-      />
-
       <div style={{ color: '#64748b', fontSize: 11, fontWeight: 500, letterSpacing: '0.05em', marginBottom: 8 }}>
         {label.toUpperCase()}
       </div>
@@ -63,10 +62,10 @@ export const StatCard: React.FC<StatCardProps> = ({
             color: '#e2e8f0',
             fontSize: 28,
             fontWeight: 700,
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
           }}
         >
-          {value}
+          {formatValue(value)}
         </span>
         {changeText && (
           <span style={{ color: c, fontSize: 12 }}>{changeText}</span>
