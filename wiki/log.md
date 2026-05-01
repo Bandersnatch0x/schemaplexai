@@ -37,6 +37,22 @@ confidence: high
 **Discovery**: Project has zero tests. `schemaplexai-admin` is empty placeholder. Many business modules are stubs.
 **Budget**: Manual session, no API cost.
 
+## 2026-05-01 — Phase 1 Observability Foundation (archive)
+
+**Trigger**: Security audit found 3 CRITICAL + 4 HIGH issues after multi-agent parallel implementation.
+**Operation**: All issues fixed and merged to master. Change archived.
+**Changes archived**: `docs/archive/phase1-observability/` (proposal, spec, design, tasks, context)
+**Issues resolved**:
+- C-1: SSE JWT validation (local JwtValidator added)
+- C-2: PromptVersion @PreAuthorize
+- C-3: SSE send endpoint authorization
+- H-1: SfPromptVersion @Valid constraints
+- H-2: MQ DTO deserialization
+- H-3: Observability PII redaction
+- H-4: SSE error wrapping
+- CR-H1: Atomic version increment (SELECT FOR UPDATE)
+**Branch merged**: `feature/phase1-observability` → `master` (fast-forward)
+
 ## 2026-04-30 — CLAUDE.md Refactoring
 
 **Trigger**: User requested CLAUDE.md audit for contradictions/redundancies with wiki.
