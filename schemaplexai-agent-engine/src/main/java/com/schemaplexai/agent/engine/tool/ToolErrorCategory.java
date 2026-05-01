@@ -1,27 +1,37 @@
 package com.schemaplexai.agent.engine.tool;
 
+/**
+ * 工具执行错误类别，用于分类错误并决定恢复策略。
+ */
 public enum ToolErrorCategory {
-    INVALID_ARGUMENTS(false, false),
-    UNEXPECTED_ENVIRONMENT(false, true),
-    PROVIDER_ERROR(false, true),
-    USER_ABORTED(false, false),
-    TIMEOUT(false, true),
-    IRREVERSIBLE_OPERATION(true, false),
-    ENVIRONMENT_MISMATCH(true, false);
 
-    private final boolean securityRelated;
-    private final boolean retryable;
+    /**
+     * 权限被拒绝（工具不在白名单中）
+     */
+    PERMISSION_DENIED,
 
-    ToolErrorCategory(boolean securityRelated, boolean retryable) {
-        this.securityRelated = securityRelated;
-        this.retryable = retryable;
-    }
+    /**
+     * 无效参数
+     */
+    INVALID_ARGUMENT,
 
-    public boolean isSecurityRelated() {
-        return securityRelated;
-    }
+    /**
+     * 执行超时
+     */
+    TIMEOUT,
 
-    public boolean isRetryable() {
-        return retryable;
-    }
+    /**
+     * 内部错误
+     */
+    INTERNAL_ERROR,
+
+    /**
+     * 速率限制
+     */
+    RATE_LIMITED,
+
+    /**
+     * 资源不足（内存/CPU）
+     */
+    RESOURCE_EXHAUSTED
 }

@@ -1,6 +1,7 @@
 package com.schemaplexai.agent.engine.context;
 
 import com.schemaplexai.agent.engine.model.LlmMessage;
+import com.schemaplexai.agent.engine.tool.ValidationResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +21,12 @@ public class ContextInjector {
         Pattern.compile("you\\s+are\\s+now", Pattern.CASE_INSENSITIVE)
     );
 
+    private final List<InputValidator> validators;
+
+    public ContextInjector(List<InputValidator> validators) {
+        this.validators = validators;
+    }
+
     public void inject(List<LlmMessage> messages, Long agentId) {
         log.info("Injecting context for agent {}", agentId);
         // Load team context, knowledge docs, memory summaries
@@ -32,11 +39,17 @@ public class ContextInjector {
         }
         for (LlmMessage message : messages) {
             if (message.getContent() != null) {
+                // Validate input before variable substitution
+                validateInput(message.getContent());
+
                 String content = message.getContent();
                 for (Map.Entry<String, Object> entry : variables.entrySet()) {
                     String sanitizedValue = sanitize(String.valueOf(entry.getValue()));
                     content = content.replace("{{" + entry.getKey() + "}}", sanitizedValue);
                 }
+
+                // Validate output after variable substitution
+                validateInput(content);
                 message.setContent(content);
             }
         }
@@ -58,5 +71,19 @@ public class ContextInjector {
         }
 
         return sanitized;
+    }
+
+    /**
+     * 使用所有注册的 InputValidator 验证输入
+     * @param input 待验证文本
+     * @throws IllegalArgumentException 验证失败时抛出
+     */
+    public void validateInput(String input) {
+        for (InputValidator validator : validators) {
+            ValidationResult result = validator.validate(input);
+            if (!result.isValid()) {
+                throw new IllegalArgumentException("Input validation failed: " + result.errorMessage());
+            }
+        }
     }
 }

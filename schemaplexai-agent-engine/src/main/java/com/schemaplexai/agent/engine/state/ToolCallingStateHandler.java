@@ -3,24 +3,37 @@ package com.schemaplexai.agent.engine.state;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.memory.CompositeChatMemoryStore;
 import com.schemaplexai.agent.engine.model.LlmMessage;
-import com.schemaplexai.agent.engine.tool.ToolErrorCategory;
-import com.schemaplexai.agent.engine.tool.ToolExecutionRecorder;
-import com.schemaplexai.agent.engine.tool.ToolExecutionResult;
-import com.schemaplexai.agent.engine.tool.ToolSafetyGuard;
-import lombok.RequiredArgsConstructor;
+import com.schemaplexai.agent.engine.tool.SandboxConfig;
+import com.schemaplexai.agent.engine.tool.ToolCall;
+import com.schemaplexai.agent.engine.tool.ToolExecutionException;
+import com.schemaplexai.agent.engine.tool.ToolResult;
+import com.schemaplexai.agent.engine.tool.ToolSandbox;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class ToolCallingStateHandler implements AgentStateHandler {
 
     private final CompositeChatMemoryStore chatMemoryStore;
-    private final ToolSafetyGuard safetyGuard;
-    private final ToolExecutionRecorder executionRecorder;
+    private final ToolSandbox sandbox;
+    private final SandboxConfig sandboxConfig;
+
+    @Autowired
+    public ToolCallingStateHandler(CompositeChatMemoryStore chatMemoryStore, ToolSandbox sandbox) {
+        this(chatMemoryStore, sandbox, SandboxConfig.defaultConfig());
+    }
+
+    public ToolCallingStateHandler(CompositeChatMemoryStore chatMemoryStore,
+                                    ToolSandbox sandbox,
+                                    SandboxConfig sandboxConfig) {
+        this.chatMemoryStore = chatMemoryStore;
+        this.sandbox = sandbox;
+        this.sandboxConfig = sandboxConfig;
+    }
 
     @Override
     public AgentExecutionState getState() {
@@ -46,36 +59,24 @@ public class ToolCallingStateHandler implements AgentStateHandler {
                 return;
             }
 
+            // Parse tool calls from assistant message
             List<ToolCall> toolCalls = parseToolCalls(lastMessage.getContent());
-            if (toolCalls.isEmpty()) {
-                stateMachine.transition(AgentExecutionState.COMPLETED, execution);
-                return;
-            }
-
             for (ToolCall toolCall : toolCalls) {
-                ToolExecutionResult result = executeToolWithGuard(execution, toolCall);
-                executionRecorder.record(execution.getId(), result);
+                log.info("Executing tool {} for execution {}", toolCall.toolName(), execution.getId());
 
-                if (result.blocked()) {
-                    log.error("Tool {} blocked for execution {}: {}",
-                        toolCall.name, execution.getId(), result.errorMessage());
+                // Execute in sandbox with safety validation
+                try {
+                    ToolResult result = sandbox.execute(toolCall, sandboxConfig);
                     chatMemoryStore.saveMessage(execution.getConversationId(),
-                        new LlmMessage("tool", "BLOCKED: " + result.errorMessage()));
+                            new LlmMessage("tool", result.output()));
+                } catch (ToolExecutionException e) {
+                    log.error("Tool {} failed for execution {}: {}",
+                            toolCall.toolName(), execution.getId(), e.getMessage());
+                    chatMemoryStore.saveMessage(execution.getConversationId(),
+                            new LlmMessage("tool", "Tool error: " + e.getMessage()));
                     stateMachine.transition(AgentExecutionState.FAILED, execution);
                     return;
                 }
-
-                if (!result.success()) {
-                    log.error("Tool {} failed for execution {}: category={}",
-                        toolCall.name, execution.getId(), result.errorCategory());
-                    chatMemoryStore.saveMessage(execution.getConversationId(),
-                        new LlmMessage("tool", "ERROR: " + result.errorMessage()));
-                    stateMachine.transition(AgentExecutionState.FAILED, execution);
-                    return;
-                }
-
-                chatMemoryStore.saveMessage(execution.getConversationId(),
-                    new LlmMessage("tool", result.output()));
             }
 
             stateMachine.transition(AgentExecutionState.THINKING, execution);
@@ -123,22 +124,4 @@ public class ToolCallingStateHandler implements AgentStateHandler {
         }
         return List.of();
     }
-
-    // TODO(stub): Replace with real tool registry invocation.
-    // Throws when toolName equals "failStub" to allow testing the error path.
-    private String executeToolStub(ToolCall toolCall) {
-        if ("failStub".equals(toolCall.name)) {
-            throw new RuntimeException("Simulated tool execution failure");
-        }
-        return "Tool " + toolCall.name + " executed with args: " + toolCall.arguments;
-    }
-
-    private int estimateTokens(String text) {
-        if (text == null) {
-            return 0;
-        }
-        return text.length() / 4;
-    }
-
-    private record ToolCall(String name, String arguments) {}
 }
