@@ -1,6 +1,7 @@
 package com.schemaplexai.agent.engine.state;
 
 public enum AgentExecutionState {
+    QUEUED,
     INITIALIZING,
     READY,
     THINKING,
