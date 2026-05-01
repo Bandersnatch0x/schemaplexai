@@ -173,6 +173,45 @@ Raw Idea → Record in ideas/YYYYMMDD-*.md → Agent Research → Architecture F
 - MQ exchanges/queues config — not explored
 - Frontend page components — not explored
 
+## 2026-05-01 — Cursor Evaluation-First Integration (archive)
+
+**Trigger**: User requested pre-research on Cursor Agent Harness Evaluation-First article (https://yage.ai/share/cursor-agent-harness-evaluation-first-20260501.html) for integration into SchemaPlexAI workflow.
+**Operation**: Pre-research + implementation + security review + code review + docs sync.
+**Pages created**:
+- `wiki/tool/tool-safety-guard.md` — Pre-execution security guard with 4-dimension checks and input normalization pipeline
+- `wiki/tool/tool-execution-recorder.md` — Audit logger for tool invocations with evaluation metrics support
+- `wiki/tool/tool-error-category.md` — Error taxonomy with `securityRelated` and `retryable` flags
+
+**Pages updated**:
+- `docs/specs/2026-04-30-v1.0-agent-execution-engine.md` — Added section 3.5 Tool Evaluation Framework
+- `wiki/services/agent-state-machine.md` — Updated TOOL_CALLING state with safety guard and recorder integration details
+
+**Code delivered**:
+- `ToolErrorCategory.java` — 7-category error taxonomy
+- `ToolExecutionResult.java` — Immutable record with success/failure/blocked factories
+- `ToolSafetyGuard.java` — 4-dimension safety guard (tool blacklist, arg scanning, env mismatch, input normalization)
+- `ToolExecutionRecorder.java` — Audit logger with fail-stop behavior
+- `ToolExecutionAuditException.java` — Security audit exception
+- `ToolCallingStateHandler.java` — Integrated safety guard + recorder into state machine
+
+**Tests**: 6 test files, 38 tests, all passing.
+**Reviews**: Security review (3 Critical resolved) + Code review (8 issues resolved).
+**Archive**: `docs/archive/cursor-evaluation-first-2026-05-01/`
+
+**Discovery**:
+- Java 17 default system JDK incompatible; project requires Java 21 (`JAVA_HOME=/e/jdk/microsoft-jdk-21.0.10-windows-x64/jdk-21.0.10+7`)
+- Pre-existing broken tests in other modules interfered with `mvn test`; temporarily moved to `_broken_tests_backup`
+- NFKC normalization does NOT map Cyrillic→Latin homoglyphs; required custom `mapHomoglyphs()` method
+- Record component accessors (`allowed()`, `blocked()`) conflict with static factory method names; renamed to `permit()`/`reject()`
+
+**Next steps**:
+1. ToolRegistry implementation (eliminate parseToolCalls/executeToolStub stubs)
+2. Remaining state handlers (PAUSED, RETRYING, GATE_BLOCKED, AgentLoopDetectionService)
+3. Evaluation metrics pipeline (Prometheus endpoint, Keep Rate/Latency P99/Blocked Rate)
+4. Tenant environment configuration (replace tenantId string comparison)
+
+---
+
 ## 2026-05-01 — Core AI Engine Design Phase 2 (archive)
 
 **Trigger**: Team lead requested T4 archive for Core AI Engine Design Phase 2 spec and design.

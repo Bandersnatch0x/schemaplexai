@@ -67,7 +67,7 @@ public class AgentStateMachine {
 | `INITIALIZING` | No | Setup phase |
 | `READY` | No | Waiting for input |
 | `THINKING` | No | LLM reasoning |
-| `TOOL_CALLING` | No | Executing tool |
+| `TOOL_CALLING` | No | Executing tool (with safety guard + audit) |
 | `OBSERVATION` | No | Processing tool result |
 | `PAUSED` | No | Execution paused |
 | `GATE_BLOCKED` | No | Admission denied |
@@ -88,6 +88,22 @@ public class AgentStateMachine {
 |-----------|------|
 | `SfAgentExecutionMapper` | Persist state to database |
 | `AgentStateHandler` | State-specific behavior (injected list) |
+| `ToolSafetyGuard` | Pre-execution safety checks for TOOL_CALLING |
+| `ToolExecutionRecorder` | Audit logging for tool invocations |
+
+## State Details
+
+### TOOL_CALLING
+
+The `TOOL_CALLING` state handler performs a safety-first evaluation before any tool is executed:
+
+1. **Parse** — Extract tool calls from the last assistant message
+2. **Safety Check** — `ToolSafetyGuard.check()` validates tool name, arguments, and environment
+3. **Execute** — Run the tool through the adapter/registry
+4. **Audit** — `ToolExecutionRecorder.record()` logs the result
+5. **Transition** — `THINKING` (success) or `FAILED` (blocked/error)
+
+Security-related failures (`IRREVERSIBLE_OPERATION`, `ENVIRONMENT_MISMATCH`) immediately transition to `FAILED` and log a BLOCKED message to chat memory.
 
 ## Backlinks
 

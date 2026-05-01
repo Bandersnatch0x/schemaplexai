@@ -31,9 +31,13 @@ Last significant commits:
 - Specs being drafted (9 active)
 
 ### 2. Agent Engine (Core Focus)
-- `schemaplexai-agent-engine` has execution stubs
-- `AgentExecutionEngine` needs async implementation
+- `schemaplexai-agent-engine` has core execution framework in place
+- **Evaluation-First framework delivered**: ToolErrorCategory, ToolSafetyGuard, ToolExecutionRecorder, ToolExecutionResult
+- **State handlers**: ThinkingStateHandler and ToolCallingStateHandler implemented with safety-first flow
+- **Tests**: 38 tests passing in agent-engine (first module with meaningful test coverage)
+- **Stubs remaining**: ToolRegistry not yet implemented (parseToolCalls/executeToolStub are temporary)
 - LangChain4j integration scaffolded
+- Async thread pool config (`AgentAsyncConfig`) added
 
 ### 3. Workflow Engine
 - `WorkflowNodeEngine` has strategy pattern for 7 node types
@@ -68,7 +72,7 @@ Last significant commits:
 
 - `schemaplexai-admin` — completely empty
 - `schemaplexai-task` — MQ consumers not yet explored
-- Tests — zero tests across all modules
+- Tests — agent-engine has 38 passing tests; other modules still have zero coverage
 
 ## Backlinks
 

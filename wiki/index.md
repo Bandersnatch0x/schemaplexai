@@ -56,6 +56,12 @@ confidence: high
 - [[services/workflow-node-engine]] — Flowable BPMN + AI node engine
 - [[services/rag-service]] — RAG pipeline and Milvus integration
 
+## Tool Framework
+
+- [[tool/tool-safety-guard]] — Pre-execution security guard (irreversible op blocking, input normalization)
+- [[tool/tool-execution-recorder]] — Audit logger for tool invocations with evaluation metrics
+- [[tool/tool-error-category]] — Error taxonomy with security/retry flags
+
 ## Frontend
 
 - [[frontend/structure]] — React + Vite project structure, routing, state management
