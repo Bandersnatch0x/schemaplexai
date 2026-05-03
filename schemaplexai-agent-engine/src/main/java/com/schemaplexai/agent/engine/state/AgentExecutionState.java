@@ -10,6 +10,7 @@ public enum AgentExecutionState {
     PAUSED,
     GATE_BLOCKED,
     RETRYING,
+    REFLECTING,
     COMPLETED,
     FAILED,
     CANCELLED;

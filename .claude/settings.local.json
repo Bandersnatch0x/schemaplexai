@@ -99,7 +99,8 @@
       "Bash(chmod +x *)",
       "Skill(update-config)",
       "Bash(mkdir -p scripts/lib)",
-      "Bash(mkdir -p .claude/hooks)"
+      "Bash(mkdir -p .claude/hooks)",
+      "Bash(tasklist)"
     ]
   },
   "hooks": {

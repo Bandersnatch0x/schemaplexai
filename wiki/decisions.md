@@ -1,52 +1,25 @@
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-01T18:07:24Z -->
+
 ---
-title: Architectural Decisions
-type: decision
-source: docs/decisions/
-creation_date: 2026-04-30
-update_date: 2026-04-30
-tags: [adr, decisions, architecture]
+title: Architecture Decision Records Index
+type: index
+source: auto-generated
+creation_date: 2026-05-02
+update_date: 2026-05-02
+tags: [decisions, adr]
 confidence: high
 ---
 
-# Architectural Decisions
+# Architecture Decision Records
 
-> One-sentence summary: All ADRs from docs/decisions/ consolidated in lightweight format (Title, Context, Decision, Status).
+> Auto-generated from docs/decisions/ ADR files.
 
-## ADR-001: Service Decomposition
-
-- **Context**: Monolith vs microservices for AI R&D collaboration platform
-- **Decision**: Adopted domain-driven microservices (16 modules) with Gateway aggregation
-- **Status**: Accepted
-- **Rationale**: Independent deployment of agent-engine, workflow, context domains; Gateway provides unified entry
-
-## ADR-002: Cursor SDK to OpenSandbox
-
-- **Context**: Need a sandboxed execution environment for agent code
-- **Decision**: Migrated from Cursor SDK to OpenSandbox approach
-- **Status**: Accepted
-- **Rationale**: Better isolation and security for arbitrary code execution
-
-## ADR-003: LangChain4j Selection
-
-- **Context**: Java LLM orchestration library choice
-- **Decision**: Selected LangChain4j 0.31.0 over Spring AI
-- **Status**: Accepted
-- **Rationale**: More mature Java-native LLM abstractions, better integration with external model providers
-
-## ADR-004: Database Middleware Selection
-
-- **Context**: Need ORM + tenant isolation for multi-tenant PostgreSQL
-- **Decision**: MyBatis-Plus 3.5.5 with custom TenantLineInterceptor
-- **Status**: Accepted
-- **Rationale**: Flexible SQL control, easy tenant injection, compatible with complex queries
-
-## Pending Decisions
-
-- Vector DB: Milvus vs pgvector (Milvus chosen but not yet fully exercised)
-- Frontend state: Zustand vs Redux (Zustand chosen, no migration planned)
-- Test framework: JUnit 5 + Testcontainers (defined but not yet used — zero tests exist)
-
-## Backlinks
-
-- Full ADR sources in `docs/decisions/ADR-*.md`
-- See [[architecture]] for service decomposition impact
+- [service-decomposition](D:/code_space/frige/docs/decisions/ADR-001-service-decomposition.md) (v1.0) — 已批准
+- [cursor-sdk-to-opensandbox](D:/code_space/frige/docs/decisions/ADR-002-cursor-sdk-to-opensandbox.md) (v1.0) — 已批准
+- [langchain4j-selection](D:/code_space/frige/docs/decisions/ADR-003-langchain4j-selection.md) (v1.0) — 已批准
+- [database-middleware-selection](D:/code_space/frige/docs/decisions/ADR-004-database-middleware-selection.md) (v1.0) — 已批准
+- [api-gateway](D:/code_space/frige/docs/decisions/ADR-007-api-gateway.md) (v1.0) — 已批准
+- [domain-decomposition](D:/code_space/frige/docs/decisions/ADR-008-domain-decomposition.md) (v1.0) — 已批准
+- [agent-state-machine](D:/code_space/frige/docs/decisions/ADR-009-agent-state-machine.md) (v1.0) — 已批准
+- [token-budget](D:/code_space/frige/docs/decisions/ADR-010-token-budget.md) (v1.0) — 已批准
+- [](D:/code_space/frige/docs/decisions/ADR-TEMPLATE.md) () — 

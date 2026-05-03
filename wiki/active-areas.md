@@ -1,81 +1,26 @@
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-01T18:07:18Z -->
+
 ---
 title: Active Development Areas
-type: project
-source: git log, codebase analysis, docs/plans/
-creation_date: 2026-04-30
-update_date: 2026-05-01
-tags: [active, development, focus, hotspots]
+type: index
+source: auto-generated
+creation_date: 2026-05-02
+update_date: 2026-05-02
+tags: [active, development]
 confidence: high
 ---
 
 # Active Development Areas
 
-> One-sentence summary: Current hotspots of development activity based on recent commits, stubs, and planned work.
+> Auto-generated from docs/ status=进行中/评审中 entries.
 
-## Recent Git Activity
+## Active Specs
 
-Last significant commits:
-- `bf8b706` — refactor(docs): 建立主题化文档管理体系
-- `c8aeb5d` — chore: unify docs directory structure + update CLAUDE.md with SDD+TDD
-- `28cd7b9` — docs: add Agent Runtime Platform design spec + project plan direction update
-- `f25315e` — chore: baseline before runtime redesign
 
-**Pattern**: Heavy documentation and planning activity. Code changes are scaffolding-focused.
+## Active Plans
 
-## Current Hotspots
 
-### 1. Documentation System (High Activity)
-- docs/ directory restructuring complete
-- SDD + TDD process defined
-- ADRs being written (4 complete)
-- Specs being drafted (9 active)
+## Active Changes (.claude/changes/)
 
-### 2. Agent Engine (Core Focus)
-- `schemaplexai-agent-engine` has core execution framework in place
-- **Evaluation-First framework delivered**: ToolErrorCategory, ToolSafetyGuard, ToolExecutionRecorder, ToolExecutionResult
-- **State handlers**: ThinkingStateHandler and ToolCallingStateHandler implemented with safety-first flow
-- **Tests**: 38 tests passing in agent-engine (first module with meaningful test coverage)
-- **Stubs remaining**: ToolRegistry not yet implemented (parseToolCalls/executeToolStub are temporary)
-- LangChain4j integration scaffolded
-- Async thread pool config (`AgentAsyncConfig`) added
-
-### 3. Workflow Engine
-- `WorkflowNodeEngine` has strategy pattern for 7 node types
-- Flowable BPMN integration in place
-- Node executors need concrete implementations
-
-### 4. Frontend Scaffolding
-- React Router configured with 10+ pages
-- Axios interceptors and auth flow ready
-- Page components likely need business logic
-
-### 5. Open Source Architecture Research (High Activity — 2026-04-30)
-- 6 open-source AI Agent projects researched (open-agents, deer-flow, langfuse, holyclaude, aionui, zeroboot)
-- Multi-perspective roundtable debate completed (architecture/engineering/product)
-- Formal spec produced: `docs/specs/open-source-agent-architecture-research.md`
-- Phase 1 implementation plan ready: `docs/plans/2026-04-30-phase1-observability-foundation.md`
-- Phase 3 sandbox design: zeroboot CoW VM (Rust + Firecracker + KVM, ~0.8ms fork, 265KB RSS)
-
-### 6. Abyss Hive UI Design System (New — 2026-05-01)
-- **Design spec complete**: `docs/superpowers/specs/2026-05-01-abyss-hive-ui-design.md`
-- **Implementation plan ready**: `docs/superpowers/plans/2026-05-01-abyss-hive-ui.md` (17 tasks)
-- **Scope**: Global design system (colors, typography, AntD theme tokens) + 4 signature pages
-  - Cockpit (immersive) — Agent swarm visualization with orchestrator hub
-  - Agent Canvas (immersive) — DAG workflow editor with topology/list/code views
-  - Workflow Monitor (progressive) — Gantt chart + detail table
-  - Agent Detail (progressive) — Real-time metrics, terminal logs, tabs
-- **Style**: TeamCity layout × cockpit immersion × hive metaphor × Black Mirror futurism
-- **Tech approach**: Ant Design 5 ConfigProvider token override + CSS variables, no custom component library
-- **Status**: Spec and plan complete, awaiting execution
-
-## Inactive/Stale Areas
-
-- `schemaplexai-admin` — completely empty
-- `schemaplexai-task` — MQ consumers not yet explored
-- Tests — agent-engine has 38 passing tests; other modules still have zero coverage
-
-## Backlinks
-
-- Plans: `docs/plans/README.md`
-- Debt: [[technical-debt]]
-- Roadmap: [[roadmap]]
+- **core-ai-engine-design**: spec=no, tasks=no
+- **wiki-gaps-completion**: spec=no, tasks=no
