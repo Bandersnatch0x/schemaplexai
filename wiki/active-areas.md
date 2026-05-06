@@ -5,7 +5,7 @@ title: Active Development Areas
 type: index
 source: auto-generated
 creation_date: 2026-05-02
-update_date: 2026-05-06
+update_date: 2026-05-07
 tags: [active, development]
 confidence: high
 ---
@@ -34,15 +34,15 @@ confidence: high
 
 ## v1.0 Release Status
 
-- **Tests**: 527/527 passing (100%) + 16 new tests (DocumentChunker, EmbeddingService, NodeExecutorRegistry)
+- **Tests**: 845/845 passing (100%), 1 skipped — agent-engine module
 - **Build**: All 17 modules compile
 - **CI/CD**: GitHub Actions + Jenkins configured
 - **API Docs**: Knife4j + docs/API.md
-- **JaCoCo**: Baseline generated for agent-engine module (mvn verify)
-  - state: 81.2% (meets spec >=80%)
+- **JaCoCo**: Latest baseline (2026-05-07) for agent-engine module
+  - state: 87% (meets spec >=80%)
   - orchestrator: 100% (meets spec >=80%)
-  - tool: 21.3% (**BELOW** spec >=80%)
-  - memory: 23.3% (**BELOW** spec >=80%)
-  - sse: 38.9% (no spec threshold)
-  - lifecycle: 45.5% (no spec threshold)
-- **Pending**: Add tests for tool and memory packages to meet >=80% spec
+  - tool: 94% (meets spec >=80%)
+  - memory: 93% (meets spec >=80%)
+  - sse: 80% (no spec threshold)
+  - lifecycle: 44% (no spec threshold)
+- **Pending**: Address 2 pre-existing test infrastructure items (gaps.md #11–#12)
