@@ -4,6 +4,7 @@ type: index
 source: wiki gap analysis
 creation_date: 2026-04-30
 update_date: 2026-05-07
+10. ~~**Agent-engine SSE event bus is single-node only**~~ — documented in [[services/execution-event-bus]] and [[wiki/active-areas]] with fix options (sticky sessions or Redis pub/sub bridge)
 tags: [gaps, questions, todo, undocumented]
 confidence: high
 ---
@@ -69,6 +70,7 @@ The following controllers exist but have no dedicated wiki pages (most are stand
 - ~~`ResumingStateHandler`~~ — documented in [[services/resuming-state-handler]]
 - ~~`QualityOrchestrator`~~ — implemented with rule registry, evaluation pipeline, and 10 unit tests
 - ~~`FlowableDelegateAdapter`~~ — implemented as JavaDelegate bridge to WorkflowNodeEngine
+- ~~All major Service interfaces~~ — 67 service wiki pages created covering all modules (agent-config, agent-engine, context, integration, ops, quality, spec, system, task, workflow, web)
 - All `*ServiceImpl` classes (implementation details)
 
 ## Open Questions
@@ -82,6 +84,7 @@ The following controllers exist but have no dedicated wiki pages (most are stand
 7. ~~**How is tenant data physically isolated?**~~ — documented in [[services/tenant-line-interceptor]]
 8. ~~**What MQ exchanges and queues are configured?**~~ — documented in [[services/rabbitmq-messaging]]
 9. **What is the frontend page implementation status?** — Page components not read
+10. **Agent-engine SSE event bus is single-node only** — `ExecutionEventBus` holds SSE emitters in a local `ConcurrentHashMap`. If an execution runs on Node A and a user connects to Node B via load balancer, Node B's event bus has no emitters for that execution and the subscriber receives nothing. Acceptable for MVP/single-node, but a blocker for horizontal scaling. Potential fixes: (a) load-balancer sticky sessions routing by `executionId`, or (b) Redis pub/sub bridge to fan out events across nodes.
 
 ## Backlinks
 
