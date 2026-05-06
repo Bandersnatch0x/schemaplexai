@@ -1,11 +1,13 @@
 package com.schemaplexai.agent.engine.tool.adapter.http;
 
+import com.schemaplexai.agent.engine.config.SecurityPolicyLoader;
 import com.schemaplexai.agent.engine.tool.ToolCall;
 import com.schemaplexai.agent.engine.tool.ToolErrorCategory;
 import com.schemaplexai.agent.engine.tool.ToolExecutionException;
 import com.schemaplexai.agent.engine.tool.ToolResult;
 import com.schemaplexai.agent.engine.tool.adapter.ExecutionContext;
 import com.schemaplexai.agent.engine.tool.adapter.ToolAdapter;
+import com.schemaplexai.model.entity.config.TenantEnvironmentConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +16,9 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -22,10 +26,14 @@ import java.util.Set;
  *
  * Security measures:
  * - Private IP blocklist (10.x, 172.16-31.x, 192.168.x, 127.x, 169.254.x)
- * - Allowlist support (configurable via TenantEnvironmentConfig)
+ * - Tenant-level HTTP call permission check via {@link SecurityPolicyLoader}
  * - Redirect depth limit (max 3, re-checking target IP each time)
  * - Dangerous protocol blocking (file://, gopher://, etc.)
  * - Connection/read timeouts (5s / 30s)
+ *
+ * TODO: Add per-tenant URL allowlist filtering before the SSRF private-IP check.
+ *       The allowlist should be loaded from TenantEnvironmentConfig.extraConfig
+ *       and validated against the requested URL host before DNS resolution.
  */
 @Slf4j
 @Component
@@ -33,13 +41,16 @@ public class HttpCallAdapter implements ToolAdapter {
 
     private static final Set<String> BLOCKED_SCHEMES = Set.of("file", "gopher", "ftp", "jar");
     private static final Set<String> ALLOWED_METHODS = Set.of("GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS");
+    private static final Set<String> BODY_METHODS = Set.of("POST", "PUT", "PATCH");
     private static final int MAX_REDIRECTS = 3;
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(30);
 
     private final HttpClient httpClient;
+    private final SecurityPolicyLoader securityPolicyLoader;
 
-    public HttpCallAdapter() {
+    public HttpCallAdapter(SecurityPolicyLoader securityPolicyLoader) {
+        this.securityPolicyLoader = securityPolicyLoader;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(CONNECT_TIMEOUT)
                 .followRedirects(HttpClient.Redirect.NEVER)
@@ -66,8 +77,18 @@ public class HttpCallAdapter implements ToolAdapter {
                     "HTTP method not allowed: " + method + ". Allowed: " + ALLOWED_METHODS);
         }
 
+        // Tenant-level permission check
+        if (ctx != null && ctx.tenantId() != null) {
+            TenantEnvironmentConfig config = securityPolicyLoader.load(ctx.tenantId());
+            if (config.getAllowHttpCalls() == null || Boolean.FALSE.equals(config.getAllowHttpCalls())) {
+                log.warn("HTTP calls blocked for tenant {}: not allowed by security policy", ctx.tenantId());
+                throw new ToolExecutionException(ToolErrorCategory.ENVIRONMENT_MISMATCH,
+                        "HTTP calls are not enabled for this tenant");
+            }
+        }
+
         try {
-            return executeWithRedirectProtection(urlStr, method, 0);
+            return executeWithRedirectProtection(urlStr, method, call.parameters(), 0);
         } catch (ToolExecutionException e) {
             throw e;
         } catch (Exception e) {
@@ -77,7 +98,8 @@ public class HttpCallAdapter implements ToolAdapter {
         }
     }
 
-    private ToolResult executeWithRedirectProtection(String urlStr, String method, int redirectCount)
+    private ToolResult executeWithRedirectProtection(String urlStr, String method,
+                                                      Map<String, Object> parameters, int redirectCount)
             throws ToolExecutionException {
         if (redirectCount > MAX_REDIRECTS) {
             throw new ToolExecutionException(ToolErrorCategory.ENVIRONMENT_MISMATCH,
@@ -112,7 +134,7 @@ public class HttpCallAdapter implements ToolAdapter {
         InetAddress resolvedAddress;
         try {
             resolvedAddress = InetAddress.getByName(host);
-            if (isPrivateAddress(resolvedAddress)) {
+            if (SsrfProtectionUtil.isPrivateAddress(resolvedAddress)) {
                 log.warn("SSRF blocked: private IP {} for URL {}", resolvedAddress.getHostAddress(), urlStr);
                 throw new ToolExecutionException(ToolErrorCategory.ENVIRONMENT_MISMATCH,
                         "HTTP call blocked: private/internal IP addresses not allowed");
@@ -149,7 +171,10 @@ public class HttpCallAdapter implements ToolAdapter {
             switch (method) {
                 case "GET" -> requestBuilder.GET();
                 case "DELETE" -> requestBuilder.DELETE();
-                default -> requestBuilder.method(method, HttpRequest.BodyPublishers.noBody());
+                default -> {
+                    HttpRequest.BodyPublisher bodyPublisher = buildBodyPublisher(method, parameters);
+                    requestBuilder.method(method, bodyPublisher);
+                }
             }
 
             HttpResponse<String> response = httpClient.send(requestBuilder.build(),
@@ -171,7 +196,7 @@ public class HttpCallAdapter implements ToolAdapter {
                                 "Invalid redirect URL: " + location);
                     }
                     log.info("Following redirect ({} of {}): {} -> {}", redirectCount + 1, MAX_REDIRECTS, urlStr, redirectUri);
-                    return executeWithRedirectProtection(redirectUri.toString(), "GET", redirectCount + 1);
+                    return executeWithRedirectProtection(redirectUri.toString(), "GET", parameters, redirectCount + 1);
                 }
             }
 
@@ -188,59 +213,23 @@ public class HttpCallAdapter implements ToolAdapter {
     }
 
     /**
-     * Check if an IP address is in a private/internal range.
-     * Blocks: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8, 169.254.0.0/16
+     * Build an HTTP body publisher from tool parameters.
+     *
+     * <p>For POST/PUT/PATCH, extracts the {@code body} parameter from the tool call.
+     * If no body is provided, sends an empty body.</p>
+     *
+     * @param method     the HTTP method
+     * @param parameters the tool call parameters
+     * @return a body publisher for the request
      */
-    static boolean isPrivateAddress(InetAddress address) {
-        if (address.isLoopbackAddress() || address.isLinkLocalAddress()) {
-            return true;
+    private static HttpRequest.BodyPublisher buildBodyPublisher(String method, Map<String, Object> parameters) {
+        if (!BODY_METHODS.contains(method)) {
+            return HttpRequest.BodyPublishers.noBody();
         }
-        byte[] octets = address.getAddress();
-        if (octets.length == 4) {
-            int first = octets[0] & 0xFF;
-            int second = octets[1] & 0xFF;
-            // 10.0.0.0/8
-            if (first == 10) return true;
-            // 172.16.0.0/12
-            if (first == 172 && second >= 16 && second <= 31) return true;
-            // 192.168.0.0/16
-            if (first == 192 && second == 168) return true;
-            // 127.0.0.0/8 (loopback, already caught by isLoopbackAddress for IPv4)
-            if (first == 127) return true;
-            // 169.254.0.0/16 (link-local, already caught by isLinkLocalAddress)
-            if (first == 169 && (octets[1] & 0xFF) == 254) return true;
-            // 0.0.0.0/8
-            if (first == 0) return true;
-        } else if (octets.length == 16) {
-            // IPv6 private ranges
-            int firstByte = octets[0] & 0xFF;
-            int secondByte = octets[1] & 0xFF;
-            // fc00::/7 (Unique Local Addresses) — first byte is 1111_110x = 0xFC or 0xFD
-            if ((firstByte & 0xFE) == 0xFC) return true;
-            // fe80::/10 (Link-Local) — first byte is 1111_1110_10 = 0xFE80
-            if ((firstByte & 0xFF) == 0xFE && (secondByte & 0xC0) == 0x80) return true;
-            // ::1 (loopback) — already caught by isLoopbackAddress
-            // ff00::/8 (Multicast) — not private, but blocked for safety
-            if ((firstByte & 0xFF) == 0xFF) return true;
-            // ::ffff:0:0/96 (IPv4-mapped) — check underlying IPv4
-            if (isIpv4MappedAddress(octets)) {
-                int mapped = (octets[12] & 0xFF);
-                int mapped2 = (octets[13] & 0xFF);
-                if (mapped == 10) return true;
-                if (mapped == 172 && mapped2 >= 16 && mapped2 <= 31) return true;
-                if (mapped == 192 && mapped2 == 168) return true;
-                if (mapped == 127) return true;
-                if (mapped == 0) return true;
-            }
+        Object body = parameters.get("body");
+        if (body == null) {
+            return HttpRequest.BodyPublishers.noBody();
         }
-        return false;
-    }
-
-    private static boolean isIpv4MappedAddress(byte[] octets) {
-        return octets.length == 16
-                && octets[10] == (byte) 0xFF && octets[11] == (byte) 0xFF
-                && octets[0] == 0 && octets[1] == 0 && octets[2] == 0
-                && octets[3] == 0 && octets[4] == 0 && octets[5] == 0
-                && octets[6] == 0 && octets[7] == 0 && octets[8] == 0;
+        return HttpRequest.BodyPublishers.ofString(body.toString(), StandardCharsets.UTF_8);
     }
 }

@@ -25,22 +25,24 @@ import java.util.List;
 @Component
 public class ThinkingStateHandler implements AgentStateHandler {
 
-    private static final String DEFAULT_MODEL = "gpt-4";
     private static final double DEFAULT_TEMPERATURE = 0.7;
 
     private final ContextInjector contextInjector;
     private final CompositeChatMemoryStore chatMemoryStore;
     private final AiModelRouter modelRouter;
     private final AgentLoopDetectionService loopDetection;
+    private final com.schemaplexai.agent.engine.model.ModelResolver modelResolver;
 
     public ThinkingStateHandler(ContextInjector contextInjector,
                                  CompositeChatMemoryStore chatMemoryStore,
                                  AiModelRouter modelRouter,
-                                 AgentLoopDetectionService loopDetection) {
+                                 AgentLoopDetectionService loopDetection,
+                                 com.schemaplexai.agent.engine.model.ModelResolver modelResolver) {
         this.contextInjector = contextInjector;
         this.chatMemoryStore = chatMemoryStore;
         this.modelRouter = modelRouter;
         this.loopDetection = loopDetection;
+        this.modelResolver = modelResolver;
     }
 
     @Override
@@ -220,7 +222,6 @@ public class ThinkingStateHandler implements AgentStateHandler {
     }
 
     private String resolveModelId(SfAgentExecution execution) {
-        // TODO: Read from execution model config when available
-        return DEFAULT_MODEL;
+        return modelResolver.resolve(execution);
     }
 }

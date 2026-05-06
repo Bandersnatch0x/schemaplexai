@@ -8,6 +8,8 @@ import com.schemaplexai.ops.mapper.SyncBatchLogMapper;
 import com.schemaplexai.ops.mapper.SyncCursorMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -18,13 +20,16 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Slf4j
 @Service
+@ConditionalOnProperty(name = "clickhouse.enabled", havingValue = "true")
 public class ClickHouseCostSyncService {
 
     private static final int DEFAULT_BATCH_SIZE = 1000;
@@ -34,28 +39,34 @@ public class ClickHouseCostSyncService {
     private final SyncBatchLogMapper syncBatchLogMapper;
     private final JdbcTemplate pgJdbcTemplate;
     private final DataSource clickHouseDataSource;
+    private final boolean enabled;
 
     public ClickHouseCostSyncService(
             SyncCursorMapper syncCursorMapper,
             SyncBatchLogMapper syncBatchLogMapper,
             JdbcTemplate pgJdbcTemplate,
-            @Qualifier("clickHouseDataSource") DataSource clickHouseDataSource) {
+            @Qualifier("clickHouseDataSource") DataSource clickHouseDataSource,
+            @Value("${clickhouse.enabled:false}") boolean enabled) {
         this.syncCursorMapper = syncCursorMapper;
         this.syncBatchLogMapper = syncBatchLogMapper;
         this.pgJdbcTemplate = pgJdbcTemplate;
         this.clickHouseDataSource = clickHouseDataSource;
+        this.enabled = enabled;
     }
 
     @Scheduled(fixedDelay = 300_000)
     @Transactional(rollbackFor = Exception.class)
     public void syncIncrementalData() {
+        if (!enabled) {
+            log.debug("ClickHouse sync is disabled. Skipping incremental sync.");
+            return;
+        }
+
         log.debug("Starting incremental sync from PG to ClickHouse");
 
         SfSyncBatchLog batchLog = createBatchLog();
         SfSyncCursor cursor = getOrCreateCursor();
         int batchSize = DEFAULT_BATCH_SIZE;
-        int successCount = 0;
-        int failCount = 0;
 
         try {
             List<ExecutionRecord> records = fetchExecutionRecords(cursor.getLastSyncId(), batchSize);
@@ -66,8 +77,17 @@ public class ClickHouseCostSyncService {
                 return;
             }
 
-            successCount = insertIntoClickHouse(records);
-            failCount = records.size() - successCount;
+            BatchInsertResult result = insertIntoClickHouse(records);
+
+            if (result.hasFailures()) {
+                log.error("Batch insert had partial failures. Failed record ids: {}. " +
+                        "Cursor will NOT be advanced beyond last successfully synced id: {}",
+                        result.failedRecordIds(), cursor.getLastSyncId());
+                failBatchLog(batchLog, "Partial batch failure. Failed ids: " + result.failedRecordIds());
+                throw new BaseException(ResultCode.SYNC_CURSOR_ERROR,
+                        "Partial batch failure for ids: " + result.failedRecordIds() +
+                        ". Cursor remains at " + cursor.getLastSyncId());
+            }
 
             Long maxId = records.stream()
                     .mapToLong(ExecutionRecord::id)
@@ -75,10 +95,12 @@ public class ClickHouseCostSyncService {
                     .orElse(cursor.getLastSyncId());
 
             updateCursor(cursor, maxId);
-            completeBatchLog(batchLog, successCount, failCount);
+            completeBatchLog(batchLog, result.successCount(), 0);
 
-            log.info("Incremental sync completed: {} synced, {} failed, cursor advanced to id: {}",
-                    successCount, failCount, maxId);
+            log.info("Incremental sync completed: {} synced, cursor advanced to id: {}",
+                    result.successCount(), maxId);
+        } catch (BaseException be) {
+            throw be;
         } catch (Exception e) {
             log.error("Incremental sync failed at cursor id: {}", cursor.getLastSyncId(), e);
             failBatchLog(batchLog, e.getMessage());
@@ -146,7 +168,7 @@ public class ClickHouseCostSyncService {
         );
     }
 
-    private int insertIntoClickHouse(List<ExecutionRecord> records) {
+    private BatchInsertResult insertIntoClickHouse(List<ExecutionRecord> records) {
         String sql = """
                 INSERT INTO sf_agent_execution
                 (id, agent_id, conversation_id, state, completed_at, snapshot_id,
@@ -154,7 +176,9 @@ public class ClickHouseCostSyncService {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
-        int inserted = 0;
+        List<Long> failedIds = new ArrayList<>();
+        int successCount = 0;
+
         try (Connection conn = clickHouseDataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
@@ -164,9 +188,19 @@ public class ClickHouseCostSyncService {
             }
 
             int[] results = ps.executeBatch();
-            for (int result : results) {
-                if (result >= 0 || result == PreparedStatement.SUCCESS_NO_INFO) {
-                    inserted++;
+            for (int i = 0; i < results.length; i++) {
+                int result = results[i];
+                ExecutionRecord record = records.get(i);
+                if (result >= 0 || result == Statement.SUCCESS_NO_INFO) {
+                    successCount++;
+                } else if (result == Statement.EXECUTE_FAILED) {
+                    failedIds.add(record.id());
+                    log.warn("ClickHouse batch insert failed for record id: {} (batch index: {})",
+                            record.id(), i);
+                } else {
+                    failedIds.add(record.id());
+                    log.warn("ClickHouse batch insert returned unexpected status {} for record id: {} (batch index: {})",
+                            result, record.id(), i);
                 }
             }
         } catch (SQLException e) {
@@ -175,7 +209,7 @@ public class ClickHouseCostSyncService {
                     "ClickHouse insert failed: " + e.getMessage());
         }
 
-        return inserted;
+        return new BatchInsertResult(successCount, Collections.unmodifiableList(failedIds));
     }
 
     private void setInsertParams(PreparedStatement ps, ExecutionRecord r) throws SQLException {
@@ -236,4 +270,17 @@ public class ClickHouseCostSyncService {
             Long updatedBy,
             Boolean deleted
     ) {}
+
+    /**
+     * Immutable result of a batch insert operation.
+     */
+    private record BatchInsertResult(int successCount, List<Long> failedRecordIds) {
+        BatchInsertResult {
+            failedRecordIds = List.copyOf(failedRecordIds);
+        }
+
+        boolean hasFailures() {
+            return !failedRecordIds.isEmpty();
+        }
+    }
 }

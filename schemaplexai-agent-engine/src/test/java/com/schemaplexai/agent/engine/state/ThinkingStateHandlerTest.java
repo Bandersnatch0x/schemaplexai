@@ -7,6 +7,7 @@ import com.schemaplexai.agent.engine.loop.LoopDetectionResult;
 import com.schemaplexai.agent.engine.memory.CompositeChatMemoryStore;
 import com.schemaplexai.agent.engine.model.AiModelRouter;
 import com.schemaplexai.agent.engine.model.LlmMessage;
+import com.schemaplexai.agent.engine.model.ModelResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,6 +39,9 @@ class ThinkingStateHandlerTest {
     private AgentLoopDetectionService loopDetection;
 
     @Mock
+    private ModelResolver modelResolver;
+
+    @Mock
     private AgentStateMachine stateMachine;
 
     @InjectMocks
@@ -62,6 +66,7 @@ class ThinkingStateHandlerTest {
     @Test
     void handleShouldLoadMessagesFromMemory() {
         when(chatMemoryStore.loadMessages("conv-123")).thenReturn(List.of());
+        when(modelResolver.resolve(execution)).thenReturn("gpt-4");
         when(modelRouter.generateWithFallback(anyString(), anyString(), anyDouble()))
                 .thenReturn("Direct answer without tools");
 
@@ -74,6 +79,7 @@ class ThinkingStateHandlerTest {
     void handleShouldInjectContext() {
         List<LlmMessage> messages = new ArrayList<>();
         when(chatMemoryStore.loadMessages("conv-123")).thenReturn(messages);
+        when(modelResolver.resolve(execution)).thenReturn("gpt-4");
         when(modelRouter.generateWithFallback(anyString(), anyString(), anyDouble()))
                 .thenReturn("Direct answer");
 
@@ -83,20 +89,23 @@ class ThinkingStateHandlerTest {
     }
 
     @Test
-    void handleShouldCallLlmWithPrompt() {
+    void handleShouldCallLlmWithResolvedModel() {
         List<LlmMessage> messages = List.of(new LlmMessage("user", "Hello"));
         when(chatMemoryStore.loadMessages("conv-123")).thenReturn(messages);
-        when(modelRouter.generateWithFallback(anyString(), eq("gpt-4"), eq(0.7)))
+        when(modelResolver.resolve(execution)).thenReturn("gpt-4o");
+        when(modelRouter.generateWithFallback(anyString(), eq("gpt-4o"), eq(0.7)))
                 .thenReturn("Hello! How can I help?");
 
         thinkingStateHandler.handle(stateMachine, execution);
 
-        verify(modelRouter, times(1)).generateWithFallback(anyString(), eq("gpt-4"), eq(0.7));
+        verify(modelRouter, times(1)).generateWithFallback(anyString(), eq("gpt-4o"), eq(0.7));
+        verify(modelResolver, times(1)).resolve(execution);
     }
 
     @Test
     void handleShouldSaveAssistantResponseToMemory() {
         when(chatMemoryStore.loadMessages("conv-123")).thenReturn(List.of());
+        when(modelResolver.resolve(execution)).thenReturn("gpt-4");
         when(modelRouter.generateWithFallback(anyString(), anyString(), anyDouble()))
                 .thenReturn("Assistant response");
 
@@ -111,6 +120,7 @@ class ThinkingStateHandlerTest {
     @Test
     void handleShouldTransitionToCompletedForDirectAnswer() {
         when(chatMemoryStore.loadMessages("conv-123")).thenReturn(List.of());
+        when(modelResolver.resolve(execution)).thenReturn("gpt-4");
         when(modelRouter.generateWithFallback(anyString(), anyString(), anyDouble()))
                 .thenReturn("Direct answer without any tool calls");
 
@@ -122,6 +132,7 @@ class ThinkingStateHandlerTest {
     @Test
     void handleShouldTransitionToToolCallingWhenResponseContainsToolCalls() {
         when(chatMemoryStore.loadMessages("conv-123")).thenReturn(List.of());
+        when(modelResolver.resolve(execution)).thenReturn("gpt-4");
         when(modelRouter.generateWithFallback(anyString(), anyString(), anyDouble()))
                 .thenReturn("I will call a tool: <tool>search</tool>");
         when(loopDetection.detectLoop(anyLong(), anyString(), anyList()))
@@ -145,6 +156,7 @@ class ThinkingStateHandlerTest {
     @Test
     void handleShouldConsumeTokenBudget() {
         when(chatMemoryStore.loadMessages("conv-123")).thenReturn(List.of());
+        when(modelResolver.resolve(execution)).thenReturn("gpt-4");
         when(modelRouter.generateWithFallback(anyString(), anyString(), anyDouble()))
                 .thenReturn("Short response");
 
@@ -170,6 +182,7 @@ class ThinkingStateHandlerTest {
     void handleShouldSkipBudgetCheckWhenNoBudgetSet() {
         execution.setTokenBudgetJson(null);
         when(chatMemoryStore.loadMessages("conv-123")).thenReturn(List.of());
+        when(modelResolver.resolve(execution)).thenReturn("gpt-4");
         when(modelRouter.generateWithFallback(anyString(), anyString(), anyDouble()))
                 .thenReturn("Answer without budget");
 
@@ -181,6 +194,7 @@ class ThinkingStateHandlerTest {
     @Test
     void handleShouldDetectToolCallsWithFunctionTag() {
         when(chatMemoryStore.loadMessages("conv-123")).thenReturn(List.of());
+        when(modelResolver.resolve(execution)).thenReturn("gpt-4");
         when(modelRouter.generateWithFallback(anyString(), anyString(), anyDouble()))
                 .thenReturn("Calling <function>getWeather</function>");
         when(loopDetection.detectLoop(anyLong(), anyString(), anyList()))
@@ -194,6 +208,7 @@ class ThinkingStateHandlerTest {
     @Test
     void handleShouldDetectToolCallsWithCodeBlock() {
         when(chatMemoryStore.loadMessages("conv-123")).thenReturn(List.of());
+        when(modelResolver.resolve(execution)).thenReturn("gpt-4");
         when(modelRouter.generateWithFallback(anyString(), anyString(), anyDouble()))
                 .thenReturn("```tool\nsearch\n```");
         when(loopDetection.detectLoop(anyLong(), anyString(), anyList()))
@@ -207,11 +222,27 @@ class ThinkingStateHandlerTest {
     @Test
     void handleShouldUseDefaultModelWhenExecutionHasNoModelConfig() {
         when(chatMemoryStore.loadMessages("conv-123")).thenReturn(List.of());
+        when(modelResolver.resolve(execution)).thenReturn("gpt-4");
         when(modelRouter.generateWithFallback(anyString(), anyString(), anyDouble()))
                 .thenReturn("Response");
 
         thinkingStateHandler.handle(stateMachine, execution);
 
+        verify(modelResolver, times(1)).resolve(execution);
         verify(modelRouter, times(1)).generateWithFallback(anyString(), eq("gpt-4"), anyDouble());
+    }
+
+    @Test
+    void handleShouldUseModelFromMetadataWhenAvailable() {
+        execution.setMetadata("modelId", "claude-3-sonnet");
+        when(chatMemoryStore.loadMessages("conv-123")).thenReturn(List.of());
+        when(modelResolver.resolve(execution)).thenReturn("claude-3-sonnet");
+        when(modelRouter.generateWithFallback(anyString(), eq("claude-3-sonnet"), anyDouble()))
+                .thenReturn("Response");
+
+        thinkingStateHandler.handle(stateMachine, execution);
+
+        verify(modelResolver, times(1)).resolve(execution);
+        verify(modelRouter, times(1)).generateWithFallback(anyString(), eq("claude-3-sonnet"), anyDouble());
     }
 }

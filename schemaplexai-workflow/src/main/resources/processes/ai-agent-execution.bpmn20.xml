@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://schemaplexai.com/workflow/ai-agent-execution">
+
+    <process id="aiAgentExecution" name="AI Agent Execution with Human-in-the-Loop" isExecutable="true">
+
+        <documentation>
+            AI-assisted workflow that executes an agent task with optional human review checkpoints.
+            Supports automatic execution for trusted agents and human approval for critical actions.
+        </documentation>
+
+        <!-- Process variables expected:
+             - tenantId (string)
+             - agentId (string)
+             - executionId (string)
+             - userId (string)
+             - taskDescription (string)
+             - requireHumanApproval (boolean)
+             - trustScore (double, 0.0-1.0)
+             - agentResult (object, set by service task)
+             - humanApproved (boolean, set by user task)
+             - humanFeedback (string, set by user task)
+             - finalStatus (string)
+        -->
+
+        <!-- Start Event -->
+        <startEvent id="startEvent" name="Start Agent Task" flowable:initiator="userId">
+            <extensionElements>
+                <flowable:executionListener
+                        class="com.schemaplexai.workflow.delegate.AiAgentInitDelegate"
+                        event="start"/>
+            </extensionElements>
+        </startEvent>
+
+        <!-- Initialize agent execution context -->
+        <serviceTask id="initAgentTask" name="Initialize Agent Execution"
+                     flowable:class="com.schemaplexai.workflow.delegate.AiAgentInitDelegate"/>
+
+        <!-- Gateway: requires human approval? -->
+        <exclusiveGateway id="approvalGateway" name="Approval Required?"/>
+
+        <!-- Direct AI execution path (no human approval needed) -->
+        <serviceTask id="executeAgentTask" name="Execute AI Agent"
+                     flowable:class="com.schemaplexai.workflow.delegate.AiAgentExecutionDelegate"/>
+
+        <!-- Human review checkpoint -->
+        <userTask id="humanReviewTask" name="Human Review"
+                  flowable:assignee="${userId != null ? userId : 'ai-supervisor'}">
+            <documentation>Human supervisor reviews the agent execution plan before proceeding.</documentation>
+            <extensionElements>
+                <flowable:taskListener event="create"
+                                       class="com.schemaplexai.workflow.delegate.HumanTaskAssignmentDelegate"/>
+            </extensionElements>
+        </userTask>
+
+        <!-- Gateway: human decision -->
+        <exclusiveGateway id="humanDecisionGateway" name="Human Decision"/>
+
+        <!-- Process agent result -->
+        <serviceTask id="processResultTask" name="Process Agent Result"
+                     flowable:class="com.schemaplexai.workflow.delegate.AiAgentResultProcessorDelegate"/>
+
+        <!-- Gateway: result quality check -->
+        <exclusiveGateway id="qualityGateway" name="Quality Gate"/>
+
+        <!-- Human feedback / correction loop -->
+        <userTask id="humanFeedbackTask" name="Provide Feedback"
+                  flowable:assignee="${userId != null ? userId : 'ai-supervisor'}">
+            <documentation>Provide feedback to improve agent output quality.</documentation>
+        </userTask>
+
+        <!-- Re-execute with feedback -->
+        <serviceTask id="reExecuteAgentTask" name="Re-Execute with Feedback"
+                     flowable:class="com.schemaplexai.workflow.delegate.AiAgentExecutionDelegate"/>
+
+        <!-- Finalize execution -->
+        <serviceTask id="finalizeTask" name="Finalize Execution"
+                     flowable:class="com.schemaplexai.workflow.delegate.AiAgentResultProcessorDelegate"/>
+
+        <!-- End Events -->
+        <endEvent id="successEndEvent" name="Completed">
+            <extensionElements>
+                <flowable:executionListener
+                        class="com.schemaplexai.workflow.delegate.AiAgentResultProcessorDelegate"
+                        event="end"/>
+            </extensionElements>
+        </endEvent>
+        <endEvent id="cancelledEndEvent" name="Cancelled"/>
+        <endEvent id="failedEndEvent" name="Failed"/>
+
+        <!-- Sequence Flows -->
+        <sequenceFlow id="aflow1" sourceRef="startEvent" targetRef="initAgentTask"/>
+        <sequenceFlow id="aflow2" sourceRef="initAgentTask" targetRef="approvalGateway"/>
+
+        <!-- Approval gateway branches -->
+        <sequenceFlow id="aflow3-auto" sourceRef="approvalGateway" targetRef="executeAgentTask">
+            <conditionExpression xsi:type="tFormalExpression">${!requireHumanApproval || trustScore >= 0.8}</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="aflow3-manual" sourceRef="approvalGateway" targetRef="humanReviewTask">
+            <conditionExpression xsi:type="tFormalExpression">${requireHumanApproval && trustScore < 0.8}</conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="aflow4" sourceRef="humanReviewTask" targetRef="humanDecisionGateway"/>
+
+        <!-- Human decision branches -->
+        <sequenceFlow id="aflow5-approve" sourceRef="humanDecisionGateway" targetRef="executeAgentTask">
+            <conditionExpression xsi:type="tFormalExpression">${humanApproved == true}</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="aflow5-reject" sourceRef="humanDecisionGateway" targetRef="cancelledEndEvent">
+            <conditionExpression xsi:type="tFormalExpression">${humanApproved == false}</conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="aflow6" sourceRef="executeAgentTask" targetRef="processResultTask"/>
+        <sequenceFlow id="aflow7" sourceRef="processResultTask" targetRef="qualityGateway"/>
+
+        <!-- Quality gateway branches -->
+        <sequenceFlow id="aflow8-pass" sourceRef="qualityGateway" targetRef="finalizeTask">
+            <conditionExpression xsi:type="tFormalExpression">${agentResult != null && agentResult.qualityScore >= 0.7}</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="aflow8-fail" sourceRef="qualityGateway" targetRef="humanFeedbackTask">
+            <conditionExpression xsi:type="tFormalExpression">${agentResult == null || agentResult.qualityScore < 0.7}</conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="aflow9" sourceRef="humanFeedbackTask" targetRef="reExecuteAgentTask"/>
+        <sequenceFlow id="aflow10" sourceRef="reExecuteAgentTask" targetRef="processResultTask"/>
+
+        <sequenceFlow id="aflow11" sourceRef="finalizeTask" targetRef="successEndEvent"/>
+
+    </process>
+</definitions>

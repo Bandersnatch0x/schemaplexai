@@ -27,6 +27,23 @@ mybatis-plus:
       logic-delete-value: 1
       logic-not-delete-value: 0
 
+flowable:
+  database-schema-update: true
+  async-executor-activate: true
+  history-level: full
+  # Deployment
+  deployment:
+    enabled: false  # We use WorkflowDeployService for explicit deployment
+  # Database
+  database-schema: ${DB_SCHEMA:public}
+  # IDM
+  idm:
+    enabled: false
+  # REST
+  rest:
+    enabled: false
+
 logging:
   level:
     com.schemaplexai.workflow: debug
+    org.flowable: info

@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://schemaplexai.com/workflow/spec-review-approval">
+
+    <process id="specReviewApproval" name="Spec Review Approval Workflow" isExecutable="true">
+
+        <documentation>
+            Multi-stage spec document review and approval workflow.
+            Supports auto-approval for low-risk specs and escalated review for high-risk ones.
+        </documentation>
+
+        <!-- Process variables expected:
+             - tenantId (string)
+             - specId (string)
+             - submitterId (string)
+             - specTitle (string)
+             - riskLevel (string: LOW / MEDIUM / HIGH)
+             - reviewerId (string, optional)
+             - approvalDecision (string, set by user tasks)
+             - rejectionReason (string, set by user tasks)
+        -->
+
+        <!-- Start Event -->
+        <startEvent id="startEvent" name="Submit Spec" flowable:initiator="submitterId">
+            <extensionElements>
+                <flowable:executionListener
+                        class="com.schemaplexai.workflow.delegate.SpecReviewInitDelegate"
+                        event="start"/>
+            </extensionElements>
+        </startEvent>
+
+        <!-- Initialize and classify the spec review -->
+        <serviceTask id="initReviewTask" name="Initialize Review"
+                     flowable:class="com.schemaplexai.workflow.delegate.SpecReviewInitDelegate"/>
+
+        <!-- Gateway: auto-approve low risk? -->
+        <exclusiveGateway id="riskGateway" name="Risk Assessment"/>
+
+        <!-- Auto-approve path for LOW risk -->
+        <serviceTask id="autoApproveTask" name="Auto Approve"
+                     flowable:class="com.schemaplexai.workflow.delegate.SpecReviewNotificationDelegate"/>
+
+        <!-- Assign to primary reviewer -->
+        <userTask id="primaryReviewTask" name="Primary Review"
+                  flowable:assignee="${reviewerId != null ? reviewerId : 'reviewer-group'}">
+            <documentation>Primary reviewer evaluates the spec document.</documentation>
+            <extensionElements>
+                <flowable:taskListener event="create"
+                                       class="com.schemaplexai.workflow.delegate.HumanTaskAssignmentDelegate"/>
+            </extensionElements>
+        </userTask>
+
+        <!-- Gateway: primary review decision -->
+        <exclusiveGateway id="primaryDecisionGateway" name="Primary Decision"/>
+
+        <!-- Reject path -->
+        <serviceTask id="notifyRejectionTask" name="Notify Rejection"
+                     flowable:class="com.schemaplexai.workflow.delegate.SpecReviewNotificationDelegate"/>
+
+        <!-- Return to submitter for revision -->
+        <userTask id="reviseTask" name="Revise Spec"
+                  flowable:assignee="${submitterId}">
+            <documentation>Submitter revises the spec based on feedback.</documentation>
+        </userTask>
+
+        <!-- Escalated review for HIGH risk or when primary requests it -->
+        <userTask id="escalatedReviewTask" name="Escalated Review"
+                  flowable:candidateGroups="senior-reviewers">
+            <documentation>Senior reviewer performs escalated review.</documentation>
+            <extensionElements>
+                <flowable:taskListener event="create"
+                                       class="com.schemaplexai.workflow.delegate.HumanTaskAssignmentDelegate"/>
+            </extensionElements>
+        </userTask>
+
+        <!-- Gateway: escalated review decision -->
+        <exclusiveGateway id="escalatedDecisionGateway" name="Escalated Decision"/>
+
+        <!-- Final approval notification -->
+        <serviceTask id="notifyApprovalTask" name="Notify Approval"
+                     flowable:class="com.schemaplexai.workflow.delegate.SpecReviewNotificationDelegate"/>
+
+        <!-- End Events -->
+        <endEvent id="approvedEndEvent" name="Approved"/>
+        <endEvent id="rejectedEndEvent" name="Rejected"/>
+
+        <!-- Sequence Flows -->
+        <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="initReviewTask"/>
+        <sequenceFlow id="flow2" sourceRef="initReviewTask" targetRef="riskGateway"/>
+
+        <!-- Risk gateway branches -->
+        <sequenceFlow id="flow3-low" sourceRef="riskGateway" targetRef="autoApproveTask">
+            <conditionExpression xsi:type="tFormalExpression">${riskLevel == 'LOW'}</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="flow3-medhigh" sourceRef="riskGateway" targetRef="primaryReviewTask">
+            <conditionExpression xsi:type="tFormalExpression">${riskLevel == 'MEDIUM' || riskLevel == 'HIGH'}</conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flow4" sourceRef="autoApproveTask" targetRef="notifyApprovalTask"/>
+
+        <sequenceFlow id="flow5" sourceRef="primaryReviewTask" targetRef="primaryDecisionGateway"/>
+
+        <!-- Primary decision branches -->
+        <sequenceFlow id="flow6-approve" sourceRef="primaryDecisionGateway" targetRef="notifyApprovalTask">
+            <conditionExpression xsi:type="tFormalExpression">${approvalDecision == 'APPROVE'}</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="flow6-reject" sourceRef="primaryDecisionGateway" targetRef="notifyRejectionTask">
+            <conditionExpression xsi:type="tFormalExpression">${approvalDecision == 'REJECT'}</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="flow6-revise" sourceRef="primaryDecisionGateway" targetRef="reviseTask">
+            <conditionExpression xsi:type="tFormalExpression">${approvalDecision == 'REVISE'}</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="flow6-escalate" sourceRef="primaryDecisionGateway" targetRef="escalatedReviewTask">
+            <conditionExpression xsi:type="tFormalExpression">${approvalDecision == 'ESCALATE' || riskLevel == 'HIGH'}</conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flow7" sourceRef="reviseTask" targetRef="primaryReviewTask"/>
+
+        <sequenceFlow id="flow8" sourceRef="escalatedReviewTask" targetRef="escalatedDecisionGateway"/>
+
+        <!-- Escalated decision branches -->
+        <sequenceFlow id="flow9-approve" sourceRef="escalatedDecisionGateway" targetRef="notifyApprovalTask">
+            <conditionExpression xsi:type="tFormalExpression">${approvalDecision == 'APPROVE'}</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="flow9-reject" sourceRef="escalatedDecisionGateway" targetRef="notifyRejectionTask">
+            <conditionExpression xsi:type="tFormalExpression">${approvalDecision == 'REJECT'}</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="flow9-revise" sourceRef="escalatedDecisionGateway" targetRef="reviseTask">
+            <conditionExpression xsi:type="tFormalExpression">${approvalDecision == 'REVISE'}</conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flow10" sourceRef="notifyApprovalTask" targetRef="approvedEndEvent"/>
+        <sequenceFlow id="flow11" sourceRef="notifyRejectionTask" targetRef="rejectedEndEvent"/>
+
+    </process>
+</definitions>

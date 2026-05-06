@@ -6,7 +6,7 @@ import com.schemaplexai.agent.engine.guardrails.GuardrailsEngine;
 import com.schemaplexai.agent.engine.memory.CompositeChatMemoryStore;
 import com.schemaplexai.agent.engine.model.AiModelRouter;
 import com.schemaplexai.agent.engine.model.LlmMessage;
-import lombok.RequiredArgsConstructor;
+import com.schemaplexai.agent.engine.model.ModelResolver;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -20,16 +20,25 @@ import java.util.List;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class ReflectingStateHandler implements AgentStateHandler {
 
     private static final int MAX_REFLECTION_ROUNDS = 2;
-    private static final String DEFAULT_MODEL = "gpt-4";
     private static final double REFLECTION_TEMPERATURE = 0.3;
 
     private final AiModelRouter modelRouter;
     private final GuardrailsEngine guardrailsEngine;
     private final CompositeChatMemoryStore chatMemoryStore;
+    private final ModelResolver modelResolver;
+
+    public ReflectingStateHandler(AiModelRouter modelRouter,
+                                   GuardrailsEngine guardrailsEngine,
+                                   CompositeChatMemoryStore chatMemoryStore,
+                                   ModelResolver modelResolver) {
+        this.modelRouter = modelRouter;
+        this.guardrailsEngine = guardrailsEngine;
+        this.chatMemoryStore = chatMemoryStore;
+        this.modelResolver = modelResolver;
+    }
 
     @Override
     public AgentExecutionState getState() {
@@ -186,6 +195,6 @@ public class ReflectingStateHandler implements AgentStateHandler {
     }
 
     private String resolveModelId(SfAgentExecution execution) {
-        return DEFAULT_MODEL;
+        return modelResolver.resolve(execution);
     }
 }
