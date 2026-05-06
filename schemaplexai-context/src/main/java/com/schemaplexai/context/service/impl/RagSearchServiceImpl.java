@@ -1,7 +1,10 @@
 package com.schemaplexai.context.service.impl;
 
+import com.schemaplexai.common.exception.BaseException;
+import com.schemaplexai.common.result.ResultCode;
 import com.schemaplexai.context.config.MilvusProperties;
 import com.schemaplexai.context.entity.KnowledgeChunk;
+import com.schemaplexai.context.service.EmbeddingService;
 import com.schemaplexai.context.service.RagSearchService;
 import io.milvus.v2.client.MilvusClientV2;
 import io.milvus.v2.service.vector.request.SearchReq;
@@ -15,7 +18,6 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 @Slf4j
 @Service
@@ -25,9 +27,7 @@ public class RagSearchServiceImpl implements RagSearchService {
 
     private final MilvusClientV2 milvusClient;
     private final MilvusProperties milvusProperties;
-
-    private static final int EMBEDDING_DIMENSION = 1536;
-    private static final Random RANDOM = new Random();
+    private final EmbeddingService embeddingService;
 
     @Override
     public List<KnowledgeChunk> search(String query, String tenantId, int topK) {
@@ -37,11 +37,21 @@ public class RagSearchServiceImpl implements RagSearchService {
             return List.of();
         }
 
+        // Generate real embedding for query — failure must propagate, never silently fallback.
+        List<Float> queryEmbedding;
         try {
-            // Simulate embedding generation for the query
-            // TODO: Replace with actual embedding service call
-            List<Float> queryEmbedding = generateSimulatedEmbedding();
+            float[] qEmb = embeddingService.embed(query);
+            queryEmbedding = new ArrayList<>(qEmb.length);
+            for (float v : qEmb) {
+                queryEmbedding.add(v);
+            }
+        } catch (Exception e) {
+            log.error("Embedding generation failed for query '{}': {}", query, e.getMessage(), e);
+            throw new BaseException(ResultCode.INTERNAL_ERROR,
+                    "Embedding generation failed for RAG query: " + e.getMessage(), e);
+        }
 
+        try {
             SearchReq.SearchReqBuilder searchBuilder = SearchReq.builder()
                     .collectionName(milvusProperties.getCollectionName())
                     .data(List.of(new FloatVec(queryEmbedding)))
@@ -76,16 +86,9 @@ public class RagSearchServiceImpl implements RagSearchService {
 
         } catch (Exception e) {
             log.error("RAG search failed for query '{}': {}", query, e.getMessage(), e);
-            return List.of();
+            throw new BaseException(ResultCode.INTERNAL_ERROR,
+                    "RAG search failed: " + e.getMessage(), e);
         }
-    }
-
-    private List<Float> generateSimulatedEmbedding() {
-        List<Float> embedding = new ArrayList<>(EMBEDDING_DIMENSION);
-        for (int i = 0; i < EMBEDDING_DIMENSION; i++) {
-            embedding.add(RANDOM.nextFloat());
-        }
-        return embedding;
     }
 
     private String getStringValue(Map<String, Object> entity, String key) {

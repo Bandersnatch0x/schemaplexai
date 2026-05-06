@@ -55,10 +55,14 @@ public class AgentStateMachine {
                 handler.handle(this, execution);
             } catch (Exception e) {
                 log.error("State handler error for state {} execution {}", newState, execution.getId(), e);
-                if (executionStates.get(execution.getId()) != null) {
+                if (newState != AgentExecutionState.FAILED) {
                     transition(AgentExecutionState.FAILED, execution);
                 } else {
-                    log.warn("Execution {} already removed from state map; skipping recursive FAILED transition", execution.getId());
+                    log.error("FAILED handler also threw for execution {}, giving up to terminal cleanup",
+                              execution.getId(), e);
+                    eventBus.publishExecutionCompleted(execution.getId(), AgentExecutionState.FAILED.name());
+                    eventBus.complete(String.valueOf(execution.getId()));
+                    removeExecution(execution.getId());
                 }
                 return;
             }

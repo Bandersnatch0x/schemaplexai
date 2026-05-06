@@ -123,4 +123,67 @@ describe('AgentCanvas component', () => {
       expect(screen.getByText('Status')).toBeInTheDocument()
     })
   })
+
+  it('clickingAddAgentNodeButtonAddsAgentNodeToCanvas', async () => {
+    renderAgentCanvas()
+
+    const before = screen.getAllByTestId(/canvas-node-n/).length
+
+    const addBtn = screen.getByText('Add Agent Node')
+    addBtn.click()
+
+    await waitFor(() => {
+      const after = screen.getAllByTestId(/canvas-node-n/).length
+      expect(after).toBe(before + 1)
+    })
+
+    const addedNode = screen.getAllByTestId(/canvas-node-n/).pop()
+    expect(addedNode).toHaveClass('canvas-node--agent')
+  })
+
+  it('clickingSaveButtonShowsSuccessMessage', () => {
+    renderAgentCanvas()
+
+    const saveBtn = screen.getByText('Save Workflow')
+    saveBtn.click()
+
+    expect(mockMessage.success).toHaveBeenCalledWith('Success')
+  })
+
+  it('clickingPropertiesToggleCollapsesAndExpandsPanel', async () => {
+    renderAgentCanvas()
+
+    const panel = screen.getByText('Properties').closest('.canvas-panel') as HTMLElement
+    expect(panel).not.toHaveClass('canvas-panel--collapsed')
+
+    const toggleBtn = screen.getByLabelText('Collapse panel')
+    toggleBtn.click()
+
+    await waitFor(() => {
+      expect(panel).toHaveClass('canvas-panel--collapsed')
+    })
+
+    const expandBtn = screen.getByLabelText('Expand panel')
+    expandBtn.click()
+
+    await waitFor(() => {
+      expect(panel).not.toHaveClass('canvas-panel--collapsed')
+    })
+  })
+
+  it('clickingSameNodeTwiceDeselectsIt', async () => {
+    renderAgentCanvas()
+
+    const node = screen.getByTestId('canvas-node-n2')
+
+    node.click()
+    await waitFor(() => {
+      expect(node).toHaveClass('canvas-node--selected')
+    })
+
+    node.click()
+    await waitFor(() => {
+      expect(node).not.toHaveClass('canvas-node--selected')
+    })
+  })
 })

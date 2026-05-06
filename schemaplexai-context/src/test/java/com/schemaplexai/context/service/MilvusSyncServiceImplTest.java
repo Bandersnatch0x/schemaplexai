@@ -4,6 +4,7 @@ import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
 import com.schemaplexai.context.entity.SfKnowledgeDoc;
 import com.schemaplexai.context.mapper.SfKnowledgeDocMapper;
+import com.schemaplexai.context.service.impl.FailedStatusWriter;
 import com.schemaplexai.context.service.impl.MilvusSyncServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,6 +22,9 @@ class MilvusSyncServiceImplTest {
 
     @Mock
     private SfKnowledgeDocMapper knowledgeDocMapper;
+
+    @Mock
+    private FailedStatusWriter failedStatusWriter;
 
     @InjectMocks
     private MilvusSyncServiceImpl milvusSyncService;

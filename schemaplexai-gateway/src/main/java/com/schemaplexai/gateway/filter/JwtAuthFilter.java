@@ -62,7 +62,13 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         String path = request.getURI().getPath();
 
         if (isWhiteListed(path)) {
-            return chain.filter(exchange);
+            ServerHttpRequest stripped = request.mutate()
+                    .headers(h -> {
+                        h.remove(CommonConstants.HEADER_TENANT_ID);
+                        h.remove("X-User-Id");
+                    })
+                    .build();
+            return chain.filter(exchange.mutate().request(stripped).build());
         }
 
         String token = resolveToken(request);
@@ -78,6 +84,10 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             String tenantId = claims.get("tenantId", String.class);
 
             ServerHttpRequest.Builder builder = request.mutate()
+                    .headers(h -> {
+                        h.remove(CommonConstants.HEADER_TENANT_ID);
+                        h.remove("X-User-Id");
+                    })
                     .header(CommonConstants.HEADER_AUTHORIZATION, CommonConstants.TOKEN_PREFIX + token)
                     .header("X-User-Id", userId);
 

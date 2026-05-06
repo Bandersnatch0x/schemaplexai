@@ -80,6 +80,11 @@
                 <artifactId>schemaplexai-agent-config</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.schemaplexai</groupId>
+                <artifactId>schemaplexai-agent-engine</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- MyBatis Plus -->
             <dependency>

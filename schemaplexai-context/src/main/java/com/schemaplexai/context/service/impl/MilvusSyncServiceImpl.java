@@ -41,6 +41,7 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
     private final EmbeddingService embeddingService;
     private final MilvusClientV2 milvusClient;
     private final MilvusProperties milvusProperties;
+    private final FailedStatusWriter failedStatusWriter;
 
     @Value("${minio.enabled:false}")
     private boolean minioEnabled;
@@ -105,10 +106,10 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
 
         } catch (Exception e) {
             log.error("Failed to sync document {} to Milvus", docId, e);
-            doc.setStatus("FAILED");
-            knowledgeDocMapper.updateById(doc);
+            // Persist FAILED status in an independent transaction so it survives the outer rollback.
+            failedStatusWriter.markFailed(docId, e.getMessage());
             throw new BaseException(ResultCode.INTERNAL_ERROR,
-                    "Milvus sync failed for document: " + docId + ", cause: " + e.getMessage());
+                    "Milvus sync failed for document: " + docId + ", cause: " + e.getMessage(), e);
         }
     }
 

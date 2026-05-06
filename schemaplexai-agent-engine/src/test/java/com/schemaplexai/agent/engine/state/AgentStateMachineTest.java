@@ -181,4 +181,26 @@ class AgentStateMachineTest {
         stateMachine.removeExecution(1L);
         assertNull(stateMachine.getCurrentState(1L));
     }
+
+    @Test
+    void failedHandlerThrows_doesNotRecurseInfinitely() {
+        AgentStateHandler thinkingHandler = mock(AgentStateHandler.class);
+        AgentStateHandler failedHandler = mock(AgentStateHandler.class);
+        when(thinkingHandler.getState()).thenReturn(AgentExecutionState.THINKING);
+        when(failedHandler.getState()).thenReturn(AgentExecutionState.FAILED);
+        doThrow(new RuntimeException("boom-thinking"))
+                .when(thinkingHandler).handle(any(AgentStateMachine.class), any(SfAgentExecution.class));
+        doThrow(new RuntimeException("boom-failed"))
+                .when(failedHandler).handle(any(AgentStateMachine.class), any(SfAgentExecution.class));
+
+        stateMachine = new AgentStateMachine(
+                executionMapper, eventBus, List.of(thinkingHandler, failedHandler));
+
+        assertDoesNotThrow(() ->
+                stateMachine.transition(AgentExecutionState.THINKING, execution));
+
+        verify(eventBus, times(1)).publishExecutionCompleted(eq(1L), eq("FAILED"));
+        verify(eventBus, times(1)).complete(eq("1"));
+        assertNull(stateMachine.getCurrentState(1L));
+    }
 }

@@ -20,6 +20,7 @@ const NotificationCenter = lazy(() => import('@/pages/NotificationCenter'))
 const NotFound = lazy(() => import('@/pages/NotFound'))
 const AgentDetail = lazy(() => import('@/pages/AgentDetail'))
 const WorkflowMonitor = lazy(() => import('@/pages/WorkflowMonitor'))
+const AgentCanvas = lazy(() => import('@/pages/AgentCanvas'))
 
 export interface RouteConfig {
   path: string
@@ -48,6 +49,15 @@ const RouterConfig: RouteConfig[] = [
       </RequireAuth>
     ),
     children: [{ path: '', element: <Cockpit /> }],
+  },
+  {
+    path: '/canvas',
+    element: (
+      <RequireAuth>
+        <ImmersiveLayout />
+      </RequireAuth>
+    ),
+    children: [{ path: '', element: <AgentCanvas /> }],
   },
   {
     path: '/agent/:id',
