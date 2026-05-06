@@ -54,17 +54,20 @@ public class OpenAiToolCallParser implements ToolCallParser {
                 Map<String, Object> parameters = new HashMap<>();
                 JsonNode arguments = function.get("arguments");
                 if (arguments != null && !arguments.isNull()) {
-                    String argsStr = arguments.asText();
-                    if (argsStr != null && !argsStr.isBlank()) {
-                        try {
-                            @SuppressWarnings("unchecked")
-                            Map<String, Object> parsed = objectMapper.readValue(argsStr, Map.class);
-                            parameters.putAll(parsed);
-                        } catch (Exception e) {
-                            // Arguments may be a JSON object directly
-                            if (arguments.isObject()) {
-                                arguments.fields().forEachRemaining(
-                                        f -> parameters.put(f.getKey(), f.getValue().asText()));
+                    if (arguments.isObject()) {
+                        // Arguments is a JSON object node (some providers send this directly)
+                        arguments.fields().forEachRemaining(
+                                f -> parameters.put(f.getKey(), f.getValue().asText()));
+                    } else if (arguments.isTextual()) {
+                        // Arguments is a JSON string that needs to be parsed
+                        String argsStr = arguments.asText();
+                        if (!argsStr.isBlank()) {
+                            try {
+                                @SuppressWarnings("unchecked")
+                                Map<String, Object> parsed = objectMapper.readValue(argsStr, Map.class);
+                                parameters.putAll(parsed);
+                            } catch (Exception e) {
+                                log.warn("Failed to parse tool call arguments string: {}", argsStr);
                             }
                         }
                     }
