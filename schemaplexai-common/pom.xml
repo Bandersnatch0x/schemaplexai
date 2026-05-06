@@ -15,6 +15,14 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+        <!-- Provides jakarta.validation.ConstraintViolationException for GlobalExceptionHandler.
+             Marked optional so it does not force downstream services to enable bean validation
+             unless they want it; the API jar is enough to compile the handler. -->
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+            <optional>true</optional>
+        </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
