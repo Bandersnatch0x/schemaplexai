@@ -9,6 +9,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.*;
+import org.mockito.Mockito;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -190,6 +191,7 @@ class RetryingStateHandlerTest {
 
         // Clear and retry again with a new execution
         handler.clearRetryState(1L);
+        Mockito.reset(stateMachine);
 
         SfAgentExecution exec2 = new SfAgentExecution();
         exec2.setId(2L);

@@ -47,22 +47,9 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
-            <!--
-              Skip cross-service integration tests that reference sibling modules
-              (quality / workflow / ops). They were committed in 554e7cd before the
-              corresponding module dependencies were declared and architecturally
-              they violate the agent-engine ↔ siblings boundary. Track restoration
-              under wiki/gaps.md (cross-service-integration-tests).
-            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <testExcludes>
-                        <exclude>**/integration/CrossServiceChainIntegrationTest.java</exclude>
-                        <exclude>**/integration/TestServiceConfig.java</exclude>
-                    </testExcludes>
-                </configuration>
             </plugin>
         </plugins>
     </build>
