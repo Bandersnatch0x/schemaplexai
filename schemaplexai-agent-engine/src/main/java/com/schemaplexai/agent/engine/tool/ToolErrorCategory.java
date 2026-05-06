@@ -48,7 +48,17 @@ public enum ToolErrorCategory {
     /**
      * 意外环境错误
      */
-    UNEXPECTED_ENVIRONMENT(true, false);
+    UNEXPECTED_ENVIRONMENT(true, false),
+
+    /**
+     * 路径越界 / symlink / 隐藏文件 — 由 sandbox 路径校验抛出
+     */
+    PATH_VIOLATION(true, false),
+
+    /**
+     * 沙箱内部错误（创建失败、清理失败、IO 异常等）
+     */
+    SANDBOX_ERROR(false, true);
 
     private final boolean securityRelated;
     private final boolean retryable;

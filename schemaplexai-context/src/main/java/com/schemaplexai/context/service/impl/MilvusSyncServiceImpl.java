@@ -15,10 +15,12 @@ import io.milvus.v2.service.vector.request.InsertReq;
 import io.milvus.v2.service.vector.response.InsertResp;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -35,6 +37,9 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
     private final EmbeddingService embeddingService;
     private final MilvusClientV2 milvusClient;
     private final MilvusProperties milvusProperties;
+
+    @Value("${minio.enabled:false}")
+    private boolean minioEnabled;
 
     @Override
     public void syncToMilvus(Long docId) {
@@ -81,6 +86,15 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
 
     private String simulateExtractText(SfKnowledgeDoc doc) {
         log.info("Simulating text extraction for: {}", doc.getFileName());
+
+        if (minioEnabled) {
+            log.info("Would download from MinIO: {}", doc.getFileUrl());
+            // TODO: Implement MinIO download using MinioClient
+            // MinioClient minioClient = ...;
+            // InputStream is = minioClient.getObject(GetObjectArgs.builder().bucket(...).object(...).build());
+            // return extractTextWithTika(is);
+        }
+
         StringBuilder sb = new StringBuilder();
         sb.append("Document: ").append(doc.getTitle()).append("\n");
         sb.append("This is simulated content for testing purposes. ");
@@ -91,6 +105,16 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
               .append(" contains enough text to test the document chunking pipeline thoroughly. ");
         }
         return sb.toString();
+    }
+
+    /**
+     * TODO: Integrate with Apache Tika for text extraction from various document formats.
+     * Expected pattern: new Tika().parseToString(inputStream);
+     */
+    private String extractTextWithTika(InputStream is) {
+        log.info("Would extract text with Apache Tika");
+        // Placeholder: real Tika integration to be implemented
+        return null;
     }
 
     private void insertChunksIntoMilvus(SfKnowledgeDoc doc, List<TextChunk> chunks, List<float[]> embeddings) {

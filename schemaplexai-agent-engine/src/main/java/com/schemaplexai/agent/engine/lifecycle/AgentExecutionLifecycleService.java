@@ -1,5 +1,6 @@
 package com.schemaplexai.agent.engine.lifecycle;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
@@ -75,8 +76,20 @@ public class AgentExecutionLifecycleService {
     }
 
     public ExecutionSnapshot getLatestSnapshot(Long executionId) {
-        // Simplified: select latest by createdAt; in production use order by + limit in XML
-        // For now returning null since BaseMapperX does not support complex queries out of box
-        return null;
+        SfAgentExecutionSnapshot entity = snapshotMapper.selectOne(
+                new LambdaQueryWrapper<SfAgentExecutionSnapshot>()
+                        .eq(SfAgentExecutionSnapshot::getExecutionId, executionId)
+                        .orderByDesc(SfAgentExecutionSnapshot::getCreatedAt)
+                        .last("LIMIT 1")
+        );
+        if (entity == null || entity.getSnapshotJson() == null) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(entity.getSnapshotJson(), ExecutionSnapshot.class);
+        } catch (Exception e) {
+            log.error("Failed to deserialize snapshot for execution {}", executionId, e);
+            return null;
+        }
     }
 }
