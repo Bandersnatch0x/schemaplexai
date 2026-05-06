@@ -28,6 +28,7 @@ confidence: high
 - **v1-release-readiness**: 已交付，527/527 测试通过，等待归档
 - **v1-test-fixes-and-coverage**: 已交付，所有 21 个预存测试失败修复，等待归档
 - **core-ai-engine-design**: 已完成 — L2持久化、SSE事件流、getLatestSnapshot实现
+  - **Known Limitation**: `ExecutionEventBus` SSE emitters are stored in a local in-memory `ConcurrentHashMap`. This is single-node only; horizontal scaling requires sticky sessions or a Redis pub/sub bridge before production multi-node deployment.
 - **wiki-gaps-completion**: 已完成 — 6个wiki服务页面已创建
 
 ## v1.0 Release Status

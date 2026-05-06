@@ -14,6 +14,16 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
+## 2026-05-06 — Document agent-engine SSE event bus horizontal-scaling limitation
+
+**Scope**: Record a known architectural limitation in `ExecutionEventBus` (local in-memory `ConcurrentHashMap` for SSE emitters).
+
+**Updated**:
+- `wiki/active-areas.md` — added known limitation under core-ai-engine-design
+- `wiki/gaps.md` — added open question #10 (single-node SSE event bus) with impact and fix options
+
+**Impact**: Blocks production multi-node deployment without sticky sessions or Redis pub/sub.
+
 ## 2026-05-06 — Parallel gap closure: ClickHouse, Workflow nodes, Milvus, RAG pipeline
 
 **Scope**: Close 5 core project gaps identified in `wiki/gaps.md` via parallel agent execution.
