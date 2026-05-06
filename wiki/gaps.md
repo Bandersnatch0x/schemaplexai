@@ -84,8 +84,8 @@ The following controllers exist but have no dedicated wiki pages (most are stand
 8. ~~**What MQ exchanges and queues are configured?**~~ — documented in [[services/rabbitmq-messaging]]
 9. ~~**What is the frontend page implementation status?**~~ — All 16 route-level pages implemented and registered in router: Dashboard, Cockpit, AgentManager, AgentExecutor, AgentDetail, AgentCanvas, SpecCenter, WorkflowCenter, WorkflowMonitor, ContextCenter, QualityCenter, IntegrationCenter, OpsCenter, SystemSettings, NotificationCenter, NotFound (+ Login). Router config at `schemaplexai-ui/src/router/index.tsx`.
 10. **Agent-engine SSE event bus is single-node only** — `ExecutionEventBus` holds SSE emitters in a local `ConcurrentHashMap`. If an execution runs on Node A and a user connects to Node B via load balancer, Node B's event bus has no emitters for that execution and the subscriber receives nothing. Acceptable for MVP/single-node, but a blocker for horizontal scaling. Potential fixes: (a) load-balancer sticky sessions routing by `executionId`, or (b) Redis pub/sub bridge to fan out events across nodes.
-11. **cross-service-integration-tests** — `schemaplexai-agent-engine/src/test/java/.../integration/CrossServiceChainIntegrationTest.java` 与 `TestServiceConfig.java`（commit 554e7cd 提交）引用 `quality.gate.QualityReport`、`workflow.WorkflowInstanceService`、`ops.CostService` 等兄弟模块类型，但 `agent-engine/pom.xml` 未声明这些依赖，且架构上违反 agent-engine ↔ siblings 边界。当前通过 `maven-compiler-plugin testExcludes` 临时排除。**修复方向**：(a) 移到独立 `schemaplexai-integration-tests` 模块并声明所有依赖；或 (b) 拆分成 mock-based 单元测试，断言 agent-engine 自身的 hook 协议而非 sibling 实现。
-12. **flaky-retrying-state-handler-test** — `RetryingStateHandlerTest.clearRetryStateShouldRemoveCounters` 单独运行通过，整套 `mvn test` 偶发 Mockito `TooFewActualInvocations` 错误（commit 869d416 引入）。怀疑测试间共享了 `@Mock AgentStateMachine` 的累计调用计数或 `RetryingStateHandler` 内部静态状态未在 `@BeforeEach` 重置。**修复方向**：检查 setup 中是否对 stateMachine 使用 `reset()`，或将 retry counter 改为依赖注入，便于测试隔离。
+11. ~~**cross-service-integration-tests**~~ — 已移除 `CrossServiceChainIntegrationTest.java` 与 `TestServiceConfig.java`（commit 104e170）。这些测试架构上违反 agent-engine ↔ siblings 边界（引用 `quality.gate.QualityReport`、`workflow.WorkflowInstanceService`、`ops.CostService` 等未声明依赖的模块类型），且已被 `testExcludes` 长期排除不编译。若需恢复跨服务集成测试，应在独立 `schemaplexai-integration-tests` 模块中声明全部依赖后重建。
+12. ~~**flaky-retrying-state-handler-test**~~ — 已修复（commit 104e170）。在 `RetryingStateHandlerTest.clearRetryStateShouldRemoveCounters` 中 `clearRetryState(1L)` 后添加 `Mockito.reset(stateMachine)`，隔离第二个 execution 的 verify 不受第一个 execution 累积调用的影响。连续 5 次 `mvn test` 验证稳定通过。
 
 ## Backlinks
 
@@ -102,7 +102,7 @@ The following controllers exist but have no dedicated wiki pages (most are stand
 | Schema elements | 6/6 | All documented |
 | Controllers | 34/34 | All have wiki pages |
 | Service interfaces | 68/68 | All have wiki pages |
-| Open questions | 9/12 resolved | #10 architectural limit; #11–#12 test infrastructure debt |
+| Open questions | 11/12 resolved | #10 architectural limit only |
 
 ### What Remains
 
