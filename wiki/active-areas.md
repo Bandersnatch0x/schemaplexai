@@ -30,6 +30,7 @@ confidence: high
 - **core-ai-engine-design**: 已完成 — L2持久化、SSE事件流、getLatestSnapshot实现
   - **Known Limitation**: `ExecutionEventBus` SSE emitters are stored in a local in-memory `ConcurrentHashMap`. This is single-node only; horizontal scaling requires sticky sessions or a Redis pub/sub bridge before production multi-node deployment.
 - **wiki-gaps-completion**: 已完成 — 6个wiki服务页面已创建
+- **agents-sdk-2026-alignment**: 已交付 (2026-05-07) — Track A `SandboxProvider` 抽象 + `LocalProcessSandbox` (42 tests pass)；Track B `AgentsManifest` record + `AgentsManifestParser` + `AgentsManifestLoader` (33 tests pass)。AgentsManifestParser 覆盖率 LINE 91% / BRANCH 81%，超 80% 门槛。
 
 ## v1.0 Release Status
 
