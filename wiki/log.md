@@ -78,6 +78,40 @@ confidence: high
 
 **待办**: tool、memory 包需补充单元测试以达到 >=80% 覆盖率要求。
 
+## 2026-05-07 — agent-engine 测试覆盖率冲刺 + 剩余项清理
+
+**Scope**: 通过并行 subagent 完成 tool/memory/state/orchestrator 测试补充，修复 3 个失败测试，清理 gaps #11–#12。
+
+**JaCoCo 覆盖率最终达标**:
+| Package | Before | After | Tests Added |
+|---------|--------|-------|-------------|
+| tool | 21.3% | **94%** | 14 文件，151 测试 |
+| memory | 23.3% | **93%** | 4 文件，86 测试 |
+| state | 44% | **87%** | 10 文件，88 测试 |
+| orchestrator | 49% | **100%** | 1 文件，9 测试 |
+| sse | 38.9% | **80%** | — |
+| tool.registry | 0% | **100%** | — |
+
+**测试套件**: 845 测试，0 失败，0 错误，1 跳过，BUILD SUCCESS。
+
+**生产代码修复**:
+- `OpenAiToolCallParser` — 修复 JSON object `arguments` 节点解析 bug（`asText()` 对对象节点返回空字符串）
+- `HttpCallAdapterTest` — `MockedStatic<InetAddress>` 避免真实 DNS 解析
+
+**Gaps 清理**:
+- **#11** — 删除 `CrossServiceChainIntegrationTest` + `TestServiceConfig`（架构边界违规），移除 `agent-engine/pom.xml` 的 `testExcludes`
+- **#12** — `RetryingStateHandlerTest.clearRetryStateShouldRemoveCounters` 添加 `Mockito.reset(stateMachine)` 修复 flaky 验证
+
+**提交记录**:
+- `4f99cdd` — state/orchestrator/tool 测试 + parser bug 修复
+- `2f619e6` — parser/adapter 额外测试
+- `104e170` — 删除跨服务集成测试 + 修复 flaky test
+- `4bb2644` — wiki gaps #11–#12 标记为已解决
+
+**Wiki 更新**:
+- `wiki/active-areas.md` — JaCoCo 基线更新为最终达标数据
+- `wiki/gaps.md` — Open Questions 11/12 已解决，仅剩 #10（SSE single-node 架构限制）
+
 ## 2026-05-07 — Flowable BPMN runtime tables documented
 
 **Scope**: Document `act_*` Flowable 7 auto-DDL tables and their relationship to SchemaPlexAI workflow processes.
