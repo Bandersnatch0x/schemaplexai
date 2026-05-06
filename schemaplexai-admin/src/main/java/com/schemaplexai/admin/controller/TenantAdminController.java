@@ -1,6 +1,7 @@
 package com.schemaplexai.admin.controller;
 
 import com.schemaplexai.admin.dto.TenantAdminDTO;
+import com.schemaplexai.admin.dto.TenantConfigUpdateDTO;
 import com.schemaplexai.admin.service.TenantAdminService;
 import com.schemaplexai.common.result.Result;
 import io.swagger.v3.oas.annotations.Operation;
@@ -43,6 +44,13 @@ public class TenantAdminController extends BaseAdminController {
     @PostMapping("/{id}/enable")
     public Result<Void> enable(@PathVariable Long id) {
         tenantAdminService.enableTenant(id);
+        return success();
+    }
+
+    @Operation(summary = "更新租户配置")
+    @PutMapping("/{id}/config")
+    public Result<Void> updateConfig(@PathVariable Long id, @RequestBody TenantConfigUpdateDTO dto) {
+        tenantAdminService.updateTenantConfig(id, dto);
         return success();
     }
 }

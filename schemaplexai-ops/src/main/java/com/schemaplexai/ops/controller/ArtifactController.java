@@ -46,4 +46,29 @@ public class ArtifactController {
     public Result<List<SfArtifact>> list() {
         return Result.success(artifactService.list());
     }
+
+    @PostMapping("/upload")
+    public Result<SfArtifact> uploadArtifact(@RequestBody SfArtifact artifact) {
+        return Result.success(artifactService.uploadArtifact(artifact));
+    }
+
+    @GetMapping("/{id}/download")
+    public Result<SfArtifact> downloadArtifact(@PathVariable Long id) {
+        return Result.success(artifactService.downloadArtifact(id));
+    }
+
+    @PostMapping("/{id}/validate")
+    public Result<Boolean> validateArtifact(@PathVariable Long id) {
+        return Result.success(artifactService.validateArtifact(id));
+    }
+
+    @GetMapping("/by-type")
+    public Result<List<SfArtifact>> listArtifactsByType(@RequestParam String artifactType) {
+        return Result.success(artifactService.listArtifactsByType(artifactType));
+    }
+
+    @PostMapping("/{id}/archive")
+    public Result<SfArtifact> archiveArtifact(@PathVariable Long id) {
+        return Result.success(artifactService.archiveArtifact(id));
+    }
 }

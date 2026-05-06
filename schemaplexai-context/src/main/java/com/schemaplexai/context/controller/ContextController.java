@@ -9,6 +9,8 @@ import com.schemaplexai.model.dto.PageResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/context/contexts")
 @RequiredArgsConstructor
@@ -47,5 +49,33 @@ public class ContextController {
         com.baomidou.mybatisplus.extension.plugins.pagination.Page<SfContext> page = contextService.page(
                 new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(pageParam.getCurrent(), pageParam.getSize()));
         return Result.success(PageResult.of(page.getRecords(), page.getTotal(), pageParam.getCurrent(), pageParam.getSize()));
+    }
+
+    @PostMapping("/ingest")
+    public Result<SfContext> ingestContext(@RequestParam Long workspaceId,
+                                           @RequestParam String name,
+                                           @RequestParam String type) {
+        return Result.success(contextService.ingestContext(workspaceId, name, type));
+    }
+
+    @GetMapping("/search")
+    public Result<List<SfContext>> searchContext(@RequestParam String keyword,
+                                                  @RequestParam(required = false) String type) {
+        return Result.success(contextService.searchContext(keyword, type));
+    }
+
+    @PostMapping("/{id}/refresh")
+    public Result<Void> refreshContext(@PathVariable Long id) {
+        contextService.refreshContext(id);
+        return Result.success();
+    }
+
+    @GetMapping("/by-conversation")
+    public Result<SfContext> getContextByConversation(@RequestParam Long conversationId) {
+        SfContext context = contextService.getContextByConversation(conversationId);
+        if (context == null) {
+            return Result.error(ResultCode.NOT_FOUND);
+        }
+        return Result.success(context);
     }
 }

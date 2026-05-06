@@ -9,6 +9,9 @@ import com.schemaplexai.spec.service.SpecSteeringService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/spec/steerings")
 @RequiredArgsConstructor
@@ -47,5 +50,27 @@ public class SpecSteeringController {
         com.baomidou.mybatisplus.extension.plugins.pagination.Page<SfSpecSteering> page = specSteeringService.page(
                 new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(pageParam.getCurrent(), pageParam.getSize()));
         return Result.success(PageResult.of(page.getRecords(), page.getTotal(), pageParam.getCurrent(), pageParam.getSize()));
+    }
+
+    @PostMapping("/evaluate")
+    public Result<Map<String, Boolean>> evaluateSteeringRules(@RequestParam Long specId,
+                                                               @RequestParam String content) {
+        return Result.success(specSteeringService.evaluateSteeringRules(specId, content));
+    }
+
+    @PostMapping("/apply")
+    public Result<String> applySteering(@RequestParam Long specId,
+                                         @RequestParam String content) {
+        return Result.success(specSteeringService.applySteering(specId, content));
+    }
+
+    @GetMapping("/active")
+    public Result<List<SfSpecSteering>> listActiveSteerings(@RequestParam Long specId) {
+        return Result.success(specSteeringService.listActiveSteerings(specId));
+    }
+
+    @PostMapping("/{id}/validate")
+    public Result<Boolean> validateSteeringConfig(@PathVariable Long id) {
+        return Result.success(specSteeringService.validateSteeringConfig(id));
     }
 }

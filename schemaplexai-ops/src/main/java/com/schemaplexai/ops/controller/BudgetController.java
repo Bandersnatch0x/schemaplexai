@@ -7,6 +7,7 @@ import com.schemaplexai.ops.service.BudgetService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -45,5 +46,30 @@ public class BudgetController {
     @GetMapping
     public Result<List<SfBudget>> list() {
         return Result.success(budgetService.list());
+    }
+
+    @PostMapping("/allocate")
+    public Result<SfBudget> allocateBudget(@RequestBody SfBudget budget) {
+        return Result.success(budgetService.allocateBudget(budget));
+    }
+
+    @GetMapping("/{id}/check-limit")
+    public Result<Boolean> checkBudgetLimit(@PathVariable Long id) {
+        return Result.success(budgetService.checkBudgetLimit(id));
+    }
+
+    @GetMapping("/{id}/usage")
+    public Result<BigDecimal> getBudgetUsage(@PathVariable Long id) {
+        return Result.success(budgetService.getBudgetUsage(id));
+    }
+
+    @GetMapping("/by-tenant")
+    public Result<List<SfBudget>> listBudgetsByTenant(@RequestParam String tenantId) {
+        return Result.success(budgetService.listBudgetsByTenant(tenantId));
+    }
+
+    @PostMapping("/{id}/update-allocation")
+    public Result<SfBudget> updateBudgetAllocation(@PathVariable Long id, @RequestParam BigDecimal newLimitAmount) {
+        return Result.success(budgetService.updateBudgetAllocation(id, newLimitAmount));
     }
 }

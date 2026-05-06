@@ -2,6 +2,7 @@ package com.schemaplexai.admin.service;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.schemaplexai.admin.dto.TenantAdminDTO;
+import com.schemaplexai.admin.dto.TenantConfigUpdateDTO;
 import com.schemaplexai.admin.entity.SfAuditLog;
 import com.schemaplexai.admin.mapper.SfAuditLogMapper;
 import com.schemaplexai.common.exception.BaseException;
@@ -13,6 +14,7 @@ import com.schemaplexai.system.mapper.SfUserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -85,6 +87,17 @@ public class TenantAdminService extends ServiceImpl<SfTenantMapper, SfTenant> {
         tenant.setStatus(1);
         updateById(tenant);
         log.info("Tenant enabled: id={}, code={}", tenantId, tenant.getCode());
+    }
+
+    @Transactional
+    public void updateTenantConfig(Long tenantId, TenantConfigUpdateDTO dto) {
+        SfTenant tenant = getById(tenantId);
+        if (tenant == null) {
+            throw new BaseException(ResultCode.TENANT_NOT_FOUND);
+        }
+        tenant.setConfigJson(dto.getConfigJson());
+        updateById(tenant);
+        log.info("Tenant config updated: id={}, code={}", tenantId, tenant.getCode());
     }
 
     private Long countUsersByTenant(String tenantCode) {

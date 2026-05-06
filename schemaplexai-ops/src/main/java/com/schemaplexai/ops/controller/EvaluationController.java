@@ -46,4 +46,24 @@ public class EvaluationController {
     public Result<List<SfEvalTask>> list() {
         return Result.success(evaluationService.list());
     }
+
+    @PostMapping("/{id}/run")
+    public Result<SfEvalTask> runEvaluation(@PathVariable Long id) {
+        return Result.success(evaluationService.runEvaluation(id));
+    }
+
+    @GetMapping("/{id}/results")
+    public Result<SfEvalTask> getEvaluationResults(@PathVariable Long id) {
+        return Result.success(evaluationService.getEvaluationResults(id));
+    }
+
+    @GetMapping("/by-dataset")
+    public Result<List<SfEvalTask>> listByDataset(@RequestParam Long datasetId) {
+        return Result.success(evaluationService.listByDataset(datasetId));
+    }
+
+    @GetMapping("/by-status")
+    public Result<List<SfEvalTask>> listByStatus(@RequestParam Integer status) {
+        return Result.success(evaluationService.listByStatus(status));
+    }
 }

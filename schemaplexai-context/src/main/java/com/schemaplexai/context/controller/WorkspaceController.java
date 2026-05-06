@@ -9,6 +9,8 @@ import com.schemaplexai.model.dto.PageResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/context/workspaces")
 @RequiredArgsConstructor
@@ -47,5 +49,27 @@ public class WorkspaceController {
         com.baomidou.mybatisplus.extension.plugins.pagination.Page<SfWorkspace> page = workspaceService.page(
                 new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(pageParam.getCurrent(), pageParam.getSize()));
         return Result.success(PageResult.of(page.getRecords(), page.getTotal(), pageParam.getCurrent(), pageParam.getSize()));
+    }
+
+    @PostMapping("/default")
+    public Result<SfWorkspace> createDefaultWorkspace(@RequestParam String tenantId) {
+        return Result.success(workspaceService.createDefaultWorkspace(tenantId));
+    }
+
+    @PostMapping("/{id}/validate-access")
+    public Result<Void> validateWorkspaceAccess(@PathVariable Long id) {
+        workspaceService.validateWorkspaceAccess(id);
+        return Result.success();
+    }
+
+    @GetMapping("/by-tenant")
+    public Result<List<SfWorkspace>> listWorkspacesByTenant(@RequestParam String tenantId) {
+        return Result.success(workspaceService.listWorkspacesByTenant(tenantId));
+    }
+
+    @PostMapping("/{id}/archive")
+    public Result<Void> archiveWorkspace(@PathVariable Long id) {
+        workspaceService.archiveWorkspace(id);
+        return Result.success();
     }
 }

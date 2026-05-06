@@ -4,7 +4,7 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@SpringBootApplication(scanBasePackages = {"com.schemaplexai.admin", "com.schemaplexai.dao"})
+@SpringBootApplication(scanBasePackages = {"com.schemaplexai.admin", "com.schemaplexai.dao", "com.schemaplexai.system"})
 @MapperScan("com.schemaplexai.admin.**.mapper")
 public class SchemaPlexaiAdminApplication {
 

@@ -46,4 +46,27 @@ public class NotificationController {
     public Result<List<SfNotification>> list() {
         return Result.success(notificationService.list());
     }
+
+    @PostMapping("/send")
+    public Result<SfNotification> sendNotification(@RequestParam Long userId,
+                                                   @RequestParam String type,
+                                                   @RequestParam String title,
+                                                   @RequestParam String content) {
+        return Result.success(notificationService.sendNotification(userId, type, title, content));
+    }
+
+    @PostMapping("/{id}/mark-read")
+    public Result<SfNotification> markAsRead(@PathVariable Long id) {
+        return Result.success(notificationService.markAsRead(id));
+    }
+
+    @GetMapping("/unread")
+    public Result<List<SfNotification>> listUnread(@RequestParam Long userId) {
+        return Result.success(notificationService.listUnread(userId));
+    }
+
+    @PostMapping("/batch-mark-read")
+    public Result<Integer> batchMarkAsRead(@RequestBody List<Long> notificationIds) {
+        return Result.success(notificationService.batchMarkAsRead(notificationIds));
+    }
 }
