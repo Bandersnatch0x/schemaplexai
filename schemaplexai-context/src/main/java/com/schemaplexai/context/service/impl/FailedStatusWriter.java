@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-class FailedStatusWriter {
+public class FailedStatusWriter {
 
     private final SfKnowledgeDocMapper knowledgeDocMapper;
 
