@@ -18,7 +18,7 @@ confidence: high
 |---------|----------|---------------|
 | `sf_agent_shadow_config` | 02-init-schema-agent.sql | Self-improvement config — no service/controller explored |
 | `sf_tenant_environment_config` | Entity defined 2026-05-04 | Tenant env security config — global table, SecurityPolicyLoader implemented |
-| `sf_config` | 01-init-schema.sql | System configuration table — no ConfigService impl explored |
+| ~~`sf_config`~~ | 01-init-schema.sql | System configuration table — `ConfigService` (system) + `SystemConfigService` (admin) implemented with feature flags and maintenance mode |
 | `act_*` tables | Flowable auto-DDL | BPMN runtime tables — not in init scripts |
 | ~~ClickHouse schema~~ | `docker/clickhouse/init/01-cost-analytics.sql` | 4 tables + 2 materialized views created 2026-05-06 |
 | ~~Milvus collections~~ | `schemaplexai-context/src/main/resources/milvus/` | `knowledge_doc_embedding` collection schema with IVF_FLAT/COSINE index |
@@ -67,8 +67,8 @@ The following controllers exist but have no dedicated wiki pages (most are stand
 - `ToolExecutionMetricsBinder` — Prometheus MeterBinder for tool execution observability (agent-engine, 2026-05-04)
 - `RetryingStateHandler` — exponential backoff retry with circuit breaker (agent-engine, 2026-05-04)
 - `ResumingStateHandler` — snapshot-based execution resume with cross-tenant validation (agent-engine, 2026-05-04)
-- `QualityOrchestrator` — quality gate orchestration
-- `FlowableDelegateAdapter` — Flowable integration adapter
+- ~~`QualityOrchestrator`~~ — implemented with rule registry, evaluation pipeline, and 10 unit tests
+- ~~`FlowableDelegateAdapter`~~ — implemented as JavaDelegate bridge to WorkflowNodeEngine
 - All `*ServiceImpl` classes (implementation details)
 
 ## Open Questions
