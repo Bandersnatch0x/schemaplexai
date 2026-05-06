@@ -3,27 +3,45 @@ package com.schemaplexai.agent.engine.state;
 import com.schemaplexai.agent.engine.admission.TokenBudget;
 import com.schemaplexai.agent.engine.context.ContextInjector;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
+import com.schemaplexai.agent.engine.loop.AgentLoopDetectionService;
+import com.schemaplexai.agent.engine.loop.LoopDetectionResult;
 import com.schemaplexai.agent.engine.memory.CompositeChatMemoryStore;
 import com.schemaplexai.agent.engine.model.AiModelRouter;
 import com.schemaplexai.agent.engine.model.LlmMessage;
-import lombok.RequiredArgsConstructor;
+import com.schemaplexai.agent.engine.util.TokenEstimator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.List;
 
+/**
+ * Handles THINKING state — LLM reasoning with loop detection and token budget gating.
+ *
+ * Integrated with AgentLoopDetectionService: checks for agent loops before transitioning
+ * to TOOL_CALLING, preventing infinite tool calling cycles.
+ */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class ThinkingStateHandler implements AgentStateHandler {
 
     private static final String DEFAULT_MODEL = "gpt-4";
     private static final double DEFAULT_TEMPERATURE = 0.7;
-    private static final int TOOL_DETECTION_THRESHOLD = 3;
 
     private final ContextInjector contextInjector;
     private final CompositeChatMemoryStore chatMemoryStore;
     private final AiModelRouter modelRouter;
+    private final AgentLoopDetectionService loopDetection;
+
+    public ThinkingStateHandler(ContextInjector contextInjector,
+                                 CompositeChatMemoryStore chatMemoryStore,
+                                 AiModelRouter modelRouter,
+                                 AgentLoopDetectionService loopDetection) {
+        this.contextInjector = contextInjector;
+        this.chatMemoryStore = chatMemoryStore;
+        this.modelRouter = modelRouter;
+        this.loopDetection = loopDetection;
+    }
 
     @Override
     public AgentExecutionState getState() {
@@ -52,6 +70,8 @@ public class ThinkingStateHandler implements AgentStateHandler {
             if (budget != null && !budget.consumeInput(inputTokens)) {
                 log.warn("Token budget exceeded for execution {} (input: {}, remaining: {})",
                         execution.getId(), inputTokens, budget.remainingInput());
+                execution.setMetadata("blockedReason", "token_budget_exceeded");
+                execution.setMetadata("admissionType", "BUDGET");
                 stateMachine.transition(AgentExecutionState.GATE_BLOCKED, execution);
                 return;
             }
@@ -65,6 +85,8 @@ public class ThinkingStateHandler implements AgentStateHandler {
                 if (!budget.consumeOutput(outputTokens)) {
                     log.warn("Output token budget exceeded for execution {} (output: {}, remaining: {})",
                             execution.getId(), outputTokens, budget.remainingOutput());
+                    execution.setMetadata("blockedReason", "output_token_budget_exceeded");
+                    execution.setMetadata("admissionType", "BUDGET");
                     stateMachine.transition(AgentExecutionState.GATE_BLOCKED, execution);
                     return;
                 }
@@ -74,12 +96,27 @@ public class ThinkingStateHandler implements AgentStateHandler {
             // 7. Save assistant response to memory
             chatMemoryStore.saveMessage(execution.getConversationId(), new LlmMessage("assistant", response));
 
-            // 8. Determine next state based on response
+            // 8. Loop detection before transitioning to TOOL_CALLING
             if (containsToolCalls(response)) {
+                List<String> toolNames = extractToolNames(response);
+                String responseHash = String.valueOf(response.hashCode());
+                LoopDetectionResult loopResult = loopDetection.detectLoop(
+                        execution.getId(), responseHash, toolNames);
+
+                if (loopResult.loopDetected()) {
+                    log.warn("Loop detected in THINKING for execution {}: {}",
+                            execution.getId(), loopResult.reason());
+                    execution.setMetadata("blockedReason", "agent_loop_" + loopResult.reason());
+                    execution.setMetadata("admissionType", "LOOP");
+                    stateMachine.transition(AgentExecutionState.GATE_BLOCKED, execution);
+                    return;
+                }
+
                 log.info("Execution {} detected tool calls, transitioning to TOOL_CALLING", execution.getId());
                 stateMachine.transition(AgentExecutionState.TOOL_CALLING, execution);
             } else {
                 log.info("Execution {} completed with direct answer, transitioning to COMPLETED", execution.getId());
+                loopDetection.clearRecords(execution.getId());
                 stateMachine.transition(AgentExecutionState.COMPLETED, execution);
             }
         } catch (Exception e) {
@@ -100,23 +137,37 @@ public class ThinkingStateHandler implements AgentStateHandler {
     }
 
     private long estimateTokens(String text) {
-        if (text == null || text.isEmpty()) {
-            return 0;
-        }
-        return Math.max(1, text.length() / 4L);
+        return TokenEstimator.estimate(text);
     }
 
     private boolean containsToolCalls(String response) {
         if (response == null || response.isBlank()) {
             return false;
         }
-        int toolIndicatorCount = 0;
-        if (response.contains("<tool>")) toolIndicatorCount++;
-        if (response.contains("<function>")) toolIndicatorCount++;
-        if (response.contains("```tool")) toolIndicatorCount++;
-        if (response.contains("TOOL_CALL")) toolIndicatorCount++;
-        if (response.contains("invoke_tool")) toolIndicatorCount++;
-        return toolIndicatorCount >= 1;
+        return response.contains("<tool_use>")
+                || response.contains("tool_calls")
+                || response.contains("<function>")
+                || response.contains("<tool>")
+                || response.contains("```tool")
+                || response.contains("invoke_tool");
+    }
+
+    private List<String> extractToolNames(String response) {
+        if (response == null || response.isBlank()) {
+            return Collections.emptyList();
+        }
+        // Simple extraction: look for tool_use name tags or function.name patterns
+        java.util.List<String> names = new java.util.ArrayList<>();
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile(
+                "<name>([^<]+)</name>|\"name\"\\s*:\\s*\"([^\"]+)\"")
+                .matcher(response);
+        while (m.find()) {
+            String name = m.group(1) != null ? m.group(1) : m.group(2);
+            if (name != null && !name.isBlank()) {
+                names.add(name.trim());
+            }
+        }
+        return names;
     }
 
     private TokenBudget loadBudget(SfAgentExecution execution) {
@@ -124,7 +175,21 @@ public class ThinkingStateHandler implements AgentStateHandler {
             return null;
         }
         try {
-            String[] parts = execution.getTokenBudgetJson().split(",");
+            String json = execution.getTokenBudgetJson().trim();
+            if (json.startsWith("{")) {
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                java.util.Map<String, Object> map = mapper.readValue(json, java.util.Map.class);
+                long maxInput = ((Number) map.getOrDefault("maxInput", 0L)).longValue();
+                long maxOutput = ((Number) map.getOrDefault("maxOutput", 0L)).longValue();
+                long consumedInput = ((Number) map.getOrDefault("consumedInput", 0L)).longValue();
+                long consumedOutput = ((Number) map.getOrDefault("consumedOutput", 0L)).longValue();
+                TokenBudget budget = new TokenBudget(maxInput, maxOutput);
+                budget.consumeInput(consumedInput);
+                budget.consumeOutput(consumedOutput);
+                return budget;
+            }
+            // Legacy fallback: comma-separated format
+            String[] parts = json.split(",");
             long maxInput = Long.parseLong(parts[0]);
             long maxOutput = Long.parseLong(parts[1]);
             long consumedInput = parts.length > 2 ? Long.parseLong(parts[2]) : 0;
@@ -140,9 +205,18 @@ public class ThinkingStateHandler implements AgentStateHandler {
     }
 
     private void saveBudget(SfAgentExecution execution, TokenBudget budget) {
-        String json = budget.getMaxInputTokens() + "," + budget.getMaxOutputTokens() + "," +
-                budget.getConsumedInputTokens().get() + "," + budget.getConsumedOutputTokens().get();
-        execution.setTokenBudgetJson(json);
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            java.util.Map<String, Long> map = java.util.Map.of(
+                "maxInput", budget.getMaxInputTokens(),
+                "maxOutput", budget.getMaxOutputTokens(),
+                "consumedInput", budget.getConsumedInputTokens().get(),
+                "consumedOutput", budget.getConsumedOutputTokens().get()
+            );
+            execution.setTokenBudgetJson(mapper.writeValueAsString(map));
+        } catch (Exception e) {
+            log.warn("Failed to serialize token budget for execution {}", execution.getId());
+        }
     }
 
     private String resolveModelId(SfAgentExecution execution) {

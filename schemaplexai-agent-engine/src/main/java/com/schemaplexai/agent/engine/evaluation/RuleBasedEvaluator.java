@@ -1,5 +1,7 @@
 package com.schemaplexai.agent.engine.evaluation;
 
+import com.schemaplexai.agent.engine.state.AgentExecutionState;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;

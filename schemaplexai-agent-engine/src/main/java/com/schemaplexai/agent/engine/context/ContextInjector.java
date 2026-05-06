@@ -87,6 +87,16 @@ public class ContextInjector {
         }
     }
 
+    private void validateInput(String content) {
+        if (content == null) return;
+        for (Pattern pattern : DANGEROUS_PATTERNS) {
+            if (pattern.matcher(content).find()) {
+                log.warn("Potential prompt injection detected during validation");
+                throw new IllegalArgumentException("Input contains potentially dangerous content");
+            }
+        }
+    }
+
     public String sanitize(String content) {
         if (content == null) {
             return "";

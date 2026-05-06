@@ -100,7 +100,15 @@
       "Skill(update-config)",
       "Bash(mkdir -p scripts/lib)",
       "Bash(mkdir -p .claude/hooks)",
-      "Bash(tasklist)"
+      "Bash(tasklist)",
+      "Bash(cp D:/code_space/frige/.claude/changes/v1-release-readiness/spec.md D:/code_space/frige/docs/specs/2026-05-05-v1.0-release-readiness.md)",
+      "Bash(cp D:/code_space/frige/.claude/changes/v1-test-fixes-and-coverage/spec.md D:/code_space/frige/docs/specs/2026-05-05-v1.0-test-fixes-and-coverage.md)",
+      "Bash(npx vite *)",
+      "Bash(cat /d/code_space/frige/schemaplexai-ui/vite.config.ts)",
+      "Bash(cat /d/code_space/frige/schemaplexai-ui/vite.config.js)",
+      "Bash(echo \"---EXIT:$?\")",
+      "Bash(echo \"===EXIT:$?\")",
+      "Bash(netstat -ano)"
     ]
   },
   "hooks": {

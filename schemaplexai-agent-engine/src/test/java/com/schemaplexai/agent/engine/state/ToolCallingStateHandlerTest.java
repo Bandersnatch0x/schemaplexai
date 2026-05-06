@@ -1,12 +1,15 @@
 package com.schemaplexai.agent.engine.state;
 
+import com.schemaplexai.agent.engine.config.SecurityPolicyLoader;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
+import com.schemaplexai.agent.engine.loop.AgentLoopDetectionService;
+import com.schemaplexai.agent.engine.loop.LoopDetectionResult;
 import com.schemaplexai.agent.engine.memory.CompositeChatMemoryStore;
 import com.schemaplexai.agent.engine.model.LlmMessage;
-import com.schemaplexai.agent.engine.tool.ToolErrorCategory;
-import com.schemaplexai.agent.engine.tool.ToolExecutionRecorder;
-import com.schemaplexai.agent.engine.tool.ToolExecutionResult;
-import com.schemaplexai.agent.engine.tool.ToolSafetyGuard;
+import com.schemaplexai.agent.engine.tool.*;
+import com.schemaplexai.agent.engine.tool.adapter.ExecutionContext;
+import com.schemaplexai.agent.engine.tool.adapter.ToolAdapter;
+import com.schemaplexai.agent.engine.tool.registry.ToolRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -26,13 +29,28 @@ class ToolCallingStateHandlerTest {
     private CompositeChatMemoryStore chatMemoryStore;
 
     @Mock
+    private ToolRegistry toolRegistry;
+
+    @Mock
+    private ToolSandbox sandbox;
+
+    @Mock
     private ToolSafetyGuard safetyGuard;
+
+    @Mock
+    private AgentLoopDetectionService loopDetection;
 
     @Mock
     private ToolExecutionRecorder executionRecorder;
 
     @Mock
+    private SecurityPolicyLoader securityPolicyLoader;
+
+    @Mock
     private AgentStateMachine stateMachine;
+
+    @Mock
+    private ToolAdapter toolAdapter;
 
     @InjectMocks
     private ToolCallingStateHandler handler;
@@ -42,19 +60,21 @@ class ToolCallingStateHandlerTest {
         SfAgentExecution execution = createExecution(1L);
         LlmMessage assistantMsg = new LlmMessage("assistant", "calling volumeDelete");
         when(chatMemoryStore.loadMessages("conv-1")).thenReturn(List.of(assistantMsg));
+        when(toolRegistry.parse("calling volumeDelete", null)).thenReturn(List.of(new ToolCall("volumeDelete")));
+        when(loopDetection.detectLoop(eq(1L), anyString(), anyList())).thenReturn(LoopDetectionResult.noLoop());
+        when(toolRegistry.resolve("volumeDelete")).thenReturn(toolAdapter);
+        when(securityPolicyLoader.load("tenant-1")).thenReturn(null);
 
         ToolSafetyGuard.SafetyCheckResult blockResult = new ToolSafetyGuard.SafetyCheckResult(
             false, true, ToolErrorCategory.IRREVERSIBLE_OPERATION, "Irreversible"
         );
-        when(safetyGuard.check("volumeDelete", "calling volumeDelete", "tenant-1")).thenReturn(blockResult);
+        when(safetyGuard.check("volumeDelete", "{}", "tenant-1")).thenReturn(blockResult);
 
         handler.handle(stateMachine, execution);
 
         verify(executionRecorder).record(eq(1L), argThat(result ->
             result.blocked() && result.errorCategory() == ToolErrorCategory.IRREVERSIBLE_OPERATION));
-        verify(chatMemoryStore).saveMessage(eq("conv-1"), argThat(msg ->
-            msg.getRole().equals("tool") && msg.getContent().startsWith("BLOCKED:")));
-        verify(stateMachine).transition(AgentExecutionState.FAILED, execution);
+        verify(stateMachine).transition(AgentExecutionState.GATE_BLOCKED, execution);
     }
 
     @Test
@@ -62,8 +82,18 @@ class ToolCallingStateHandlerTest {
         SfAgentExecution execution = createExecution(2L);
         LlmMessage assistantMsg = new LlmMessage("assistant", "calling fileRead");
         when(chatMemoryStore.loadMessages("conv-2")).thenReturn(List.of(assistantMsg));
-        when(safetyGuard.check("fileRead", "calling fileRead", "tenant-2")).thenReturn(
+        when(toolRegistry.parse("calling fileRead", null)).thenReturn(List.of(new ToolCall("fileRead")));
+        when(loopDetection.detectLoop(eq(2L), anyString(), anyList())).thenReturn(LoopDetectionResult.noLoop());
+        when(toolRegistry.resolve("fileRead")).thenReturn(toolAdapter);
+        when(securityPolicyLoader.load("tenant-2")).thenReturn(null);
+        when(safetyGuard.check("fileRead", "{}", "tenant-2")).thenReturn(
             new ToolSafetyGuard.SafetyCheckResult(true, false, null, null));
+        try {
+            when(toolAdapter.execute(any(ToolCall.class), any(ExecutionContext.class)))
+                .thenReturn(ToolResult.success("Tool fileRead executed"));
+        } catch (ToolExecutionException e) {
+            throw new RuntimeException(e);
+        }
 
         handler.handle(stateMachine, execution);
 
@@ -113,8 +143,6 @@ class ToolCallingStateHandlerTest {
         SfAgentExecution execution = createExecution(6L);
         LlmMessage assistantMsg = new LlmMessage("assistant", "calling failStub");
         when(chatMemoryStore.loadMessages("conv-6")).thenReturn(List.of(assistantMsg));
-        when(safetyGuard.check("failStub", "calling failStub", "tenant-6")).thenReturn(
-            new ToolSafetyGuard.SafetyCheckResult(true, false, null, null));
 
         handler.handle(stateMachine, execution);
 

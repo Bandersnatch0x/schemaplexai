@@ -7,11 +7,11 @@ public record ReflectionResult(
     boolean accepted,
     String suggestions
 ) {
-    public static ReflectionResult accepted() {
+    public static ReflectionResult ofAccepted() {
         return new ReflectionResult(true, null);
     }
 
-    public static ReflectionResult needsRevision(String suggestions) {
+    public static ReflectionResult ofNeedsRevision(String suggestions) {
         return new ReflectionResult(false, suggestions);
     }
 

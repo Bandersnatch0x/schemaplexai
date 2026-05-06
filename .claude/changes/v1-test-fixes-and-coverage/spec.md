@@ -1,0 +1,68 @@
+---
+change_id: v1-test-fixes-and-coverage
+status: approved
+created_at: 2026-05-05
+version: 1.0
+---
+
+# Spec: Fix Pre-existing Test Failures + Add Coverage
+
+## Overview
+
+Fix all 21 pre-existing test failures/errors in schemaplexai-agent-engine and add JaCoCo coverage plugin. No architectural changes — all fixes are test corrections or minor source improvements.
+
+## Fix Groups
+
+### Group 1: Missing @Mock Declarations
+
+**Files**: `ThinkingStateHandlerTest.java`, `ToolCallingStateHandlerTest.java`
+
+Add missing `@Mock` fields:
+- ThinkingStateHandlerTest: `@Mock AgentLoopDetectionService loopDetection`
+- ToolCallingStateHandlerTest: `@Mock ToolRegistry toolRegistry`, `@Mock ToolSandbox sandbox`, `@Mock AgentLoopDetectionService loopDetection`, `@Mock SecurityPolicyLoader securityPolicyLoader`
+
+### Group 2: Regex Fix
+
+**File**: `FinalAnswerExtractor.java`
+
+Fix `THOUGHT_PATTERN` lookahead to include `Thought` as boundary:
+```
+(?=\n(?:Thought|Action|Observation|Final\s+Answer)|$)
+```
+
+### Group 3: Immutable List Fix
+
+**File**: `ExceptionHandlingStateHandler.java`
+
+Change constructor to wrap input list in `new ArrayList<>(recoveryStrategies)` before calling `.add()`.
+
+### Group 4: Validation Ordering Fix
+
+**File**: `ContainerToolSandbox.java`
+
+Move `validate()` call before whitelist check in `execute()` method.
+
+### Group 5: Test Expectation Fixes
+
+**Files**: `ExceptionHandlingStateHandlerTest.java`, `MemoryStrategyTest.java`
+
+- ExceptionHandlingStateHandlerTest: Stub `stateMachine.getCurrentState(1L)` to return non-null state
+- MemoryStrategyTest: Adjust expectations to match content-length-based token estimation
+
+### Group 6: Spring Context Fixes
+
+**Files**: `ObservabilityRecorderTest.java`, `AgentRuntimeOrchestratorIntegrationTest.java`
+
+Add `@SpringBootTest(properties = {...})` to exclude Redis and RabbitMQ auto-configuration.
+
+### Group 7: JaCoCo Coverage
+
+**File**: parent `pom.xml`
+
+Add JaCoCo Maven plugin with 80% line coverage target.
+
+## Acceptance Criteria
+
+- `mvn clean test` — 0 failures across all modules
+- JaCoCo reports generated for core modules
+- No regression in currently passing tests

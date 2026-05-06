@@ -60,6 +60,9 @@ instance.interceptors.response.use(
           setToken(newToken)
           refreshSubscribers.forEach((cb) => cb(newToken))
           refreshSubscribers = []
+          config.headers.Authorization = `Bearer ${newToken}`
+          config.__retry = true
+          return instance.request(config)
         } catch (refreshError) {
           clearAuth()
           window.location.href = '/login'
@@ -73,7 +76,7 @@ instance.interceptors.response.use(
         refreshSubscribers.push((token: string) => {
           config.headers.Authorization = `Bearer ${token}`
           config.__retry = true
-          resolve(instance(config))
+          resolve(instance.request(config))
         })
       })
     }

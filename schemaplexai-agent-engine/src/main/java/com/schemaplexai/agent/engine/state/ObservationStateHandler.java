@@ -25,7 +25,7 @@ public class ObservationStateHandler implements AgentStateHandler {
     public void handle(AgentStateMachine stateMachine, SfAgentExecution execution) {
         log.info("Agent {} observing results, execution {}", execution.getAgentId(), execution.getId());
 
-        String lastOutput = execution.getLastOutput();
+        String lastOutput = (String) execution.getMetadata("lastOutput");
         int iterationCount = resolveIterationCount(execution);
 
         // Check if we've reached the max iterations
@@ -45,7 +45,7 @@ public class ObservationStateHandler implements AgentStateHandler {
         // No Final Answer yet — transition to REFLECTING for self-evaluation before the next cycle
         log.info("No Final Answer yet for execution {}, transitioning to REFLECTING (iteration {})",
                 execution.getId(), iterationCount + 1);
-        incrementIterationCount(execution);
+        incrementIterationCount(stateMachine, execution);
         stateMachine.transition(AgentExecutionState.REFLECTING, execution);
     }
 
@@ -70,7 +70,7 @@ public class ObservationStateHandler implements AgentStateHandler {
     /**
      * Increment the iteration counter stored in execution metadata.
      */
-    private void incrementIterationCount(SfAgentExecution execution) {
+    private void incrementIterationCount(AgentStateMachine stateMachine, SfAgentExecution execution) {
         int current = resolveIterationCount(execution);
         int next = current + 1;
         String existing = execution.getTokenBudgetJson();

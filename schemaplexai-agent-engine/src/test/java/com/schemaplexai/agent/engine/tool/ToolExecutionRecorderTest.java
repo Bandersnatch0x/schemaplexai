@@ -43,7 +43,7 @@ class ToolExecutionRecorderTest {
     @Test
     void recordFailureShouldPersistToolFailureStateWithCategory() {
         ToolExecutionResult result = ToolExecutionResult.failure(
-            "apiCall", ToolErrorCategory.PROVIDER_ERROR, "Rate limit exceeded", 2000, 0);
+            "apiCall", ToolErrorCategory.INTERNAL_ERROR, "Rate limit exceeded", 2000, 0);
 
         recorder.record(200L, result);
 
@@ -55,7 +55,7 @@ class ToolExecutionRecorderTest {
         assertEquals("TOOL_FAILURE", log.getState());
         assertTrue(log.getMessage().contains("tool=apiCall"));
         assertTrue(log.getMessage().contains("status=FAILURE"));
-        assertTrue(log.getMessage().contains("category=PROVIDER_ERROR"));
+        assertTrue(log.getMessage().contains("category=INTERNAL_ERROR"));
         assertTrue(log.getMessage().contains("error=\"Rate limit exceeded\""));
         assertTrue(log.getMessage().contains("latencyMs=2000"));
         assertTrue(log.getMessage().contains("tokens=0"));

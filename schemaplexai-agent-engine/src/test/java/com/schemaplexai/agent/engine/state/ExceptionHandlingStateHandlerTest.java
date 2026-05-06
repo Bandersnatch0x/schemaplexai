@@ -44,6 +44,8 @@ class ExceptionHandlingStateHandlerTest {
                 .agentId(42L)
                 .userId("user-1")
                 .build();
+
+        lenient().when(stateMachine.getCurrentState(1L)).thenReturn(AgentExecutionState.THINKING);
     }
 
     @Test

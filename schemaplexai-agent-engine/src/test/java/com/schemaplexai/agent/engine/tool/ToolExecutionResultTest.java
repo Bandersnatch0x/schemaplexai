@@ -21,11 +21,11 @@ class ToolExecutionResultTest {
     @Test
     void shouldCreateFailureResult() {
         ToolExecutionResult result = ToolExecutionResult.failure(
-            "apiCall", ToolErrorCategory.PROVIDER_ERROR, "Rate limit exceeded", 2000, 0);
+            "apiCall", ToolErrorCategory.INTERNAL_ERROR, "Rate limit exceeded", 2000, 0);
 
         assertFalse(result.success());
         assertEquals("apiCall", result.toolName());
-        assertEquals(ToolErrorCategory.PROVIDER_ERROR, result.errorCategory());
+        assertEquals(ToolErrorCategory.INTERNAL_ERROR, result.errorCategory());
         assertEquals("Rate limit exceeded", result.errorMessage());
         assertEquals(2000, result.latencyMs());
     }

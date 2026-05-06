@@ -3,7 +3,7 @@ title: Knowledge Gaps
 type: index
 source: wiki gap analysis
 creation_date: 2026-04-30
-update_date: 2026-04-30
+update_date: 2026-05-04
 tags: [gaps, questions, todo, undocumented]
 confidence: high
 ---
@@ -17,6 +17,7 @@ confidence: high
 | Element | Location | Why It Matters |
 |---------|----------|---------------|
 | `sf_agent_shadow_config` | 02-init-schema-agent.sql | Self-improvement config — no service/controller explored |
+| `sf_tenant_environment_config` | Entity defined 2026-05-04 | Tenant env security config — global table, SecurityPolicyLoader implemented |
 | `sf_config` | 01-init-schema.sql | System configuration table — no ConfigService impl explored |
 | `act_*` tables | Flowable auto-DDL | BPMN runtime tables — not in init scripts |
 | ClickHouse schema | Not found | Analytics tables for cost tracking |
@@ -61,6 +62,11 @@ The following controllers exist but have no dedicated wiki pages (most are stand
 
 - ~~`AgentRuntimeOrchestrator`~~ — documented in [[services/agent-runtime-orchestrator]]
 - ~~`AgentExecutionLifecycleService`~~ — documented in [[services/agent-execution-lifecycle-service]]
+- `ToolRegistry` — tool registration, resolution, and structured parsing (agent-engine, 2026-05-04)
+- `SecurityPolicyLoader` — tenant-aware security policy loading with Caffeine Cache (agent-engine, 2026-05-04)
+- `ToolExecutionMetricsBinder` — Prometheus MeterBinder for tool execution observability (agent-engine, 2026-05-04)
+- `RetryingStateHandler` — exponential backoff retry with circuit breaker (agent-engine, 2026-05-04)
+- `ResumingStateHandler` — snapshot-based execution resume with cross-tenant validation (agent-engine, 2026-05-04)
 - `QualityOrchestrator` — quality gate orchestration
 - `FlowableDelegateAdapter` — Flowable integration adapter
 - All `*ServiceImpl` classes (implementation details)

@@ -27,6 +27,8 @@ public class TenantLineInterceptor implements TenantLineHandler {
     @Override
     public boolean ignoreTable(String tableName) {
         // 全局表不进行租户过滤
-        return tableName.equals("sf_tenant") || tableName.startsWith("act_");
+        return tableName.equals("sf_tenant")
+            || tableName.equals("sf_tenant_environment_config")
+            || tableName.startsWith("act_");
     }
 }

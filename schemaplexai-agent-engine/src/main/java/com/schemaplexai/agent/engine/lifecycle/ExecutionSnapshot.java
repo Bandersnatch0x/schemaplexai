@@ -1,8 +1,10 @@
 package com.schemaplexai.agent.engine.lifecycle;
 
 import com.schemaplexai.agent.engine.state.AgentExecutionState;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -11,6 +13,8 @@ import java.util.Map;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ExecutionSnapshot implements Serializable {
 
     private static final long serialVersionUID = 1L;

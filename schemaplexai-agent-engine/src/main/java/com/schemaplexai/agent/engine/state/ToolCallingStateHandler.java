@@ -1,38 +1,59 @@
 package com.schemaplexai.agent.engine.state;
 
+import com.schemaplexai.agent.engine.config.SecurityPolicyLoader;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
+import com.schemaplexai.agent.engine.loop.AgentLoopDetectionService;
+import com.schemaplexai.agent.engine.loop.LoopDetectionResult;
 import com.schemaplexai.agent.engine.memory.CompositeChatMemoryStore;
 import com.schemaplexai.agent.engine.model.LlmMessage;
-import com.schemaplexai.agent.engine.tool.SandboxConfig;
-import com.schemaplexai.agent.engine.tool.ToolCall;
-import com.schemaplexai.agent.engine.tool.ToolExecutionException;
-import com.schemaplexai.agent.engine.tool.ToolResult;
-import com.schemaplexai.agent.engine.tool.ToolSandbox;
+import com.schemaplexai.agent.engine.tool.*;
+import com.schemaplexai.agent.engine.tool.adapter.ExecutionContext;
+import com.schemaplexai.agent.engine.tool.adapter.ToolAdapter;
+import com.schemaplexai.agent.engine.tool.registry.ToolRegistry;
+import com.schemaplexai.agent.engine.util.TokenEstimator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+/**
+ * Handles TOOL_CALLING state with structured parsing, loop detection, and security checks.
+ *
+ * Refactored from heuristic parseToolCalls() / executeToolStub() to:
+ * - ToolRegistry.parse() for structured OpenAI/Anthropic parsing
+ * - ToolAdapter.execute() for real tool execution
+ * - AgentLoopDetectionService for loop prevention
+ * - ToolSafetyGuard for security validation
+ * - SecurityPolicyLoader for tenant-aware env checks
+ */
 @Slf4j
 @Component
 public class ToolCallingStateHandler implements AgentStateHandler {
 
     private final CompositeChatMemoryStore chatMemoryStore;
     private final ToolSandbox sandbox;
-    private final SandboxConfig sandboxConfig;
+    private final ToolRegistry toolRegistry;
+    private final ToolSafetyGuard safetyGuard;
+    private final AgentLoopDetectionService loopDetection;
+    private final ToolExecutionRecorder executionRecorder;
+    private final SecurityPolicyLoader securityPolicyLoader;
 
     @Autowired
-    public ToolCallingStateHandler(CompositeChatMemoryStore chatMemoryStore, ToolSandbox sandbox) {
-        this(chatMemoryStore, sandbox, SandboxConfig.defaultConfig());
-    }
-
     public ToolCallingStateHandler(CompositeChatMemoryStore chatMemoryStore,
                                     ToolSandbox sandbox,
-                                    SandboxConfig sandboxConfig) {
+                                    ToolRegistry toolRegistry,
+                                    ToolSafetyGuard safetyGuard,
+                                    AgentLoopDetectionService loopDetection,
+                                    ToolExecutionRecorder executionRecorder,
+                                    SecurityPolicyLoader securityPolicyLoader) {
         this.chatMemoryStore = chatMemoryStore;
         this.sandbox = sandbox;
-        this.sandboxConfig = sandboxConfig;
+        this.toolRegistry = toolRegistry;
+        this.safetyGuard = safetyGuard;
+        this.loopDetection = loopDetection;
+        this.executionRecorder = executionRecorder;
+        this.securityPolicyLoader = securityPolicyLoader;
     }
 
     @Override
@@ -45,6 +66,7 @@ public class ToolCallingStateHandler implements AgentStateHandler {
         log.info("Agent {} entering TOOL_CALLING state, execution {}", execution.getAgentId(), execution.getId());
 
         try {
+            // 1. Load conversation history
             List<LlmMessage> messages = chatMemoryStore.loadMessages(execution.getConversationId());
             if (messages.isEmpty()) {
                 log.warn("No messages found for execution {}, skipping tool calls", execution.getId());
@@ -59,26 +81,58 @@ public class ToolCallingStateHandler implements AgentStateHandler {
                 return;
             }
 
-            // Parse tool calls from assistant message
-            List<ToolCall> toolCalls = parseToolCalls(lastMessage.getContent());
-            for (ToolCall toolCall : toolCalls) {
-                log.info("Executing tool {} for execution {}", toolCall.toolName(), execution.getId());
+            // 2. Structured tool call parsing (replaces heuristic parseToolCalls)
+            List<ToolCall> toolCalls = toolRegistry.parse(lastMessage.getContent(), null);
 
-                // Execute in sandbox with safety validation
-                try {
-                    ToolResult result = sandbox.execute(toolCall, sandboxConfig);
-                    chatMemoryStore.saveMessage(execution.getConversationId(),
-                            new LlmMessage("tool", result.output()));
-                } catch (ToolExecutionException e) {
-                    log.error("Tool {} failed for execution {}: {}",
-                            toolCall.toolName(), execution.getId(), e.getMessage());
-                    chatMemoryStore.saveMessage(execution.getConversationId(),
-                            new LlmMessage("tool", "Tool error: " + e.getMessage()));
+            // 3. Loop detection — check for repeated tool calls
+            String responseHash = hashContent(lastMessage.getContent());
+            List<String> toolNames = toolCalls.stream().map(ToolCall::toolName).toList();
+            LoopDetectionResult loopResult = loopDetection.detectLoop(execution.getId(), responseHash, toolNames);
+            if (loopResult.loopDetected()) {
+                log.warn("Loop detected in execution {}: {}", execution.getId(), loopResult.reason());
+                stateMachine.transition(AgentExecutionState.GATE_BLOCKED, execution);
+                return;
+            }
+
+            // 4. Execute each tool call with security checks
+            boolean isRetry = isRetryContext(execution);
+            for (ToolCall toolCall : toolCalls) {
+                // If retrying, only execute the failed tool call (not all calls)
+                if (isRetry && !isRetryTarget(execution, toolCall)) {
+                    log.info("Skipping non-retry tool {} in retry context for execution {}",
+                            toolCall.toolName(), execution.getId());
+                    continue;
+                }
+
+                ToolExecutionResult result = executeToolWithGuard(execution, toolCall);
+                executionRecorder.record(execution.getId(), result);
+
+                if (!result.success() && !result.blocked()) {
+                    // Record error category for retry decision
+                    if (result.errorCategory() != null) {
+                        execution.setMetadata("lastErrorCategory", result.errorCategory().name());
+                    }
+                    if (result.errorCategory() != null && result.errorCategory().isRetryable()) {
+                        stateMachine.transition(AgentExecutionState.RETRYING, execution);
+                        return;
+                    }
                     stateMachine.transition(AgentExecutionState.FAILED, execution);
                     return;
                 }
+
+                if (result.blocked()) {
+                    log.warn("Tool {} blocked for execution {}: {}",
+                            toolCall.toolName(), execution.getId(), result.errorMessage());
+                    stateMachine.transition(AgentExecutionState.GATE_BLOCKED, execution);
+                    return;
+                }
+
+                // Save tool result to conversation memory
+                chatMemoryStore.saveMessage(execution.getConversationId(),
+                        new LlmMessage("tool", result.output()));
             }
 
+            // 5. Transition back to THINKING for next LLM round
             stateMachine.transition(AgentExecutionState.THINKING, execution);
         } catch (Exception e) {
             log.error("Tool calling failed for execution {}", execution.getId(), e);
@@ -89,39 +143,79 @@ public class ToolCallingStateHandler implements AgentStateHandler {
         }
     }
 
+    /**
+     * Execute a single tool call with safety guard and sandbox.
+     * Replaces the old executeToolStub() with real tool adapter execution.
+     */
     private ToolExecutionResult executeToolWithGuard(SfAgentExecution execution, ToolCall toolCall) {
-        // TODO: Integrate with tenant environment configuration for accurate env mismatch detection
-        String environment = execution.getTenantId();
-        ToolSafetyGuard.SafetyCheckResult safety = safetyGuard.check(toolCall.name, toolCall.arguments, environment);
-        if (safety.blocked()) {
-            return ToolExecutionResult.blocked(toolCall.name, safety.errorCategory(), safety.reason());
+        // Resolve tool adapter (whitelist check)
+        ToolAdapter adapter = toolRegistry.resolve(toolCall.toolName());
+        if (adapter == null) {
+            return ToolExecutionResult.failure(toolCall.toolName(),
+                    ToolErrorCategory.INVALID_ARGUMENT,
+                    "Tool not registered: " + toolCall.toolName(), 0, 0);
         }
 
+        // Load tenant security policy for environment-aware checks
+        String environment = execution.getTenantId();
+        var config = securityPolicyLoader.load(environment);
+        if (config != null && config.getEnvironment() != null) {
+            environment = config.getEnvironment();
+        }
+
+        // Safety guard check
+        ToolSafetyGuard.SafetyCheckResult safety = safetyGuard.check(
+                toolCall.toolName(),
+                toolCall.parameters() != null ? toolCall.parameters().toString() : null,
+                environment);
+        if (safety.blocked()) {
+            return ToolExecutionResult.blocked(toolCall.toolName(), safety.errorCategory(), safety.reason());
+        }
+
+        // Execute tool via adapter + sandbox
         long startTime = System.currentTimeMillis();
         try {
-            String output = executeToolStub(toolCall);
+            ExecutionContext ctx = new ExecutionContext(
+                    execution.getTenantId(),
+                    execution.getId(),
+                    getWorkspaceRoot(execution)
+            );
+            ToolResult result = adapter.execute(toolCall, ctx);
             long latency = System.currentTimeMillis() - startTime;
-            return ToolExecutionResult.success(toolCall.name, output, latency, estimateTokens(output));
+            return ToolExecutionResult.success(toolCall.toolName(), result.output(), latency, estimateTokens(result.output()));
+        } catch (ToolExecutionException e) {
+            long latency = System.currentTimeMillis() - startTime;
+            return ToolExecutionResult.failure(toolCall.toolName(), e.getErrorCategory(),
+                    e.getMessage(), latency, 0);
         } catch (Exception e) {
             long latency = System.currentTimeMillis() - startTime;
-            return ToolExecutionResult.failure(toolCall.name, ToolErrorCategory.UNEXPECTED_ENVIRONMENT,
-                e.getMessage(), latency, 0);
+            return ToolExecutionResult.failure(toolCall.toolName(),
+                    ToolErrorCategory.INTERNAL_ERROR, e.getMessage(), latency, 0);
         }
     }
 
-    // TODO(stub): Replace with structured parsing when ToolRegistry is implemented.
-    // Current heuristic only supports test messages in format "calling <toolName>".
-    // Real implementations must parse OpenAI function calls, Anthropic tool use XML,
-    // or other structured formats, extracting name and arguments separately.
-    private List<ToolCall> parseToolCalls(String content) {
-        if (content == null || content.isBlank()) {
-            return List.of();
-        }
-        String trimmed = content.trim();
-        if (trimmed.startsWith("calling ")) {
-            String toolName = trimmed.substring(8).trim();
-            return List.of(new ToolCall(toolName, trimmed));
-        }
-        return List.of();
+    private boolean isRetryContext(SfAgentExecution execution) {
+        String retryCtx = (String) execution.getMetadata("retryContext");
+        return retryCtx != null && !retryCtx.isBlank();
+    }
+
+    private boolean isRetryTarget(SfAgentExecution execution, ToolCall toolCall) {
+        // During retry, only execute the specific failed tool call
+        String failedTool = (String) execution.getMetadata("failedToolName");
+        return failedTool != null && failedTool.equals(toolCall.toolName());
+    }
+
+    private String hashContent(String content) {
+        if (content == null) return "empty";
+        return String.valueOf(content.hashCode());
+    }
+
+    private int estimateTokens(String text) {
+        return (int) TokenEstimator.estimate(text);
+    }
+
+    private String getWorkspaceRoot(SfAgentExecution execution) {
+        String workspace = (String) execution.getMetadata("workspaceRoot");
+        return workspace != null ? workspace : System.getProperty("user.dir");
     }
 }

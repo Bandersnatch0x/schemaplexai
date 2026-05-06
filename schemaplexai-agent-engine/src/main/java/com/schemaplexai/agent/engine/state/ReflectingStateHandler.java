@@ -122,22 +122,22 @@ public class ReflectingStateHandler implements AgentStateHandler {
 
     ReflectionResult parseReflectionResult(String llmOutput) {
         if (llmOutput == null || llmOutput.isBlank()) {
-            return ReflectionResult.accepted();
+            return ReflectionResult.ofAccepted();
         }
 
         String upper = llmOutput.toUpperCase();
         if (upper.contains("PASS")) {
-            return ReflectionResult.accepted();
+            return ReflectionResult.ofAccepted();
         }
 
         int reviseIndex = upper.indexOf("REVISE:");
         if (reviseIndex >= 0) {
             String suggestions = llmOutput.substring(reviseIndex + 7).trim();
-            return ReflectionResult.needsRevision(suggestions);
+            return ReflectionResult.ofNeedsRevision(suggestions);
         }
 
         // Default to accepted if format is unrecognizable
-        return ReflectionResult.accepted();
+        return ReflectionResult.ofAccepted();
     }
 
     int getReflectionCount(SfAgentExecution execution) {

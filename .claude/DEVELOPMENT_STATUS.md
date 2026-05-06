@@ -1,6 +1,6 @@
-<!-- AUTO-GENERATED: gen-dev-status.sh at 2026-05-03T17:57:31Z -->
+<!-- AUTO-GENERATED: gen-dev-status.sh at 2026-05-06T02:40:29Z -->
 
-# Development Status — 2026-05-04
+# Development Status — 2026-05-06
 
 ## This Week (Completed)
 
@@ -17,7 +17,10 @@
 
 | Change | Phases | Status |
 |--------|--------|--------|
+| agent-engine-core-completion | Propose Spec Design Plan  | proposed |
 | core-ai-engine-design | - - - -  | unknown |
+| v1-release-readiness | Propose Spec - Plan  | draft |
+| v1-test-fixes-and-coverage | Propose Spec - Plan  | draft |
 | wiki-gaps-completion | - - - -  | unknown |
 
 ## Recent Decisions
@@ -26,6 +29,7 @@
 - **cursor-sdk-to-opensandbox** (已批准) — ADR-002-cursor-sdk-to-opensandbox.md
 - **langchain4j-selection** (已批准) — ADR-003-langchain4j-selection.md
 - **database-middleware-selection** (已批准) — ADR-004-database-middleware-selection.md
+- **** () — ADR-004-tool-call-parsing-strategy.md
 - **api-gateway** (已批准) — ADR-007-api-gateway.md
 - **domain-decomposition** (已批准) — ADR-008-domain-decomposition.md
 - **agent-state-machine** (已批准) — ADR-009-agent-state-machine.md

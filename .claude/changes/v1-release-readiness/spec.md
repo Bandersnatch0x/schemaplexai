@@ -1,0 +1,91 @@
+---
+change_id: v1-release-readiness
+status: approved
+created_at: 2026-05-05
+version: 1.0
+author: Claude
+---
+
+# Spec: SchemaPlexAI v1.0 Release Readiness
+
+## 1. Overview
+
+Fix all build issues, write comprehensive tests, resolve P0/P1 issues, and prepare for v1.0 release.
+
+## 2. Work Streams
+
+### Stream 1: Test Infrastructure + Base Module Tests
+
+**Files to create/modify**:
+- `schemaplexai-common/src/test/java/**/*Test.java`
+- `schemaplexai-model/src/test/java/**/*Test.java`
+- `schemaplexai-dao/src/test/java/**/*Test.java`
+- `pom.xml` (add test dependencies if missing)
+
+**Scope**:
+- JUnit 5 + Mockito setup
+- Unit tests for Result, ResultCode, BaseException, PageParam
+- Unit tests for BaseEntity, PageResult
+- Unit tests for TenantContextHolder
+- Unit tests for BaseMapperX
+
+### Stream 2: Agent Engine Tests
+
+**Files to create/modify**:
+- `schemaplexai-agent-engine/src/test/java/**/*Test.java`
+
+**Scope**:
+- State machine transitions (all 13 states)
+- ToolRegistry registration, resolution, parsing
+- ToolSafetyGuard checks (blacklist, arg scan, env mismatch, input normalization)
+- ToolExecutionRecorder persistence
+- TokenBudget operations
+- AgentLoopDetectionService detection
+- SecurityPolicyLoader caching
+- RetryingStateHandler retry logic
+- ThinkingStateHandler LLM integration
+- ToolCallingStateHandler tool execution flow
+
+### Stream 3: Gateway + System Tests
+
+**Files to create/modify**:
+- `schemaplexai-gateway/src/test/java/**/*Test.java`
+- `schemaplexai-system/src/test/java/**/*Test.java`
+
+**Scope**:
+- JWT filter validation
+- Tenant filter extraction
+- Rate limiter behavior
+- Auth service login/JWT generation
+- Tenant/User/Role CRUD
+
+### Stream 4: P0 Issue Fixes
+
+**Files to modify**: Per CODE_REVIEW_REPORT.md findings
+
+**Scope**:
+- Fix DB driver mismatch
+- Fix duplicate entities
+- Fix duplicate main class
+- Fix JWT secret hardcoding
+- Fix all other P0 issues
+
+## 3. Acceptance Criteria
+
+- [ ] `mvn clean test` passes (0 failures)
+- [ ] Coverage >= 80% for: common, model, dao, agent-engine, gateway, system
+- [ ] All P0 issues resolved
+- [ ] No CRITICAL security findings
+
+## 4. Test Framework
+
+```xml
+<!-- Already in pom.xml via spring-boot-starter-test -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-test</artifactId>
+    <scope>test</scope>
+</dependency>
+```
+
+Includes: JUnit 5, Mockito, AssertJ, Hamcrest, Spring Test.

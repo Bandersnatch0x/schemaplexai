@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -23,4 +25,20 @@ public class SfAgentExecution extends BaseEntity {
     private String tokenBudgetJson;
 
     private LocalDateTime completedAt;
+
+    /** Transient metadata map for inter-handler communication (retryContext, blockedReason, etc.) */
+    private transient Map<String, Object> metadata = new ConcurrentHashMap<>();
+
+    /** Reference to the latest execution snapshot (for pause/resume) */
+    private Long snapshotId;
+
+    public Object getMetadata(String key) {
+        if (metadata == null) metadata = new ConcurrentHashMap<>();
+        return metadata.get(key);
+    }
+
+    public void setMetadata(String key, Object value) {
+        if (metadata == null) metadata = new ConcurrentHashMap<>();
+        metadata.put(key, value);
+    }
 }

@@ -2,6 +2,8 @@ package com.schemaplexai.agent.engine.state;
 
 import com.schemaplexai.agent.engine.context.ContextInjector;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
+import com.schemaplexai.agent.engine.loop.AgentLoopDetectionService;
+import com.schemaplexai.agent.engine.loop.LoopDetectionResult;
 import com.schemaplexai.agent.engine.memory.CompositeChatMemoryStore;
 import com.schemaplexai.agent.engine.model.AiModelRouter;
 import com.schemaplexai.agent.engine.model.LlmMessage;
@@ -31,6 +33,9 @@ class ThinkingStateHandlerTest {
 
     @Mock
     private AiModelRouter modelRouter;
+
+    @Mock
+    private AgentLoopDetectionService loopDetection;
 
     @Mock
     private AgentStateMachine stateMachine;
@@ -119,6 +124,8 @@ class ThinkingStateHandlerTest {
         when(chatMemoryStore.loadMessages("conv-123")).thenReturn(List.of());
         when(modelRouter.generateWithFallback(anyString(), anyString(), anyDouble()))
                 .thenReturn("I will call a tool: <tool>search</tool>");
+        when(loopDetection.detectLoop(anyLong(), anyString(), anyList()))
+                .thenReturn(LoopDetectionResult.noLoop());
 
         thinkingStateHandler.handle(stateMachine, execution);
 
@@ -176,6 +183,8 @@ class ThinkingStateHandlerTest {
         when(chatMemoryStore.loadMessages("conv-123")).thenReturn(List.of());
         when(modelRouter.generateWithFallback(anyString(), anyString(), anyDouble()))
                 .thenReturn("Calling <function>getWeather</function>");
+        when(loopDetection.detectLoop(anyLong(), anyString(), anyList()))
+                .thenReturn(LoopDetectionResult.noLoop());
 
         thinkingStateHandler.handle(stateMachine, execution);
 
@@ -187,6 +196,8 @@ class ThinkingStateHandlerTest {
         when(chatMemoryStore.loadMessages("conv-123")).thenReturn(List.of());
         when(modelRouter.generateWithFallback(anyString(), anyString(), anyDouble()))
                 .thenReturn("```tool\nsearch\n```");
+        when(loopDetection.detectLoop(anyLong(), anyString(), anyList()))
+                .thenReturn(LoopDetectionResult.noLoop());
 
         thinkingStateHandler.handle(stateMachine, execution);
 

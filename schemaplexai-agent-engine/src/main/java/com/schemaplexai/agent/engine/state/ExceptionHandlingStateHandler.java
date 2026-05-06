@@ -11,6 +11,7 @@ import com.schemaplexai.agent.engine.tool.ToolExecutionException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,7 +37,7 @@ public class ExceptionHandlingStateHandler {
      * Constructs the handler with all available RecoveryStrategy implementations.
      */
     public ExceptionHandlingStateHandler(List<RecoveryStrategy> recoveryStrategies) {
-        this.recoveryStrategies = recoveryStrategies;
+        this.recoveryStrategies = new ArrayList<>(recoveryStrategies);
         if (recoveryStrategies.isEmpty()) {
             // Register defaults if none injected
             this.recoveryStrategies.add(new RetryRecoveryStrategy());

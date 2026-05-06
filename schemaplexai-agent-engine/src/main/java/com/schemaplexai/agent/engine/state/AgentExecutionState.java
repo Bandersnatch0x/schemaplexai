@@ -8,6 +8,7 @@ public enum AgentExecutionState {
     TOOL_CALLING,
     OBSERVATION,
     PAUSED,
+    RESUMING,
     GATE_BLOCKED,
     RETRYING,
     REFLECTING,

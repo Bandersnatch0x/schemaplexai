@@ -20,7 +20,7 @@ public class FinalAnswerExtractor {
 
     // 匹配 "Thought: <content>" 直到下一个 Action/Observation/Final Answer
     private static final Pattern THOUGHT_PATTERN =
-            Pattern.compile("Thought\\s*:\\s*(.+?)(?=\\n(?:Action|Observation|Final\\s+Answer)|$)", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
+            Pattern.compile("Thought\\s*:\\s*(.+?)(?=\\n(?:Thought|Action|Observation|Final\\s+Answer)|$)", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
 
     // 匹配 "Action: <tool_name>\nAction Input: <json>"
     private static final Pattern ACTION_PATTERN =
@@ -54,8 +54,19 @@ public class FinalAnswerExtractor {
     /**
      * 检查 LLM 输出是否包含 Final Answer。
      */
-    public boolean hasFinalAnswer(String llmOutput) {
-        return extractFinalAnswer(llmOutput) != null;
+    public static boolean hasFinalAnswer(String llmOutput) {
+        return extractFinalAnswerStatic(llmOutput) != null;
+    }
+
+    private static String extractFinalAnswerStatic(String llmOutput) {
+        if (llmOutput == null || llmOutput.isBlank()) {
+            return null;
+        }
+        Matcher matcher = FINAL_ANSWER_PATTERN.matcher(llmOutput);
+        if (matcher.find()) {
+            return matcher.group(1).trim();
+        }
+        return null;
     }
 
     /**

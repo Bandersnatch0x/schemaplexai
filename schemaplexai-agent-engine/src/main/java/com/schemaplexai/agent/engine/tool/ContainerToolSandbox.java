@@ -26,14 +26,6 @@ public class ContainerToolSandbox implements ToolSandbox {
 
     @Override
     public ToolResult execute(ToolCall toolCall, SandboxConfig config) throws ToolExecutionException {
-        // 验证工具是否在白名单中
-        if (!whitelist.isAllowed(toolCall.toolName())) {
-            throw new ToolExecutionException(
-                ToolErrorCategory.PERMISSION_DENIED,
-                "Tool '" + toolCall.toolName() + "' is not in the allowed list"
-            );
-        }
-
         // 验证工具调用
         ValidationResult validation = validate(toolCall);
         if (!validation.isValid()) {
@@ -43,10 +35,16 @@ public class ContainerToolSandbox implements ToolSandbox {
             );
         }
 
+        // 验证工具是否在白名单中
+        if (!whitelist.isAllowed(toolCall.toolName())) {
+            throw new ToolExecutionException(
+                ToolErrorCategory.PERMISSION_DENIED,
+                "Tool '" + toolCall.toolName() + "' is not in the allowed list"
+            );
+        }
+
         try {
             return executeInContainer(toolCall, config);
-        } catch (ToolExecutionException e) {
-            throw e;
         } catch (Exception e) {
             throw new ToolExecutionException(
                 ToolErrorCategory.INTERNAL_ERROR,

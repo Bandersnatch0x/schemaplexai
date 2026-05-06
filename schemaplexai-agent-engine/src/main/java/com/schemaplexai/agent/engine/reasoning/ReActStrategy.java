@@ -5,7 +5,7 @@ import com.schemaplexai.agent.engine.context.AgentContext;
 import com.schemaplexai.agent.engine.model.LlmMessage;
 import com.schemaplexai.agent.engine.model.LlmProvider;
 import com.schemaplexai.agent.engine.tool.ToolCall;
-import com.schemaplexai.agent.engine.tool.ToolRegistry;
+import com.schemaplexai.agent.engine.tool.registry.ToolRegistry;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -135,7 +135,7 @@ public class ReActStrategy implements ReasoningStrategy {
                2. Call a tool using the format: TOOL_CALL: <toolName> {"key": "value"}
                3. Provide a final answer using the format: FINAL_ANSWER: <your answer>
 
-               Available tools: """ + toolRegistry.listToolNames() + "\n\n"
+               Available tools: """ + toolRegistry.getRegisteredToolNames() + "\n\n"
                + "Always reason step by step. Only produce FINAL_ANSWER when you are confident.";
     }
 
@@ -272,9 +272,12 @@ public class ReActStrategy implements ReasoningStrategy {
         if (toolRegistry == null) {
             return "No tool registry available";
         }
-        // ToolRegistry.execute returns a result
-        Object result = toolRegistry.execute(toolCall);
-        return result != null ? result.toString() : "(empty result)";
+        // Tool resolution only — actual execution happens in ToolCallingStateHandler
+        var adapter = toolRegistry.resolve(toolCall.toolName());
+        if (adapter == null) {
+            return "Tool not found: " + toolCall.toolName();
+        }
+        return "Tool '" + toolCall.toolName() + "' resolved (execution delegated to ToolCallingStateHandler)";
     }
 
     private long estimateTokens(String text) {

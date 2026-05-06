@@ -6,6 +6,10 @@ spring:
     database:
       replace: none
 
+jwt:
+  secret: test-jwt-secret-key-that-is-at-least-32-bytes-long
+  expiration: 3600000
+
 mybatis-plus:
   global-config:
     db-config:

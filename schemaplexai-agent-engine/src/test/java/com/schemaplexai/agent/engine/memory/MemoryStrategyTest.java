@@ -60,8 +60,8 @@ class MemoryStrategyTest {
         @Test
         @DisplayName("drops oldest messages when budget is tight")
         void dropsOldestWhenBudgetTight() {
-            // Budget allows roughly 2 messages (25 tokens each)
-            TokenBudget budget = new TokenBudget(50, 50);
+            // Budget allows roughly 1 message (content-length/4 estimation)
+            TokenBudget budget = new TokenBudget(15, 15);
             List<ChatMessage> messages = List.of(
                     ChatMessage.user("First message that is quite long and costs tokens"),
                     ChatMessage.assistant("Second message that is also fairly long"),

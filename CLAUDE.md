@@ -10,7 +10,7 @@ For full workflow details, see `.claude/workflow/GUIDE.md`.
 
 Enterprise AI R&D collaboration platform (AI 研发协作平台): Spec → Workflow → Agent execution → Quality gating → Cost analysis.
 
-**Current state**: Scaffolding complete (Gateway, auth, base classes, DB init, frontend framework). Many business modules are stubs. `schemaplexai-admin` is empty. No tests yet.
+**Current state**: Scaffolding complete (Gateway, auth, base classes, DB init, frontend framework). Many business modules are stubs. `schemaplexai-admin` is empty. Tests: 78 backend + 14 frontend test files. agent-engine (36), agent-config, context covered. ops/quality/spec/workflow/integration/task have no tests yet.
 
 ## Tech Stack
 

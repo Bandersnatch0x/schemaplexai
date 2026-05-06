@@ -55,6 +55,10 @@ public class TokenBudget {
         return isInputExceeded() || isOutputExceeded();
     }
 
+    public boolean hasRemaining() {
+        return !isExceeded();
+    }
+
     public long remainingInput() {
         long remaining = maxInputTokens - consumedInputTokens.get();
         return Math.max(remaining, 0);
