@@ -8,7 +8,6 @@ import com.schemaplexai.context.service.EmbeddingService;
 import com.schemaplexai.context.service.RagSearchService;
 import io.milvus.v2.client.MilvusClientV2;
 import io.milvus.v2.service.vector.request.SearchReq;
-import io.milvus.v2.service.vector.request.data.FloatVec;
 import io.milvus.v2.service.vector.response.SearchResp;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,7 +53,7 @@ public class RagSearchServiceImpl implements RagSearchService {
         try {
             SearchReq.SearchReqBuilder searchBuilder = SearchReq.builder()
                     .collectionName(milvusProperties.getCollectionName())
-                    .data(List.of(new FloatVec(queryEmbedding)))
+                    .data(List.of(queryEmbedding))
                     .topK(topK)
                     .outputFields(List.of("doc_id", "chunk_index", "content", "tenant_id"));
 
@@ -74,7 +73,7 @@ public class RagSearchServiceImpl implements RagSearchService {
                             .docId(getStringValue(entity, "doc_id"))
                             .chunkIndex(getIntValue(entity, "chunk_index"))
                             .content(getStringValue(entity, "content"))
-                            .score((float) result.getScore())
+                            .score(result.getDistance() != null ? result.getDistance() : 0.0f)
                             .tenantId(getStringValue(entity, "tenant_id"))
                             .build();
                     results.add(chunk);

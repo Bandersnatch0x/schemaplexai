@@ -2,6 +2,7 @@ package com.schemaplexai.context.service.impl;
 
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
+import com.alibaba.fastjson.JSONObject;
 import com.schemaplexai.context.config.MilvusProperties;
 import com.schemaplexai.context.entity.SfKnowledgeDoc;
 import com.schemaplexai.context.mapper.SfKnowledgeDocMapper;
@@ -207,38 +208,35 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
         String docIdStr = doc.getId().toString();
         long now = System.currentTimeMillis();
 
-        List<String> ids = new ArrayList<>();
-        List<String> docIds = new ArrayList<>();
-        List<Integer> chunkIndexes = new ArrayList<>();
-        List<String> contents = new ArrayList<>();
-        List<List<Float>> embeddingLists = new ArrayList<>();
-        List<String> tenantIds = new ArrayList<>();
-        List<Long> createdAts = new ArrayList<>();
-
+        // Milvus 2.3.5 InsertReq.data is row-oriented: List<JSONObject>, one JSONObject per row.
+        List<JSONObject> rows = new ArrayList<>(chunks.size());
         for (int i = 0; i < chunks.size(); i++) {
             TextChunk chunk = chunks.get(i);
-            ids.add(UUID.randomUUID().toString());
-            docIds.add(docIdStr);
-            chunkIndexes.add(chunk.getIndex());
-            contents.add(chunk.getContent());
-            tenantIds.add(tenantId);
-            createdAts.add(now);
 
             float[] emb = embeddings.get(i);
             List<Float> embList = new ArrayList<>(emb.length);
             for (float v : emb) {
                 embList.add(v);
             }
-            embeddingLists.add(embList);
+
+            JSONObject row = new JSONObject();
+            row.put("id", UUID.randomUUID().toString());
+            row.put("doc_id", docIdStr);
+            row.put("chunk_index", chunk.getIndex());
+            row.put("content", chunk.getContent());
+            row.put("embedding", embList);
+            row.put("tenant_id", tenantId);
+            row.put("created_at", now);
+            rows.add(row);
         }
 
         InsertReq insertReq = InsertReq.builder()
                 .collectionName(collectionName)
-                .data(List.of(ids, docIds, chunkIndexes, contents, embeddingLists, tenantIds, createdAts))
+                .data(rows)
                 .build();
 
         InsertResp response = milvusClient.insert(insertReq);
         log.info("Inserted {} chunks into Milvus for doc {}, insert count: {}",
-                ids.size(), doc.getId(), response.getInsertCnt());
+                rows.size(), doc.getId(), response.getInsertCnt());
     }
 }

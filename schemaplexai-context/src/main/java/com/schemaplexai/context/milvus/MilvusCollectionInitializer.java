@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.context.config.MilvusProperties;
 import io.milvus.v2.client.MilvusClientV2;
+import io.milvus.v2.common.IndexParam;
 import io.milvus.v2.service.collection.request.CreateCollectionReq;
 import io.milvus.v2.service.collection.request.HasCollectionReq;
 import io.milvus.v2.service.index.request.CreateIndexReq;
@@ -16,8 +17,10 @@ import org.springframework.stereotype.Component;
 import jakarta.annotation.PostConstruct;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -131,23 +134,20 @@ public class MilvusCollectionInitializer {
         String indexType = indexNode.get("indexType").asText();
         String metricType = indexNode.get("metricType").asText();
 
-        io.milvus.v2.service.index.request.CreateIndexReq.IndexParam.IndexParamBuilder indexParamBuilder =
-                io.milvus.v2.service.index.request.CreateIndexReq.IndexParam.builder()
-                        .fieldName(fieldName)
-                        .indexType(indexType)
-                        .metricType(metricType);
+        IndexParam.IndexParamBuilder<?, ?> indexParamBuilder = IndexParam.builder()
+                .fieldName(fieldName)
+                .indexType(IndexParam.IndexType.valueOf(indexType))
+                .metricType(IndexParam.MetricType.valueOf(metricType));
 
         if (indexNode.has("params")) {
             JsonNode paramsNode = indexNode.get("params");
+            Map<String, Object> extras = new HashMap<>();
             Iterator<String> fieldNames = paramsNode.fieldNames();
             while (fieldNames.hasNext()) {
                 String key = fieldNames.next();
-                String value = paramsNode.get(key).asText();
-                indexParamBuilder.extraParams(io.milvus.param.IndexExtraParam.builder()
-                        .indexName(key)
-                        .indexValue(value)
-                        .build());
+                extras.put(key, paramsNode.get(key).asText());
             }
+            indexParamBuilder.extraParams(extras);
         }
 
         milvusClient.createIndex(CreateIndexReq.builder()

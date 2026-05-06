@@ -7,6 +7,7 @@ public enum ResultCode {
 
     SUCCESS(200, "success"),
     ERROR(500, "system error"),
+    INTERNAL_ERROR(500, "internal server error"),
     PARAM_ERROR(400, "param error"),
     UNAUTHORIZED(401, "unauthorized"),
     FORBIDDEN(403, "forbidden"),
