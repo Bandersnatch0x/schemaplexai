@@ -12,6 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.client.RestTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -22,6 +23,9 @@ class McpServerServiceImplTest {
 
     @Mock
     private McpServerMapper mcpServerMapper;
+
+    @Mock
+    private RestTemplate restTemplate;
 
     @InjectMocks
     private McpServerServiceImpl mcpServerService;

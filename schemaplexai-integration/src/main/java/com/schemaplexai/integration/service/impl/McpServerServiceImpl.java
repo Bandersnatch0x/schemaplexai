@@ -19,12 +19,12 @@ import org.springframework.web.client.RestTemplate;
 @RequiredArgsConstructor
 public class McpServerServiceImpl extends ServiceImpl<McpServerMapper, SfMcpServer> implements McpServerService {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
     @Override
     public boolean healthCheck(Long serverId) {
         SfMcpServer server = baseMapper.selectById(serverId);
-        if (server == null || server.getEndpoint() == null) {
+        if (server == null || server.getEndpoint() == null || server.getEndpoint().isBlank()) {
             return false;
         }
 

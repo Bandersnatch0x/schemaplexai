@@ -21,7 +21,7 @@ import java.util.Map;
 public class McpToolExecutor implements ToolExecutor {
 
     private final McpServerService mcpServerService;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
     @Override
