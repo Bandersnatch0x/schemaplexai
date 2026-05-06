@@ -1,7 +1,7 @@
-import { useNavigate, useLocation } from 'react-router-dom'
+import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 
 export interface ProgressiveLayoutProps {
-  children: React.ReactNode
+  children?: React.ReactNode
 }
 
 const NAV_ITEMS = [
@@ -82,7 +82,7 @@ export function ProgressiveLayout({ children }: ProgressiveLayoutProps) {
 
         {/* Content */}
         <main style={{ flex: 1, padding: 24, overflow: 'auto' }}>
-          {children}
+          {children ?? <Outlet />}
         </main>
       </div>
     </div>

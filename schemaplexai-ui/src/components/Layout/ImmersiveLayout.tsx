@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 
 export interface ImmersiveLayoutProps {
-  children: React.ReactNode
+  children?: React.ReactNode
 }
 
 const NAV_ITEMS = [
@@ -144,7 +144,7 @@ export function ImmersiveLayout({ children }: ImmersiveLayoutProps) {
 
         {/* Content */}
         <div style={{ position: 'relative', zIndex: 1, height: '100%' }}>
-          {children}
+          {children ?? <Outlet />}
         </div>
       </div>
     </div>
