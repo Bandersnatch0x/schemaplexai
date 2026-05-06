@@ -8,6 +8,9 @@ public final class CommonConstants {
     public static final String HEADER_TENANT_ID = "X-Tenant-Id";
     public static final String CONTEXT_TENANT_ID = "tenantId";
 
+    // User
+    public static final String HEADER_USER_ID = "X-User-Id";
+
     // JWT
     public static final String HEADER_AUTHORIZATION = "Authorization";
     public static final String TOKEN_PREFIX = "Bearer ";

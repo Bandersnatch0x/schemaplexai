@@ -65,7 +65,7 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             ServerHttpRequest stripped = request.mutate()
                     .headers(h -> {
                         h.remove(CommonConstants.HEADER_TENANT_ID);
-                        h.remove("X-User-Id");
+                        h.remove(CommonConstants.HEADER_USER_ID);
                     })
                     .build();
             return chain.filter(exchange.mutate().request(stripped).build());
@@ -86,10 +86,10 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             ServerHttpRequest.Builder builder = request.mutate()
                     .headers(h -> {
                         h.remove(CommonConstants.HEADER_TENANT_ID);
-                        h.remove("X-User-Id");
+                        h.remove(CommonConstants.HEADER_USER_ID);
                     })
                     .header(CommonConstants.HEADER_AUTHORIZATION, CommonConstants.TOKEN_PREFIX + token)
-                    .header("X-User-Id", userId);
+                    .header(CommonConstants.HEADER_USER_ID, userId);
 
             if (StringUtils.hasText(tenantId)) {
                 builder.header(CommonConstants.HEADER_TENANT_ID, tenantId);
