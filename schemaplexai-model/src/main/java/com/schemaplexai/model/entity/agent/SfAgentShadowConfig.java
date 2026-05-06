@@ -1,4 +1,4 @@
-package com.schemaplexai.agent.config.entity;
+package com.schemaplexai.model.entity.agent;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.schemaplexai.model.entity.BaseEntity;

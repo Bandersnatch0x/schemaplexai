@@ -1,7 +1,7 @@
 package com.schemaplexai.agent.config.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.schemaplexai.agent.config.entity.SfAgentShadowConfig;
+import com.schemaplexai.model.entity.agent.SfAgentShadowConfig;
 import com.schemaplexai.agent.config.mapper.SfAgentShadowConfigMapper;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;

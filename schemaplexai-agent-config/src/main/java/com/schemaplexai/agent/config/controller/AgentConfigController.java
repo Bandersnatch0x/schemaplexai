@@ -2,7 +2,7 @@ package com.schemaplexai.agent.config.controller;
 
 import com.schemaplexai.agent.config.entity.SfAgent;
 import com.schemaplexai.agent.config.entity.SfAgentConfig;
-import com.schemaplexai.agent.config.entity.SfAgentShadowConfig;
+import com.schemaplexai.model.entity.agent.SfAgentShadowConfig;
 import com.schemaplexai.agent.config.entity.SfAgentToolBinding;
 import com.schemaplexai.agent.config.service.AgentConfigService;
 import com.schemaplexai.agent.config.service.ShadowConfigService;
