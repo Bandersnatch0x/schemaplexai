@@ -1,0 +1,181 @@
+/* Agent Executor - Abyss Hive Theme */
+
+.agent-exec-container {
+  height: calc(100vh - 160px);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4);
+  font-family: var(--font-sans);
+}
+
+/* Top toolbar row */
+.agent-exec-toolbar {
+  margin-bottom: var(--space-4);
+}
+
+/* Agent select dropdown */
+.agent-exec-select {
+  width: 100%;
+}
+
+.agent-exec-select .ant-select-selector {
+  background: var(--abyss-card) !important;
+  border-color: var(--abyss-border) !important;
+  color: var(--text-primary) !important;
+  font-family: var(--font-sans);
+  height: 40px !important;
+}
+
+.agent-exec-select .ant-select-selection-item {
+  color: var(--text-primary);
+  line-height: 38px;
+}
+
+.agent-exec-select .ant-select-selection-placeholder {
+  color: var(--text-tertiary);
+}
+
+.agent-exec-select .ant-select-selector:hover {
+  border-color: var(--hive-cyan) !important;
+}
+
+.agent-exec-select.ant-select-focused .ant-select-selector {
+  border-color: var(--hive-cyan) !important;
+  box-shadow: var(--focus-cyan) !important;
+}
+
+.agent-exec-select .ant-select-arrow {
+  color: var(--text-tertiary);
+}
+
+/* Prompt input area */
+.agent-exec-prompt-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.agent-exec-textarea {
+  flex: 1;
+}
+
+.agent-exec-textarea .ant-input {
+  background: var(--abyss-card);
+  border-color: var(--abyss-border);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  resize: none;
+}
+
+.agent-exec-textarea .ant-input:focus,
+.agent-exec-textarea .ant-input:hover {
+  border-color: var(--hive-cyan);
+  box-shadow: var(--focus-cyan);
+}
+
+.agent-exec-textarea .ant-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* Execute button */
+.agent-exec-btn-run {
+  background: var(--hive-cyan);
+  border-color: var(--hive-cyan);
+  color: #0a0e1a;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  box-shadow: var(--glow-cyan);
+  transition: all 0.2s ease;
+  height: auto;
+  min-width: 80px;
+}
+
+.agent-exec-btn-run:hover {
+  background: #00e6b8 !important;
+  border-color: #00e6b8 !important;
+  box-shadow: 0 0 16px #00d4aa50 !important;
+}
+
+.agent-exec-btn-run:disabled {
+  background: var(--abyss-hover);
+  border-color: var(--abyss-border);
+  color: var(--text-tertiary);
+  box-shadow: none;
+}
+
+/* Main content area */
+.agent-exec-main {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Panel cards */
+.agent-exec-panel {
+  background: var(--abyss-card);
+  border: 1px solid var(--abyss-border);
+  border-radius: var(--radius-lg);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.agent-exec-panel .ant-card-head {
+  border-bottom: 1px solid var(--abyss-border);
+  padding: 0 var(--space-5);
+  min-height: 44px;
+  flex-shrink: 0;
+}
+
+.agent-exec-panel .ant-card-head-title {
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.agent-exec-panel .ant-card-body {
+  padding: var(--space-4);
+  flex: 1;
+  overflow: auto;
+}
+
+/* Chat message styling overrides (applied to parent container) */
+.agent-exec-chat-panel .ant-card-body {
+  padding: 0;
+}
+
+/* SSE viewer panel */
+.agent-exec-sse-panel .ant-card-body {
+  padding: var(--space-3);
+}
+
+/* Scrollbar styling */
+.agent-exec-panel .ant-card-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.agent-exec-panel .ant-card-body::-webkit-scrollbar-track {
+  background: var(--abyss-sidebar);
+  border-radius: var(--radius-sm);
+}
+
+.agent-exec-panel .ant-card-body::-webkit-scrollbar-thumb {
+  background: var(--abyss-border);
+  border-radius: var(--radius-sm);
+}
+
+.agent-exec-panel .ant-card-body::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .agent-exec-container {
+    height: auto;
+    min-height: calc(100vh - 160px);
+  }
+
+  .agent-exec-main .ant-col {
+    height: 400px;
+    margin-bottom: var(--space-4);
+  }
+}

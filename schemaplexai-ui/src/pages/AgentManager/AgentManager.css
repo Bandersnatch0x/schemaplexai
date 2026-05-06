@@ -1,0 +1,315 @@
+/* Agent Manager - Abyss Hive Theme */
+
+.agent-mgr-container {
+  padding: var(--space-4);
+}
+
+/* Main card */
+.agent-mgr-card {
+  background: var(--abyss-card);
+  border: 1px solid var(--abyss-border);
+  border-radius: var(--radius-lg);
+}
+
+.agent-mgr-card .ant-card-head {
+  border-bottom: 1px solid var(--abyss-border);
+  padding: 0 var(--space-5);
+  min-height: 56px;
+}
+
+.agent-mgr-card .ant-card-head-title {
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.agent-mgr-card .ant-card-extra {
+  display: flex;
+  align-items: center;
+}
+
+.agent-mgr-card .ant-card-body {
+  padding: var(--space-5);
+}
+
+/* Primary action button */
+.agent-mgr-btn-create {
+  background: var(--hive-cyan);
+  border-color: var(--hive-cyan);
+  color: #0a0e1a;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  box-shadow: var(--glow-cyan);
+  transition: all 0.2s ease;
+}
+
+.agent-mgr-btn-create:hover {
+  background: #00e6b8 !important;
+  border-color: #00e6b8 !important;
+  box-shadow: 0 0 16px #00d4aa50 !important;
+}
+
+/* Search bar */
+.agent-mgr-search {
+  margin-bottom: var(--space-4);
+}
+
+.agent-mgr-search .ant-input-search {
+  max-width: 320px;
+}
+
+.agent-mgr-search .ant-input-search .ant-input {
+  background: var(--abyss-sidebar);
+  border-color: var(--abyss-border);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}
+
+.agent-mgr-search .ant-input-search .ant-input:focus,
+.agent-mgr-search .ant-input-search .ant-input:hover {
+  border-color: var(--hive-cyan);
+  box-shadow: var(--focus-cyan);
+}
+
+.agent-mgr-search .ant-input-search .ant-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.agent-mgr-search .ant-input-search-button {
+  background: var(--abyss-hover);
+  border-color: var(--abyss-border);
+  color: var(--text-primary);
+}
+
+/* Table */
+.agent-mgr-table {
+  background: transparent;
+}
+
+.agent-mgr-table .ant-table {
+  background: transparent;
+}
+
+.agent-mgr-table .ant-table-thead > tr > th {
+  background: var(--abyss-sidebar);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--abyss-border);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+.agent-mgr-table .ant-table-tbody > tr > td {
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--abyss-border);
+  font-family: var(--font-sans);
+}
+
+.agent-mgr-table .ant-table-tbody > tr:hover > td {
+  background: var(--abyss-hover);
+}
+
+.agent-mgr-table .ant-table-tbody > tr.ant-table-row:hover > td {
+  background: var(--abyss-hover);
+}
+
+/* Pagination */
+.agent-mgr-table .ant-pagination .ant-pagination-item {
+  background: var(--abyss-sidebar);
+  border-color: var(--abyss-border);
+}
+
+.agent-mgr-table .ant-pagination .ant-pagination-item a {
+  color: var(--text-secondary);
+}
+
+.agent-mgr-table .ant-pagination .ant-pagination-item-active {
+  background: var(--hive-cyan);
+  border-color: var(--hive-cyan);
+}
+
+.agent-mgr-table .ant-pagination .ant-pagination-item-active a {
+  color: #0a0e1a;
+}
+
+/* Status tags */
+.agent-mgr-status-active {
+  background: rgba(0, 212, 170, 0.12);
+  color: var(--hive-cyan);
+  border: 1px solid rgba(0, 212, 170, 0.25);
+}
+
+.agent-mgr-status-draft {
+  background: rgba(255, 159, 67, 0.12);
+  color: var(--hive-amber);
+  border: 1px solid rgba(255, 159, 67, 0.25);
+}
+
+.agent-mgr-status-inactive {
+  background: rgba(71, 85, 105, 0.2);
+  color: var(--text-secondary);
+  border: 1px solid rgba(71, 85, 105, 0.3);
+}
+
+/* Action buttons */
+.agent-mgr-action-btn {
+  background: transparent;
+  border-color: var(--abyss-border);
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.agent-mgr-action-btn:hover {
+  border-color: var(--hive-cyan);
+  color: var(--hive-cyan);
+}
+
+.agent-mgr-action-btn--danger {
+  color: var(--text-secondary);
+}
+
+.agent-mgr-action-btn--danger:hover {
+  border-color: var(--hive-red);
+  color: var(--hive-red);
+}
+
+/* Modal overrides */
+.agent-mgr-modal .ant-modal-content {
+  background: var(--abyss-card);
+  border: 1px solid var(--abyss-border);
+  border-radius: var(--radius-lg);
+}
+
+.agent-mgr-modal .ant-modal-header {
+  background: var(--abyss-card);
+  border-bottom: 1px solid var(--abyss-border);
+}
+
+.agent-mgr-modal .ant-modal-title {
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}
+
+.agent-mgr-modal .ant-modal-close {
+  color: var(--text-secondary);
+}
+
+.agent-mgr-modal .ant-modal-close:hover {
+  color: var(--text-primary);
+}
+
+.agent-mgr-modal .ant-modal-footer {
+  border-top: 1px solid var(--abyss-border);
+}
+
+.agent-mgr-modal .ant-modal-footer .ant-btn-default {
+  background: transparent;
+  border-color: var(--abyss-border);
+  color: var(--text-secondary);
+}
+
+.agent-mgr-modal .ant-modal-footer .ant-btn-default:hover {
+  border-color: var(--hive-cyan);
+  color: var(--hive-cyan);
+}
+
+.agent-mgr-modal .ant-modal-footer .ant-btn-primary {
+  background: var(--hive-cyan);
+  border-color: var(--hive-cyan);
+  color: #0a0e1a;
+  font-weight: 600;
+}
+
+/* Form inside modal */
+.agent-mgr-modal .ant-form-item-label > label {
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+}
+
+.agent-mgr-modal .ant-input,
+.agent-mgr-modal .ant-input-textarea,
+.agent-mgr-modal .ant-select-selector {
+  background: var(--abyss-sidebar) !important;
+  border-color: var(--abyss-border) !important;
+  color: var(--text-primary) !important;
+  font-family: var(--font-sans);
+}
+
+.agent-mgr-modal .ant-input:focus,
+.agent-mgr-modal .ant-input-textarea:focus,
+.agent-mgr-modal .ant-select-focused .ant-select-selector {
+  border-color: var(--hive-cyan) !important;
+  box-shadow: var(--focus-cyan) !important;
+}
+
+.agent-mgr-modal .ant-select-arrow {
+  color: var(--text-tertiary);
+}
+
+/* Drawer overrides */
+.agent-mgr-drawer .ant-drawer-content {
+  background: var(--abyss-card);
+}
+
+.agent-mgr-drawer .ant-drawer-header {
+  background: var(--abyss-card);
+  border-bottom: 1px solid var(--abyss-border);
+}
+
+.agent-mgr-drawer .ant-drawer-title {
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-weight: 600;
+}
+
+.agent-mgr-drawer .ant-drawer-close {
+  color: var(--text-secondary);
+}
+
+.agent-mgr-drawer .ant-drawer-body {
+  padding: var(--space-5);
+}
+
+/* Detail content inside drawer */
+.agent-mgr-detail {
+  font-family: var(--font-sans);
+}
+
+.agent-mgr-detail p {
+  color: var(--text-primary);
+  margin-bottom: var(--space-3);
+  line-height: 1.6;
+}
+
+.agent-mgr-detail p strong {
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-right: var(--space-2);
+}
+
+.agent-mgr-detail-section {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--abyss-border);
+}
+
+.agent-mgr-detail-section p strong {
+  color: var(--hive-cyan);
+}
+
+/* Confirm dialog overrides */
+.agent-mgr-confirm .ant-modal-content {
+  background: var(--abyss-card);
+  border: 1px solid var(--abyss-border);
+}
+
+.agent-mgr-confirm .ant-modal-confirm-title {
+  color: var(--text-primary);
+}
+
+.agent-mgr-confirm .ant-modal-confirm-content {
+  color: var(--text-secondary);
+}

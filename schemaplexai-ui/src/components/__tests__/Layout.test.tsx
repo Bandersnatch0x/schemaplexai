@@ -46,7 +46,8 @@ describe('Layout component', () => {
 
   it('renders sidebar with menu items', () => {
     renderWithRouter('/dashboard')
-    expect(screen.getByText('工作台')).toBeInTheDocument()
+    // "工作台" appears in both sidebar menu and header title
+    expect(screen.getAllByText('工作台').length).toBeGreaterThanOrEqual(2)
     expect(screen.getByText('Spec 中心')).toBeInTheDocument()
     expect(screen.getByText('Agent 管理')).toBeInTheDocument()
   })

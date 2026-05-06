@@ -1,17 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { message } from 'antd'
 import { getAgentDetail } from '@/api/agent'
 import type { Agent } from '@/types'
+import './AgentDetail.css'
 
 type TabKey = 'metrics' | 'logs' | 'charts' | 'config'
-
-const TABS: { key: TabKey; label: string }[] = [
-  { key: 'metrics', label: 'Metrics' },
-  { key: 'logs', label: 'Logs' },
-  { key: 'charts', label: 'Charts' },
-  { key: 'config', label: 'Config' },
-]
 
 const LOGS = [
   {
@@ -46,23 +41,31 @@ const LOGS = [
   },
 ]
 
-const METRICS = [
-  { value: '99.2%', label: 'Success Rate', color: '#00d4aa' },
-  { value: '245ms', label: 'Avg Latency', color: '#e2e8f0' },
-  { value: '1,247', label: 'Total Runs', color: '#ff9f43' },
-]
-
-const RESOURCES = [
-  { value: '2.4M', label: 'Tokens', color: '#00d4aa' },
-  { value: '$12.4', label: 'Cost', color: '#e2e8f0' },
-  { value: '86%', label: 'Cache Hit', color: '#ff9f43' },
-]
-
 export default function AgentDetail() {
   const { id } = useParams<{ id: string }>()
+  const { t } = useTranslation()
   const [agent, setAgent] = useState<Agent | null>(null)
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<TabKey>('metrics')
+
+  const TABS: { key: TabKey; label: string }[] = [
+    { key: 'metrics', label: t('agentDetail.metrics') },
+    { key: 'logs', label: t('agentDetail.logs') },
+    { key: 'charts', label: t('agentDetail.charts') },
+    { key: 'config', label: t('agentDetail.config') },
+  ]
+
+  const METRICS = [
+    { value: '99.2%', label: t('agentDetail.successRate'), color: '#00d4aa' },
+    { value: '245ms', label: t('agentDetail.avgLatency'), color: '#e2e8f0' },
+    { value: '1,247', label: t('agentDetail.totalRuns'), color: '#ff9f43' },
+  ]
+
+  const RESOURCES = [
+    { value: '2.4M', label: t('agentDetail.tokens'), color: '#00d4aa' },
+    { value: '$12.4', label: t('agentDetail.cost'), color: '#e2e8f0' },
+    { value: '86%', label: t('agentDetail.cacheHit'), color: '#ff9f43' },
+  ]
 
   useEffect(() => {
     if (id) fetchAgent()
@@ -74,7 +77,7 @@ export default function AgentDetail() {
       const data = await getAgentDetail(id!)
       setAgent(data)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '获取 Agent 详情失败'
+      const msg = err instanceof Error ? err.message : t('common.error')
       message.error(msg)
     } finally {
       setLoading(false)
@@ -82,123 +85,49 @@ export default function AgentDetail() {
   }
 
   const statusMap: Record<string, string> = {
-    active: 'Running',
-    inactive: 'Stopped',
-    draft: 'Draft',
-  }
-
-  const statusColor: Record<string, string> = {
-    active: '#00d4aa',
-    inactive: '#64748b',
-    draft: '#ff9f43',
+    active: t('agentDetail.running'),
+    inactive: t('agentDetail.stopped'),
+    draft: t('agentDetail.draft'),
   }
 
   return (
-    <div>
+    <div className="agent-detail-page">
       {/* Identity Card */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 16,
-          alignItems: 'center',
-          padding: 20,
-          background: '#111827',
-          borderRadius: 8,
-          border: '1px solid #1e2a33',
-          marginBottom: 24,
-        }}
-      >
-        <div
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: 12,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 24,
-            background: '#0d1117',
-            border: '1px solid #1e2a33',
-          }}
-        >
+      <div className="agent-detail-identity">
+        <div className="agent-detail-avatar">
           🤖
         </div>
-        <div style={{ flex: 1 }}>
-          <div
-            style={{ fontSize: 16, fontWeight: 600, color: '#e2e8f0' }}
-          >
-            {loading ? '—' : agent?.name || 'Unknown Agent'}
+        <div className="agent-detail-info">
+          <div className="agent-detail-name">
+            {loading ? '—' : agent?.name || t('agentDetail.unknownAgent')}
           </div>
-          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-            ID: {agent?.id || '—'} · Version: 2.3.1 · Status:{" "}
+          <div className="agent-detail-meta">
+            ID: {agent?.id || '—'} · {t('agentDetail.version')}: 2.3.1 · {t('agentDetail.status')}:{" "}
             <span
-              style={{
-                color: agent ? statusColor[agent.status] : '#64748b',
-              }}
+              className={`agent-detail-status agent-detail-status--${agent?.status || 'inactive'}`}
             >
               {agent ? statusMap[agent.status] : '—'}
             </span>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              padding: '2px 8px',
-              borderRadius: 4,
-              fontSize: 11,
-              fontWeight: 500,
-              background: 'rgba(0,212,170,0.1)',
-              color: '#00d4aa',
-            }}
-          >
+        <div className="agent-detail-badges">
+          <span className="agent-detail-badge agent-detail-badge--llm">
             LLM: {agent?.modelConfig?.model || 'GPT-4'}
           </span>
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              padding: '2px 8px',
-              borderRadius: 4,
-              fontSize: 11,
-              fontWeight: 500,
-              background: 'rgba(255,159,67,0.1)',
-              color: '#ff9f43',
-            }}
-          >
-            Auto-scale
+          <span className="agent-detail-badge agent-detail-badge--feature">
+            {t('agentDetail.autoScale')}
           </span>
         </div>
       </div>
 
       {/* PillNav */}
-      <div style={{ marginBottom: 24 }}>
-        <div
-          style={{
-            display: 'inline-flex',
-            background: '#0d1117',
-            borderRadius: 20,
-            padding: 4,
-            gap: 4,
-          }}
-        >
+      <div className="agent-detail-nav">
+        <div className="agent-detail-pillnav">
           {TABS.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              style={{
-                background: activeTab === tab.key ? '#00d4aa' : 'transparent',
-                color: activeTab === tab.key ? '#0a0e1a' : '#64748b',
-                border: 'none',
-                padding: '6px 16px',
-                borderRadius: 16,
-                fontSize: 13,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                fontWeight: activeTab === tab.key ? 600 : 400,
-                fontFamily: 'inherit',
-              }}
+              className={`agent-detail-pillnav-btn ${activeTab === tab.key ? 'agent-detail-pillnav-btn--active' : ''}`}
             >
               {tab.label}
             </button>
@@ -207,30 +136,38 @@ export default function AgentDetail() {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'metrics' && <MetricsTab />}
-      {activeTab === 'logs' && <LogsTab />}
-      {activeTab === 'charts' && <ChartsTab />}
-      {activeTab === 'config' && <ConfigTab agent={agent} />}
+      {activeTab === 'metrics' && <MetricsTab metrics={METRICS} resources={RESOURCES} t={t} />}
+      {activeTab === 'logs' && <LogsTab t={t} />}
+      {activeTab === 'charts' && <ChartsTab t={t} />}
+      {activeTab === 'config' && <ConfigTab agent={agent} t={t} />}
     </div>
   )
 }
 
-function MetricsTab() {
+function MetricsTab({
+  metrics,
+  resources,
+  t,
+}: {
+  metrics: { value: string; label: string; color: string }[]
+  resources: { value: string; label: string; color: string }[]
+  t: (key: string) => string
+}) {
   return (
     <>
-      <div
-        style={{
-          display: 'flex',
-          gap: 16,
-          marginBottom: 24,
-        }}
-      >
-        <MetricCard title="Execution Metrics" items={METRICS} />
-        <MetricCard title="Resource Usage" items={RESOURCES} />
+      <div className="agent-detail-metrics-row">
+        <MetricCard title={t('agentDetail.executionMetrics')} items={metrics} />
+        <MetricCard title={t('agentDetail.resourceUsage')} items={resources} />
       </div>
-      <LogsPanel />
+      <LogsPanel t={t} />
     </>
   )
+}
+
+const METRIC_COLOR_CLASS: Record<string, string> = {
+  '#00d4aa': 'agent-detail-metric-value--cyan',
+  '#e2e8f0': 'agent-detail-metric-value--primary',
+  '#ff9f43': 'agent-detail-metric-value--amber',
 }
 
 function MetricCard({
@@ -241,44 +178,15 @@ function MetricCard({
   items: { value: string; label: string; color: string }[]
 }) {
   return (
-    <div
-      style={{
-        flex: 1,
-        background: '#111827',
-        borderRadius: 8,
-        border: '1px solid #1e2a33',
-        padding: 20,
-      }}
-    >
-      <div
-        style={{
-          fontSize: 14,
-          fontWeight: 600,
-          color: '#e2e8f0',
-          marginBottom: 16,
-        }}
-      >
-        {title}
-      </div>
-      <div style={{ display: 'flex', gap: 16 }}>
+    <div className="agent-detail-metric-card">
+      <div className="agent-detail-metric-title">{title}</div>
+      <div className="agent-detail-metric-items">
         {items.map((item, i) => (
-          <div key={i} style={{ flex: 1, textAlign: 'center' }}>
-            <div
-              style={{
-                fontSize: 24,
-                fontWeight: 700,
-                color: item.color,
-              }}
-            >
+          <div key={i} className="agent-detail-metric-item">
+            <div className={`agent-detail-metric-value ${METRIC_COLOR_CLASS[item.color] || ''}`}>
               {item.value}
             </div>
-            <div
-              style={{
-                fontSize: 11,
-                color: '#64748b',
-                marginTop: 4,
-              }}
-            >
+            <div className="agent-detail-metric-label">
               {item.label}
             </div>
           </div>
@@ -288,29 +196,14 @@ function MetricCard({
   )
 }
 
-function LogsPanel() {
+function LogsPanel({ t }: { t: (key: string) => string }) {
   return (
-    <div
-      style={{
-        background: '#111827',
-        borderRadius: 8,
-        border: '1px solid #1e2a33',
-        overflow: 'hidden',
-      }}
-    >
-      <div
-        style={{
-          padding: '12px 16px',
-          borderBottom: '1px solid #1e2a33',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}
-      >
-        <span style={{ fontSize: 13, fontWeight: 500, color: '#e2e8f0' }}>
-          Execution Logs
+    <div className="agent-detail-logs-panel">
+      <div className="agent-detail-logs-header">
+        <span className="agent-detail-logs-title">
+          {t('agentDetail.executionLogs')}
         </span>
-        <span style={{ fontSize: 11, color: '#64748b' }}>Auto-scroll on</span>
+        <span className="agent-detail-logs-hint">{t('agentDetail.autoScroll')}</span>
       </div>
       <TerminalLog />
     </div>
@@ -318,89 +211,42 @@ function LogsPanel() {
 }
 
 function TerminalLog() {
-  const levelColor: Record<string, string> = {
-    info: '#00d4aa',
-    warn: '#ff9f43',
-    error: '#ff4757',
-  }
-
   return (
-    <div
-      style={{
-        background: '#0d1117',
-        fontFamily: "'JetBrains Mono', monospace",
-        fontSize: 12,
-        lineHeight: 1.6,
-        padding: 16,
-        maxHeight: 300,
-        overflowY: 'auto',
-      }}
-    >
+    <div className="agent-detail-terminal">
       {LOGS.map((log, i) => (
-        <div key={i} style={{ display: 'flex', gap: 8 }}>
-          <span style={{ color: '#64748b' }}>{log.time}</span>
-          <span style={{ color: levelColor[log.level] }}>[{log.level.toUpperCase()}]</span>
-          <span style={{ color: '#e2e8f0' }}>{log.text}</span>
+        <div key={i} className="agent-detail-log-line">
+          <span className="agent-detail-log-time">{log.time}</span>
+          <span className={`agent-detail-log-level--${log.level}`}>[{log.level.toUpperCase()}]</span>
+          <span className="agent-detail-log-text">{log.text}</span>
         </div>
       ))}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <span style={{ color: '#64748b' }}>10:42:23</span>
-        <span className="cursor" style={{ color: '#00d4aa' }}>...</span>
+      <div className="agent-detail-log-line">
+        <span className="agent-detail-log-time">10:42:23</span>
+        <span className="agent-detail-cursor">...</span>
       </div>
     </div>
   )
 }
 
-function LogsTab() {
-  return <LogsPanel />
+function LogsTab({ t }: { t: (key: string) => string }) {
+  return <LogsPanel t={t} />
 }
 
-function ChartsTab() {
+function ChartsTab({ t }: { t: (key: string) => string }) {
   return (
-    <div
-      style={{
-        background: '#111827',
-        borderRadius: 8,
-        border: '1px solid #1e2a33',
-        padding: 40,
-        textAlign: 'center',
-        color: '#64748b',
-      }}
-    >
-      Charts view coming soon...
+    <div className="agent-detail-charts-placeholder">
+      {t('agentDetail.chartsComingSoon')}
     </div>
   )
 }
 
-function ConfigTab({ agent }: { agent: Agent | null }) {
+function ConfigTab({ agent, t }: { agent: Agent | null; t: (key: string) => string }) {
   return (
-    <div
-      style={{
-        background: '#111827',
-        borderRadius: 8,
-        border: '1px solid #1e2a33',
-        padding: 20,
-      }}
-    >
-      <div
-        style={{
-          fontSize: 14,
-          fontWeight: 600,
-          color: '#e2e8f0',
-          marginBottom: 16,
-        }}
-      >
-        Configuration
+    <div className="agent-detail-config-card">
+      <div className="agent-detail-config-title">
+        {t('agentDetail.configuration')}
       </div>
-      <pre
-        style={{
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: 12,
-          color: '#e2e8f0',
-          lineHeight: 1.6,
-          overflow: 'auto',
-        }}
-      >
+      <pre className="agent-detail-config-pre">
         {agent
           ? JSON.stringify(
               {
@@ -416,7 +262,7 @@ function ConfigTab({ agent }: { agent: Agent | null }) {
               null,
               2
             )
-          : 'No agent selected'}
+          : t('agentDetail.noAgentSelected')}
       </pre>
     </div>
   )

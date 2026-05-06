@@ -3,6 +3,7 @@ import { PlusOutlined } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
 import { getArtifactList } from '@/api/ops'
 import type { OpsArtifact } from '@/api/ops'
+import './OpsCenter.css'
 
 export default function OpsCenter() {
   const [data, setData] = useState<OpsArtifact[]>([])
@@ -26,11 +27,11 @@ export default function OpsCenter() {
     }
   }
 
-  const statusMap: Record<number, { color: string; text: string }> = {
-    0: { color: 'orange', text: '待处理' },
-    1: { color: 'blue', text: '进行中' },
-    2: { color: 'green', text: '已完成' },
-    3: { color: 'red', text: '失败' },
+  const statusMap: Record<number, { color: string; text: string; className: string }> = {
+    0: { color: 'orange', text: '待处理', className: 'ops-tag--pending' },
+    1: { color: 'blue', text: '进行中', className: 'ops-tag--running' },
+    2: { color: 'green', text: '已完成', className: 'ops-tag--done' },
+    3: { color: 'red', text: '失败', className: 'ops-tag--failed' },
   }
 
   const columns = [
@@ -42,7 +43,7 @@ export default function OpsCenter() {
       key: 'status',
       render: (status: number) => {
         const map = statusMap[status] || statusMap[0]
-        return <Tag color={map.color}>{map.text}</Tag>
+        return <Tag color={map.color} className={map.className}>{map.text}</Tag>
       },
     },
     { title: '版本', dataIndex: 'version', key: 'version' },
@@ -60,19 +61,19 @@ export default function OpsCenter() {
   ]
 
   return (
-    <div>
+    <div className="ops-page">
       <Card
         title="交付与运营"
         extra={
-          <Button type="primary" icon={<PlusOutlined />}>
+          <Button type="primary" icon={<PlusOutlined />} className="ops-btn-primary">
             新建任务
           </Button>
         }
-        style={{ marginBottom: 16 }}
+        className="ops-table-card"
       >
         <Table dataSource={data} columns={columns} rowKey="id" loading={loading} />
       </Card>
-      <Card title="运营时间线">
+      <Card title="运营时间线" className="ops-timeline-card">
         <Timeline
           items={[
             { children: '2024-08-01 完成 v2.0.0 部署' },

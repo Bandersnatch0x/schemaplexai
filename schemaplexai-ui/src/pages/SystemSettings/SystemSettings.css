@@ -1,0 +1,132 @@
+/* SystemSettings - Abyss Hive Theme */
+
+.settings-page {
+  padding: 0;
+}
+
+/* Card override */
+.settings-page .ant-card {
+  background: var(--abyss-card);
+  border: 1px solid var(--abyss-border);
+  border-radius: var(--radius-md);
+}
+
+.settings-page .ant-card-head {
+  background: var(--abyss-card);
+  border-bottom: 1px solid var(--abyss-border);
+}
+
+.settings-page .ant-card-head-title {
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 16px;
+}
+
+/* Tabs override */
+.settings-page .ant-tabs {
+  color: var(--text-secondary);
+}
+
+.settings-page .ant-tabs-nav {
+  margin-bottom: var(--space-6);
+}
+
+.settings-page .ant-tabs-tab {
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+
+.settings-page .ant-tabs-tab:hover {
+  color: var(--text-primary);
+}
+
+.settings-page .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--hive-cyan) !important;
+}
+
+.settings-page .ant-tabs-ink-bar {
+  background: var(--hive-cyan);
+}
+
+.settings-page .ant-tabs-tabpane {
+  outline: none;
+}
+
+/* Form override */
+.settings-form {
+  max-width: 600px;
+}
+
+.settings-form .ant-form-item-label > label {
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Input override */
+.settings-form .ant-input,
+.settings-form .ant-input-password {
+  background: var(--abyss-sidebar);
+  border: 1px solid var(--abyss-border);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+}
+
+.settings-form .ant-input:focus,
+.settings-form .ant-input-password:focus-within {
+  border-color: var(--hive-cyan);
+  box-shadow: var(--focus-cyan);
+}
+
+.settings-form .ant-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.settings-form .ant-input-password .ant-input {
+  background: transparent;
+}
+
+.settings-form .ant-input-password .ant-input-suffix {
+  color: var(--text-tertiary);
+}
+
+/* Switch override */
+.settings-form .ant-switch {
+  background: var(--abyss-border);
+}
+
+.settings-form .ant-switch-checked {
+  background: var(--hive-cyan);
+}
+
+/* Save button */
+.settings-save-btn {
+  background: var(--hive-cyan);
+  border-color: var(--hive-cyan);
+  color: var(--abyss-bg);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  transition: all 0.2s;
+}
+
+.settings-save-btn:hover {
+  background: #00e6b8;
+  border-color: #00e6b8;
+  box-shadow: var(--glow-cyan);
+}
+
+/* Form validation */
+.settings-form .ant-form-item-explain-error {
+  color: var(--hive-red);
+  font-size: 12px;
+}
+
+/* Loading spinner */
+.settings-page .ant-spin-dot-item {
+  background: var(--hive-cyan);
+}

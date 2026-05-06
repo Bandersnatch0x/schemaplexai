@@ -1,0 +1,103 @@
+/* ============================================================
+ * IntegrationCenter — Abyss Hive
+ * Reuses design tokens from src/styles/variables.css
+ * ============================================================ */
+
+.integration-page {
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  min-height: 100%;
+}
+
+/* ---------- main card ---------- */
+.integration-card {
+  background: var(--abyss-card) !important;
+  border: 1px solid var(--abyss-border) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+.integration-card .ant-card-head {
+  background: transparent !important;
+  border-bottom: 1px solid var(--abyss-border) !important;
+}
+.integration-card .ant-card-head-title {
+  color: var(--text-primary) !important;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+}
+
+.integration-card .ant-card-body {
+  padding: 0 !important;
+}
+
+/* ---------- table overrides ---------- */
+.integration-card .ant-table {
+  background: transparent !important;
+  color: var(--text-primary) !important;
+}
+.integration-card .ant-table-thead > tr > th {
+  background: rgba(13, 17, 23, 0.6) !important;
+  color: var(--text-secondary) !important;
+  border-bottom: 1px solid var(--abyss-border) !important;
+  font-family: var(--font-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.integration-card .ant-table-tbody > tr > td {
+  border-bottom: 1px solid rgba(30, 42, 51, 0.5) !important;
+  color: var(--text-primary) !important;
+}
+.integration-card .ant-table-tbody > tr:hover > td {
+  background: var(--abyss-hover) !important;
+}
+.integration-card .ant-table-tbody > tr.ant-table-row:hover > td {
+  background: var(--abyss-hover) !important;
+}
+.integration-card .ant-table-cell-row-hover {
+  background: var(--abyss-hover) !important;
+}
+
+/* status tag */
+.integration-tag--connected {
+  background: rgba(0, 212, 170, 0.12) !important;
+  border-color: rgba(0, 212, 170, 0.3) !important;
+  color: var(--hive-cyan) !important;
+}
+.integration-tag--disconnected {
+  background: rgba(71, 85, 105, 0.2) !important;
+  border-color: var(--abyss-border) !important;
+  color: var(--text-secondary) !important;
+}
+
+/* switch override */
+.integration-card .ant-switch {
+  background: var(--abyss-border) !important;
+}
+.integration-card .ant-switch-checked {
+  background: var(--hive-cyan) !important;
+  box-shadow: var(--glow-cyan);
+}
+
+/* button override */
+.integration-card .ant-btn-default {
+  background: transparent !important;
+  border-color: var(--abyss-border) !important;
+  color: var(--text-secondary) !important;
+}
+.integration-card .ant-btn-default:hover {
+  border-color: var(--hive-cyan) !important;
+  color: var(--hive-cyan) !important;
+}
+
+.integration-card .ant-btn-link {
+  color: var(--hive-cyan) !important;
+}
+
+/* empty / loading */
+.integration-card .ant-empty-description {
+  color: var(--text-secondary) !important;
+}
+.integration-card .ant-spin-dot-item {
+  background-color: var(--hive-cyan) !important;
+}

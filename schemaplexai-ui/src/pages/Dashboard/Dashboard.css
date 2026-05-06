@@ -1,0 +1,141 @@
+/* Dashboard - Abyss Hive Theme */
+
+.dashboard-container {
+  padding: var(--space-4);
+}
+
+/* Stat Cards Row */
+.dashboard-stats-row {
+  margin-bottom: var(--space-4);
+}
+
+.dashboard-stat-card {
+  background: var(--abyss-card);
+  border: 1px solid var(--abyss-border);
+  border-radius: var(--radius-lg);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dashboard-stat-card:hover {
+  border-color: var(--hive-cyan);
+  box-shadow: var(--glow-cyan);
+}
+
+.dashboard-stat-card .ant-card-body {
+  padding: var(--space-5);
+}
+
+.dashboard-stat-card .ant-statistic-title {
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+}
+
+.dashboard-stat-card .ant-statistic-content {
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}
+
+.dashboard-stat-card .ant-statistic-content-value {
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.dashboard-stat-card .ant-statistic-content-prefix {
+  color: var(--hive-cyan);
+  margin-right: var(--space-2);
+}
+
+/* Amber accent for pending approvals */
+.dashboard-stat-card--warning .ant-statistic-content-prefix {
+  color: var(--hive-amber);
+}
+
+/* Section Cards (chart + table) */
+.dashboard-section-row {
+  margin-top: var(--space-4);
+}
+
+.dashboard-section-card {
+  background: var(--abyss-card);
+  border: 1px solid var(--abyss-border);
+  border-radius: var(--radius-lg);
+  height: 100%;
+}
+
+.dashboard-section-card .ant-card-head {
+  border-bottom: 1px solid var(--abyss-border);
+  padding: 0 var(--space-5);
+  min-height: 48px;
+}
+
+.dashboard-section-card .ant-card-head-title {
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.dashboard-section-card .ant-card-body {
+  padding: var(--space-5);
+}
+
+/* Table overrides inside dashboard */
+.dashboard-section-card .ant-table {
+  background: transparent;
+}
+
+.dashboard-section-card .ant-table-thead > tr > th {
+  background: var(--abyss-sidebar);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--abyss-border);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dashboard-section-card .ant-table-tbody > tr > td {
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--abyss-border);
+  font-family: var(--font-sans);
+}
+
+.dashboard-section-card .ant-table-tbody > tr:hover > td {
+  background: var(--abyss-hover);
+}
+
+.dashboard-section-card .ant-table-tbody > tr.ant-table-row:hover > td {
+  background: var(--abyss-hover);
+}
+
+/* Status tags in table */
+.dashboard-status-success {
+  background: rgba(0, 212, 170, 0.12);
+  color: var(--hive-cyan);
+  border: 1px solid rgba(0, 212, 170, 0.25);
+}
+
+.dashboard-status-running {
+  background: rgba(99, 102, 241, 0.12);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+}
+
+.dashboard-status-error {
+  background: rgba(255, 71, 87, 0.12);
+  color: var(--hive-red);
+  border: 1px solid rgba(255, 71, 87, 0.25);
+}
+
+/* Loading skeleton for stat cards */
+.dashboard-stat-card.ant-card-loading .ant-card-body {
+  background: var(--abyss-card);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: var(--space-2);
+  }
+}

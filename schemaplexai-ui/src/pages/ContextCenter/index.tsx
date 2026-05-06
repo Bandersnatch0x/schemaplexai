@@ -3,6 +3,7 @@ import { PlusOutlined, SearchOutlined } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
 import { getContextList } from '@/api/context'
 import type { ContextItem } from '@/api/context'
+import './ContextCenter.css'
 
 export default function ContextCenter() {
   const [keyword, setKeyword] = useState('')
@@ -44,7 +45,7 @@ export default function ContextCenter() {
       title: '类型',
       dataIndex: 'type',
       key: 'type',
-      render: (type: string) => <Tag>{typeMap[type] || type}</Tag>,
+      render: (type: string) => <Tag className={`context-tag context-tag-${type}`}>{typeMap[type] || type}</Tag>,
     },
     { title: '更新时间', dataIndex: 'updatedAt', key: 'updatedAt' },
     {
@@ -61,32 +62,36 @@ export default function ContextCenter() {
   ]
 
   return (
-    <Card
-      title="上下文与知识中心"
-      extra={
-        <Button type="primary" icon={<PlusOutlined />}>
-          新建上下文
-        </Button>
-      }
-    >
-      <Input.Search
-        placeholder="搜索上下文"
-        allowClear
-        style={{ width: 300, marginBottom: 16 }}
-        onSearch={(v) => { setKeyword(v); setPage(1) }}
-      />
-      <Table
-        dataSource={data}
-        columns={columns}
-        rowKey="id"
-        loading={loading}
-        pagination={{
-          current: page,
-          pageSize,
-          total,
-          onChange: (p) => setPage(p),
-        }}
-      />
-    </Card>
+    <div className="context-page">
+      <Card
+        className="context-card"
+        title="上下文与知识中心"
+        extra={
+          <Button type="primary" icon={<PlusOutlined />}>
+            新建上下文
+          </Button>
+        }
+      >
+        <Input.Search
+          className="context-search"
+          placeholder="搜索上下文"
+          allowClear
+          onSearch={(v) => { setKeyword(v); setPage(1) }}
+        />
+        <Table
+          className="context-table"
+          dataSource={data}
+          columns={columns}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            current: page,
+            pageSize,
+            total,
+            onChange: (p) => setPage(p),
+          }}
+        />
+      </Card>
+    </div>
   )
 }

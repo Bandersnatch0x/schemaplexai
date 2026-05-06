@@ -1,13 +1,8 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import './WorkflowMonitor.css'
 
 type StatusFilter = 'all' | 'running' | 'completed' | 'failed'
-
-const FILTERS: { key: StatusFilter; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'running', label: 'Running' },
-  { key: 'completed', label: 'Completed' },
-  { key: 'failed', label: 'Failed' },
-]
 
 interface WorkflowRun {
   id: string
@@ -64,7 +59,15 @@ const RUNS: WorkflowRun[] = [
 const HOURS = ['09:00', '10:00', '11:00', '12:00']
 
 export default function WorkflowMonitor() {
+  const { t } = useTranslation()
   const [filter, setFilter] = useState<StatusFilter>('all')
+
+  const FILTERS: { key: StatusFilter; label: string }[] = [
+    { key: 'all', label: t('workflowMonitor.all') },
+    { key: 'running', label: t('workflowMonitor.running') },
+    { key: 'completed', label: t('workflowMonitor.completed') },
+    { key: 'failed', label: t('workflowMonitor.failed') },
+  ]
 
   const filteredRuns =
     filter === 'all' ? RUNS : RUNS.filter((r) => r.status === filter)
@@ -76,85 +79,43 @@ export default function WorkflowMonitor() {
     failed: RUNS.filter((r) => r.status === 'failed').length,
   }
 
+  const BAR_COLOR_CLASS: Record<string, string> = {
+    '#00d4aa': 'workflow-monitor-bar--cyan',
+    '#64748b': 'workflow-monitor-bar--secondary',
+    '#ff4757': 'workflow-monitor-bar--red',
+  }
+
+  const STAT_VALUE_CLASS: Record<string, string> = {
+    '#e2e8f0': 'workflow-monitor-stat-value--primary',
+    '#00d4aa': 'workflow-monitor-stat-value--cyan',
+    '#64748b': 'workflow-monitor-stat-value--secondary',
+    '#ff4757': 'workflow-monitor-stat-value--red',
+  }
+
   return (
-    <div>
+    <div className="workflow-monitor-page">
       {/* Stats Row */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 16,
-          marginBottom: 24,
-        }}
-      >
-        <StatBadge label="Total" value={statusCount.all} color="#e2e8f0" />
-        <StatBadge
-          label="Running"
-          value={statusCount.running}
-          color="#00d4aa"
-        />
-        <StatBadge
-          label="Completed"
-          value={statusCount.completed}
-          color="#64748b"
-        />
-        <StatBadge label="Failed" value={statusCount.failed} color="#ff4757" />
+      <div className="workflow-monitor-stats">
+        <StatBadge label={t('workflowMonitor.total')} value={statusCount.all} colorClass={STAT_VALUE_CLASS['#e2e8f0']} />
+        <StatBadge label={t('workflowMonitor.running')} value={statusCount.running} colorClass={STAT_VALUE_CLASS['#00d4aa']} />
+        <StatBadge label={t('workflowMonitor.completed')} value={statusCount.completed} colorClass={STAT_VALUE_CLASS['#64748b']} />
+        <StatBadge label={t('workflowMonitor.failed')} value={statusCount.failed} colorClass={STAT_VALUE_CLASS['#ff4757']} />
       </div>
 
       {/* Timeline Card */}
-      <div
-        style={{
-          background: '#111827',
-          borderRadius: 8,
-          border: '1px solid #1e2a33',
-          overflow: 'hidden',
-        }}
-      >
-        <div
-          style={{
-            padding: '16px 20px',
-            borderBottom: '1px solid #1e2a33',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <div
-            style={{
-              fontSize: 14,
-              fontWeight: 600,
-              color: '#e2e8f0',
-            }}
-          >
-            Timeline View
+      <div className="workflow-monitor-timeline">
+        <div className="workflow-monitor-timeline-header">
+          <div className="workflow-monitor-timeline-title">
+            {t('workflowMonitor.timeline')}
           </div>
 
           {/* PillNav */}
-          <div
-            style={{
-              display: 'inline-flex',
-              background: '#0d1117',
-              borderRadius: 20,
-              padding: 4,
-              gap: 4,
-            }}
-          >
+          <div className="workflow-monitor-pillnav">
             {FILTERS.map((f) => (
               <button
                 key={f.key}
                 onClick={() => setFilter(f.key)}
-                style={{
-                  background:
-                    filter === f.key ? '#00d4aa' : 'transparent',
-                  color: filter === f.key ? '#0a0e1a' : '#64748b',
-                  border: 'none',
-                  padding: '6px 16px',
-                  borderRadius: 16,
-                  fontSize: 13,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  fontWeight: filter === f.key ? 600 : 400,
-                  fontFamily: 'inherit',
-                }}
+                className={`workflow-monitor-pillnav-btn ${filter === f.key ? 'workflow-monitor-pillnav-btn--active' : ''}`}
               >
                 {f.label}
               </button>
@@ -162,93 +123,39 @@ export default function WorkflowMonitor() {
           </div>
         </div>
 
-        <div style={{ padding: 20 }}>
+        <div className="workflow-monitor-timeline-body">
           {/* Timeline Header */}
-          <div
-            style={{
-              display: 'flex',
-              marginBottom: 12,
-              paddingLeft: 160,
-            }}
-          >
+          <div className="workflow-monitor-axis-header">
             {HOURS.map((h) => (
-              <div
-                key={h}
-                style={{
-                  flex: 1,
-                  textAlign: 'center',
-                  fontSize: 11,
-                  color: '#64748b',
-                }}
-              >
+              <div key={h} className="workflow-monitor-axis-label">
                 {h}
               </div>
             ))}
           </div>
 
           {/* Grid Lines */}
-          <div style={{ position: 'relative' }}>
-            <div
-              style={{
-                position: 'absolute',
-                left: 160,
-                right: 0,
-                top: 0,
-                bottom: 0,
-                display: 'flex',
-              }}
-            >
+          <div className="workflow-monitor-grid">
+            <div className="workflow-monitor-gridlines">
               {HOURS.map((_, i) => (
                 <div
                   key={i}
-                  style={{
-                    flex: 1,
-                    borderLeft:
-                      i > 0
-                        ? '1px dashed rgba(30,42,51,0.5)'
-                        : 'none',
-                  }}
+                  className={`workflow-monitor-gridline ${i > 0 ? 'workflow-monitor-gridline--dashed' : ''}`}
                 />
               ))}
             </div>
 
             {/* Workflow Rows */}
             {filteredRuns.map((run) => (
-              <div
-                key={run.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  height: 40,
-                  marginBottom: 8,
-                  position: 'relative',
-                  zIndex: 1,
-                }}
-              >
-                <div
-                  style={{
-                    width: 140,
-                    fontSize: 13,
-                    color: '#e2e8f0',
-                    fontWeight: 500,
-                    paddingRight: 20,
-                    textAlign: 'right',
-                    flexShrink: 0,
-                  }}
-                >
+              <div key={run.id} className="workflow-monitor-row">
+                <div className="workflow-monitor-row-label">
                   {run.name}
                 </div>
-                <div style={{ flex: 1, position: 'relative', height: 24 }}>
+                <div className="workflow-monitor-row-track">
                   <div
+                    className={`workflow-monitor-bar ${BAR_COLOR_CLASS[run.color] || ''}`}
                     style={{
-                      position: 'absolute',
                       left: `${((run.startHour - 9) / 3) * 100}%`,
                       width: `${(run.duration / 3) * 100}%`,
-                      height: '100%',
-                      background: run.color,
-                      borderRadius: 4,
-                      opacity: 0.8,
-                      minWidth: 4,
                     }}
                   />
                 </div>
@@ -256,15 +163,8 @@ export default function WorkflowMonitor() {
             ))}
 
             {filteredRuns.length === 0 && (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '40px 0',
-                  color: '#64748b',
-                  fontSize: 13,
-                }}
-              >
-                No workflows match the selected filter
+              <div className="workflow-monitor-empty">
+                {t('workflowMonitor.noWorkflows')}
               </div>
             )}
           </div>
@@ -272,121 +172,34 @@ export default function WorkflowMonitor() {
       </div>
 
       {/* Recent Runs Table */}
-      <div
-        style={{
-          marginTop: 24,
-          background: '#111827',
-          borderRadius: 8,
-          border: '1px solid #1e2a33',
-          overflow: 'hidden',
-        }}
-      >
-        <div
-          style={{
-            padding: '16px 20px',
-            borderBottom: '1px solid #1e2a33',
-            fontSize: 14,
-            fontWeight: 600,
-            color: '#e2e8f0',
-          }}
-        >
-          Recent Runs
+      <div className="workflow-monitor-recent">
+        <div className="workflow-monitor-recent-header">
+          {t('workflowMonitor.recentRuns')}
         </div>
-        <div style={{ padding: '0 20px' }}>
-          <table
-            style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              fontSize: 13,
-            }}
-          >
+        <div className="workflow-monitor-table-wrap">
+          <table className="workflow-monitor-table">
             <thead>
               <tr>
-                <th
-                  style={{
-                    padding: '12px 16px',
-                    textAlign: 'left',
-                    color: '#64748b',
-                    fontWeight: 500,
-                    borderBottom: '1px solid #1e2a33',
-                  }}
-                >
-                  Workflow
-                </th>
-                <th
-                  style={{
-                    padding: '12px 16px',
-                    textAlign: 'left',
-                    color: '#64748b',
-                    fontWeight: 500,
-                    borderBottom: '1px solid #1e2a33',
-                  }}
-                >
-                  Status
-                </th>
-                <th
-                  style={{
-                    padding: '12px 16px',
-                    textAlign: 'left',
-                    color: '#64748b',
-                    fontWeight: 500,
-                    borderBottom: '1px solid #1e2a33',
-                  }}
-                >
-                  Started
-                </th>
-                <th
-                  style={{
-                    padding: '12px 16px',
-                    textAlign: 'left',
-                    color: '#64748b',
-                    fontWeight: 500,
-                    borderBottom: '1px solid #1e2a33',
-                  }}
-                >
-                  Duration
-                </th>
+                <th>{t('workflowMonitor.workflow')}</th>
+                <th>{t('workflowMonitor.running')}</th>
+                <th>{t('workflowMonitor.started')}</th>
+                <th>{t('workflowMonitor.duration')}</th>
               </tr>
             </thead>
             <tbody>
               {filteredRuns.map((run) => (
                 <tr key={run.id}>
-                  <td
-                    style={{
-                      padding: '12px 16px',
-                      borderBottom: '1px solid rgba(30,42,51,0.5)',
-                      color: '#e2e8f0',
-                    }}
-                  >
-                    {run.name}
-                  </td>
-                  <td
-                    style={{
-                      padding: '12px 16px',
-                      borderBottom: '1px solid rgba(30,42,51,0.5)',
-                    }}
-                  >
+                  <td>{run.name}</td>
+                  <td>
                     <StatusBadge status={run.status} />
                   </td>
-                  <td
-                    style={{
-                      padding: '12px 16px',
-                      borderBottom: '1px solid rgba(30,42,51,0.5)',
-                      color: '#64748b',
-                    }}
-                  >
+                  <td>
                     {String(Math.floor(run.startHour)).padStart(2, '0')}:
                     {String(
                       Math.floor((run.startHour % 1) * 60)
                     ).padStart(2, '0')}
                   </td>
-                  <td
-                    style={{
-                      padding: '12px 16px',
-                      borderBottom: '1px solid rgba(30,42,51,0.5)',
-                      color: '#64748b',
-                    }}
-                  >
+                  <td>
                     {Math.round(run.duration * 60)}m
                   </td>
                 </tr>
@@ -402,59 +215,31 @@ export default function WorkflowMonitor() {
 function StatBadge({
   label,
   value,
-  color,
+  colorClass,
 }: {
   label: string
   value: number
-  color: string
+  colorClass: string
 }) {
   return (
-    <div
-      style={{
-        flex: 1,
-        background: '#111827',
-        borderRadius: 8,
-        border: '1px solid #1e2a33',
-        padding: '16px 20px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}
-    >
-      <span style={{ fontSize: 13, color: '#64748b' }}>{label}</span>
-      <span style={{ fontSize: 20, fontWeight: 700, color }}>{value}</span>
+    <div className="workflow-monitor-stat">
+      <span className="workflow-monitor-stat-label">{label}</span>
+      <span className={`workflow-monitor-stat-value ${colorClass}`}>{value}</span>
     </div>
   )
 }
 
 function StatusBadge({ status }: { status: StatusFilter }) {
-  const colorMap: Record<StatusFilter, string> = {
-    running: '#00d4aa',
-    completed: '#64748b',
-    failed: '#ff4757',
-    all: '#64748b',
-  }
-
+  const { t } = useTranslation()
   const labelMap: Record<StatusFilter, string> = {
-    running: 'Running',
-    completed: 'Completed',
-    failed: 'Failed',
-    all: 'All',
+    running: t('workflowMonitor.running'),
+    completed: t('workflowMonitor.completed'),
+    failed: t('workflowMonitor.failed'),
+    all: t('workflowMonitor.all'),
   }
 
   return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        padding: '2px 8px',
-        borderRadius: 4,
-        fontSize: 11,
-        fontWeight: 500,
-        background: `${colorMap[status]}20`,
-        color: colorMap[status],
-      }}
-    >
+    <span className={`workflow-monitor-status workflow-monitor-status--${status}`}>
       {labelMap[status]}
     </span>
   )

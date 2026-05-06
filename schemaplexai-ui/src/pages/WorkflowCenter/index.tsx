@@ -3,6 +3,7 @@ import { PlusOutlined, PlayCircleOutlined, EditOutlined, DeleteOutlined } from '
 import { useEffect, useState } from 'react'
 import { getWorkflowList, runWorkflow } from '@/api/workflow'
 import type { Workflow } from '@/api/workflow'
+import './WorkflowCenter.css'
 
 export default function WorkflowCenter() {
   const [keyword, setKeyword] = useState('')
@@ -49,7 +50,11 @@ export default function WorkflowCenter() {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => <Tag color={status === 'published' ? 'green' : 'orange'}>{status}</Tag>,
+      render: (status: string) => (
+        <Tag className={status === 'published' ? 'workflow-tag-published' : 'workflow-tag-draft'}>
+          {status}
+        </Tag>
+      ),
     },
     { title: '更新时间', dataIndex: 'updatedAt', key: 'updatedAt' },
     {
@@ -66,32 +71,36 @@ export default function WorkflowCenter() {
   ]
 
   return (
-    <Card
-      title="工作流中心"
-      extra={
-        <Button type="primary" icon={<PlusOutlined />}>
-          新建工作流
-        </Button>
-      }
-    >
-      <Input.Search
-        placeholder="搜索工作流"
-        allowClear
-        style={{ width: 300, marginBottom: 16 }}
-        onSearch={(v) => { setKeyword(v); setPage(1) }}
-      />
-      <Table
-        dataSource={data}
-        columns={columns}
-        rowKey="id"
-        loading={loading}
-        pagination={{
-          current: page,
-          pageSize,
-          total,
-          onChange: (p) => setPage(p),
-        }}
-      />
-    </Card>
+    <div className="workflow-page">
+      <Card
+        className="workflow-card"
+        title="工作流中心"
+        extra={
+          <Button type="primary" icon={<PlusOutlined />}>
+            新建工作流
+          </Button>
+        }
+      >
+        <Input.Search
+          className="workflow-search"
+          placeholder="搜索工作流"
+          allowClear
+          onSearch={(v) => { setKeyword(v); setPage(1) }}
+        />
+        <Table
+          className="workflow-table"
+          dataSource={data}
+          columns={columns}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            current: page,
+            pageSize,
+            total,
+            onChange: (p) => setPage(p),
+          }}
+        />
+      </Card>
+    </div>
   )
 }

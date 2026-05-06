@@ -1,0 +1,82 @@
+/* NotFound - Abyss Hive Theme */
+
+.notfound-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 64px);
+  background: var(--abyss-bg);
+  font-family: var(--font-sans);
+}
+
+/* Ant Design Result override */
+.notfound-page .ant-result {
+  background: transparent;
+  padding: var(--space-10) var(--space-8);
+}
+
+.notfound-page .ant-result-icon {
+  margin-bottom: var(--space-6);
+}
+
+.notfound-page .ant-result-icon > .anticon {
+  font-size: 80px;
+}
+
+/* 404 number */
+.notfound-page .ant-result-title {
+  color: var(--hive-cyan);
+  font-family: var(--font-sans);
+  font-size: 72px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  text-shadow: 0 0 30px rgba(0, 212, 170, 0.3);
+  line-height: 1;
+}
+
+/* Subtitle */
+.notfound-page .ant-result-subtitle {
+  color: var(--text-secondary);
+  font-size: 16px;
+  margin-top: var(--space-4);
+}
+
+/* Return button */
+.notfound-page .ant-result-extra .ant-btn-primary {
+  background: var(--hive-cyan);
+  border-color: var(--hive-cyan);
+  color: var(--abyss-bg);
+  font-weight: 600;
+  font-family: var(--font-sans);
+  border-radius: var(--radius-md);
+  height: 40px;
+  padding: 0 var(--space-6);
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.notfound-page .ant-result-extra .ant-btn-primary:hover {
+  background: #00e6b8;
+  border-color: #00e6b8;
+  box-shadow: var(--glow-cyan);
+  transform: translateY(-1px);
+}
+
+/* Decorative glow effect behind the number */
+.notfound-page::before {
+  content: '';
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(0, 212, 170, 0.06) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.notfound-page .ant-result {
+  position: relative;
+  z-index: 1;
+}

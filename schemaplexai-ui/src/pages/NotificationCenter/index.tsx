@@ -3,6 +3,7 @@ import { Card, Table, Button, Badge, Tabs, Tag, Empty } from 'antd'
 import { BellOutlined, CheckOutlined, CheckCircleOutlined } from '@ant-design/icons'
 import { getNotificationPage, markAsRead, markAllAsRead } from '@/api/notification'
 import type { Notification } from '@/types/notification'
+import './NotificationCenter.css'
 
 export default function NotificationCenter() {
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -77,8 +78,8 @@ export default function NotificationCenter() {
       dataIndex: 'title',
       key: 'title',
       render: (text: string, record: Notification) => (
-        <span style={{ fontWeight: record.read ? 'normal' : 'bold' }}>
-          {!record.read && <Badge color="red" style={{ marginRight: 8 }} />}
+        <span className={`notification-title ${record.read ? 'notification-title--read' : 'notification-title--unread'}`}>
+          {!record.read && <Badge dot className="notification-title-badge" />}
           {text}
         </span>
       ),
@@ -95,12 +96,12 @@ export default function NotificationCenter() {
       key: 'type',
       width: 100,
       render: (type: string) => {
-        const colors: Record<string, string> = {
-          SYSTEM: 'blue',
-          TASK: 'green',
-          WORKFLOW: 'purple',
+        const cls: Record<string, string> = {
+          SYSTEM: 'notification-tag-system',
+          TASK: 'notification-tag-task',
+          WORKFLOW: 'notification-tag-workflow',
         }
-        return <Tag color={colors[type] || 'default'}>{type}</Tag>
+        return <Tag className={cls[type] || ''}>{type}</Tag>
       },
     },
     {
@@ -108,7 +109,7 @@ export default function NotificationCenter() {
       dataIndex: 'createdAt',
       key: 'createdAt',
       width: 180,
-      render: (time: string) => new Date(time).toLocaleString(),
+      render: (time: string) => <span className="notification-time">{new Date(time).toLocaleString()}</span>,
     },
     {
       title: '操作',
@@ -118,35 +119,36 @@ export default function NotificationCenter() {
         !record.read ? (
           <Button
             size="small"
+            className="notification-action-btn"
             icon={<CheckOutlined />}
             onClick={() => handleMarkAsRead(record.id)}
           >
             已读
           </Button>
         ) : (
-          <CheckCircleOutlined style={{ color: '#52c41a' }} />
+          <CheckCircleOutlined className="notification-read-icon" />
         ),
     },
   ]
 
   return (
-    <div>
+    <div className="notification-page">
       <Card
         title={
-          <span>
-            <BellOutlined style={{ marginRight: 8 }} />
+          <span className="notification-header">
+            <BellOutlined className="notification-header-icon" />
             通知中心
             {unreadCount > 0 && (
               <Badge
                 count={unreadCount}
-                style={{ marginLeft: 8, backgroundColor: '#ff4d4f' }}
+                className="notification-unread-badge"
               />
             )}
           </span>
         }
         extra={
           unreadCount > 0 && (
-            <Button type="primary" icon={<CheckOutlined />} onClick={handleMarkAllAsRead}>
+            <Button className="notification-mark-all-btn" icon={<CheckOutlined />} onClick={handleMarkAllAsRead}>
               全部已读
             </Button>
           )

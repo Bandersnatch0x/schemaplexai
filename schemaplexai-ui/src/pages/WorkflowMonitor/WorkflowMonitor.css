@@ -1,0 +1,288 @@
+/* WorkflowMonitor - Abyss Hive Theme */
+
+.workflow-monitor-page {
+  padding: 0;
+  font-family: var(--font-sans);
+}
+
+/* Stats Row */
+.workflow-monitor-stats {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+/* Stat Badge */
+.workflow-monitor-stat {
+  flex: 1;
+  background: var(--abyss-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--abyss-border);
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.workflow-monitor-stat-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.workflow-monitor-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.workflow-monitor-stat-value--primary {
+  color: var(--text-primary);
+}
+
+.workflow-monitor-stat-value--cyan {
+  color: var(--hive-cyan);
+}
+
+.workflow-monitor-stat-value--secondary {
+  color: var(--text-secondary);
+}
+
+.workflow-monitor-stat-value--red {
+  color: var(--hive-red);
+}
+
+/* Timeline Card */
+.workflow-monitor-timeline {
+  background: var(--abyss-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--abyss-border);
+  overflow: hidden;
+}
+
+.workflow-monitor-timeline-header {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--abyss-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.workflow-monitor-timeline-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* PillNav */
+.workflow-monitor-pillnav {
+  display: inline-flex;
+  background: var(--abyss-sidebar);
+  border-radius: var(--radius-full);
+  padding: var(--space-1);
+  gap: var(--space-1);
+}
+
+.workflow-monitor-pillnav-btn {
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  padding: 6px var(--space-4);
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 400;
+  font-family: var(--font-sans);
+}
+
+.workflow-monitor-pillnav-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.workflow-monitor-pillnav-btn--active {
+  background: var(--hive-cyan);
+  color: var(--abyss-bg);
+  font-weight: 600;
+}
+
+.workflow-monitor-pillnav-btn--active:hover {
+  background: var(--hive-cyan);
+  color: var(--abyss-bg);
+}
+
+/* Timeline body */
+.workflow-monitor-timeline-body {
+  padding: var(--space-5);
+}
+
+/* Timeline axis header */
+.workflow-monitor-axis-header {
+  display: flex;
+  margin-bottom: var(--space-3);
+  padding-left: 160px;
+}
+
+.workflow-monitor-axis-label {
+  flex: 1;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* Grid lines container */
+.workflow-monitor-grid {
+  position: relative;
+}
+
+.workflow-monitor-gridlines {
+  position: absolute;
+  left: 160px;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+}
+
+.workflow-monitor-gridline {
+  flex: 1;
+}
+
+.workflow-monitor-gridline--dashed {
+  border-left: 1px dashed rgba(30, 42, 51, 0.5);
+}
+
+/* Workflow row */
+.workflow-monitor-row {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  margin-bottom: var(--space-2);
+  position: relative;
+  z-index: 1;
+}
+
+.workflow-monitor-row-label {
+  width: 140px;
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+  padding-right: var(--space-5);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.workflow-monitor-row-track {
+  flex: 1;
+  position: relative;
+  height: 24px;
+}
+
+.workflow-monitor-bar {
+  position: absolute;
+  height: 100%;
+  border-radius: var(--radius-sm);
+  opacity: 0.8;
+  min-width: 4px;
+}
+
+.workflow-monitor-bar--cyan {
+  background: var(--hive-cyan);
+}
+
+.workflow-monitor-bar--secondary {
+  background: var(--text-secondary);
+}
+
+.workflow-monitor-bar--red {
+  background: var(--hive-red);
+}
+
+/* Empty state */
+.workflow-monitor-empty {
+  text-align: center;
+  padding: var(--space-10) 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+/* Recent Runs Table */
+.workflow-monitor-recent {
+  margin-top: var(--space-6);
+  background: var(--abyss-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--abyss-border);
+  overflow: hidden;
+}
+
+.workflow-monitor-recent-header {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--abyss-border);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.workflow-monitor-table-wrap {
+  padding: 0 var(--space-5);
+}
+
+.workflow-monitor-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.workflow-monitor-table th {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  color: var(--text-secondary);
+  font-weight: 500;
+  border-bottom: 1px solid var(--abyss-border);
+}
+
+.workflow-monitor-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid rgba(30, 42, 51, 0.5);
+}
+
+.workflow-monitor-table td:first-child {
+  color: var(--text-primary);
+}
+
+.workflow-monitor-table td:not(:first-child) {
+  color: var(--text-secondary);
+}
+
+.workflow-monitor-table tr:hover td {
+  background: var(--abyss-hover);
+}
+
+/* Status Badge */
+.workflow-monitor-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.workflow-monitor-status--running {
+  background: rgba(0, 212, 170, 0.15);
+  color: var(--hive-cyan);
+}
+
+.workflow-monitor-status--completed {
+  background: rgba(100, 116, 139, 0.15);
+  color: var(--text-secondary);
+}
+
+.workflow-monitor-status--failed {
+  background: rgba(255, 71, 87, 0.15);
+  color: var(--hive-red);
+}
+
+.workflow-monitor-status--all {
+  background: rgba(100, 116, 139, 0.15);
+  color: var(--text-secondary);
+}

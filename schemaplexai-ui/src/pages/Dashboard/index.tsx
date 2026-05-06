@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Row, Col, Card, Statistic, Table, Tag, message } from 'antd'
 import {
   RobotOutlined,
@@ -9,8 +10,10 @@ import {
 import { Line } from '@ant-design/charts'
 import { getAgentStats, getExecutionRecords } from '@/api/agent'
 import type { ExecutionRecord } from '@/types'
+import './Dashboard.css'
 
 export default function Dashboard() {
+  const { t } = useTranslation()
   const [stats, setStats] = useState({
     totalAgents: 0,
     totalExecutions: 0,
@@ -32,7 +35,7 @@ export default function Dashboard() {
       const data = await getAgentStats()
       setStats(data)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '获取统计数据失败'
+      const msg = err instanceof Error ? err.message : t('common.error')
       message.error(msg)
     } finally {
       setStatsLoading(false)
@@ -45,7 +48,7 @@ export default function Dashboard() {
       const data = await getExecutionRecords()
       setRecords(data)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '获取执行记录失败'
+      const msg = err instanceof Error ? err.message : t('common.error')
       message.error(msg)
       setRecords([])
     } finally {
@@ -54,59 +57,59 @@ export default function Dashboard() {
   }
 
   const chartData = [
-    { date: '08-01', value: 45, type: '执行次数' },
-    { date: '08-02', value: 52, type: '执行次数' },
-    { date: '08-03', value: 38, type: '执行次数' },
-    { date: '08-04', value: 65, type: '执行次数' },
-    { date: '08-05', value: 48, type: '执行次数' },
-    { date: '08-06', value: 70, type: '执行次数' },
-    { date: '08-07', value: 55, type: '执行次数' },
+    { date: '08-01', value: 45, type: t('dashboard.executionCount') },
+    { date: '08-02', value: 52, type: t('dashboard.executionCount') },
+    { date: '08-03', value: 38, type: t('dashboard.executionCount') },
+    { date: '08-04', value: 65, type: t('dashboard.executionCount') },
+    { date: '08-05', value: 48, type: t('dashboard.executionCount') },
+    { date: '08-06', value: 70, type: t('dashboard.executionCount') },
+    { date: '08-07', value: 55, type: t('dashboard.executionCount') },
   ]
 
   const columns = [
     { title: 'Agent', dataIndex: 'agentName', key: 'agentName' },
-    { title: 'Prompt', dataIndex: 'prompt', key: 'prompt', ellipsis: true },
+    { title: t('dashboard.prompt'), dataIndex: 'prompt', key: 'prompt', ellipsis: true },
     {
-      title: '状态',
+      title: t('dashboard.status'),
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => (
-        <Tag color={status === 'success' ? 'green' : status === 'running' ? 'blue' : 'red'}>
+        <Tag className={`dashboard-status-${status}`}>
           {status}
         </Tag>
       ),
     },
     { title: 'Token', dataIndex: 'tokenUsed', key: 'tokenUsed' },
-    { title: '耗时(ms)', dataIndex: 'duration', key: 'duration' },
+    { title: t('dashboard.duration'), dataIndex: 'duration', key: 'duration' },
   ]
 
   return (
-    <div>
-      <Row gutter={[16, 16]}>
+    <div className="dashboard-container">
+      <Row gutter={[16, 16]} className="dashboard-stats-row">
         <Col xs={24} sm={12} lg={6}>
-          <Card loading={statsLoading}>
-            <Statistic title="Agent 数量" value={stats.totalAgents} prefix={<RobotOutlined />} />
+          <Card loading={statsLoading} className="dashboard-stat-card">
+            <Statistic title={t('dashboard.agentCount')} value={stats.totalAgents} prefix={<RobotOutlined />} />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card loading={statsLoading}>
-            <Statistic title="执行次数" value={stats.totalExecutions} prefix={<ThunderboltOutlined />} />
+          <Card loading={statsLoading} className="dashboard-stat-card">
+            <Statistic title={t('dashboard.executionCount')} value={stats.totalExecutions} prefix={<ThunderboltOutlined />} />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card loading={statsLoading}>
-            <Statistic title="Token 消耗" value={stats.totalTokens} prefix={<DollarOutlined />} />
+          <Card loading={statsLoading} className="dashboard-stat-card">
+            <Statistic title={t('dashboard.tokenConsumption')} value={stats.totalTokens} prefix={<DollarOutlined />} />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card loading={statsLoading}>
-            <Statistic title="待处理审批" value={stats.pendingApprovals} prefix={<ClockCircleOutlined />} />
+          <Card loading={statsLoading} className="dashboard-stat-card dashboard-stat-card--warning">
+            <Statistic title={t('dashboard.pendingApproval')} value={stats.pendingApprovals} prefix={<ClockCircleOutlined />} />
           </Card>
         </Col>
       </Row>
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+      <Row gutter={[16, 16]} className="dashboard-section-row">
         <Col xs={24} lg={12}>
-          <Card title="最近7天执行趋势">
+          <Card title={t('dashboard.recentTrend')} className="dashboard-section-card">
             <Line
               data={chartData}
               xField="date"
@@ -119,7 +122,7 @@ export default function Dashboard() {
           </Card>
         </Col>
         <Col xs={24} lg={12}>
-          <Card title="最近执行记录">
+          <Card title={t('dashboard.recentRecords')} className="dashboard-section-card">
             <Table
               dataSource={records}
               columns={columns}

@@ -1,0 +1,146 @@
+/* ============================================================
+ * OpsCenter — Abyss Hive
+ * Reuses design tokens from src/styles/variables.css
+ * ============================================================ */
+
+.ops-page {
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  min-height: 100%;
+}
+
+/* ---------- table card ---------- */
+.ops-table-card {
+  background: var(--abyss-card) !important;
+  border: 1px solid var(--abyss-border) !important;
+  border-radius: var(--radius-md) !important;
+  margin-bottom: var(--space-4) !important;
+}
+
+.ops-table-card .ant-card-head {
+  background: transparent !important;
+  border-bottom: 1px solid var(--abyss-border) !important;
+}
+.ops-table-card .ant-card-head-title {
+  color: var(--text-primary) !important;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+}
+.ops-table-card .ant-card-extra {
+  color: var(--text-primary) !important;
+}
+
+.ops-table-card .ant-card-body {
+  padding: 0 !important;
+}
+
+/* primary button */
+.ops-btn-primary {
+  background: var(--hive-cyan) !important;
+  border-color: var(--hive-cyan) !important;
+  color: var(--abyss-bg) !important;
+  font-weight: 600 !important;
+  box-shadow: var(--glow-cyan);
+  transition: all 0.2s;
+}
+.ops-btn-primary:hover {
+  background: #00eabb !important;
+  border-color: #00eabb !important;
+  box-shadow: 0 0 16px rgba(0, 212, 170, 0.4) !important;
+}
+
+/* ---------- table overrides ---------- */
+.ops-table-card .ant-table {
+  background: transparent !important;
+  color: var(--text-primary) !important;
+}
+.ops-table-card .ant-table-thead > tr > th {
+  background: rgba(13, 17, 23, 0.6) !important;
+  color: var(--text-secondary) !important;
+  border-bottom: 1px solid var(--abyss-border) !important;
+  font-family: var(--font-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ops-table-card .ant-table-tbody > tr > td {
+  border-bottom: 1px solid rgba(30, 42, 51, 0.5) !important;
+  color: var(--text-primary) !important;
+}
+.ops-table-card .ant-table-tbody > tr:hover > td {
+  background: var(--abyss-hover) !important;
+}
+.ops-table-card .ant-table-tbody > tr.ant-table-row:hover > td {
+  background: var(--abyss-hover) !important;
+}
+.ops-table-card .ant-table-cell-row-hover {
+  background: var(--abyss-hover) !important;
+}
+
+/* status tags */
+.ops-tag--pending {
+  background: rgba(255, 159, 67, 0.12) !important;
+  border-color: rgba(255, 159, 67, 0.3) !important;
+  color: var(--hive-amber) !important;
+}
+.ops-tag--running {
+  background: rgba(0, 212, 170, 0.12) !important;
+  border-color: rgba(0, 212, 170, 0.3) !important;
+  color: var(--hive-cyan) !important;
+}
+.ops-tag--done {
+  background: rgba(0, 212, 170, 0.12) !important;
+  border-color: rgba(0, 212, 170, 0.3) !important;
+  color: var(--hive-cyan) !important;
+}
+.ops-tag--failed {
+  background: rgba(255, 71, 87, 0.12) !important;
+  border-color: rgba(255, 71, 87, 0.3) !important;
+  color: var(--hive-red) !important;
+}
+
+/* link buttons */
+.ops-table-card .ant-btn-link {
+  color: var(--hive-cyan) !important;
+}
+
+/* ---------- timeline card ---------- */
+.ops-timeline-card {
+  background: var(--abyss-card) !important;
+  border: 1px solid var(--abyss-border) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+.ops-timeline-card .ant-card-head {
+  background: transparent !important;
+  border-bottom: 1px solid var(--abyss-border) !important;
+}
+.ops-timeline-card .ant-card-head-title {
+  color: var(--text-primary) !important;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+}
+
+.ops-timeline-card .ant-timeline-item-content {
+  color: var(--text-primary) !important;
+}
+.ops-timeline-card .ant-timeline-item-tail {
+  border-inline-start: 1px solid var(--abyss-border) !important;
+}
+.ops-timeline-card .ant-timeline-item-head {
+  background: transparent !important;
+  border-color: var(--hive-cyan) !important;
+}
+.ops-timeline-card .ant-timeline-item-head-blue {
+  color: var(--hive-cyan) !important;
+  border-color: var(--hive-cyan) !important;
+}
+
+/* empty / loading */
+.ops-table-card .ant-empty-description,
+.ops-timeline-card .ant-empty-description {
+  color: var(--text-secondary) !important;
+}
+.ops-table-card .ant-spin-dot-item {
+  background-color: var(--hive-cyan) !important;
+}

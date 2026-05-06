@@ -8,6 +8,7 @@ import ChatMemory, { type ChatMessage } from '@/components/ChatMemory'
 import { sseRequest } from '@/api/request'
 import { getAgentList } from '@/api/agent'
 import type { SseEvent } from '@/types'
+import './AgentExecutor.css'
 
 const { TextArea } = Input
 const { Option } = Select
@@ -126,12 +127,12 @@ export default function AgentExecutor() {
   }, [selectedAgent, prompt, clearEvents, setConnecting, setConnected, addEvent])
 
   return (
-    <div style={{ height: 'calc(100vh - 160px)', display: 'flex', flexDirection: 'column' }}>
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+    <div className="agent-exec-container">
+      <Row gutter={[16, 16]} className="agent-exec-toolbar">
         <Col span={8}>
           <Select
             placeholder="选择 Agent"
-            style={{ width: '100%' }}
+            className="agent-exec-select"
             value={selectedAgent}
             onChange={setSelectedAgent}
             loading={agentsLoading}
@@ -144,11 +145,12 @@ export default function AgentExecutor() {
           </Select>
         </Col>
         <Col span={16}>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="agent-exec-prompt-row">
             <TextArea
               rows={1}
               placeholder="输入 Prompt..."
               value={prompt}
+              className="agent-exec-textarea"
               onChange={(e) => setPrompt(e.target.value)}
               onPressEnter={(e) => {
                 if (!e.shiftKey) {
@@ -157,20 +159,20 @@ export default function AgentExecutor() {
                 }
               }}
             />
-            <Button type="primary" icon={<SendOutlined />} loading={executing} onClick={handleExecute}>
+            <Button type="primary" icon={<SendOutlined />} className="agent-exec-btn-run" loading={executing} onClick={handleExecute}>
               执行
             </Button>
           </div>
         </Col>
       </Row>
-      <Row gutter={[16, 16]} style={{ flex: 1, overflow: 'hidden' }}>
+      <Row gutter={[16, 16]} className="agent-exec-main">
         <Col span={12} style={{ height: '100%' }}>
-          <Card title="对话历史" style={{ height: '100%', overflow: 'auto' }}>
+          <Card title="对话历史" className="agent-exec-panel agent-exec-chat-panel" style={{ height: '100%', overflow: 'auto' }}>
             <ChatMemory messages={messages} />
           </Card>
         </Col>
         <Col span={12} style={{ height: '100%' }}>
-          <Card title="执行状态" style={{ height: '100%' }}>
+          <Card title="执行状态" className="agent-exec-panel agent-exec-sse-panel" style={{ height: '100%' }}>
             <SseViewer />
           </Card>
         </Col>

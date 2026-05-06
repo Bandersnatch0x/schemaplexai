@@ -1,0 +1,203 @@
+/* ContextCenter - Abyss Hive Theme */
+.context-page {
+  background: var(--abyss-bg);
+  min-height: 100%;
+  padding: var(--space-6);
+  font-family: var(--font-sans);
+}
+
+.context-card {
+  background: var(--abyss-card);
+  border: 1px solid var(--abyss-border);
+  border-radius: var(--radius-lg);
+}
+
+.context-card .ant-card-head {
+  background: transparent;
+  border-bottom: 1px solid var(--abyss-border);
+  color: var(--text-primary);
+}
+
+.context-card .ant-card-head-title {
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.context-card .ant-card-extra {
+  display: flex;
+  align-items: center;
+}
+
+.context-card .ant-card-body {
+  padding: var(--space-6);
+}
+
+/* Primary button accent */
+.context-card .ant-btn-primary {
+  background: var(--hive-cyan);
+  border-color: var(--hive-cyan);
+  box-shadow: var(--glow-cyan);
+  font-weight: 500;
+}
+
+.context-card .ant-btn-primary:hover {
+  background: #00eabb;
+  border-color: #00eabb;
+  box-shadow: 0 0 16px #00d4aa40;
+}
+
+/* Search input */
+.context-search {
+  width: 300px;
+  margin-bottom: var(--space-4);
+}
+
+.context-search .ant-input-wrapper {
+  background: var(--abyss-sidebar);
+  border: 1px solid var(--abyss-border);
+  border-radius: var(--radius-md);
+}
+
+.context-search .ant-input {
+  background: var(--abyss-sidebar);
+  border: none;
+  color: var(--text-primary);
+}
+
+.context-search .ant-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.context-search .ant-input-search-button {
+  background: var(--abyss-hover);
+  border-color: var(--abyss-border);
+  color: var(--text-secondary);
+}
+
+.context-search .ant-input-search-button:hover {
+  color: var(--hive-cyan);
+}
+
+/* Table styling */
+.context-table .ant-table {
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.context-table .ant-table-thead > tr > th {
+  background: var(--abyss-sidebar);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--abyss-border);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.context-table .ant-table-tbody > tr > td {
+  background: transparent;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--abyss-border);
+}
+
+.context-table .ant-table-tbody > tr:hover > td {
+  background: var(--abyss-hover);
+}
+
+.context-table .ant-table-tbody > tr.ant-table-row:hover > td {
+  background: var(--abyss-hover);
+}
+
+/* Type tags */
+.context-tag {
+  background: rgba(0, 212, 170, 0.15);
+  border: 1px solid rgba(0, 212, 170, 0.3);
+  color: var(--hive-cyan);
+  border-radius: var(--radius-full);
+}
+
+.context-tag-knowledge {
+  background: rgba(0, 212, 170, 0.15);
+  border: 1px solid rgba(0, 212, 170, 0.3);
+  color: var(--hive-cyan);
+}
+
+.context-tag-memory {
+  background: rgba(255, 159, 67, 0.15);
+  border: 1px solid rgba(255, 159, 67, 0.3);
+  color: var(--hive-amber);
+}
+
+.context-tag-document {
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: #818cf8;
+}
+
+/* Action buttons */
+.context-card .ant-btn-default {
+  background: var(--abyss-sidebar);
+  border: 1px solid var(--abyss-border);
+  color: var(--text-secondary);
+}
+
+.context-card .ant-btn-default:hover {
+  border-color: var(--hive-cyan);
+  color: var(--hive-cyan);
+}
+
+.context-card .ant-btn-link {
+  color: var(--text-secondary);
+  padding: 0 var(--space-1);
+}
+
+.context-card .ant-btn-link:hover {
+  color: var(--hive-cyan);
+}
+
+.context-card .ant-btn-dangerous.ant-btn-link {
+  color: var(--hive-red);
+}
+
+.context-card .ant-btn-dangerous.ant-btn-link:hover {
+  color: #ff6b7a;
+}
+
+/* Pagination */
+.context-table .ant-pagination .ant-pagination-item {
+  background: var(--abyss-sidebar);
+  border: 1px solid var(--abyss-border);
+  border-radius: var(--radius-sm);
+}
+
+.context-table .ant-pagination .ant-pagination-item a {
+  color: var(--text-secondary);
+}
+
+.context-table .ant-pagination .ant-pagination-item-active {
+  background: var(--abyss-hover);
+  border-color: var(--hive-cyan);
+}
+
+.context-table .ant-pagination .ant-pagination-item-active a {
+  color: var(--hive-cyan);
+}
+
+.context-table .ant-pagination .ant-pagination-prev .ant-pagination-item-link,
+.context-table .ant-pagination .ant-pagination-next .ant-pagination-item-link {
+  background: var(--abyss-sidebar);
+  border: 1px solid var(--abyss-border);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+}
+
+/* Loading spinner */
+.context-table .ant-spin-dot-item {
+  background: var(--hive-cyan);
+}
+
+/* Empty state */
+.context-table .ant-empty-description {
+  color: var(--text-tertiary);
+}

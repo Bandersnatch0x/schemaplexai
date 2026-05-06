@@ -1,0 +1,199 @@
+/* WorkflowCenter - Abyss Hive Theme */
+.workflow-page {
+  background: var(--abyss-bg);
+  min-height: 100%;
+  padding: var(--space-6);
+  font-family: var(--font-sans);
+}
+
+.workflow-card {
+  background: var(--abyss-card);
+  border: 1px solid var(--abyss-border);
+  border-radius: var(--radius-lg);
+}
+
+.workflow-card .ant-card-head {
+  background: transparent;
+  border-bottom: 1px solid var(--abyss-border);
+  color: var(--text-primary);
+}
+
+.workflow-card .ant-card-head-title {
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.workflow-card .ant-card-extra {
+  display: flex;
+  align-items: center;
+}
+
+.workflow-card .ant-card-body {
+  padding: var(--space-6);
+}
+
+/* Primary button accent */
+.workflow-card .ant-btn-primary {
+  background: var(--hive-cyan);
+  border-color: var(--hive-cyan);
+  box-shadow: var(--glow-cyan);
+  font-weight: 500;
+}
+
+.workflow-card .ant-btn-primary:hover {
+  background: #00eabb;
+  border-color: #00eabb;
+  box-shadow: 0 0 16px #00d4aa40;
+}
+
+/* Ghost primary button (run workflow) */
+.workflow-card .ant-btn-primary.ant-btn-background-ghost {
+  background: transparent;
+  border-color: var(--hive-cyan);
+  color: var(--hive-cyan);
+  box-shadow: none;
+}
+
+.workflow-card .ant-btn-primary.ant-btn-background-ghost:hover {
+  background: rgba(0, 212, 170, 0.1);
+  border-color: #00eabb;
+  color: #00eabb;
+}
+
+/* Search input */
+.workflow-search {
+  width: 300px;
+  margin-bottom: var(--space-4);
+}
+
+.workflow-search .ant-input-wrapper {
+  background: var(--abyss-sidebar);
+  border: 1px solid var(--abyss-border);
+  border-radius: var(--radius-md);
+}
+
+.workflow-search .ant-input {
+  background: var(--abyss-sidebar);
+  border: none;
+  color: var(--text-primary);
+}
+
+.workflow-search .ant-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.workflow-search .ant-input-search-button {
+  background: var(--abyss-hover);
+  border-color: var(--abyss-border);
+  color: var(--text-secondary);
+}
+
+.workflow-search .ant-input-search-button:hover {
+  color: var(--hive-cyan);
+}
+
+/* Table styling */
+.workflow-table .ant-table {
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.workflow-table .ant-table-thead > tr > th {
+  background: var(--abyss-sidebar);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--abyss-border);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.workflow-table .ant-table-tbody > tr > td {
+  background: transparent;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--abyss-border);
+}
+
+.workflow-table .ant-table-tbody > tr:hover > td {
+  background: var(--abyss-hover);
+}
+
+.workflow-table .ant-table-tbody > tr.ant-table-row:hover > td {
+  background: var(--abyss-hover);
+}
+
+/* Status tags */
+.workflow-tag-published {
+  background: rgba(0, 212, 170, 0.15);
+  border: 1px solid rgba(0, 212, 170, 0.3);
+  color: var(--hive-cyan);
+  border-radius: var(--radius-full);
+}
+
+.workflow-tag-draft {
+  background: rgba(255, 159, 67, 0.15);
+  border: 1px solid rgba(255, 159, 67, 0.3);
+  color: var(--hive-amber);
+  border-radius: var(--radius-full);
+}
+
+/* Action buttons */
+.workflow-card .ant-btn-default {
+  background: var(--abyss-sidebar);
+  border: 1px solid var(--abyss-border);
+  color: var(--text-secondary);
+}
+
+.workflow-card .ant-btn-default:hover {
+  border-color: var(--hive-cyan);
+  color: var(--hive-cyan);
+}
+
+.workflow-card .ant-btn-dangerous {
+  color: var(--hive-red);
+  border-color: var(--hive-red);
+}
+
+.workflow-card .ant-btn-dangerous:hover {
+  background: rgba(255, 71, 87, 0.1);
+  border-color: var(--hive-red);
+}
+
+/* Pagination */
+.workflow-table .ant-pagination .ant-pagination-item {
+  background: var(--abyss-sidebar);
+  border: 1px solid var(--abyss-border);
+  border-radius: var(--radius-sm);
+}
+
+.workflow-table .ant-pagination .ant-pagination-item a {
+  color: var(--text-secondary);
+}
+
+.workflow-table .ant-pagination .ant-pagination-item-active {
+  background: var(--abyss-hover);
+  border-color: var(--hive-cyan);
+}
+
+.workflow-table .ant-pagination .ant-pagination-item-active a {
+  color: var(--hive-cyan);
+}
+
+.workflow-table .ant-pagination .ant-pagination-prev .ant-pagination-item-link,
+.workflow-table .ant-pagination .ant-pagination-next .ant-pagination-item-link {
+  background: var(--abyss-sidebar);
+  border: 1px solid var(--abyss-border);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+}
+
+/* Loading spinner */
+.workflow-table .ant-spin-dot-item {
+  background: var(--hive-cyan);
+}
+
+/* Empty state */
+.workflow-table .ant-empty-description {
+  color: var(--text-tertiary);
+}

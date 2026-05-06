@@ -3,6 +3,7 @@ import { PlusOutlined } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
 import { getSpecList } from '@/api/spec'
 import type { SpecItem } from '@/api/spec'
+import './SpecCenter.css'
 
 export default function SpecCenter() {
   const [keyword, setKeyword] = useState('')
@@ -40,7 +41,11 @@ export default function SpecCenter() {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => <Tag color={status === 'published' ? 'green' : 'orange'}>{status}</Tag>,
+      render: (status: string) => (
+        <Tag className={status === 'published' ? 'spec-tag-published' : 'spec-tag-draft'}>
+          {status}
+        </Tag>
+      ),
     },
     { title: '更新时间', dataIndex: 'updatedAt', key: 'updatedAt' },
     {
@@ -56,32 +61,36 @@ export default function SpecCenter() {
   ]
 
   return (
-    <Card
-      title="Spec 规范中心"
-      extra={
-        <Button type="primary" icon={<PlusOutlined />}>
-          新建规范
-        </Button>
-      }
-    >
-      <Input.Search
-        placeholder="搜索规范"
-        allowClear
-        style={{ width: 300, marginBottom: 16 }}
-        onSearch={(v) => { setKeyword(v); setPage(1) }}
-      />
-      <Table
-        dataSource={data}
-        columns={columns}
-        rowKey="id"
-        loading={loading}
-        pagination={{
-          current: page,
-          pageSize,
-          total,
-          onChange: (p) => setPage(p),
-        }}
-      />
-    </Card>
+    <div className="spec-page">
+      <Card
+        className="spec-card"
+        title="Spec 规范中心"
+        extra={
+          <Button type="primary" icon={<PlusOutlined />}>
+            新建规范
+          </Button>
+        }
+      >
+        <Input.Search
+          className="spec-search"
+          placeholder="搜索规范"
+          allowClear
+          onSearch={(v) => { setKeyword(v); setPage(1) }}
+        />
+        <Table
+          className="spec-table"
+          dataSource={data}
+          columns={columns}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            current: page,
+            pageSize,
+            total,
+            onChange: (p) => setPage(p),
+          }}
+        />
+      </Card>
+    </div>
   )
 }

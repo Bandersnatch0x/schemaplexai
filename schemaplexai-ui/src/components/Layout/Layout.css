@@ -1,0 +1,311 @@
+/* ==========================================================================
+   Layout.css — Abyss Hive layout classes
+   All colors, spacing, fonts reference design tokens from variables.css
+   ========================================================================== */
+
+/* ---- Main Layout (index.tsx) ---- */
+
+.layout-root {
+  min-height: 100vh;
+}
+
+.layout-sider {
+  overflow: auto;
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+}
+
+.layout-logo {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 18px;
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.layout-logo--collapsed {
+  font-size: 14px;
+}
+
+.layout-main {
+  margin-left: 200px;
+  transition: all 0.2s;
+}
+
+.layout-main--collapsed {
+  margin-left: 80px;
+}
+
+.layout-header {
+  padding: 0 var(--space-6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.layout-header-title {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.layout-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.layout-header-bell {
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.layout-header-user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.layout-content {
+  margin: var(--space-6);
+  padding: var(--space-6);
+  border-radius: var(--radius-md);
+  overflow: auto;
+}
+
+/* ---- Immersive Layout (ImmersiveLayout.tsx) ---- */
+
+.layout-immersive {
+  display: flex;
+  height: 100vh;
+  background: var(--abyss-bg);
+}
+
+.layout-icon-sidebar {
+  width: 52px;
+  background: var(--abyss-sidebar);
+  border-right: 1px solid var(--abyss-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0;
+  gap: 10px;
+  z-index: 10;
+}
+
+.layout-icon-sidebar-logo {
+  width: 32px;
+  height: 32px;
+  background: var(--hive-cyan);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--abyss-bg);
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.layout-nav-item {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: var(--abyss-border);
+  border: 1px solid transparent;
+  box-shadow: none;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.layout-nav-item--active {
+  background: #00d4aa20;
+  border: 1px solid var(--hive-cyan);
+  box-shadow: var(--glow-cyan);
+}
+
+.layout-nav-item-icon {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.layout-nav-item-icon--active {
+  color: var(--hive-cyan);
+}
+
+.layout-nav-tooltip {
+  position: absolute;
+  left: 44px;
+  background: var(--abyss-card);
+  border: 1px solid var(--abyss-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-1) 10px;
+  color: var(--text-primary);
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 20;
+}
+
+.layout-canvas {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.layout-canvas-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.02;
+  background-image:
+    linear-gradient(var(--abyss-border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--abyss-border) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+.layout-floating-header {
+  position: absolute;
+  top: var(--space-3);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(17, 24, 39, 0.8);
+  border: 1px solid var(--abyss-border);
+  border-radius: var(--radius-full);
+  padding: var(--space-2) var(--space-6);
+  color: var(--text-secondary);
+  font-size: 12px;
+  backdrop-filter: blur(12px);
+  display: flex;
+  gap: var(--space-5);
+  align-items: center;
+  z-index: 5;
+}
+
+.layout-floating-header-divider {
+  color: var(--abyss-border);
+}
+
+.layout-floating-header-dot--cyan {
+  color: var(--hive-cyan);
+}
+
+.layout-floating-header-dot--amber {
+  color: var(--hive-amber);
+}
+
+.layout-canvas-content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+}
+
+/* ---- Progressive Layout (ProgressiveLayout.tsx) ---- */
+
+.layout-progressive {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--abyss-bg);
+}
+
+.layout-progressive-header {
+  height: 48px;
+  background: var(--abyss-sidebar);
+  border-bottom: 1px solid var(--abyss-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-6);
+}
+
+.layout-progressive-header-brand {
+  color: var(--hive-cyan);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.layout-progressive-header-actions {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.layout-progressive-header-tenant {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.layout-progressive-header-bell {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.layout-progressive-header-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--abyss-border);
+}
+
+.layout-progressive-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.layout-progressive-sidebar {
+  width: 200px;
+  background: var(--abyss-sidebar);
+  border-right: 1px solid var(--abyss-border);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-3) 0;
+}
+
+.layout-progressive-nav-item {
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+  background: transparent;
+  border-left: 3px solid transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+
+.layout-progressive-nav-item--active {
+  background: var(--abyss-card);
+  border-left: 3px solid var(--hive-cyan);
+  color: var(--text-primary);
+}
+
+.layout-progressive-nav-item-icon {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.layout-progressive-nav-item-icon--active {
+  color: var(--hive-cyan);
+}
+
+.layout-progressive-content {
+  flex: 1;
+  padding: var(--space-6);
+  overflow: auto;
+}

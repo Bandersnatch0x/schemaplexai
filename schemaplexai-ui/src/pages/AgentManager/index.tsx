@@ -5,6 +5,7 @@ import { getAgentList, createAgent, updateAgent, deleteAgent } from '@/api/agent
 import { useAgentStore } from '@/stores/agentStore'
 import type { Agent } from '@/types'
 import type { CreateAgentPayload } from '@/api/agent'
+import './AgentManager.css'
 
 const { Option } = Select
 
@@ -85,7 +86,7 @@ export default function AgentManager() {
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => (
-        <Tag color={status === 'active' ? 'green' : status === 'draft' ? 'orange' : 'default'}>
+        <Tag className={`agent-mgr-status-${status}`}>
           {status}
         </Tag>
       ),
@@ -96,25 +97,26 @@ export default function AgentManager() {
       key: 'action',
       render: (_: unknown, record: Agent) => (
         <Space>
-          <Button icon={<EyeOutlined />} size="small" onClick={() => setDetailAgent(record)} />
-          <Button icon={<EditOutlined />} size="small" onClick={() => { setEditingAgent(record); form.setFieldsValue(record); setIsModalOpen(true) }} />
-          <Button icon={<DeleteOutlined />} size="small" danger onClick={() => handleDelete(record.id)} />
+          <Button icon={<EyeOutlined />} size="small" className="agent-mgr-action-btn" onClick={() => setDetailAgent(record)} />
+          <Button icon={<EditOutlined />} size="small" className="agent-mgr-action-btn" onClick={() => { setEditingAgent(record); form.setFieldsValue(record); setIsModalOpen(true) }} />
+          <Button icon={<DeleteOutlined />} size="small" className="agent-mgr-action-btn agent-mgr-action-btn--danger" onClick={() => handleDelete(record.id)} />
         </Space>
       ),
     },
   ]
 
   return (
-    <div>
+    <div className="agent-mgr-container">
       <Card
         title="Agent 管理"
+        className="agent-mgr-card"
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingAgent(null); form.resetFields(); setIsModalOpen(true) }}>
+          <Button type="primary" icon={<PlusOutlined />} className="agent-mgr-btn-create" onClick={() => { setEditingAgent(null); form.resetFields(); setIsModalOpen(true) }}>
             新建 Agent
           </Button>
         }
       >
-        <Space style={{ marginBottom: 16 }}>
+        <Space className="agent-mgr-search">
           <Input.Search
             placeholder="搜索 Agent"
             allowClear
@@ -127,6 +129,7 @@ export default function AgentManager() {
           columns={columns}
           rowKey="id"
           loading={loading}
+          className="agent-mgr-table"
           pagination={{
             current: query.page,
             pageSize: query.pageSize,
@@ -142,6 +145,7 @@ export default function AgentManager() {
         onOk={() => form.submit()}
         onCancel={() => { setIsModalOpen(false); form.resetFields(); setEditingAgent(null) }}
         destroyOnClose
+        className="agent-mgr-modal"
       >
         <Form form={form} onFinish={handleSubmit} layout="vertical">
           <Form.Item name="name" label="名称" rules={[{ required: true }]}>
@@ -169,9 +173,9 @@ export default function AgentManager() {
         </Form>
       </Modal>
 
-      <Drawer title="Agent 详情" width={480} open={!!detailAgent} onClose={() => setDetailAgent(null)}>
+      <Drawer title="Agent 详情" width={480} open={!!detailAgent} onClose={() => setDetailAgent(null)} className="agent-mgr-drawer">
         {detailAgent && (
-          <div>
+          <div className="agent-mgr-detail">
             <p><strong>ID:</strong> {detailAgent.id}</p>
             <p><strong>名称:</strong> {detailAgent.name}</p>
             <p><strong>描述:</strong> {detailAgent.description || '-'}</p>
@@ -180,7 +184,7 @@ export default function AgentManager() {
             <p><strong>创建时间:</strong> {detailAgent.createdAt}</p>
             <p><strong>更新时间:</strong> {detailAgent.updatedAt}</p>
             {detailAgent.modelConfig && (
-              <div>
+              <div className="agent-mgr-detail-section">
                 <p><strong>模型:</strong> {detailAgent.modelConfig.model}</p>
                 <p><strong>Temperature:</strong> {detailAgent.modelConfig.temperature}</p>
                 <p><strong>Max Tokens:</strong> {detailAgent.modelConfig.maxTokens}</p>

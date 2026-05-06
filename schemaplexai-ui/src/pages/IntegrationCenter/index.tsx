@@ -3,6 +3,7 @@ import { EditOutlined } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
 import { getIntegrationList, updateIntegration } from '@/api/integration'
 import type { Integration } from '@/api/integration'
+import './IntegrationCenter.css'
 
 export default function IntegrationCenter() {
   const [data, setData] = useState<Integration[]>([])
@@ -49,7 +50,14 @@ export default function IntegrationCenter() {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      render: (status: number) => <Tag color={status === 1 ? 'green' : 'default'}>{status === 1 ? '已连接' : '未连接'}</Tag>,
+      render: (status: number) => (
+        <Tag
+          color={status === 1 ? 'green' : 'default'}
+          className={status === 1 ? 'integration-tag--connected' : 'integration-tag--disconnected'}
+        >
+          {status === 1 ? '已连接' : '未连接'}
+        </Tag>
+      ),
     },
     {
       title: '操作',
@@ -64,8 +72,10 @@ export default function IntegrationCenter() {
   ]
 
   return (
-    <Card title="集成与工具">
-      <Table dataSource={data} columns={columns} rowKey="id" loading={loading} />
-    </Card>
+    <div className="integration-page">
+      <Card title="集成与工具" className="integration-card">
+        <Table dataSource={data} columns={columns} rowKey="id" loading={loading} />
+      </Card>
+    </div>
   )
 }

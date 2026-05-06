@@ -25,6 +25,7 @@ import {
 import TenantSelector from '../TenantSelector'
 import { useUserStore } from '@/stores/userStore'
 import { clearAuth } from '@/utils/token'
+import './Layout.css'
 
 // Re-export other layout variants
 export { ImmersiveLayout } from './ImmersiveLayout'
@@ -77,34 +78,15 @@ export default function Layout() {
   ]
 
   return (
-    <AntLayout style={{ minHeight: '100vh' }}>
+    <AntLayout className="layout-root">
       <Sider
         collapsible
         collapsed={collapsed}
         onCollapse={setCollapsed}
         theme="dark"
-        style={{
-          overflow: 'auto',
-          height: '100vh',
-          position: 'fixed',
-          left: 0,
-          top: 0,
-          bottom: 0,
-        }}
+        className="layout-sider"
       >
-        <div
-          style={{
-            height: 64,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#fff',
-            fontSize: collapsed ? 14 : 18,
-            fontWeight: 'bold',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-          }}
-        >
+        <div className={`layout-logo${collapsed ? ' layout-logo--collapsed' : ''}`}>
           {collapsed ? 'SPA' : 'SchemaPlexAI'}
         </div>
         <Menu
@@ -115,40 +97,28 @@ export default function Layout() {
           onClick={({ key }) => navigate(key)}
         />
       </Sider>
-      <AntLayout style={{ marginLeft: collapsed ? 80 : 200, transition: 'all 0.2s' }}>
-        <Header
-          style={{
-            padding: '0 24px',
-            background: colorBgContainer,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-            position: 'sticky',
-            top: 0,
-            zIndex: 1,
-          }}
-        >
-          <div style={{ fontSize: 16, fontWeight: 500 }}>
+      <AntLayout className={collapsed ? 'layout-main layout-main--collapsed' : 'layout-main'}>
+        <Header className="layout-header" style={{ background: colorBgContainer }}>
+          <div className="layout-header-title">
             {menuItems.find((m) => m.key === location.pathname)?.label || 'SchemaPlexAI'}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div className="layout-header-actions">
             <TenantSelector />
             <Badge count={5} size="small">
               <BellOutlined
-                style={{ fontSize: 18, cursor: 'pointer' }}
+                className="layout-header-bell"
                 onClick={() => navigate('/notifications')}
               />
             </Badge>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <div className="layout-header-user">
                 <Avatar src={userInfo?.avatar} icon={<UserOutlined />} size="small" />
                 <span>{userInfo?.nickname || userInfo?.username || '用户'}</span>
               </div>
             </Dropdown>
           </div>
         </Header>
-        <Content style={{ margin: 24, padding: 24, background: colorBgContainer, borderRadius: 8, overflow: 'auto' }}>
+        <Content className="layout-content" style={{ background: colorBgContainer }}>
           <Outlet />
         </Content>
       </AntLayout>

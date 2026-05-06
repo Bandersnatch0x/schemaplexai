@@ -1,0 +1,232 @@
+/* NotificationCenter - Abyss Hive Theme */
+
+.notification-page {
+  padding: 0;
+}
+
+/* Ant Design Card Override */
+.notification-page .ant-card {
+  background: var(--abyss-card);
+  border: 1px solid var(--abyss-border);
+  border-radius: var(--radius-md);
+}
+
+.notification-page .ant-card-head {
+  background: var(--abyss-card);
+  border-bottom: 1px solid var(--abyss-border);
+  color: var(--text-primary);
+}
+
+.notification-page .ant-card-head-title {
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-weight: 600;
+}
+
+.notification-page .ant-card-extra {
+  display: flex;
+  align-items: center;
+}
+
+/* Header section */
+.notification-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-primary);
+  font-size: 16px;
+}
+
+.notification-header-icon {
+  color: var(--hive-cyan);
+  font-size: 18px;
+}
+
+.notification-unread-badge {
+  margin-left: var(--space-2) !important;
+}
+
+.notification-unread-badge .ant-badge-count {
+  background: var(--hive-red) !important;
+  box-shadow: var(--glow-red);
+}
+
+/* Tabs override */
+.notification-page .ant-tabs {
+  color: var(--text-secondary);
+}
+
+.notification-page .ant-tabs-nav {
+  margin-bottom: var(--space-4);
+}
+
+.notification-page .ant-tabs-tab {
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+
+.notification-page .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--hive-cyan) !important;
+}
+
+.notification-page .ant-tabs-ink-bar {
+  background: var(--hive-cyan);
+}
+
+/* Table override */
+.notification-page .ant-table {
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}
+
+.notification-page .ant-table-thead > tr > th {
+  background: var(--abyss-sidebar);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--abyss-border);
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.notification-page .ant-table-tbody > tr > td {
+  border-bottom: 1px solid var(--abyss-border);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.notification-page .ant-table-tbody > tr:hover > td {
+  background: var(--abyss-hover);
+}
+
+.notification-page .ant-table-tbody > tr.ant-table-row:hover > td {
+  background: var(--abyss-hover);
+}
+
+/* Notification title styling */
+.notification-title {
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}
+
+.notification-title--unread {
+  font-weight: 600;
+}
+
+.notification-title--read {
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.notification-title-badge {
+  margin-right: var(--space-2);
+}
+
+.notification-title-badge .ant-badge-dot {
+  background: var(--hive-red);
+  box-shadow: var(--glow-red);
+}
+
+/* Content cell */
+.notification-content {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+/* Type tags */
+.notification-tag-system {
+  background: rgba(0, 212, 170, 0.15);
+  color: var(--hive-cyan);
+  border: 1px solid rgba(0, 212, 170, 0.3);
+}
+
+.notification-tag-task {
+  background: rgba(82, 196, 26, 0.15);
+  color: #52c41a;
+  border: 1px solid rgba(82, 196, 26, 0.3);
+}
+
+.notification-tag-workflow {
+  background: rgba(168, 85, 247, 0.15);
+  color: #a855f7;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+/* Action button */
+.notification-action-btn {
+  background: transparent;
+  border: 1px solid var(--abyss-border);
+  color: var(--hive-cyan);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.notification-action-btn:hover {
+  border-color: var(--hive-cyan);
+  box-shadow: var(--glow-cyan);
+}
+
+.notification-read-icon {
+  color: var(--hive-cyan);
+  font-size: 16px;
+}
+
+/* Time cell */
+.notification-time {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+
+/* Pagination override */
+.notification-page .ant-pagination .ant-pagination-item {
+  background: var(--abyss-sidebar);
+  border-color: var(--abyss-border);
+}
+
+.notification-page .ant-pagination .ant-pagination-item a {
+  color: var(--text-secondary);
+}
+
+.notification-page .ant-pagination .ant-pagination-item-active {
+  background: var(--abyss-hover);
+  border-color: var(--hive-cyan);
+}
+
+.notification-page .ant-pagination .ant-pagination-item-active a {
+  color: var(--hive-cyan);
+}
+
+.notification-page .ant-pagination .ant-pagination-prev .ant-pagination-item-link,
+.notification-page .ant-pagination .ant-pagination-next .ant-pagination-item-link {
+  background: var(--abyss-sidebar);
+  border-color: var(--abyss-border);
+  color: var(--text-secondary);
+}
+
+/* Mark-all-read button */
+.notification-mark-all-btn {
+  background: var(--hive-cyan);
+  border-color: var(--hive-cyan);
+  color: var(--abyss-bg);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s;
+}
+
+.notification-mark-all-btn:hover {
+  background: #00e6b8;
+  border-color: #00e6b8;
+  box-shadow: var(--glow-cyan);
+}
+
+/* Empty state */
+.notification-page .ant-empty-description {
+  color: var(--text-tertiary);
+}
+
+/* Spinner override */
+.notification-page .ant-spin-dot-item {
+  background: var(--hive-cyan);
+}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { getAgentStats } from '@/api/agent'
 
 interface CockpitStats {
@@ -15,6 +16,7 @@ const COLOR_STRIP = {
 }
 
 export default function Cockpit() {
+  const { t } = useTranslation()
   const [stats, setStats] = useState<CockpitStats>({
     totalAgents: 0,
     totalExecutions: 0,
@@ -46,28 +48,28 @@ export default function Cockpit() {
   const statCards = [
     {
       value: loading ? '—' : stats.totalAgents.toString(),
-      label: 'Active Agents',
+      label: t('cockpit.activeAgents'),
       trend: '+3 this week',
       trendUp: true,
       color: 'cyan' as const,
     },
     {
       value: loading ? '—' : stats.totalExecutions.toLocaleString(),
-      label: 'Executions',
+      label: t('cockpit.executions'),
       trend: '+12%',
       trendUp: true,
       color: 'amber' as const,
     },
     {
       value: loading ? '—' : formatTokens(stats.totalTokens),
-      label: 'Tokens Used',
+      label: t('cockpit.tokensUsed'),
       trend: '-5%',
       trendUp: false,
       color: 'cyan' as const,
     },
     {
       value: loading ? '—' : stats.pendingApprovals.toString(),
-      label: 'Pending Review',
+      label: t('cockpit.pendingReview'),
       trend: '2 urgent',
       trendUp: true,
       color: 'red' as const,
@@ -97,12 +99,12 @@ export default function Cockpit() {
         }}
       >
         <span style={{ color: apiStatus === 'connected' ? '#00d4aa' : '#ff4757' }}>
-          {apiStatus === 'connected' ? '● Live' : '● Offline'}
+          {apiStatus === 'connected' ? `● ${t('common.live')}` : `● ${t('common.offline')}`}
         </span>
         <span style={{ color: '#1e2a33' }}>|</span>
-        <span>{stats.totalAgents} Agents Active</span>
+        <span>{stats.totalAgents} {t('cockpit.agentsActive')}</span>
         <span style={{ color: '#1e2a33' }}>|</span>
-        <span>Last sync: 2s ago</span>
+        <span>{t('cockpit.lastSync')}: 2{t('cockpit.secondsAgo')}</span>
       </div>
 
       {/* API Disconnection Notice */}
@@ -123,7 +125,7 @@ export default function Cockpit() {
             textAlign: 'center',
           }}
         >
-          Backend unavailable — showing placeholder data. Start services with: docker-compose up -d
+          {t('cockpit.backendUnavailable')}
         </div>
       )}
 
@@ -146,10 +148,10 @@ export default function Cockpit() {
             paddingTop: 40,
           }}
         >
-          Agent Cockpit
+          {t('cockpit.title')}
         </h1>
         <p style={{ color: '#64748b', fontSize: 14, margin: '8px 0 0 0' }}>
-          Central orchestration hub for AI agents
+          {t('cockpit.subtitle')}
         </p>
 
         {/* Orbital visualization */}
@@ -186,7 +188,7 @@ export default function Cockpit() {
               >
                 {loading ? '—' : stats.totalAgents}
               </div>
-              <div style={{ fontSize: 11, color: '#64748b' }}>Active</div>
+              <div style={{ fontSize: 11, color: '#64748b' }}>{t('common.live')}</div>
             </div>
           </div>
 

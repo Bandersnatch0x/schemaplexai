@@ -3,8 +3,11 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { ConfigProvider } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
+import enUS from 'antd/locale/en_US'
+import { useTranslation } from 'react-i18next'
 import { abyssHiveTheme } from './theme'
 import App from './App'
+import './i18n'
 import './index.css'
 
 // Load Google Fonts
@@ -13,12 +16,26 @@ fontLink.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600
 fontLink.rel = 'stylesheet'
 document.head.appendChild(fontLink)
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <ConfigProvider locale={zhCN} theme={abyssHiveTheme}>
+const antdLocales: Record<string, typeof zhCN> = {
+  zh: zhCN,
+  en: enUS,
+}
+
+function AppWithI18n() {
+  const { i18n } = useTranslation()
+  const antdLocale = antdLocales[i18n.language] || zhCN
+
+  return (
+    <ConfigProvider locale={antdLocale} theme={abyssHiveTheme}>
       <BrowserRouter>
         <App />
       </BrowserRouter>
     </ConfigProvider>
+  )
+}
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <AppWithI18n />
   </React.StrictMode>,
 )
