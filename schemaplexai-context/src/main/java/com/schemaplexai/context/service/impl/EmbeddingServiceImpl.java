@@ -15,6 +15,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -22,6 +23,7 @@ import org.springframework.web.client.RestTemplate;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -66,18 +68,33 @@ public class EmbeddingServiceImpl implements EmbeddingService {
     private Environment environment;
 
     /**
-     * Test-only no-arg constructor. Defaults provider to {@code mock}.
+     * Test-only no-arg constructor. Defaults provider to {@code mock} with default timeouts.
      * Production code paths always go through the {@link Value @Value}-driven constructor.
      */
     public EmbeddingServiceImpl() {
-        this("mock");
+        this("mock", 5, 30);
     }
 
     @Autowired
-    public EmbeddingServiceImpl(@Value("${embedding.provider:mock}") String provider) {
+    public EmbeddingServiceImpl(
+            @Value("${embedding.provider:mock}") String provider,
+            @Value("${embedding.http.connect-timeout-seconds:5}") int connectTimeoutSeconds,
+            @Value("${embedding.http.read-timeout-seconds:30}") int readTimeoutSeconds) {
         this.selectedProvider = provider != null ? provider : "mock";
-        this.restTemplate = new RestTemplate();
-        log.info("EmbeddingService initialized with provider: {}", this.selectedProvider);
+        this.restTemplate = buildRestTemplate(connectTimeoutSeconds, readTimeoutSeconds);
+        log.info("EmbeddingService initialized with provider: {}, connectTimeout={}s, readTimeout={}s",
+                this.selectedProvider, connectTimeoutSeconds, readTimeoutSeconds);
+    }
+
+    /**
+     * Builds a RestTemplate with bounded connect/read timeouts so a hung embedding
+     * provider cannot exhaust upstream request threads.
+     */
+    private static RestTemplate buildRestTemplate(int connectSeconds, int readSeconds) {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout((int) Duration.ofSeconds(connectSeconds).toMillis());
+        factory.setReadTimeout((int) Duration.ofSeconds(readSeconds).toMillis());
+        return new RestTemplate(factory);
     }
 
     /**

@@ -15,6 +15,7 @@ import io.minio.MinioClient;
 import io.milvus.v2.client.MilvusClientV2;
 import io.milvus.v2.service.vector.request.InsertReq;
 import io.milvus.v2.service.vector.response.InsertResp;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.Tika;
@@ -59,6 +60,23 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
     private String minioBucket;
 
     private MinioClient minioClient;
+
+    /**
+     * Fail fast at startup when MinIO is enabled but credentials are missing — prevents
+     * silent runtime failures the first time a document sync is requested in production.
+     */
+    @PostConstruct
+    void verifyMinioConfig() {
+        if (!minioEnabled) {
+            return;
+        }
+        if (minioAccessKey == null || minioAccessKey.isBlank()
+                || minioSecretKey == null || minioSecretKey.isBlank()) {
+            throw new IllegalStateException(
+                    "minio.enabled=true but minio.access-key / minio.secret-key are blank. "
+                            + "Configure both, or set minio.enabled=false.");
+        }
+    }
 
     private synchronized MinioClient getMinioClient() {
         if (minioClient == null) {
