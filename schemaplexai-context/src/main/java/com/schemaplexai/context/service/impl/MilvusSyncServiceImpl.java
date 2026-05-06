@@ -10,17 +10,21 @@ import com.schemaplexai.context.rag.DocumentChunker;
 import com.schemaplexai.context.rag.TextChunk;
 import com.schemaplexai.context.service.EmbeddingService;
 import com.schemaplexai.context.service.MilvusSyncService;
+import io.minio.GetObjectArgs;
+import io.minio.MinioClient;
 import io.milvus.v2.client.MilvusClientV2;
 import io.milvus.v2.service.vector.request.InsertReq;
 import io.milvus.v2.service.vector.response.InsertResp;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -41,6 +45,30 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
     @Value("${minio.enabled:false}")
     private boolean minioEnabled;
 
+    @Value("${minio.endpoint:http://localhost:9000}")
+    private String minioEndpoint;
+
+    @Value("${minio.access-key:}")
+    private String minioAccessKey;
+
+    @Value("${minio.secret-key:}")
+    private String minioSecretKey;
+
+    @Value("${minio.bucket:documents}")
+    private String minioBucket;
+
+    private MinioClient minioClient;
+
+    private synchronized MinioClient getMinioClient() {
+        if (minioClient == null) {
+            minioClient = MinioClient.builder()
+                    .endpoint(minioEndpoint)
+                    .credentials(minioAccessKey, minioSecretKey)
+                    .build();
+        }
+        return minioClient;
+    }
+
     @Override
     public void syncToMilvus(Long docId) {
         log.info("Sync doc {} to Milvus", docId);
@@ -57,7 +85,7 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
         }
 
         try {
-            String content = simulateExtractText(doc);
+            String content = extractText(doc);
 
             List<TextChunk> chunks = documentChunker.chunk(content, ChunkingConfig.defaults());
             log.info("Document {} chunked into {} segments", docId, chunks.size());
@@ -84,16 +112,52 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
         }
     }
 
+    private String extractText(SfKnowledgeDoc doc) {
+        if (minioEnabled && doc.getFileUrl() != null && !doc.getFileUrl().isBlank()) {
+            try {
+                String bucket = minioBucket;
+                String objectName = resolveObjectName(doc.getFileUrl());
+
+                log.info("Downloading from MinIO bucket={}, object={}", bucket, objectName);
+
+                try (InputStream is = getMinioClient().getObject(
+                        GetObjectArgs.builder()
+                                .bucket(bucket)
+                                .object(objectName)
+                                .build())) {
+                    String text = extractTextWithTika(is);
+                    log.info("Extracted {} characters from document {} using Tika", text.length(), doc.getId());
+                    return text;
+                }
+            } catch (Exception e) {
+                log.error("Failed to download or extract text from MinIO for doc {}, falling back to simulated text: {}",
+                        doc.getId(), e.getMessage(), e);
+            }
+        }
+
+        return simulateExtractText(doc);
+    }
+
+    private String resolveObjectName(String fileUrl) {
+        try {
+            URI uri = URI.create(fileUrl);
+            String path = uri.getPath();
+            if (path != null && path.startsWith("/")) {
+                path = path.substring(1);
+            }
+            // If path contains bucket prefix, strip it
+            if (path != null && path.startsWith(minioBucket + "/")) {
+                path = path.substring(minioBucket.length() + 1);
+            }
+            return path != null && !path.isBlank() ? path : fileUrl;
+        } catch (Exception e) {
+            log.warn("Could not parse fileUrl as URI, using raw value: {}", fileUrl);
+            return fileUrl;
+        }
+    }
+
     private String simulateExtractText(SfKnowledgeDoc doc) {
         log.info("Simulating text extraction for: {}", doc.getFileName());
-
-        if (minioEnabled) {
-            log.info("Would download from MinIO: {}", doc.getFileUrl());
-            // TODO: Implement MinIO download using MinioClient
-            // MinioClient minioClient = ...;
-            // InputStream is = minioClient.getObject(GetObjectArgs.builder().bucket(...).object(...).build());
-            // return extractTextWithTika(is);
-        }
 
         StringBuilder sb = new StringBuilder();
         sb.append("Document: ").append(doc.getTitle()).append("\n");
@@ -107,14 +171,15 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
         return sb.toString();
     }
 
-    /**
-     * TODO: Integrate with Apache Tika for text extraction from various document formats.
-     * Expected pattern: new Tika().parseToString(inputStream);
-     */
     private String extractTextWithTika(InputStream is) {
-        log.info("Would extract text with Apache Tika");
-        // Placeholder: real Tika integration to be implemented
-        return null;
+        try {
+            Tika tika = new Tika();
+            return tika.parseToString(is);
+        } catch (Exception e) {
+            log.error("Apache Tika text extraction failed: {}", e.getMessage(), e);
+            throw new BaseException(ResultCode.INTERNAL_ERROR,
+                    "Text extraction failed: " + e.getMessage());
+        }
     }
 
     private void insertChunksIntoMilvus(SfKnowledgeDoc doc, List<TextChunk> chunks, List<float[]> embeddings) {

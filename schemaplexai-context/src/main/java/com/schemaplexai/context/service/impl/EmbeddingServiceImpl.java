@@ -1,17 +1,26 @@
 package com.schemaplexai.context.service.impl;
 
+import com.schemaplexai.common.exception.BaseException;
+import com.schemaplexai.common.result.ResultCode;
 import com.schemaplexai.context.service.EmbeddingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 /**
@@ -30,10 +39,27 @@ public class EmbeddingServiceImpl implements EmbeddingService {
     @Value("${embedding.provider:mock}")
     private String provider;
 
+    @Value("${embedding.openai.api-key:}")
+    private String openaiApiKey;
+
+    @Value("${embedding.openai.model:text-embedding-3-small}")
+    private String openaiModel;
+
+    @Value("${embedding.openai.url:https://api.openai.com/v1/embeddings}")
+    private String openaiUrl;
+
+    @Value("${embedding.ollama.url:http://localhost:11434/api/embeddings}")
+    private String ollamaUrl;
+
+    @Value("${embedding.ollama.model:nomic-embed-text}")
+    private String ollamaModel;
+
     private final String selectedProvider;
+    private final RestTemplate restTemplate;
 
     public EmbeddingServiceImpl(@Value("${embedding.provider:mock}") String provider) {
         this.selectedProvider = provider != null ? provider : "mock";
+        this.restTemplate = new RestTemplate();
         log.info("EmbeddingService initialized with provider: {}", this.selectedProvider);
     }
 
@@ -62,29 +88,113 @@ public class EmbeddingServiceImpl implements EmbeddingService {
         return embedding;
     }
 
-    /**
-     * TODO: Integrate with OpenAI Embeddings API.
-     * Expected pattern: POST https://api.openai.com/v1/embeddings
-     * with body {"input": text, "model": "text-embedding-3-small"}
-     * and Authorization header with API key.
-     */
     private float[] embedWithOpenAI(String text) {
         log.info("OpenAI embedding API call for text length: {}", text.length());
-        float[] embedding = new float[EMBEDDING_DIMENSION];
-        // Placeholder: real HTTP call to OpenAI API to be implemented
-        return embedding;
+
+        if (openaiApiKey == null || openaiApiKey.isBlank()) {
+            log.error("OpenAI API key is not configured");
+            throw new BaseException(ResultCode.INTERNAL_ERROR, "OpenAI API key is not configured");
+        }
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", "Bearer " + openaiApiKey);
+            headers.set("Content-Type", "application/json");
+
+            Map<String, Object> body = Map.of(
+                    "input", text,
+                    "model", openaiModel
+            );
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    openaiUrl,
+                    HttpMethod.POST,
+                    request,
+                    Map.class
+            );
+
+            Map<String, Object> responseBody = response.getBody();
+            if (responseBody == null) {
+                log.error("OpenAI embedding API returned empty response");
+                throw new BaseException(ResultCode.INTERNAL_ERROR, "OpenAI embedding API returned empty response");
+            }
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> data = (List<Map<String, Object>>) responseBody.get("data");
+            if (data == null || data.isEmpty()) {
+                log.error("OpenAI embedding API returned no data");
+                throw new BaseException(ResultCode.INTERNAL_ERROR, "OpenAI embedding API returned no data");
+            }
+
+            @SuppressWarnings("unchecked")
+            List<Number> embeddingList = (List<Number>) data.get(0).get("embedding");
+            if (embeddingList == null) {
+                log.error("OpenAI embedding API returned null embedding");
+                throw new BaseException(ResultCode.INTERNAL_ERROR, "OpenAI embedding API returned null embedding");
+            }
+
+            float[] embedding = new float[embeddingList.size()];
+            for (int i = 0; i < embeddingList.size(); i++) {
+                embedding[i] = embeddingList.get(i).floatValue();
+            }
+
+            log.info("OpenAI embedding generated successfully, dimension: {}", embedding.length);
+            return embedding;
+
+        } catch (RestClientException e) {
+            log.error("OpenAI embedding API call failed: {}", e.getMessage(), e);
+            throw new BaseException(ResultCode.INTERNAL_ERROR,
+                    "OpenAI embedding API call failed: " + e.getMessage());
+        }
     }
 
-    /**
-     * TODO: Integrate with Ollama Embeddings API.
-     * Expected pattern: POST http://localhost:11434/api/embeddings
-     * with body {"model": "nomic-embed-text", "prompt": text}
-     */
     private float[] embedWithOllama(String text) {
         log.info("Ollama embedding API call for text length: {}", text.length());
-        float[] embedding = new float[EMBEDDING_DIMENSION];
-        // Placeholder: real HTTP call to Ollama API to be implemented
-        return embedding;
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Content-Type", "application/json");
+
+            Map<String, Object> body = Map.of(
+                    "model", ollamaModel,
+                    "prompt", text
+            );
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    ollamaUrl,
+                    HttpMethod.POST,
+                    request,
+                    Map.class
+            );
+
+            Map<String, Object> responseBody = response.getBody();
+            if (responseBody == null) {
+                log.error("Ollama embedding API returned empty response");
+                throw new BaseException(ResultCode.INTERNAL_ERROR, "Ollama embedding API returned empty response");
+            }
+
+            @SuppressWarnings("unchecked")
+            List<Number> embeddingList = (List<Number>) responseBody.get("embedding");
+            if (embeddingList == null) {
+                log.error("Ollama embedding API returned null embedding");
+                throw new BaseException(ResultCode.INTERNAL_ERROR, "Ollama embedding API returned null embedding");
+            }
+
+            float[] embedding = new float[embeddingList.size()];
+            for (int i = 0; i < embeddingList.size(); i++) {
+                embedding[i] = embeddingList.get(i).floatValue();
+            }
+
+            log.info("Ollama embedding generated successfully, dimension: {}", embedding.length);
+            return embedding;
+
+        } catch (RestClientException e) {
+            log.error("Ollama embedding API call failed: {}", e.getMessage(), e);
+            throw new BaseException(ResultCode.INTERNAL_ERROR,
+                    "Ollama embedding API call failed: " + e.getMessage());
+        }
     }
 
     @Override

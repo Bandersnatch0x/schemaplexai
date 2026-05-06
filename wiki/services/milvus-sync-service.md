@@ -21,6 +21,12 @@ confidence: high
 5. Batch insert vectors into Milvus collection
 6. Update document status to SYNCED on success or FAILED on error
 
+## Key Methods
+
+| Method | Description | Parameters | Return |
+|--------|-------------|------------|--------|
+| `syncToMilvus(Long docId)` | Sync a document's chunked embeddings into Milvus | `docId` — knowledge document primary key | void |
+
 ## Key Classes
 
 | Class | Path | Role |
@@ -65,10 +71,20 @@ public class MilvusSyncServiceImpl implements MilvusSyncService { ... }
 - **Simulated text extraction** — `simulateExtractText()` generates placeholder paragraphs. Production should use Apache Tika or similar.
 - **No actual retry logic** — failures set status to FAILED; manual re-sync required.
 
-## Related
+## Dependencies / Collaborators
 
-- [[services/document-chunker]] — text chunking
-- [[services/embedding-service]] — vector generation
-- [[services/rag-search-service]] — searches the vectors inserted by this service
-- [[services/rag-service]] — parent RAG orchestration
-- [[entities/context]] — knowledge document entity
+| Component | Role |
+|-----------|------|
+| `SfKnowledgeDoc` / chunks | Source document and chunks |
+| `MilvusClient` | Milvus vector database client |
+| `EmbeddingService` | Embedding generation |
+| `DocumentChunker` | Text chunking for RAG |
+
+## Backlinks
+
+- Related: [[services/knowledge-doc-service]] — triggers sync after upload
+- Related: [[services/embedding-service]] — provides embeddings to sync
+- Related: [[services/document-chunker]] — produces chunks that become Milvus records
+- Related: [[services/rag-search-service]] — queries the synced vectors
+- Related: [[services/rag-service]] — parent RAG orchestration
+- Entity: [[entities/context]]
