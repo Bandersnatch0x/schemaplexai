@@ -3,10 +3,14 @@ package com.schemaplexai.context.service.impl;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
 import com.schemaplexai.context.service.EmbeddingService;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -28,6 +32,10 @@ import java.util.Random;
  * <p>
  * Configure via {@code embedding.provider} property.
  * Defaults to mock (deterministic SHA-256 based) for development and testing.
+ * <p>
+ * Safety guard: if {@code embedding.provider=mock} is selected while the {@code prod}
+ * Spring profile is active, startup fails fast with {@link IllegalStateException} to
+ * prevent silent fallback to fake embeddings in production.
  */
 @Service
 @ConditionalOnMissingBean(EmbeddingService.class)
@@ -35,9 +43,6 @@ public class EmbeddingServiceImpl implements EmbeddingService {
 
     private static final Logger log = LoggerFactory.getLogger(EmbeddingServiceImpl.class);
     private static final int EMBEDDING_DIMENSION = 1536;
-
-    @Value("${embedding.provider:mock}")
-    private String provider;
 
     @Value("${embedding.openai.api-key:}")
     private String openaiApiKey;
@@ -57,10 +62,39 @@ public class EmbeddingServiceImpl implements EmbeddingService {
     private final String selectedProvider;
     private final RestTemplate restTemplate;
 
+    @Autowired(required = false)
+    private Environment environment;
+
+    /**
+     * Test-only no-arg constructor. Defaults provider to {@code mock}.
+     * Production code paths always go through the {@link Value @Value}-driven constructor.
+     */
+    public EmbeddingServiceImpl() {
+        this("mock");
+    }
+
+    @Autowired
     public EmbeddingServiceImpl(@Value("${embedding.provider:mock}") String provider) {
         this.selectedProvider = provider != null ? provider : "mock";
         this.restTemplate = new RestTemplate();
         log.info("EmbeddingService initialized with provider: {}", this.selectedProvider);
+    }
+
+    /**
+     * Fail fast if a mock provider is configured under an active {@code prod} profile.
+     * Prevents silent degradation of RAG quality when a yaml line is forgotten.
+     */
+    @PostConstruct
+    void verifyProvider() {
+        if (environment == null) {
+            return; // No Spring context (unit test) — skip the guard.
+        }
+        boolean prodActive = environment.acceptsProfiles(Profiles.of("prod"));
+        if ("mock".equalsIgnoreCase(selectedProvider) && prodActive) {
+            throw new IllegalStateException(
+                    "embedding.provider=mock is forbidden when 'prod' profile is active. "
+                            + "Configure embedding.provider=openai or ollama for production.");
+        }
     }
 
     @Override

@@ -14,6 +14,27 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
+## 2026-05-07 — JaCoCo 基线生成与 wiki gaps 文档更新
+
+**Scope**: agent-engine 模块 JaCoCo 覆盖率基线生成，同步更新 wiki 文档。
+
+**JaCoCo 基线数据**:
+| Package | Coverage | Spec >=80% | Status |
+|---------|----------|------------|--------|
+| state | 81.2% | Yes | 达标 |
+| orchestrator | 100% | Yes | 达标 |
+| tool | 21.3% | Yes | **不达标** |
+| memory | 23.3% | Yes | **不达标** |
+| sse | 38.9% | No | 待补充测试 |
+| lifecycle | 45.5% | No | 待补充测试 |
+
+**Wiki 更新**:
+- `wiki/active-areas.md` — v1.0 Release Status 中 JaCoCo 状态更新为实际基线数据
+- `wiki/gaps.md` — Open Question #9 前端页面实现状态更新为 16 个页面全部实现
+- `wiki/log.md` — 添加本操作记录
+
+**待办**: tool、memory 包需补充单元测试以达到 >=80% 覆盖率要求。
+
 ## 2026-05-06 — Document agent-engine SSE event bus horizontal-scaling limitation
 
 **Scope**: Record a known architectural limitation in `ExecutionEventBus` (local in-memory `ConcurrentHashMap` for SSE emitters).

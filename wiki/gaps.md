@@ -83,7 +83,7 @@ The following controllers exist but have no dedicated wiki pages (most are stand
 6. ~~**What are the 7 node executor implementations?**~~ — 7 executors implemented: HTTP, SCRIPT, START, END, AI_MODEL, TOOL_CALL, CONDITION
 7. ~~**How is tenant data physically isolated?**~~ — documented in [[services/tenant-line-interceptor]]
 8. ~~**What MQ exchanges and queues are configured?**~~ — documented in [[services/rabbitmq-messaging]]
-9. ~~**What is the frontend page implementation status?**~~ — 18 page directories exist covering all major modules (Agent, Context, Integration, Workflow, Quality, Ops, Spec, System, Notification, Dashboard, Login, Cockpit)
+9. ~~**What is the frontend page implementation status?**~~ — All 16 route-level pages implemented and registered in router: Dashboard, Cockpit, AgentManager, AgentExecutor, AgentDetail, AgentCanvas, SpecCenter, WorkflowCenter, WorkflowMonitor, ContextCenter, QualityCenter, IntegrationCenter, OpsCenter, SystemSettings, NotificationCenter, NotFound (+ Login). Router config at `schemaplexai-ui/src/router/index.tsx`.
 10. **Agent-engine SSE event bus is single-node only** — `ExecutionEventBus` holds SSE emitters in a local `ConcurrentHashMap`. If an execution runs on Node A and a user connects to Node B via load balancer, Node B's event bus has no emitters for that execution and the subscriber receives nothing. Acceptable for MVP/single-node, but a blocker for horizontal scaling. Potential fixes: (a) load-balancer sticky sessions routing by `executionId`, or (b) Redis pub/sub bridge to fan out events across nodes.
 
 ## Backlinks

@@ -37,5 +37,11 @@ confidence: high
 - **Build**: All 17 modules compile
 - **CI/CD**: GitHub Actions + Jenkins configured
 - **API Docs**: Knife4j + docs/API.md
-- **JaCoCo**: Plugin 0.8.12 added (待运行 mvn verify 生成基线)
-- **Pending**: JaCoCo coverage baseline generation
+- **JaCoCo**: Baseline generated for agent-engine module (mvn verify)
+  - state: 81.2% (meets spec >=80%)
+  - orchestrator: 100% (meets spec >=80%)
+  - tool: 21.3% (**BELOW** spec >=80%)
+  - memory: 23.3% (**BELOW** spec >=80%)
+  - sse: 38.9% (no spec threshold)
+  - lifecycle: 45.5% (no spec threshold)
+- **Pending**: Add tests for tool and memory packages to meet >=80% spec
