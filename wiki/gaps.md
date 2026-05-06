@@ -3,7 +3,7 @@ title: Knowledge Gaps
 type: index
 source: wiki gap analysis
 creation_date: 2026-04-30
-update_date: 2026-05-06
+update_date: 2026-05-07
 tags: [gaps, questions, todo, undocumented]
 confidence: high
 ---
@@ -16,7 +16,7 @@ confidence: high
 
 | Element | Location | Why It Matters |
 |---------|----------|---------------|
-| `sf_agent_shadow_config` | 02-init-schema-agent.sql | Self-improvement config — no service/controller explored |
+| ~~`sf_agent_shadow_config`~~ | 02-init-schema-agent.sql | Self-improvement config — `AgentShadowConfigService` + controller + tests implemented |
 | `sf_tenant_environment_config` | Entity defined 2026-05-04 | Tenant env security config — global table, SecurityPolicyLoader implemented |
 | ~~`sf_config`~~ | 01-init-schema.sql | System configuration table — `ConfigService` (system) + `SystemConfigService` (admin) implemented with feature flags and maintenance mode |
 | `act_*` tables | Flowable auto-DDL | BPMN runtime tables — not in init scripts |
@@ -62,11 +62,11 @@ The following controllers exist but have no dedicated wiki pages (most are stand
 
 - ~~`AgentRuntimeOrchestrator`~~ — documented in [[services/agent-runtime-orchestrator]]
 - ~~`AgentExecutionLifecycleService`~~ — documented in [[services/agent-execution-lifecycle-service]]
-- `ToolRegistry` — tool registration, resolution, and structured parsing (agent-engine, 2026-05-04)
-- `SecurityPolicyLoader` — tenant-aware security policy loading with Caffeine Cache (agent-engine, 2026-05-04)
-- `ToolExecutionMetricsBinder` — Prometheus MeterBinder for tool execution observability (agent-engine, 2026-05-04)
-- `RetryingStateHandler` — exponential backoff retry with circuit breaker (agent-engine, 2026-05-04)
-- `ResumingStateHandler` — snapshot-based execution resume with cross-tenant validation (agent-engine, 2026-05-04)
+- ~~`ToolRegistry`~~ — documented in [[services/tool-registry]]
+- ~~`SecurityPolicyLoader`~~ — documented in [[services/security-policy-loader]]
+- ~~`ToolExecutionMetricsBinder`~~ — documented in [[services/tool-execution-metrics-binder]]
+- ~~`RetryingStateHandler`~~ — documented in [[services/retrying-state-handler]]
+- ~~`ResumingStateHandler`~~ — documented in [[services/resuming-state-handler]]
 - ~~`QualityOrchestrator`~~ — implemented with rule registry, evaluation pipeline, and 10 unit tests
 - ~~`FlowableDelegateAdapter`~~ — implemented as JavaDelegate bridge to WorkflowNodeEngine
 - All `*ServiceImpl` classes (implementation details)
@@ -80,7 +80,7 @@ The following controllers exist but have no dedicated wiki pages (most are stand
 5. ~~**How does the RAG embedding pipeline work end-to-end?**~~ — Full pipeline implemented: `DocumentChunker` → `EmbeddingService` → `MilvusSyncServiceImpl` → `MilvusClientV2.insert`
 6. ~~**What are the 7 node executor implementations?**~~ — 7 executors implemented: HTTP, SCRIPT, START, END, AI_MODEL, TOOL_CALL, CONDITION
 7. ~~**How is tenant data physically isolated?**~~ — documented in [[services/tenant-line-interceptor]]
-8. **What MQ exchanges and queues are configured?** — RabbitMQ config not explored
+8. ~~**What MQ exchanges and queues are configured?**~~ — documented in [[services/rabbitmq-messaging]]
 9. **What is the frontend page implementation status?** — Page components not read
 
 ## Backlinks
