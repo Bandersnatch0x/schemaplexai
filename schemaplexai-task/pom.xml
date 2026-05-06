@@ -8,6 +8,8 @@
         <dependency><groupId>com.schemaplexai</groupId><artifactId>schemaplexai-common</artifactId></dependency>
         <dependency><groupId>com.schemaplexai</groupId><artifactId>schemaplexai-model</artifactId></dependency>
         <dependency><groupId>com.schemaplexai</groupId><artifactId>schemaplexai-dao</artifactId></dependency>
+        <dependency><groupId>com.schemaplexai</groupId><artifactId>schemaplexai-agent-engine</artifactId><version>${project.version}</version></dependency>
+        <dependency><groupId>com.schemaplexai</groupId><artifactId>schemaplexai-ops</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-amqp</artifactId></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-data-redis</artifactId></dependency>
