@@ -5,7 +5,7 @@ title: Wiki Operation Log
 type: log
 source: auto-generated
 creation_date: 2026-05-02
-update_date: 2026-05-06
+update_date: 2026-05-07
 tags: [wiki, log, maintenance]
 confidence: high
 ---
@@ -13,6 +13,33 @@ confidence: high
 # Wiki Operation Log
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
+
+## 2026-05-07 — schemaplexai-context 模块解锁：Milvus 2.3.5 SDK 对齐 + FailedStatusWriter 可见性
+
+**背景**: 在 `/review` 综合审查后跑 `mvn compile schemaplexai-context` 发现该模块自 commit `04890a6`/`23a27be` 起就编译不过，无人察觉（CI 只跑 agent-engine 主路径）。根因是代码混用了 Milvus 2.4+ 与 2.3.5 的 API，但 pom 钉死在 2.3.5。同时 `ResultCode.INTERNAL_ERROR` 被 17+ 处引用却从未在枚举里定义。
+
+**Commit 1 — `f94c187` fix(common,context): align Milvus SDK usage with pinned 2.3.5 API**:
+- `common/ResultCode`：补 `INTERNAL_ERROR(500, "internal server error")` 枚举
+- `RagSearchServiceImpl`：删除 `FloatVec` import（2.4+ 才有）；`SearchReq.data` 直接收 `List<List<Float>>`；`SearchResult.getScore()` → `getDistance()`（2.3.5 API）
+- `MilvusCollectionInitializer`：`IndexParam` import 路径从 `CreateIndexReq.IndexParam`（2.4+）改回 `io.milvus.v2.common.IndexParam`（2.3.5）；`IndexExtraParam` 对象 → `Map<String, Object> extraParams`；`IndexType.valueOf(String)` / `MetricType.valueOf(String)` 字符串转枚举
+- `MilvusSyncServiceImpl`：`insertChunksIntoMilvus` 从列式 `List.of(ids, docIds, ...)`（2.4+）重写为 2.3.5 要求的行式 `List<com.alibaba.fastjson.JSONObject>`，每个 JSONObject 是一行
+
+**Commit 2 — `d160a53` fix(context): expose FailedStatusWriter for cross-package test access**:
+- `MilvusSyncServiceImplTest`（在 `service` 包）引用了 `service.impl.FailedStatusWriter`，但 writer 是包私有的导致测试编译不过。提升为 `public class`，与 DI 组件的常规可见性一致。
+
+**验证**:
+- `mvn clean compile schemaplexai-context` → BUILD SUCCESS（45 源文件）
+- `mvn test-compile schemaplexai-context` → BUILD SUCCESS（8 测试源文件）
+- 唯一残留警告：`EmbeddingServiceImpl.java` 的 unchecked cast（与本次修复无关）
+
+**API 验证方法**:
+- `javap` 直读 Milvus 2.3.5 jar：`SearchReq.data(List<?>)`、`SearchResp.SearchResult.getDistance() : Float`、`InsertReq.data(List<JSONObject>)`、`io.milvus.v2.common.IndexParam$IndexParamBuilder.extraParams(Map<String,Object>)`、`IndexParam.IndexType.IVF_FLAT`、`IndexParam.MetricType.COSINE`
+- 通过 GBK→UTF-8 iconv 解决 Windows javac 中文报错乱码问题
+
+**Why this matters**:
+- 解锁 context 模块的 63 测试（之前因编译失败被静默跳过）
+- 解除阻塞：`/verify-quality` 与 `/verify-security` 之前无法对该模块完整扫描
+- 修复了一个 8 commit 前就存在的 silent breakage，避免后续触碰该模块的人继续被阻塞
 
 ## 2026-05-07 — OpenAI Agents SDK 2026 alignment：Sandbox 抽象 + AGENTS.md 解析
 
