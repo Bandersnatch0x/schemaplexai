@@ -120,16 +120,17 @@ class WorkspaceServiceImplTest {
     }
 
     @Test
-    void validateWorkspaceAccess_nullWorkspaceTenant_succeeds() {
+    void validateWorkspaceAccess_nullWorkspaceTenant_throwsForbidden() {
         TenantContextHolder.setTenantId("tenant-1");
         SfWorkspace workspace = new SfWorkspace();
         workspace.setId(1L);
         workspace.setTenantId(null);
         when(workspaceMapper.selectById(1L)).thenReturn(workspace);
 
-        workspaceService.validateWorkspaceAccess(1L);
-
-        // no exception thrown
+        assertThatThrownBy(() -> workspaceService.validateWorkspaceAccess(1L))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.FORBIDDEN.getCode());
     }
 
     // ------------------------------------------------------------------
