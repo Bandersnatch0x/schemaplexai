@@ -1,0 +1,51 @@
+{
+  "collectionName": "knowledge_doc_embedding",
+  "description": "Knowledge document chunks with embeddings for RAG search",
+  "fields": [
+    {
+      "name": "id",
+      "dataType": "VarChar",
+      "isPrimary": true,
+      "maxLength": 64
+    },
+    {
+      "name": "doc_id",
+      "dataType": "VarChar",
+      "maxLength": 64
+    },
+    {
+      "name": "chunk_index",
+      "dataType": "Int32"
+    },
+    {
+      "name": "content",
+      "dataType": "VarChar",
+      "maxLength": 65535
+    },
+    {
+      "name": "embedding",
+      "dataType": "FloatVector",
+      "dimension": 1536
+    },
+    {
+      "name": "tenant_id",
+      "dataType": "VarChar",
+      "maxLength": 64,
+      "isPartitionKey": true
+    },
+    {
+      "name": "created_at",
+      "dataType": "Int64"
+    }
+  ],
+  "indexes": [
+    {
+      "fieldName": "embedding",
+      "indexType": "IVF_FLAT",
+      "metricType": "COSINE",
+      "params": {
+        "nlist": 128
+      }
+    }
+  ]
+}
