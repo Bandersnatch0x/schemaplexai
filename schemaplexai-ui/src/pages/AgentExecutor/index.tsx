@@ -6,13 +6,14 @@ import { useSseStore } from '@/stores/sseStore'
 import SseViewer from '@/components/SseViewer'
 import ChatMemory, { type ChatMessage } from '@/components/ChatMemory'
 import { sseRequest } from '@/api/request'
+import { getAgentList } from '@/api/agent'
 import type { SseEvent } from '@/types'
 
 const { TextArea } = Input
 const { Option } = Select
 
 export default function AgentExecutor() {
-  const { agents } = useAgentStore()
+  const { agents, setAgents } = useAgentStore()
   const addEvent = useSseStore((state) => state.addEvent)
   const clearEvents = useSseStore((state) => state.clearEvents)
   const setConnected = useSseStore((state) => state.setConnected)
@@ -21,9 +22,25 @@ export default function AgentExecutor() {
   const [prompt, setPrompt] = useState('')
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [executing, setExecuting] = useState(false)
+  const [agentsLoading, setAgentsLoading] = useState(false)
   const esRef = useRef<EventSource | null>(null)
   const retryCountRef = useRef(0)
   const MAX_RETRIES = 3
+
+  useEffect(() => {
+    setAgentsLoading(true)
+    getAgentList({ page: 1, pageSize: 100 })
+      .then((data) => {
+        setAgents(data.list)
+      })
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : '获取 Agent 列表失败'
+        message.error(msg)
+      })
+      .finally(() => {
+        setAgentsLoading(false)
+      })
+  }, [setAgents])
 
   useEffect(() => {
     return () => {
@@ -44,7 +61,7 @@ export default function AgentExecutor() {
       return
     }
 
-    // 关闭旧连接，防止重复执行创建多个 EventSource
+    // Close old connection to prevent duplicate EventSources
     if (esRef.current) {
       esRef.current.close()
       esRef.current = null
@@ -62,7 +79,7 @@ export default function AgentExecutor() {
     }
     setMessages((prev) => [...prev, userMsg])
 
-    const es = sseRequest(`/api/v1/agents/${selectedAgent}/execute/stream`, { prompt })
+    const es = sseRequest(`/agents/${selectedAgent}/executions/events`, { prompt })
     esRef.current = es
 
     es.onopen = () => {
@@ -117,6 +134,7 @@ export default function AgentExecutor() {
             style={{ width: '100%' }}
             value={selectedAgent}
             onChange={setSelectedAgent}
+            loading={agentsLoading}
           >
             {agents.map((a) => (
               <Option key={a.id} value={a.id}>

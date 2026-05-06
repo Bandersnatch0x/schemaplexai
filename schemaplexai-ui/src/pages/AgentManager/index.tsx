@@ -15,6 +15,7 @@ export default function AgentManager() {
   const [detailAgent, setDetailAgent] = useState<Agent | null>(null)
   const [form] = Form.useForm()
   const [query, setQuery] = useState({ page: 1, pageSize: 10, keyword: '' })
+  const [total, setTotal] = useState(0)
 
   useEffect(() => {
     fetchAgents()
@@ -25,12 +26,12 @@ export default function AgentManager() {
     try {
       const data = await getAgentList(query)
       setAgents(data.list)
-    } catch {
-      setAgents([
-        { id: '1', name: 'CodeReviewer', description: '代码审查Agent', type: 'review', status: 'active', createdAt: '2024-07-01', updatedAt: '2024-07-15' },
-        { id: '2', name: 'TestGenerator', description: '生成单元测试', type: 'test', status: 'active', createdAt: '2024-07-05', updatedAt: '2024-07-20' },
-        { id: '3', name: 'DocWriter', description: '编写技术文档', type: 'doc', status: 'draft', createdAt: '2024-07-10', updatedAt: '2024-07-10' },
-      ])
+      setTotal(data.total)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '获取 Agent 列表失败'
+      message.error(msg)
+      setAgents([])
+      setTotal(0)
     } finally {
       setLoading(false)
     }
@@ -45,13 +46,15 @@ export default function AgentManager() {
       } else {
         const created = await createAgent(values)
         setAgents([...agents, created])
+        setTotal(total + 1)
         message.success('创建成功')
       }
       setIsModalOpen(false)
       form.resetFields()
       setEditingAgent(null)
-    } catch {
-      message.error('操作失败')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '操作失败'
+      message.error(msg)
     }
   }
 
@@ -63,9 +66,11 @@ export default function AgentManager() {
         try {
           await deleteAgent(id)
           removeAgentFromList(id)
+          setTotal(total - 1)
           message.success('删除成功')
-        } catch {
-          message.error('删除失败')
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : '删除失败'
+          message.error(msg)
         }
       },
     })
@@ -125,8 +130,8 @@ export default function AgentManager() {
           pagination={{
             current: query.page,
             pageSize: query.pageSize,
-            total: agents.length,
-            onChange: (page, pageSize) => setQuery({ ...query, page, pageSize }),
+            total,
+            onChange: (page, pageSize) => setQuery({ ...query, page, pageSize: pageSize || 10 }),
           }}
         />
       </Card>

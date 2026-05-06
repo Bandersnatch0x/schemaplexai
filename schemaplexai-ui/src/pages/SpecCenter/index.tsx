@@ -1,15 +1,36 @@
-import { Card, Table, Button, Space, Tag, Input } from 'antd'
+import { Card, Table, Button, Space, Tag, Input, message } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
-import { useState } from 'react'
-
-const mockData = [
-  { id: '1', name: 'API 规范 v1.0', version: '1.0.0', type: 'api', status: 'published', createdAt: '2024-07-01', updatedAt: '2024-07-15' },
-  { id: '2', name: '数据模型规范', version: '2.1.0', type: 'model', status: 'published', createdAt: '2024-06-20', updatedAt: '2024-07-10' },
-  { id: '3', name: 'UI 设计规范', version: '0.5.0', type: 'ui', status: 'draft', createdAt: '2024-07-05', updatedAt: '2024-07-05' },
-]
+import { useEffect, useState } from 'react'
+import { getSpecList } from '@/api/spec'
+import type { SpecItem } from '@/api/spec'
 
 export default function SpecCenter() {
   const [keyword, setKeyword] = useState('')
+  const [data, setData] = useState<SpecItem[]>([])
+  const [loading, setLoading] = useState(false)
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const pageSize = 10
+
+  useEffect(() => {
+    fetchSpecs()
+  }, [keyword, page])
+
+  const fetchSpecs = async () => {
+    setLoading(true)
+    try {
+      const res = await getSpecList({ page, pageSize, keyword })
+      setData(res.list)
+      setTotal(res.total)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '获取规范列表失败'
+      message.error(msg)
+      setData([])
+      setTotal(0)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const columns = [
     { title: '名称', dataIndex: 'name', key: 'name' },
@@ -34,8 +55,6 @@ export default function SpecCenter() {
     },
   ]
 
-  const filtered = mockData.filter((d) => d.name.includes(keyword))
-
   return (
     <Card
       title="Spec 规范中心"
@@ -49,9 +68,20 @@ export default function SpecCenter() {
         placeholder="搜索规范"
         allowClear
         style={{ width: 300, marginBottom: 16 }}
-        onSearch={setKeyword}
+        onSearch={(v) => { setKeyword(v); setPage(1) }}
       />
-      <Table dataSource={filtered} columns={columns} rowKey="id" />
+      <Table
+        dataSource={data}
+        columns={columns}
+        rowKey="id"
+        loading={loading}
+        pagination={{
+          current: page,
+          pageSize,
+          total,
+          onChange: (p) => setPage(p),
+        }}
+      />
     </Card>
   )
 }

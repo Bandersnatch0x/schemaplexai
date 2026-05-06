@@ -1,39 +1,43 @@
 import request from './request'
 
-export interface OpsTask {
+export interface OpsArtifact {
   id: string
-  title: string
-  status: 'pending' | 'running' | 'completed' | 'failed'
-  type: string
-  assignee?: string
-  deadline?: string
+  name: string
+  version?: string
+  fileUrl?: string
+  artifactType?: string
+  status: number
   createdAt: string
   updatedAt: string
 }
 
-export interface OpsMetric {
-  date: string
-  deployments: number
-  incidents: number
-  uptime: number
+export interface OpsCost {
+  tenantId: string
+  totalCost: number
+  tokenCost: number
+  requestCost: number
 }
 
-export function getOpsTasks(params?: { page?: number; pageSize?: number; status?: string }) {
-  return request.get<{ list: OpsTask[]; total: number }>('/api/v1/ops/tasks', { params })
+export function getArtifactList() {
+  return request.get<OpsArtifact[]>('/ops/artifacts')
 }
 
-export function getOpsMetrics(params?: { startDate?: string; endDate?: string }) {
-  return request.get<OpsMetric[]>('/api/v1/ops/metrics', { params })
+export function getArtifactDetail(id: string) {
+  return request.get<OpsArtifact>(`/ops/artifacts/${id}`)
 }
 
-export function createOpsTask(data: Omit<OpsTask, 'id' | 'createdAt' | 'updatedAt'>) {
-  return request.post<OpsTask>('/api/v1/ops/tasks', data)
+export function createArtifact(data: Omit<OpsArtifact, 'id' | 'createdAt' | 'updatedAt'>) {
+  return request.post<OpsArtifact>('/ops/artifacts', data)
 }
 
-export function updateOpsTask(id: string, data: Partial<OpsTask>) {
-  return request.put<OpsTask>(`/api/v1/ops/tasks/${id}`, data)
+export function updateArtifact(id: string, data: Partial<OpsArtifact>) {
+  return request.put<OpsArtifact>(`/ops/artifacts/${id}`, data)
 }
 
-export function deleteOpsTask(id: string) {
-  return request.delete<void>(`/api/v1/ops/tasks/${id}`)
+export function deleteArtifact(id: string) {
+  return request.delete<void>(`/ops/artifacts/${id}`)
+}
+
+export function getCostsByTenant(tenantId: string) {
+  return request.get<Record<string, number>>('/ops/costs', { params: { tenantId } })
 }

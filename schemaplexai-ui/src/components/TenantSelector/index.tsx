@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Select } from 'antd'
 import { useUserStore } from '@/stores/userStore'
 import type { Tenant } from '@/types'
@@ -11,12 +12,14 @@ const mockTenants: Tenant[] = [
 export default function TenantSelector() {
   const { currentTenant, setCurrentTenant, tenants, setTenants } = useUserStore()
 
-  if (tenants.length === 0) {
-    setTenants(mockTenants)
-    const saved = localStorage.getItem('schemaplexai_tenant')
-    const found = mockTenants.find((t) => t.id === saved)
-    if (found) setCurrentTenant(found)
-  }
+  useEffect(() => {
+    if (tenants.length === 0) {
+      setTenants(mockTenants)
+      const saved = localStorage.getItem('schemaplexai_tenant')
+      const found = mockTenants.find((t) => t.id === saved)
+      if (found) setCurrentTenant(found)
+    }
+  }, [tenants.length, setTenants, setCurrentTenant])
 
   return (
     <Select

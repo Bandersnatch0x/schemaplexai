@@ -69,3 +69,11 @@ docker/*/data/
 
 # LLM Wiki search index (QMD or similar)
 wiki/.qmd/
+
+# Playwright
+**/test-results/
+**/playwright-report/
+
+# Frontend screenshot outputs
+.claude/outputs/.frontend-dirty
+.claude/outputs/screenshots/

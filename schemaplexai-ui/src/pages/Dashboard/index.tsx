@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Row, Col, Card, Statistic, Table, Tag } from 'antd'
+import { Row, Col, Card, Statistic, Table, Tag, message } from 'antd'
 import {
   RobotOutlined,
   ThunderboltOutlined,
@@ -19,6 +19,7 @@ export default function Dashboard() {
   })
   const [records, setRecords] = useState<ExecutionRecord[]>([])
   const [loading, setLoading] = useState(false)
+  const [statsLoading, setStatsLoading] = useState(false)
 
   useEffect(() => {
     fetchStats()
@@ -26,11 +27,15 @@ export default function Dashboard() {
   }, [])
 
   const fetchStats = async () => {
+    setStatsLoading(true)
     try {
       const data = await getAgentStats()
       setStats(data)
-    } catch {
-      setStats({ totalAgents: 12, totalExecutions: 345, totalTokens: 120450, pendingApprovals: 3 })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '获取统计数据失败'
+      message.error(msg)
+    } finally {
+      setStatsLoading(false)
     }
   }
 
@@ -39,12 +44,10 @@ export default function Dashboard() {
     try {
       const data = await getExecutionRecords()
       setRecords(data)
-    } catch {
-      setRecords([
-        { id: '1', agentId: 'a1', agentName: 'CodeReviewer', status: 'success', prompt: 'Review PR #123', tokenUsed: 120, duration: 2300, createdAt: '2024-08-01T10:00:00Z' },
-        { id: '2', agentId: 'a2', agentName: 'TestGenerator', status: 'success', prompt: 'Generate unit tests', tokenUsed: 450, duration: 5100, createdAt: '2024-08-01T09:30:00Z' },
-        { id: '3', agentId: 'a3', agentName: 'DocWriter', status: 'failed', prompt: 'Write API docs', tokenUsed: 80, duration: 1200, createdAt: '2024-08-01T08:15:00Z' },
-      ])
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '获取执行记录失败'
+      message.error(msg)
+      setRecords([])
     } finally {
       setLoading(false)
     }
@@ -81,22 +84,22 @@ export default function Dashboard() {
     <div>
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card loading={statsLoading}>
             <Statistic title="Agent 数量" value={stats.totalAgents} prefix={<RobotOutlined />} />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card loading={statsLoading}>
             <Statistic title="执行次数" value={stats.totalExecutions} prefix={<ThunderboltOutlined />} />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card loading={statsLoading}>
             <Statistic title="Token 消耗" value={stats.totalTokens} prefix={<DollarOutlined />} />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card loading={statsLoading}>
             <Statistic title="待处理审批" value={stats.pendingApprovals} prefix={<ClockCircleOutlined />} />
           </Card>
         </Col>

@@ -309,6 +309,7 @@ Environment checks before coding:
 - `JAVA_HOME` → JDK 21
 - Target module `pom.xml` includes `schemaplexai-dao` and required starters
 - Frontend: `npm run lint` passes in `schemaplexai-ui/`
+- Frontend visual gate: `npm run test:e2e` captures screenshots of all routes
 
 **Quality Gate**: `apply-gate`
 - [ ] All tasks in tasks.md marked completed
@@ -334,27 +335,34 @@ Process:
    - `/verify-quality` — complexity, code smells, naming
    - `/verify-security` — vulnerability scan
 
-3. **Code Review**:
+3. **Visual Verification** (frontend changes):
+   - `npm run test:e2e` — Playwright captures screenshots of all routes
+   - Screenshots saved to `.claude/outputs/screenshots/` for human review
+   - Visual regression baseline: `npx playwright test --update-snapshots`
+
+4. **Code Review**:
    - `code-reviewer` agent for general quality
    - `security-reviewer` agent if security-sensitive code (auth, input handling, tenant isolation)
 
-4. **CI gate simulation**:
+5. **CI gate simulation**:
    - `mvn jacoco:check` — coverage ≥ 80%
    - `npm run lint` — frontend lint
+   - `npm run test:e2e` — frontend visual verification (if UI changed)
 
-5. **Write delivery report**: `.claude/changes/<feature-name>/delivery-report.md`
+6. **Write delivery report**: `.claude/changes/<feature-name>/delivery-report.md`
    - Tests: pass/fail count
    - Coverage: percentage
    - Review findings: CRITICAL/HIGH/MEDIUM/LOW
    - Verification results
 
 **Quality Gate**: `deliver-gate`
-- [ ] All tests pass (`mvn test` + `npm run test:run`)
+- [ ] All tests pass (`mvn test` + `npm run test:run` + `npm run test:e2e` if frontend)
 - [ ] Coverage ≥ 80% (jacoco:check)
 - [ ] No CRITICAL or HIGH review findings
 - [ ] verify-change passed (if > 30 lines)
 - [ ] verify-quality passed (if > 30 lines)
 - [ ] verify-security passed (security-sensitive code)
+- [ ] Visual screenshots reviewed (if frontend UI changed)
 - [ ] delivery-report.md written
 
 **On CRITICAL finding**: Must fix before gate pass. Re-apply fix, re-run deliver.

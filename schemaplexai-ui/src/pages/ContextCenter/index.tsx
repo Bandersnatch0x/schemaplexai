@@ -1,15 +1,36 @@
-import { Card, Table, Button, Space, Tag, Input } from 'antd'
+import { Card, Table, Button, Space, Tag, Input, message } from 'antd'
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons'
-import { useState } from 'react'
-
-const mockData = [
-  { id: '1', name: '产品知识库', type: 'knowledge', createdAt: '2024-07-01', updatedAt: '2024-07-15' },
-  { id: '2', name: '对话记忆-会话1', type: 'memory', createdAt: '2024-07-10', updatedAt: '2024-07-10' },
-  { id: '3', name: 'API 设计文档', type: 'document', createdAt: '2024-06-20', updatedAt: '2024-07-05' },
-]
+import { useEffect, useState } from 'react'
+import { getContextList } from '@/api/context'
+import type { ContextItem } from '@/api/context'
 
 export default function ContextCenter() {
   const [keyword, setKeyword] = useState('')
+  const [data, setData] = useState<ContextItem[]>([])
+  const [loading, setLoading] = useState(false)
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const pageSize = 10
+
+  useEffect(() => {
+    fetchContexts()
+  }, [keyword, page])
+
+  const fetchContexts = async () => {
+    setLoading(true)
+    try {
+      const res = await getContextList({ page, pageSize, keyword })
+      setData(res.list)
+      setTotal(res.total)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '获取上下文列表失败'
+      message.error(msg)
+      setData([])
+      setTotal(0)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const typeMap: Record<string, string> = {
     knowledge: '知识库',
@@ -39,8 +60,6 @@ export default function ContextCenter() {
     },
   ]
 
-  const filtered = mockData.filter((d) => d.name.includes(keyword))
-
   return (
     <Card
       title="上下文与知识中心"
@@ -54,9 +73,20 @@ export default function ContextCenter() {
         placeholder="搜索上下文"
         allowClear
         style={{ width: 300, marginBottom: 16 }}
-        onSearch={setKeyword}
+        onSearch={(v) => { setKeyword(v); setPage(1) }}
       />
-      <Table dataSource={filtered} columns={columns} rowKey="id" />
+      <Table
+        dataSource={data}
+        columns={columns}
+        rowKey="id"
+        loading={loading}
+        pagination={{
+          current: page,
+          pageSize,
+          total,
+          onChange: (p) => setPage(p),
+        }}
+      />
     </Card>
   )
 }

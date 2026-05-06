@@ -117,7 +117,8 @@
       "Bash(python -c \"import json; json.load\\(open\\('.claude/settings.local.json'\\)\\); print\\('JSON valid'\\)\")",
       "Bash(mkdir -p /d/code_space/frige/.claude/outputs/screenshots)",
       "Bash(cp /d/code_space/frige/schemaplexai-ui/e2e/screenshots.spec.ts-snapshots/*.png /d/code_space/frige/.claude/outputs/screenshots/)",
-      "Bash(identify /d/code_space/frige/.claude/outputs/screenshots/dashboard-chromium-win32.png)"
+      "Bash(identify /d/code_space/frige/.claude/outputs/screenshots/dashboard-chromium-win32.png)",
+      "Bash(awk '{print $5, $9}')"
     ]
   },
   "hooks": {

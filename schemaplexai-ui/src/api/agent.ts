@@ -1,5 +1,5 @@
 import request from './request'
-import type { Agent, ExecutionRecord, PageResult } from '@/types'
+import type { Agent, ExecutionRecord } from '@/types'
 
 export interface AgentQuery {
   page?: number
@@ -12,6 +12,7 @@ export interface CreateAgentPayload {
   name: string
   description?: string
   type: string
+  status?: string
   modelConfig?: {
     model: string
     temperature: number
@@ -22,27 +23,27 @@ export interface CreateAgentPayload {
 }
 
 export function getAgentList(params: AgentQuery) {
-  return request.get<PageResult<Agent>>('/api/v1/agents', { params })
+  return request.get<{ list: Agent[]; total: number }>('/agent-config/agents', { params })
 }
 
 export function getAgentDetail(id: string) {
-  return request.get<Agent>(`/api/v1/agents/${id}`)
+  return request.get<Agent>(`/agent-config/agents/${id}`)
 }
 
 export function createAgent(data: CreateAgentPayload) {
-  return request.post<Agent>('/api/v1/agents', data)
+  return request.post<Agent>('/agent-config/agents', data)
 }
 
 export function updateAgent(id: string, data: CreateAgentPayload) {
-  return request.put<Agent>(`/api/v1/agents/${id}`, data)
+  return request.put<Agent>(`/agent-config/agents/${id}`, data)
 }
 
 export function deleteAgent(id: string) {
-  return request.delete<void>(`/api/v1/agents/${id}`)
+  return request.delete<void>(`/agent-config/agents/${id}`)
 }
 
 export function executeAgent(id: string, prompt: string) {
-  return request.post<string>(`/api/v1/agents/${id}/execute`, { prompt })
+  return request.post<string>(`/agents/${id}/execute`, { prompt })
 }
 
 export function getExecutionRecords(agentId?: string) {

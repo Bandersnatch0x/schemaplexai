@@ -3,39 +3,42 @@ import { useNavigate } from 'react-router-dom'
 import { Form, Input, Button, Card, message, Typography } from 'antd'
 import { UserOutlined, LockOutlined } from '@ant-design/icons'
 import { useUserStore } from '@/stores/userStore'
-import { setToken, setTenantId } from '@/utils/token'
+import { login, getTenantList } from '@/api/auth'
+import { saveAuth } from '@/api/auth'
+import { setTenantId } from '@/utils/token'
 
 const { Title } = Typography
 
 export default function Login() {
   const navigate = useNavigate()
-  const { setUserInfo, setCurrentTenant } = useUserStore()
+  const { setUserInfo, setCurrentTenant, setTenants } = useUserStore()
   const [loading, setLoading] = useState(false)
 
   const handleLogin = async (values: { username: string; password: string }) => {
     setLoading(true)
     try {
-      // TODO: replace with real API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const result = await login(values)
+      saveAuth(result, 'default')
 
-      const mockToken = 'mock_jwt_token_' + Date.now()
-      const mockUser = {
-        id: 'user-1',
+      const tenants = await getTenantList()
+      setTenants(tenants)
+
+      const currentTenant = tenants[0] || { id: 'default', name: '默认租户', code: 'default' }
+      setTenantId(currentTenant.id)
+      setCurrentTenant(currentTenant)
+
+      setUserInfo({
+        id: values.username,
         username: values.username,
         nickname: values.username,
         roles: ['admin'],
-      }
-      const mockTenant = { id: 'tenant-1', name: '默认租户', code: 'default' }
-
-      setToken(mockToken)
-      setTenantId(mockTenant.id)
-      setUserInfo(mockUser)
-      setCurrentTenant(mockTenant)
+      })
 
       message.success('登录成功')
       navigate('/dashboard')
     } catch (err) {
-      message.error('登录失败')
+      const msg = err instanceof Error ? err.message : '登录失败'
+      message.error(msg)
     } finally {
       setLoading(false)
     }

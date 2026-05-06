@@ -2,10 +2,12 @@ import request from './request'
 
 export interface SystemConfig {
   id: string
-  key: string
-  value: string
-  category: string
+  configKey: string
+  configValue: string
+  category?: string
   description?: string
+  createdAt: string
+  updatedAt: string
 }
 
 export interface SystemLog {
@@ -17,15 +19,15 @@ export interface SystemLog {
 }
 
 export function getSystemConfigs(params?: { category?: string }) {
-  return request.get<SystemConfig[]>('/api/v1/system/configs', { params })
+  return request.get<{ list: SystemConfig[]; total: number }>('/system/configs', { params })
 }
 
 export function updateSystemConfig(id: string, value: string) {
-  return request.put<void>(`/api/v1/system/configs/${id}`, { value })
+  return request.put<void>(`/system/configs/${id}`, { configValue: value })
 }
 
 export function getSystemLogs(params?: { page?: number; pageSize?: number; level?: string }) {
-  return request.get<{ list: SystemLog[]; total: number }>('/api/v1/system/logs', { params })
+  return request.get<{ list: SystemLog[]; total: number }>('/system/logs', { params })
 }
 
 export function getSystemMetrics() {
@@ -34,5 +36,5 @@ export function getSystemMetrics() {
     memoryUsage: number
     diskUsage: number
     activeConnections: number
-  }>('/api/v1/system/metrics')
+  }>('/system/metrics')
 }

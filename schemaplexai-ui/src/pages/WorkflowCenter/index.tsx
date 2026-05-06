@@ -1,15 +1,46 @@
-import { Card, Table, Button, Space, Tag, Input } from 'antd'
+import { Card, Table, Button, Space, Tag, Input, message } from 'antd'
 import { PlusOutlined, PlayCircleOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
-import { useState } from 'react'
-
-const mockData = [
-  { id: '1', name: '代码评审流程', description: '自动代码评审与反馈', status: 'published', createdAt: '2024-07-01', updatedAt: '2024-07-15' },
-  { id: '2', name: '测试生成流程', description: '根据代码自动生成测试', status: 'published', createdAt: '2024-06-20', updatedAt: '2024-07-10' },
-  { id: '3', name: '文档同步流程', description: '代码变更同步文档', status: 'draft', createdAt: '2024-07-05', updatedAt: '2024-07-05' },
-]
+import { useEffect, useState } from 'react'
+import { getWorkflowList, runWorkflow } from '@/api/workflow'
+import type { Workflow } from '@/api/workflow'
 
 export default function WorkflowCenter() {
   const [keyword, setKeyword] = useState('')
+  const [data, setData] = useState<Workflow[]>([])
+  const [loading, setLoading] = useState(false)
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const pageSize = 10
+
+  useEffect(() => {
+    fetchWorkflows()
+  }, [keyword, page])
+
+  const fetchWorkflows = async () => {
+    setLoading(true)
+    try {
+      const res = await getWorkflowList({ page, pageSize, keyword })
+      setData(res.list)
+      setTotal(res.total)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '获取工作流列表失败'
+      message.error(msg)
+      setData([])
+      setTotal(0)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleRun = async (id: string) => {
+    try {
+      await runWorkflow(id)
+      message.success('工作流已启动')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '启动工作流失败'
+      message.error(msg)
+    }
+  }
 
   const columns = [
     { title: '名称', dataIndex: 'name', key: 'name' },
@@ -24,17 +55,15 @@ export default function WorkflowCenter() {
     {
       title: '操作',
       key: 'action',
-      render: () => (
+      render: (_: unknown, record: Workflow) => (
         <Space>
-          <Button icon={<PlayCircleOutlined />} size="small" type="primary" ghost>运行</Button>
+          <Button icon={<PlayCircleOutlined />} size="small" type="primary" ghost onClick={() => handleRun(record.id)}>运行</Button>
           <Button icon={<EditOutlined />} size="small">编辑</Button>
           <Button icon={<DeleteOutlined />} size="small" danger>删除</Button>
         </Space>
       ),
     },
   ]
-
-  const filtered = mockData.filter((d) => d.name.includes(keyword))
 
   return (
     <Card
@@ -49,9 +78,20 @@ export default function WorkflowCenter() {
         placeholder="搜索工作流"
         allowClear
         style={{ width: 300, marginBottom: 16 }}
-        onSearch={setKeyword}
+        onSearch={(v) => { setKeyword(v); setPage(1) }}
       />
-      <Table dataSource={filtered} columns={columns} rowKey="id" />
+      <Table
+        dataSource={data}
+        columns={columns}
+        rowKey="id"
+        loading={loading}
+        pagination={{
+          current: page,
+          pageSize,
+          total,
+          onChange: (p) => setPage(p),
+        }}
+      />
     </Card>
   )
 }

@@ -5,47 +5,31 @@ export interface Workflow {
   name: string
   description?: string
   status: 'draft' | 'published' | 'disabled'
-  nodes: WorkflowNode[]
-  edges: WorkflowEdge[]
+  nodeConfigJson?: string
   createdAt: string
   updatedAt: string
 }
 
-export interface WorkflowNode {
-  id: string
-  type: string
-  label: string
-  config?: Record<string, unknown>
-  position?: { x: number; y: number }
-}
-
-export interface WorkflowEdge {
-  id: string
-  source: string
-  target: string
-  label?: string
-}
-
 export function getWorkflowList(params?: { page?: number; pageSize?: number; keyword?: string }) {
-  return request.get<{ list: Workflow[]; total: number }>('/api/v1/workflows', { params })
+  return request.get<{ list: Workflow[]; total: number }>('/workflow/templates/page', { params })
 }
 
 export function getWorkflowDetail(id: string) {
-  return request.get<Workflow>(`/api/v1/workflows/${id}`)
+  return request.get<Workflow>(`/workflow/templates/${id}`)
 }
 
 export function createWorkflow(data: Omit<Workflow, 'id' | 'createdAt' | 'updatedAt'>) {
-  return request.post<Workflow>('/api/v1/workflows', data)
+  return request.post<Workflow>('/workflow/templates', data)
 }
 
 export function updateWorkflow(id: string, data: Partial<Workflow>) {
-  return request.put<Workflow>(`/api/v1/workflows/${id}`, data)
+  return request.put<Workflow>(`/workflow/templates/${id}`, data)
 }
 
 export function deleteWorkflow(id: string) {
-  return request.delete<void>(`/api/v1/workflows/${id}`)
+  return request.delete<void>(`/workflow/templates/${id}`)
 }
 
 export function runWorkflow(id: string, payload?: Record<string, unknown>) {
-  return request.post<string>(`/api/v1/workflows/${id}/run`, payload)
+  return request.post<string>(`/workflow/instances/${id}/run`, payload)
 }

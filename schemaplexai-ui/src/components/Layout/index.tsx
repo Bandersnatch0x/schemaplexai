@@ -26,6 +26,12 @@ import TenantSelector from '../TenantSelector'
 import { useUserStore } from '@/stores/userStore'
 import { clearAuth } from '@/utils/token'
 
+// Re-export other layout variants
+export { ImmersiveLayout } from './ImmersiveLayout'
+export type { ImmersiveLayoutProps } from './ImmersiveLayout'
+export { ProgressiveLayout } from './ProgressiveLayout'
+export type { ProgressiveLayoutProps } from './ProgressiveLayout'
+
 const { Header, Sider, Content } = AntLayout
 
 const menuItems = [
