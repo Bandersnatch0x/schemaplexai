@@ -5,7 +5,7 @@ title: Active Development Areas
 type: index
 source: auto-generated
 creation_date: 2026-05-02
-update_date: 2026-05-04
+update_date: 2026-05-06
 tags: [active, development]
 confidence: high
 ---
@@ -22,18 +22,19 @@ confidence: high
 
 ## Active Changes (.claude/changes/)
 
-- **v1-final-delivery**: 进行中 — 覆盖率基线、集成测试、前端测试、部署指南并行交付
+- **project-gaps-completion**: 已完成 — ClickHouse schema, Workflow Node Executors (7), Milvus collection + RAG pipeline, DocumentChunker + EmbeddingService
+- **v1-final-delivery**: 已完成 — 覆盖率基线、集成测试、前端测试、部署指南全部交付
 - **agent-engine-core-completion**: 已交付 (Judge 4.00/5.0)，等待归档至 docs/archive/
 - **v1-release-readiness**: 已交付，527/527 测试通过，等待归档
 - **v1-test-fixes-and-coverage**: 已交付，所有 21 个预存测试失败修复，等待归档
-- **core-ai-engine-design**: spec=no, tasks=no — 待启动
-- **wiki-gaps-completion**: spec=no, tasks=no — 待启动
+- **core-ai-engine-design**: 已完成 — L2持久化、SSE事件流、getLatestSnapshot实现
+- **wiki-gaps-completion**: 已完成 — 6个wiki服务页面已创建
 
 ## v1.0 Release Status
 
-- **Tests**: 527/527 passing (100%)
+- **Tests**: 527/527 passing (100%) + 16 new tests (DocumentChunker, EmbeddingService, NodeExecutorRegistry)
 - **Build**: All 17 modules compile
 - **CI/CD**: GitHub Actions + Jenkins configured
 - **API Docs**: Knife4j + docs/API.md
 - **JaCoCo**: Plugin 0.8.12 added (待运行 mvn verify 生成基线)
-- **Pending**: Integration tests, frontend test suite, deployment guide, coverage baseline
+- **Pending**: JaCoCo coverage baseline generation

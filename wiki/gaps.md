@@ -3,7 +3,7 @@ title: Knowledge Gaps
 type: index
 source: wiki gap analysis
 creation_date: 2026-04-30
-update_date: 2026-05-04
+update_date: 2026-05-06
 tags: [gaps, questions, todo, undocumented]
 confidence: high
 ---
@@ -20,8 +20,8 @@ confidence: high
 | `sf_tenant_environment_config` | Entity defined 2026-05-04 | Tenant env security config — global table, SecurityPolicyLoader implemented |
 | `sf_config` | 01-init-schema.sql | System configuration table — no ConfigService impl explored |
 | `act_*` tables | Flowable auto-DDL | BPMN runtime tables — not in init scripts |
-| ClickHouse schema | Not found | Analytics tables for cost tracking |
-| Milvus collections | Not found | Vector collection definitions |
+| ~~ClickHouse schema~~ | `docker/clickhouse/init/01-cost-analytics.sql` | 4 tables + 2 materialized views created 2026-05-06 |
+| ~~Milvus collections~~ | `schemaplexai-context/src/main/resources/milvus/` | `knowledge_doc_embedding` collection schema with IVF_FLAT/COSINE index |
 
 ## Undocumented Controllers
 
@@ -75,10 +75,10 @@ The following controllers exist but have no dedicated wiki pages (most are stand
 
 1. ~~**How does JWT authentication work at the Gateway?**~~ — documented in [[services/jwt-auth-filter]] and [[services/auth-service]]
 2. ~~**What is the complete agent execution flow?**~~ — documented in [[services/agent-runtime-orchestrator]] and [[services/agent-state-machine]]
-3. **How are Flowable BPMN processes defined and deployed?** — No BPMN files found
-4. **What is the ClickHouse schema for cost analytics?** — No init scripts found
-5. **How does the RAG embedding pipeline work end-to-end?** — Only service interfaces read
-6. **What are the 7 node executor implementations?** — Only registry pattern read
+3. ~~**How are Flowable BPMN processes defined and deployed?**~~ — 2 BPMN files exist (`ai-agent-execution.bpmn20.xml`, `spec-review-approval.bpmn20.xml`), 6 delegates implemented
+4. ~~**What is the ClickHouse schema for cost analytics?**~~ — `docker/clickhouse/init/01-cost-analytics.sql` created with 4 tables + 2 materialized views
+5. ~~**How does the RAG embedding pipeline work end-to-end?**~~ — Full pipeline implemented: `DocumentChunker` → `EmbeddingService` → `MilvusSyncServiceImpl` → `MilvusClientV2.insert`
+6. ~~**What are the 7 node executor implementations?**~~ — 7 executors implemented: HTTP, SCRIPT, START, END, AI_MODEL, TOOL_CALL, CONDITION
 7. ~~**How is tenant data physically isolated?**~~ — documented in [[services/tenant-line-interceptor]]
 8. **What MQ exchanges and queues are configured?** — RabbitMQ config not explored
 9. **What is the frontend page implementation status?** — Page components not read

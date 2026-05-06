@@ -5,7 +5,7 @@ title: Wiki Operation Log
 type: log
 source: auto-generated
 creation_date: 2026-05-02
-update_date: 2026-05-04
+update_date: 2026-05-06
 tags: [wiki, log, maintenance]
 confidence: high
 ---
@@ -13,6 +13,23 @@ confidence: high
 # Wiki Operation Log
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
+
+## 2026-05-06 — Parallel gap closure: ClickHouse, Workflow nodes, Milvus, RAG pipeline
+
+**Scope**: Close 5 core project gaps identified in `wiki/gaps.md` via parallel agent execution.
+
+**Completed**:
+- **ClickHouse schema**: `docker/clickhouse/init/01-cost-analytics.sql` — 4 tables (sf_cost_record, sf_model_usage_hourly, sf_token_consumption_daily, sf_agent_execution_cost) + 2 materialized views; `CostRecord.java` entity
+- **Workflow Node Executors**: 5 new executors (START, END, AI_MODEL, TOOL_CALL, CONDITION) + `NodeExecutorRegistryTest.java` covering all 7 types
+- **Milvus collection**: `knowledge_doc_embedding` schema JSON, MilvusConfig + MilvusProperties, MilvusCollectionInitializer, RagSearchService, KnowledgeChunk DTO
+- **RAG Embedding Pipeline**: DocumentChunker (sentence-aware), TextChunk, ChunkingConfig, EmbeddingService (SHA-256 deterministic), EmbeddingServiceImpl; MilvusSyncServiceImpl merged with both DocumentChunker/EmbeddingService and MilvusClientV2 integration; NoOpMilvusSyncServiceImpl for graceful degradation when Milvus disabled
+- **Tests**: DocumentChunkerTest (8 cases), EmbeddingServiceTest (8 cases), NodeExecutorRegistryTest (15 cases)
+
+**Merged fixes**:
+- MilvusSyncServiceImpl manually merged to retain both agent3's MilvusClientV2 insert logic and agent4's DocumentChunker/EmbeddingService usage
+- NoOpMilvusSyncServiceImpl added for `milvus.enabled=false` startup compatibility
+
+**Remaining gaps**: QualityOrchestrator, FlowableDelegateAdapter, BPMN process deployment verification, actual LLM embedding API integration (currently simulated).
 
 ## 2026-05-06 — v1.0 final delivery complete — Archive phase passed, all gates green
 
