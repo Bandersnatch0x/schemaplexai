@@ -13,6 +13,7 @@
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-amqp</artifactId></dependency>
         <dependency><groupId>dev.langchain4j</groupId><artifactId>langchain4j</artifactId></dependency>
         <dependency><groupId>dev.langchain4j</groupId><artifactId>langchain4j-open-ai</artifactId></dependency>
+        <dependency><groupId>dev.langchain4j</groupId><artifactId>langchain4j-anthropic</artifactId></dependency>
         <dependency><groupId>com.github.ben-manes.caffeine</groupId><artifactId>caffeine</artifactId></dependency>
         <dependency><groupId>org.projectlombok</groupId><artifactId>lombok</artifactId><optional>true</optional></dependency>
     

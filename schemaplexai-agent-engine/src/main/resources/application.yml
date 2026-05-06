@@ -51,6 +51,17 @@ mybatis-plus:
 agent:
   model:
     default-model: ${AGENT_DEFAULT_MODEL:}
+  llm:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+      timeout-seconds: ${OPENAI_TIMEOUT:60}
+      max-retries: ${OPENAI_MAX_RETRIES:3}
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:}
+      base-url: ${ANTHROPIC_BASE_URL:https://api.anthropic.com/v1}
+      timeout-seconds: ${ANTHROPIC_TIMEOUT:60}
+      max-retries: ${ANTHROPIC_MAX_RETRIES:3}
 
 jwt:
   secret: ${JWT_SECRET}
