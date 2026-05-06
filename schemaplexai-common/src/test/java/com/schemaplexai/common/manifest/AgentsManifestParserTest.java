@@ -196,4 +196,151 @@ class AgentsManifestParserTest {
         assertEquals("read_file", m.tools().get(0).name());
         assertNull(m.tools().get(0).configJson());
     }
+
+    // ----- additional defensive-path tests for higher branch coverage -----
+
+    @Test
+    void shouldRejectFrontmatterWithoutClosingDelimiter() {
+        String md = """
+                ---
+                name: incomplete
+                description: never closes
+                """;
+        assertThrows(ManifestParseException.class, () -> parser.parse(md));
+    }
+
+    @Test
+    void shouldRejectFrontmatterWithOnlyOpeningDelimiter() {
+        // single `---` and no following newline → opening line malformed
+        assertThrows(ManifestParseException.class, () -> parser.parse("---"));
+    }
+
+    @Test
+    void shouldRejectFrontmatterThatIsNotAMapping() {
+        // frontmatter is a YAML scalar, not a mapping
+        String md = """
+                ---
+                just-a-scalar
+                ---
+                body
+                """;
+        assertThrows(ManifestParseException.class, () -> parser.parse(md));
+    }
+
+    @Test
+    void shouldRejectEmptyFrontmatter() {
+        String md = """
+                ---
+                ---
+                body
+                """;
+        assertThrows(ManifestParseException.class, () -> parser.parse(md));
+    }
+
+    @Test
+    void shouldRejectToolsThatIsNotAList() {
+        String md = """
+                ---
+                name: bad-tools
+                tools: not-a-list
+                ---
+                body
+                """;
+        assertThrows(ManifestParseException.class, () -> parser.parse(md));
+    }
+
+    @Test
+    void shouldRejectToolItemThatIsNotAMapping() {
+        String md = """
+                ---
+                name: bad-tool-item
+                tools:
+                  - just-a-string
+                ---
+                body
+                """;
+        assertThrows(ManifestParseException.class, () -> parser.parse(md));
+    }
+
+    @Test
+    void shouldRejectToolMissingName() {
+        String md = """
+                ---
+                name: bad
+                tools:
+                  - type: builtin
+                ---
+                body
+                """;
+        assertThrows(ManifestParseException.class, () -> parser.parse(md));
+    }
+
+    @Test
+    void shouldRejectToolMissingType() {
+        String md = """
+                ---
+                name: bad
+                tools:
+                  - name: read_file
+                ---
+                body
+                """;
+        assertThrows(ManifestParseException.class, () -> parser.parse(md));
+    }
+
+    @Test
+    void shouldRejectStringFieldWithListValue() {
+        // description is a list, not a string/number/boolean — expect rejection
+        String md = """
+                ---
+                name: bad-string
+                description: [a, b, c]
+                ---
+                body
+                """;
+        assertThrows(ManifestParseException.class, () -> parser.parse(md));
+    }
+
+    @Test
+    void shouldCoerceNumericFieldsFromInteger() {
+        // snakeyaml may yield Integer for small ints; parser must coerce to Long
+        String md = """
+                ---
+                name: small-ints
+                maxRounds: 3
+                maxTools: 1
+                temperature: 1
+                ---
+                body
+                """;
+        AgentsManifest m = parser.parse(md);
+        assertEquals(3L, m.maxRounds());
+        assertEquals(1L, m.maxTools());
+        assertEquals(1.0, m.temperature());
+    }
+
+    @Test
+    void shouldRejectInvalidTemperatureType() {
+        String md = """
+                ---
+                name: bad-temp
+                temperature: "warm"
+                ---
+                body
+                """;
+        assertThrows(ManifestParseException.class, () -> parser.parse(md));
+    }
+
+    @Test
+    void shouldEmitEmptyBodyWhenFrontmatterAtEof() {
+        String md = """
+                ---
+                name: no-body
+                ---
+                """;
+        AgentsManifest m = parser.parse(md);
+        assertEquals("no-body", m.name());
+        assertNotNull(m.systemPrompt());
+    }
 }
+
