@@ -26,8 +26,8 @@
         <module>schemaplexai-web</module>
         <module>schemaplexai-system</module>
         <module>schemaplexai-spec</module>
-        <module>schemaplexai-agent-config</module>
         <module>schemaplexai-agent-engine</module>
+        <module>schemaplexai-agent-config</module>
         <module>schemaplexai-workflow</module>
         <module>schemaplexai-context</module>
         <module>schemaplexai-quality</module>
