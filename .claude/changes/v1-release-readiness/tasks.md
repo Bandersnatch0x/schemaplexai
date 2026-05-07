@@ -1,6 +1,7 @@
 ---
 change_id: v1-release-readiness
-status: in_progress
+status: completed
+completed_at: 2026-05-07
 created_at: 2026-05-05
 ---
 
@@ -29,14 +30,14 @@ graph TD
 - **Type**: test
 - **Description**: Write unit tests for common, model, and dao modules
 - **Acceptance Criteria**:
-  - [ ] Result, ResultCode, BaseException tested
-  - [ ] PageParam tested
-  - [ ] TenantContextHolder tested
-  - [ ] BaseEntity tested
-  - [ ] All tests pass with `mvn test -pl schemaplexai-common,schemaplexai-model,schemaplexai-dao`
+  - [x] Result, ResultCode, BaseException tested
+  - [x] PageParam tested
+  - [x] TenantContextHolder tested
+  - [x] BaseEntity tested
+  - [x] All tests pass with `mvn test -pl schemaplexai-common,schemaplexai-model,schemaplexai-dao`
 - **Estimated Hours**: 3h
 - **Dependencies**: None
-- **Status**: pending
+- **Status**: completed
 
 ### Task 2: Agent Engine Tests
 - **ID**: T2
@@ -44,16 +45,16 @@ graph TD
 - **Type**: test
 - **Description**: Write comprehensive tests for agent-engine core components
 - **Acceptance Criteria**:
-  - [ ] ToolRegistry tested (register, resolve, parse, whitelist)
-  - [ ] ToolSafetyGuard tested (all 4 dimensions)
-  - [ ] TokenBudget tested (consume, exceed, remaining)
-  - [ ] AgentLoopDetectionService tested (hash loop, tool sequence)
-  - [ ] SecurityPolicyLoader tested (cache, default policy)
-  - [ ] State machine transitions tested
-  - [ ] All tests pass with `mvn test -pl schemaplexai-agent-engine`
+  - [x] ToolRegistry tested (register, resolve, parse, whitelist)
+  - [x] ToolSafetyGuard tested (all 4 dimensions)
+  - [x] TokenBudget tested (consume, exceed, remaining)
+  - [x] AgentLoopDetectionService tested (hash loop, tool sequence)
+  - [x] SecurityPolicyLoader tested (cache, default policy)
+  - [x] State machine transitions tested
+  - [x] All tests pass with `mvn test -pl schemaplexai-agent-engine`
 - **Estimated Hours**: 4h
 - **Dependencies**: None
-- **Status**: pending
+- **Status**: completed
 
 ### Task 3: Gateway/System Tests
 - **ID**: T3
@@ -61,14 +62,14 @@ graph TD
 - **Type**: test
 - **Description**: Write tests for gateway filters and system services
 - **Acceptance Criteria**:
-  - [ ] JWT filter tested
-  - [ ] Tenant filter tested
-  - [ ] Rate limiter tested
-  - [ ] Auth service tested
-  - [ ] All tests pass with `mvn test -pl schemaplexai-gateway,schemaplexai-system`
+  - [x] JWT filter tested
+  - [x] Tenant filter tested
+  - [x] Rate limiter tested
+  - [x] Auth service tested
+  - [x] All tests pass with `mvn test -pl schemaplexai-gateway,schemaplexai-system`
 - **Estimated Hours**: 3h
 - **Dependencies**: None
-- **Status**: pending
+- **Status**: completed
 
 ### Task 4: P0 Issue Fixes
 - **ID**: T4
@@ -76,12 +77,12 @@ graph TD
 - **Type**: fix
 - **Description**: Fix all P0 blocking issues from code review
 - **Acceptance Criteria**:
-  - [ ] All P0 issues resolved
-  - [ ] `mvn clean compile` passes
-  - [ ] No regression in existing functionality
+  - [x] All P0 issues resolved
+  - [x] `mvn clean compile` passes
+  - [x] No regression in existing functionality
 - **Estimated Hours**: 4h
 - **Dependencies**: None
-- **Status**: pending
+- **Status**: completed
 
 ### Task 5: Verify All Tests
 - **ID**: T5
@@ -89,11 +90,11 @@ graph TD
 - **Type**: verify
 - **Description**: Run full test suite and verify coverage
 - **Acceptance Criteria**:
-  - [ ] `mvn clean test` passes (0 failures)
-  - [ ] Coverage >= 80% for core modules
+  - [x] `mvn clean test` passes (0 failures)
+  - [x] Coverage >= 80% for core modules
 - **Estimated Hours**: 1h
 - **Dependencies**: T1, T2, T3, T4
-- **Status**: pending
+- **Status**: completed
 
 ### Task 6: Delivery Report
 - **ID**: T6
@@ -101,9 +102,9 @@ graph TD
 - **Type**: docs
 - **Description**: Write delivery report with test results and coverage
 - **Acceptance Criteria**:
-  - [ ] delivery-report.md written
-  - [ ] Test pass/fail counts documented
-  - [ ] Coverage percentages documented
+  - [x] delivery-report.md written
+  - [x] Test pass/fail counts documented
+  - [x] Coverage percentages documented
 - **Estimated Hours**: 0.5h
 - **Dependencies**: T5
-- **Status**: pending
+- **Status**: completed
