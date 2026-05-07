@@ -47,3 +47,9 @@ logging:
   level:
     com.schemaplexai.workflow: debug
     org.flowable: info
+
+management:
+  otlp:
+    tracing:
+      endpoint: http://jaeger:4318/v1/traces
+      enabled: true

@@ -1,3 +1,10 @@
+---
+topic: skill-markdown-spec
+stage: standard
+version: v1.0
+status: approved
+---
+
 # Skill Markdown Specification v1.0
 
 A Skill is a structured capability module defined as a Markdown file with YAML frontmatter.

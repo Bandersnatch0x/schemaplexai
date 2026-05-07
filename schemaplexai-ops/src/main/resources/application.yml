@@ -47,3 +47,9 @@ clickhouse:
 logging:
   level:
     com.schemaplexai.ops: debug
+
+management:
+  otlp:
+    tracing:
+      endpoint: http://jaeger:4318/v1/traces
+      enabled: true

@@ -1,11 +1,11 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-07T07:47:26Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-07T19:01:39Z -->
 
 ---
 title: Active Development Areas
 type: index
 source: auto-generated
-creation_date: 2026-05-07
-update_date: 2026-05-07
+creation_date: 2026-05-08
+update_date: 2026-05-08
 tags: [active, development]
 confidence: high
 ---
@@ -22,11 +22,11 @@ confidence: high
 
 ## Active Changes (.claude/changes/)
 
-- **agent-engine-core-completion**: spec=yes, tasks=yes, status=completed
-- **agents-sdk-2026-alignment**: spec=yes, tasks=yes, status=completed
-- **core-ai-engine-design**: spec=yes, tasks=yes, status=completed
-- **ui-alignment**: spec=yes, tasks=yes, status=completed
-- **v1-release-readiness**: spec=yes, tasks=yes, status=completed
-- **v1-test-fixes-and-coverage**: spec=yes, tasks=yes, status=completed
-- **hybrid-mode-integration**: spec=yes, tasks=yes, status=completed
-- **wiki-gaps-completion**: spec=yes, tasks=yes, status=completed
+- **agent-engine-core-completion**: spec=yes, tasks=yes
+- **agents-sdk-2026-alignment**: spec=no, tasks=yes
+- **core-ai-engine-design**: spec=no, tasks=no
+- **hybrid-mode-integration**: spec=no, tasks=no
+- **ui-alignment**: spec=yes, tasks=yes
+- **v1-release-readiness**: spec=yes, tasks=yes
+- **v1-test-fixes-and-coverage**: spec=yes, tasks=yes
+- **wiki-gaps-completion**: spec=no, tasks=no

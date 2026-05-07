@@ -1,3 +1,10 @@
+---
+topic: tdd-guide
+stage: standard
+version: v1.0
+status: approved
+---
+
 # TDD 指南（Test-Driven Development）
 
 > 先写测试，再写实现。没有测试的代码不允许提交。

@@ -1,3 +1,10 @@
+---
+topic: tool-call-parsing-strategy
+stage: decision
+version: v1.0
+status: accepted
+---
+
 # ADR-004: Unified Tool Call Parsing Strategy
 
 ## Status

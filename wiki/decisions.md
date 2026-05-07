@@ -1,11 +1,11 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-07T07:47:33Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-07T19:01:51Z -->
 
 ---
 title: Architecture Decision Records Index
 type: index
 source: auto-generated
-creation_date: 2026-05-07
-update_date: 2026-05-07
+creation_date: 2026-05-08
+update_date: 2026-05-08
 tags: [decisions, adr]
 confidence: high
 ---
@@ -18,7 +18,7 @@ confidence: high
 - [cursor-sdk-to-opensandbox](D:/code_space/frige/docs/decisions/ADR-002-cursor-sdk-to-opensandbox.md) (v1.0) — 已批准
 - [langchain4j-selection](D:/code_space/frige/docs/decisions/ADR-003-langchain4j-selection.md) (v1.0) — 已批准
 - [database-middleware-selection](D:/code_space/frige/docs/decisions/ADR-004-database-middleware-selection.md) (v1.0) — 已批准
-- [](D:/code_space/frige/docs/decisions/ADR-004-tool-call-parsing-strategy.md) () — 
+- [tool-call-parsing-strategy](D:/code_space/frige/docs/decisions/ADR-004-tool-call-parsing-strategy.md) (v1.0) — accepted
 - [api-gateway](D:/code_space/frige/docs/decisions/ADR-007-api-gateway.md) (v1.0) — 已批准
 - [domain-decomposition](D:/code_space/frige/docs/decisions/ADR-008-domain-decomposition.md) (v1.0) — 已批准
 - [agent-state-machine](D:/code_space/frige/docs/decisions/ADR-009-agent-state-machine.md) (v1.0) — 已批准

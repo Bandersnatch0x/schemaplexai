@@ -1,11 +1,11 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-07T07:46:50Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-07T19:00:46Z -->
 
 ---
 title: Wiki Operation Log
 type: log
 source: auto-generated
-creation_date: 2026-05-07
-update_date: 2026-05-07
+creation_date: 2026-05-08
+update_date: 2026-05-08
 tags: [wiki, log, maintenance]
 confidence: high
 ---
@@ -14,50 +14,46 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
-## 2026-05-07 — docs(ui-alignment): mark all 8 tasks completed
-a7880b1
-## 2026-05-07 — docs(agent-engine-core-completion): mark all 18 tasks completed
-e766e7a
-## 2026-05-07 — docs(spec): hybrid mode integration design - Skill/Role + Sub-agent + Compaction + MCP + Sandbox
-889dd43
-## 2026-05-07 — docs(v1-release-readiness): mark all tasks completed + update delivery report
-73bf2c5
-## 2026-05-07 — docs(specs): add UI/UE alignment spec document
-79fbcf2
-## 2026-05-07 — feat(ui): complete UI/UE alignment across all pages
-b3762ad
-## 2026-05-07 — docs(wiki): update log and active-areas for v1-test-fixes-and-coverage completion
-e012bd2
-## 2026-05-07 — test(coverage): fix cross-module compilation and achieve full backend test suite green
-93b3c9e
-## 2026-05-07 — test(coverage): add workflow/context tests and align JaCoCo thresholds
-d75ca91
-## 2026-05-07 — test: fix failing tests across gateway, workflow, and context modules
-5cbd6a4
-## 2026-05-07 — feat(ui): i18n for Login and NotFound pages
-c9fe8ac
-## 2026-05-07 — feat(ui): i18n for WorkflowCenter and SystemSettings
-61950b9
-## 2026-05-07 — feat(ui): i18n for AgentManager and AgentExecutor
-d3ade87
-## 2026-05-07 — feat(agent-engine): close 3 critical Agentic pattern gaps
-0701845
-## 2026-05-07 — feat(ui): align i18n, router cleanup, workflow API integration
-cf81404
-## 2026-05-07 — docs(wiki,tasks): mark agents-sdk-2026-alignment completed + update log
-d48a59a
-## 2026-05-07 — feat(agent-config): B5 SfAgentMapper.findByNameAndTenant + B6 loadFromManifest entry
-d957b7a
-## 2026-05-07 — docs(wiki): record schemaplexai-context unblock (Milvus 2.3.5 alignment)
-b0a9a4a
-## 2026-05-07 — fix(context): expose FailedStatusWriter for cross-package test access
-d160a53
-## 2026-05-07 — fix(common,context): align Milvus SDK usage with pinned 2.3.5 API
-f94c187
-## 2026-05-07 — docs(wiki): add operation log for coverage sprint and gaps cleanup
-89ea06a
-## 2026-05-07 — docs(wiki): resolve Open Questions #11 and #12
-4bb2644
+## 2026-05-08 — feat(gateway): add traceparent propagation filter
+72a673d
+## 2026-05-08 — feat(observability): OpenTelemetry integration with PII redaction and tenant tagging
+9a15161
+## 2026-05-08 — docs(wiki): add MAF roundtable findings and /run-tasks command
+e15e1bf
+## 2026-05-08 — fix(agent-engine): add missing CubeSandbox DTOs and properties
+e803dd1
+## 2026-05-08 — docs(wiki): mark hybrid-mode-integration completed in active-areas
+37428d2
+## 2026-05-08 — feat(agent-engine): add Skill/Role registries with Caffeine cache (T5)
+d8275b3
+## 2026-05-07 — feat(agent-engine): add Skill/Role entities and mappers (T4)
+2dc7783
+## 2026-05-07 — feat(agent-engine): integrate AutoCompactionService into ThinkingStateHandler (T13)
+54315f1
+## 2026-05-07 — feat(agent-engine): TaskToolAdapter + SubAgentExecutionService (T21)
+43bfb4a
+## 2026-05-07 — feat(agent-engine): AutoCompactionService with PTL Retry (T12)
+64e9fdc
+## 2026-05-07 — feat(agent-engine): AgentSessionPersistence (T22) + ContainerSandboxProvider (T23)
+f81ab39
+## 2026-05-07 — feat(agent-engine): SlidingWindowCompactionStrategy (Layer 1)
+fdbe2ed
+## 2026-05-07 — feat(compaction): implement SummarizationCompactionStrategy (Layer 2) + ConversationFileTracker
+71fded2
+## 2026-05-07 — feat(compaction): implement SlidingWindowCompactionStrategy (Layer 1)
+23a3876
+## 2026-05-07 — feat(mcp): implement McpToolDiscoveryService with parallel sync + per-server error isolation
+9627022
+## 2026-05-07 — feat(util): add TokenEstimator.estimate(List<LlmMessage>) overload
+40855c6
+## 2026-05-07 — feat(util): add TokenEstimator.estimate(List<LlmMessage>) overload
+3badfcc
+## 2026-05-07 — feat(compaction): add CompactionStrategy interface and CompactionResult record
+83604dd
+## 2026-05-07 — feat(sandbox): add scope() default method to SandboxProvider interface
+97d5a27
+## 2026-05-07 — fix(agent-engine): address code review findings in T2/T15/T17
+9aa5d63
 
 ---
 
@@ -67,15 +63,23 @@ f94c187
 - **api-gateway** (spec v1.0): 已批准 — 2026-04-30-v1.0-api-gateway.md
 - **cost-analytics** (spec v1.0): 草稿 — 2026-04-30-v1.0-cost-analytics.md
 - **integration-layer** (spec v1.0): 草稿 — 2026-04-30-v1.0-integration-layer.md
+- **open-source-agent-architecture-research** (spec v1.0): draft — 2026-04-30-v1.0-open-source-agent-architecture-research.md
 - **quality-gate** (spec v1.0): 草稿 — 2026-04-30-v1.0-quality-gate.md
 - **rag-pipeline** (spec v1.0): 草稿 — 2026-04-30-v1.0-rag-pipeline.md
 - **spec-management** (spec v1.0): 草稿 — 2026-04-30-v1.0-spec-management.md
 - **workflow-engine** (spec v1.0): 草稿 — 2026-04-30-v1.0-workflow-engine.md
 - **notification** (spec 1.0): 已批准 — 2026-05-01-v1.0-notification.md
+- **release-readiness** (spec 1.0): approved — 2026-05-05-v1.0-release-readiness.md
+- **test-fixes-and-coverage** (spec 1.0): approved — 2026-05-05-v1.0-test-fixes-and-coverage.md
+- **mcp-tool-discovery** (implementation 1.0): completed — 2026-05-07-v1.0-mcp-tool-discovery.md
 - **ui-alignment** (standard 1.0): approved — 2026-05-07-v1.0-ui-alignment.md
+- **agent-engine-agentic-gaps** (spec v1.0): implemented — agent-engine-agentic-gaps-2026-05-07.md
+- **agent-engine-core-completion** (spec 1.0): approved — agent-engine-core-completion.md
+- **core-ai-engine** (spec v1.0): draft — core-ai-engine.md
 - **specs-index** ( ):  — README.md
 - **spec-review** (spec v1.0): 已批准 — SPEC-REVIEW-v1.0.md
 - **project-plan** (plan v1.1): 已批准 — 2026-04-29-v1.0-project-plan.md
+- **phase1-observability-foundation** (plan v1.0): approved — 2026-04-30-phase1-observability-foundation.md
 - **claude-code-harness-research** (plan v1.0): 草稿 — 2026-04-30-v1.0-claude-code-harness-research.md
 - **sprint-plan** (plan v1.0): 草稿 — 2026-04-30-v1.0-sprint-plan.md
 - **tech-research** (plan v1.0): 已批准 — 2026-04-30-v1.0-tech-research-plan.md
@@ -85,4 +89,5 @@ f94c187
 - **system-architecture** (design v1.1): 已批准 — 2026-04-29-v1.0-system-architecture.md
 - **agent-runtime-task-board** (design v1.0): 草稿 — 2026-04-30-v1.0-agent-runtime-task-board.md
 - **workflow-task-orchestration** (design v1.0): 草稿 — 2026-04-30-v1.0-workflow-task-orchestration.md
+- **core-ai-engine** (design v1.0): draft — core-ai-engine.md
 - **designs-index** ( ):  — README.md

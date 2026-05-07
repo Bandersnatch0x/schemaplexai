@@ -46,3 +46,9 @@ jwt:
 logging:
   level:
     com.schemaplexai.system: DEBUG
+
+management:
+  otlp:
+    tracing:
+      endpoint: http://jaeger:4318/v1/traces
+      enabled: true

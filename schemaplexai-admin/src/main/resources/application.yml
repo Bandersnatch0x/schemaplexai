@@ -34,6 +34,10 @@ management:
   endpoint:
     health:
       show-details: always
+  otlp:
+    tracing:
+      endpoint: http://jaeger:4318/v1/traces
+      enabled: true
 
 logging:
   level:

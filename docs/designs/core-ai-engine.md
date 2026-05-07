@@ -1,4 +1,7 @@
 ---
+topic: core-ai-engine
+stage: design
+version: v1.0
 change_id: core-ai-engine-design
 status: draft
 created_at: 2026-05-01

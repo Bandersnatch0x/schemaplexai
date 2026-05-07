@@ -1,3 +1,10 @@
+---
+topic: agent-engine-agentic-gaps
+stage: spec
+version: v1.0
+status: implemented
+---
+
 # Agent-Engine Agentic Pattern Gaps — Implementation Spec
 
 **Date**: 2026-05-07

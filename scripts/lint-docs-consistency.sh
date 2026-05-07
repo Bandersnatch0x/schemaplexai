@@ -12,6 +12,19 @@ PROJECT_ROOT=$(get_project_root)
 cd "$PROJECT_ROOT"
 
 FIX="${1:-}"
+STAGED=0
+STAGE_FILES=""
+
+# Parse args
+for arg in "$@"; do
+    case "$arg" in
+        --staged)
+            STAGED=1
+            STAGE_FILES=$(git diff --cached --name-only --diff-filter=ACM || true)
+            ;;
+    esac
+done
+
 ERRORS=0
 WARNINGS=0
 
@@ -20,9 +33,29 @@ echo ""
 
 # --- Check 1: YAML frontmatter format ---
 echo "[CHECK 1] YAML frontmatter format..."
-for f in docs/specs/*.md docs/plans/*.md docs/designs/*.md docs/decisions/*.md docs/standards/*.md; do
-    [ -f "$f" ] || continue
-    # Check for required fields
+
+DOCS_FILES=()
+if [ "$STAGED" -eq 1 ] && [ -n "$STAGE_FILES" ]; then
+    while IFS= read -r f; do
+        [ -n "$f" ] || continue
+        case "$(basename "$f")" in
+            README.md|ADR-TEMPLATE.md) continue ;;
+        esac
+        if [[ "$f" =~ ^docs/(specs|plans|designs|decisions|standards)/.*\.md$ ]]; then
+            DOCS_FILES+=("$f")
+        fi
+    done <<< "$STAGE_FILES"
+else
+    for f in docs/specs/*.md docs/plans/*.md docs/designs/*.md docs/decisions/*.md docs/standards/*.md; do
+        [ -f "$f" ] || continue
+        case "$(basename "$f")" in
+            README.md|ADR-TEMPLATE.md) continue ;;
+        esac
+        DOCS_FILES+=("$f")
+    done
+fi
+
+for f in "${DOCS_FILES[@]}"; do
     for field in topic stage version status; do
         if ! grep -q "^${field}:" "$f" 2>/dev/null; then
             echo "  HIGH: $(basename "$f") missing required field: $field"
@@ -30,6 +63,10 @@ for f in docs/specs/*.md docs/plans/*.md docs/designs/*.md docs/decisions/*.md d
         fi
     done
 done
+
+if [ ${#DOCS_FILES[@]} -eq 0 ]; then
+    echo "  No docs files to check."
+fi
 
 # --- Check 2: wiki/ AUTO-GENERATED markers ---
 echo "[CHECK 2] wiki/ AUTO-GENERATED markers..."
@@ -74,6 +111,8 @@ MISSING_CTRL=0
 if [ -d "schemaplexai-web" ]; then
     for ctrl_file in $(find schemaplexai-web -name "*Controller.java" 2>/dev/null); do
         class_name=$(basename "$ctrl_file" .java)
+        # Skip base classes
+        echo "$class_name" | grep -qi "^base" && continue
         wiki_file="wiki/controllers/$(echo "$class_name" | sed 's/\([A-Z]\)/-\L\1/g' | sed 's/^-//' | tr '[:upper:]' '[:lower:]').md"
         if [ ! -f "$wiki_file" ]; then
             echo "  MEDIUM: Missing wiki page for controller: $class_name"

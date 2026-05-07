@@ -1,3 +1,10 @@
+---
+topic: sdd-process
+stage: standard
+version: v1.0
+status: approved
+---
+
 # SDD 流程规范（Specification-Driven Development）
 
 > 所有代码实现必须以 Spec 为契约。无 Spec，不编码。

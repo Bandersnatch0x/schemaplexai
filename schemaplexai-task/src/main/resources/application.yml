@@ -55,3 +55,9 @@ mybatis-plus:
 logging:
   level:
     com.schemaplexai.task: DEBUG
+
+management:
+  otlp:
+    tracing:
+      endpoint: http://jaeger:4318/v1/traces
+      enabled: true

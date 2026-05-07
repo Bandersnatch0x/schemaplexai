@@ -1,4 +1,6 @@
 ---
+topic: agent-engine-core-completion
+stage: spec
 title: Agent Engine Core Completion
 status: approved
 created_at: 2026-05-04
