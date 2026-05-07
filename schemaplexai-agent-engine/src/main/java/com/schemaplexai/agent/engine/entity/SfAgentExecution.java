@@ -32,6 +32,10 @@ public class SfAgentExecution extends BaseEntity {
     /** Reference to the latest execution snapshot (for pause/resume) */
     private Long snapshotId;
 
+    private String skillName;
+
+    private String roleName;
+
     public Object getMetadata(String key) {
         if (metadata == null) metadata = new ConcurrentHashMap<>();
         return metadata.get(key);
