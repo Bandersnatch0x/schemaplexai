@@ -6,6 +6,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -33,7 +34,10 @@ import java.util.Map;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class JwtAuthFilter implements GlobalFilter, Ordered {
+
+    private final ObjectMapper objectMapper;
 
     @Value("${jwt.secret}")
     private String jwtSecret;
@@ -128,7 +132,7 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
                 "timestamp", System.currentTimeMillis()
         );
         try {
-            byte[] bytes = new ObjectMapper().writeValueAsBytes(body);
+            byte[] bytes = objectMapper.writeValueAsBytes(body);
             DataBuffer buffer = response.bufferFactory().wrap(bytes);
             return response.writeWith(Mono.just(buffer));
         } catch (JsonProcessingException e) {
