@@ -1,28 +1,28 @@
 package com.schemaplexai.agent.config.manifest;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.schemaplexai.agent.config.entity.SfAgent;
 import com.schemaplexai.agent.config.entity.SfAgentConfig;
 import com.schemaplexai.agent.config.entity.SfAgentToolBinding;
 import com.schemaplexai.agent.config.mapper.SfAgentConfigMapper;
 import com.schemaplexai.agent.config.mapper.SfAgentMapper;
-import com.schemaplexai.agent.config.service.AgentConfigService;
+import com.schemaplexai.agent.config.mapper.SfAgentToolBindingMapper;
 import com.schemaplexai.common.manifest.AgentsManifest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,7 +35,7 @@ class AgentsManifestLoaderTest {
     private SfAgentConfigMapper agentConfigMapper;
 
     @Mock
-    private AgentConfigService agentConfigService;
+    private SfAgentToolBindingMapper toolBindingMapper;
 
     @InjectMocks
     private AgentsManifestLoader loader;
@@ -65,24 +65,23 @@ class AgentsManifestLoaderTest {
 
     @Test
     void shouldCreateNewAgentWhenNameNotFound() {
-        when(agentMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
-        // emulate ID assignment after insert
+        when(agentMapper.findByNameAndTenant("code-reviewer", "tenant-x")).thenReturn(null);
         doAnswer(inv -> {
             SfAgent created = inv.getArgument(0, SfAgent.class);
             created.setId(42L);
             return null;
-        }).when(agentConfigService).createAgent(any(SfAgent.class));
+        }).when(agentMapper).insert(any(SfAgent.class));
 
         Long resultId = loader.loadFromManifest(fullManifest, "tenant-x");
 
         assertThat(resultId).isEqualTo(42L);
         ArgumentCaptor<SfAgent> agentCap = ArgumentCaptor.forClass(SfAgent.class);
-        verify(agentConfigService).createAgent(agentCap.capture());
+        verify(agentMapper).insert(agentCap.capture());
         SfAgent saved = agentCap.getValue();
         assertThat(saved.getName()).isEqualTo("code-reviewer");
         assertThat(saved.getType()).isEqualTo("review");
         assertThat(saved.getDescription()).isEqualTo("Reviews code");
-        verify(agentConfigService, never()).updateAgent(any());
+        verify(agentMapper, never()).updateById(any());
     }
 
     @Test
@@ -91,18 +90,18 @@ class AgentsManifestLoaderTest {
         existing.setId(7L);
         existing.setName("code-reviewer");
         existing.setType("oldtype");
-        when(agentMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(existing);
+        when(agentMapper.findByNameAndTenant("code-reviewer", "tenant-x")).thenReturn(existing);
 
         Long resultId = loader.loadFromManifest(fullManifest, "tenant-x");
 
         assertThat(resultId).isEqualTo(7L);
         ArgumentCaptor<SfAgent> agentCap = ArgumentCaptor.forClass(SfAgent.class);
-        verify(agentConfigService).updateAgent(agentCap.capture());
+        verify(agentMapper).updateById(agentCap.capture());
         SfAgent updated = agentCap.getValue();
         assertThat(updated.getId()).isEqualTo(7L);
         assertThat(updated.getType()).isEqualTo("review");
         assertThat(updated.getDescription()).isEqualTo("Reviews code");
-        verify(agentConfigService, never()).createAgent(any());
+        verify(agentMapper, never()).insert(any());
     }
 
     @Test
@@ -111,32 +110,32 @@ class AgentsManifestLoaderTest {
                 "minimal", null, null, null, null, null, null, null, null, null,
                 List.of(), "Body"
         );
-        when(agentMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+        when(agentMapper.findByNameAndTenant("minimal", "tenant-x")).thenReturn(null);
         doAnswer(inv -> {
             inv.getArgument(0, SfAgent.class).setId(1L);
             return null;
-        }).when(agentConfigService).createAgent(any());
+        }).when(agentMapper).insert(any(SfAgent.class));
 
         loader.loadFromManifest(noType, "tenant-x");
 
         ArgumentCaptor<SfAgent> cap = ArgumentCaptor.forClass(SfAgent.class);
-        verify(agentConfigService).createAgent(cap.capture());
+        verify(agentMapper).insert(cap.capture());
         assertThat(cap.getValue().getType()).isEqualTo("general");
     }
 
     @Test
     void shouldSaveAgentConfigFromManifest() {
-        when(agentMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+        when(agentMapper.findByNameAndTenant("code-reviewer", "tenant-x")).thenReturn(null);
         doAnswer(inv -> {
             inv.getArgument(0, SfAgent.class).setId(99L);
             return null;
-        }).when(agentConfigService).createAgent(any());
-        when(agentConfigMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+        }).when(agentMapper).insert(any(SfAgent.class));
+        when(agentConfigMapper.selectOne(any())).thenReturn(null);
 
         loader.loadFromManifest(fullManifest, "tenant-x");
 
         ArgumentCaptor<SfAgentConfig> cap = ArgumentCaptor.forClass(SfAgentConfig.class);
-        verify(agentConfigService).saveAgentConfig(cap.capture());
+        verify(agentConfigMapper).insert(cap.capture());
         SfAgentConfig cfg = cap.getValue();
         assertThat(cfg.getAgentId()).isEqualTo(99L);
         assertThat(cfg.getModelId()).isEqualTo("claude-sonnet-4-6");
@@ -153,32 +152,33 @@ class AgentsManifestLoaderTest {
     void shouldUpdateExistingConfigInsteadOfInserting() {
         SfAgent existing = new SfAgent();
         existing.setId(5L);
-        when(agentMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(existing);
+        when(agentMapper.findByNameAndTenant("code-reviewer", "tenant-x")).thenReturn(existing);
         SfAgentConfig prev = new SfAgentConfig();
         prev.setId(50L);
         prev.setAgentId(5L);
-        when(agentConfigMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(prev);
+        when(agentConfigMapper.selectOne(any())).thenReturn(prev);
 
         loader.loadFromManifest(fullManifest, "tenant-x");
 
         ArgumentCaptor<SfAgentConfig> cap = ArgumentCaptor.forClass(SfAgentConfig.class);
-        verify(agentConfigService).saveAgentConfig(cap.capture());
+        verify(agentConfigMapper).updateById(cap.capture());
         assertThat(cap.getValue().getId()).isEqualTo(50L);
     }
 
     @Test
     void shouldReplaceToolBindings() {
-        when(agentMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+        when(agentMapper.findByNameAndTenant("code-reviewer", "tenant-x")).thenReturn(null);
         doAnswer(inv -> {
             inv.getArgument(0, SfAgent.class).setId(11L);
             return null;
-        }).when(agentConfigService).createAgent(any());
+        }).when(agentMapper).insert(any(SfAgent.class));
 
         loader.loadFromManifest(fullManifest, "tenant-x");
 
-        ArgumentCaptor<List<SfAgentToolBinding>> cap = ArgumentCaptor.forClass(List.class);
-        verify(agentConfigService).saveToolBindings(eq(11L), cap.capture());
-        List<SfAgentToolBinding> bindings = cap.getValue();
+        verify(toolBindingMapper).delete(any());
+        ArgumentCaptor<SfAgentToolBinding> cap = ArgumentCaptor.forClass(SfAgentToolBinding.class);
+        verify(toolBindingMapper, times(2)).insert(cap.capture());
+        List<SfAgentToolBinding> bindings = cap.getAllValues();
         assertThat(bindings).hasSize(2);
         assertThat(bindings.get(0).getToolName()).isEqualTo("file_read");
         assertThat(bindings.get(0).getToolType()).isEqualTo("builtin");
@@ -193,17 +193,16 @@ class AgentsManifestLoaderTest {
                 "no-tools", null, null, null, null, null, null, null, null, null,
                 List.of(), "Body"
         );
-        when(agentMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+        when(agentMapper.findByNameAndTenant("no-tools", "tenant-x")).thenReturn(null);
         doAnswer(inv -> {
             inv.getArgument(0, SfAgent.class).setId(1L);
             return null;
-        }).when(agentConfigService).createAgent(any());
+        }).when(agentMapper).insert(any(SfAgent.class));
 
         loader.loadFromManifest(empty, "tenant-x");
 
-        ArgumentCaptor<List<SfAgentToolBinding>> cap = ArgumentCaptor.forClass(List.class);
-        verify(agentConfigService).saveToolBindings(anyLong(), cap.capture());
-        assertThat(cap.getValue()).isEmpty();
+        verify(toolBindingMapper).delete(any());
+        verify(toolBindingMapper, never()).insert(any());
     }
 
     @Test
@@ -217,6 +216,130 @@ class AgentsManifestLoaderTest {
         assertThatThrownBy(() -> loader.loadFromManifest(fullManifest, "  "))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> loader.loadFromManifest(fullManifest, null))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // --- load(Path, String) tests ---
+
+    @Test
+    void shouldReturnEmptyReportForNullRepoRoot() {
+        LoadReport report = loader.load(null, "tenant-x");
+        assertThat(report.results()).isEmpty();
+        assertThat(report.okCount()).isEqualTo(0);
+        assertThat(report.failedCount()).isEqualTo(0);
+    }
+
+    @Test
+    void shouldReturnEmptyReportForNonExistentDir() {
+        LoadReport report = loader.load(Path.of("/does/not/exist"), "tenant-x");
+        assertThat(report.results()).isEmpty();
+    }
+
+    @Test
+    void shouldDiscoverAndLoadRootAgentsMd(@TempDir Path repoRoot) throws Exception {
+        Files.writeString(repoRoot.resolve("AGENTS.md"), """
+                ---
+                name: root-agent
+                ---
+                System prompt.
+                """);
+        when(agentMapper.findByNameAndTenant("root-agent", "tenant-x")).thenReturn(null);
+        doAnswer(inv -> {
+            inv.getArgument(0, SfAgent.class).setId(100L);
+            return null;
+        }).when(agentMapper).insert(any(SfAgent.class));
+
+        LoadReport report = loader.load(repoRoot, "tenant-x");
+
+        assertThat(report.okCount()).isEqualTo(1);
+        assertThat(report.failedCount()).isEqualTo(0);
+        assertThat(report.results().get(0).name()).isEqualTo("root-agent");
+        assertThat(report.results().get(0).agentId()).isEqualTo(100L);
+    }
+
+    @Test
+    void shouldDiscoverDotAgentsDir(@TempDir Path repoRoot) throws Exception {
+        Path dotAgents = Files.createDirectory(repoRoot.resolve(".agents"));
+        Files.writeString(dotAgents.resolve("reviewer.md"), """
+                ---
+                name: reviewer
+                ---
+                Prompt.
+                """);
+        when(agentMapper.findByNameAndTenant("reviewer", "tenant-x")).thenReturn(null);
+        doAnswer(inv -> {
+            inv.getArgument(0, SfAgent.class).setId(200L);
+            return null;
+        }).when(agentMapper).insert(any(SfAgent.class));
+
+        LoadReport report = loader.load(repoRoot, "tenant-x");
+
+        assertThat(report.okCount()).isEqualTo(1);
+        assertThat(report.results().get(0).name()).isEqualTo("reviewer");
+    }
+
+    @Test
+    void shouldDiscoverAgentsGlob(@TempDir Path repoRoot) throws Exception {
+        Path agents = Files.createDirectories(repoRoot.resolve("agents"));
+        Path sub = Files.createDirectory(agents.resolve("sub"));
+        Files.writeString(agents.resolve("a.md"), """
+                ---
+                name: a
+                ---
+                Prompt A.
+                """);
+        Files.writeString(sub.resolve("b.md"), """
+                ---
+                name: b
+                ---
+                Prompt B.
+                """);
+        when(agentMapper.findByNameAndTenant(any(), eq("tenant-x"))).thenReturn(null);
+        doAnswer(inv -> {
+            inv.getArgument(0, SfAgent.class).setId(300L);
+            return null;
+        }).when(agentMapper).insert(any(SfAgent.class));
+
+        LoadReport report = loader.load(repoRoot, "tenant-x");
+
+        assertThat(report.okCount()).isEqualTo(2);
+        List<String> names = report.results().stream()
+                .map(LoadResult::name)
+                .toList();
+        assertThat(names).containsExactlyInAnyOrder("a", "b");
+    }
+
+    @Test
+    void shouldNotFailWhenOneFileIsBroken(@TempDir Path repoRoot) throws Exception {
+        Files.writeString(repoRoot.resolve("AGENTS.md"), """
+                ---
+                name: good
+                ---
+                OK.
+                """);
+        Path dotAgents = Files.createDirectory(repoRoot.resolve(".agents"));
+        Files.writeString(dotAgents.resolve("bad.md"), "no frontmatter at all");
+        when(agentMapper.findByNameAndTenant("good", "tenant-x")).thenReturn(null);
+        doAnswer(inv -> {
+            inv.getArgument(0, SfAgent.class).setId(1L);
+            return null;
+        }).when(agentMapper).insert(any(SfAgent.class));
+
+        LoadReport report = loader.load(repoRoot, "tenant-x");
+
+        assertThat(report.okCount()).isEqualTo(1);
+        assertThat(report.failedCount()).isEqualTo(1);
+    }
+
+    @Test
+    void shouldRejectNullTenantForLoad() {
+        assertThatThrownBy(() -> loader.load(Path.of("."), null))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void shouldRejectBlankTenantForLoad() {
+        assertThatThrownBy(() -> loader.load(Path.of("."), "   "))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

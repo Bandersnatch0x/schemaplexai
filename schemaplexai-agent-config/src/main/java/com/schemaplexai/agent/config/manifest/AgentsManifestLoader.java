@@ -6,16 +6,24 @@ import com.schemaplexai.agent.config.entity.SfAgentConfig;
 import com.schemaplexai.agent.config.entity.SfAgentToolBinding;
 import com.schemaplexai.agent.config.mapper.SfAgentConfigMapper;
 import com.schemaplexai.agent.config.mapper.SfAgentMapper;
-import com.schemaplexai.agent.config.service.AgentConfigService;
+import com.schemaplexai.agent.config.mapper.SfAgentToolBindingMapper;
 import com.schemaplexai.common.context.TenantContextHolder;
 import com.schemaplexai.common.manifest.AgentsManifest;
+import com.schemaplexai.common.manifest.AgentsManifestParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.FileVisitOption;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * AGENTS.md → 数据库的装载器。
@@ -56,10 +64,51 @@ public class AgentsManifestLoader {
 
     private final SfAgentMapper agentMapper;
     private final SfAgentConfigMapper agentConfigMapper;
-    private final AgentConfigService agentConfigService;
+    private final SfAgentToolBindingMapper toolBindingMapper;
 
     /**
-     * 从 manifest 加载 agent 配置到数据库。
+     * 从仓库根目录发现并加载所有 AGENTS.md。
+     *
+     * <p>发现路径（按优先级）：
+     * <ol>
+     *   <li>{@code repoRoot/AGENTS.md}</li>
+     *   <li>{@code repoRoot/.agents/*.md}</li>
+     *   <li>{@code repoRoot/agents/&#42;&#42;/*.md}</li>
+     * </ol>
+     *
+     * @param repoRoot 仓库根目录
+     * @param tenantId 目标租户（不可为 null/blank）
+     * @return 加载报告（不会抛异常；单文件失败记录到 {@link LoadResult#error}）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public LoadReport load(Path repoRoot, String tenantId) {
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new IllegalArgumentException("tenantId must not be null or blank");
+        }
+        if (repoRoot == null || !Files.isDirectory(repoRoot)) {
+            return new LoadReport(List.of());
+        }
+
+        String previousTenant = TenantContextHolder.getTenantId();
+        TenantContextHolder.setTenantId(tenantId);
+        try {
+            List<Path> files = discoverManifestFiles(repoRoot);
+            List<LoadResult> results = new ArrayList<>(files.size());
+            for (Path file : files) {
+                results.add(loadOne(file));
+            }
+            return new LoadReport(results);
+        } finally {
+            if (previousTenant == null) {
+                TenantContextHolder.clear();
+            } else {
+                TenantContextHolder.setTenantId(previousTenant);
+            }
+        }
+    }
+
+    /**
+     * 从单个已解析的 manifest 加载 agent 配置到数据库。
      *
      * @param manifest 已解析的 manifest（不可为 null）
      * @param tenantId 目标租户（不可为 null/blank）
@@ -93,23 +142,74 @@ public class AgentsManifestLoader {
         }
     }
 
+    // --- discovery ---
+
+    private List<Path> discoverManifestFiles(Path repoRoot) {
+        List<Path> files = new ArrayList<>();
+
+        // (a) repoRoot/AGENTS.md
+        Path rootManifest = repoRoot.resolve("AGENTS.md");
+        if (Files.isRegularFile(rootManifest)) {
+            files.add(rootManifest);
+        }
+
+        // (b) repoRoot/.agents/*.md
+        Path dotAgentsDir = repoRoot.resolve(".agents");
+        if (Files.isDirectory(dotAgentsDir)) {
+            try (Stream<Path> stream = Files.list(dotAgentsDir)) {
+                stream.filter(Files::isRegularFile)
+                        .filter(p -> p.toString().endsWith(".md"))
+                        .forEach(files::add);
+            } catch (IOException e) {
+                log.warn("Failed to list {}: {}", dotAgentsDir, e.getMessage());
+            }
+        }
+
+        // (c) repoRoot/agents/**/*.md
+        Path agentsDir = repoRoot.resolve("agents");
+        if (Files.isDirectory(agentsDir)) {
+            try (Stream<Path> stream = Files.walk(agentsDir, FileVisitOption.FOLLOW_LINKS)) {
+                stream.filter(Files::isRegularFile)
+                        .filter(p -> p.toString().endsWith(".md"))
+                        .forEach(files::add);
+            } catch (IOException e) {
+                log.warn("Failed to walk {}: {}", agentsDir, e.getMessage());
+            }
+        }
+
+        return files.stream().distinct().collect(Collectors.toList());
+    }
+
+    private LoadResult loadOne(Path file) {
+        try {
+            String content = Files.readString(file);
+            AgentsManifestParser parser = new AgentsManifestParser();
+            AgentsManifest manifest = parser.parse(content);
+            Long agentId = loadFromManifest(manifest, TenantContextHolder.getTenantId());
+            return LoadResult.ok(file, agentId, manifest.name());
+        } catch (Exception e) {
+            String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            log.warn("Failed to load manifest {}: {}", file, msg);
+            return LoadResult.failed(file, msg);
+        }
+    }
+
+    // --- upsert ---
+
     private SfAgent upsertAgent(AgentsManifest manifest) {
-        SfAgent existing = agentMapper.selectOne(
-                new LambdaQueryWrapper<SfAgent>()
-                        .eq(SfAgent::getName, manifest.name())
-        );
+        SfAgent existing = agentMapper.findByNameAndTenant(manifest.name(), TenantContextHolder.getTenantId());
         if (existing == null) {
             SfAgent fresh = new SfAgent();
             fresh.setName(manifest.name());
             fresh.setType(manifest.type() != null ? manifest.type() : DEFAULT_AGENT_TYPE);
             fresh.setStatus(DEFAULT_STATUS);
             fresh.setDescription(manifest.description());
-            agentConfigService.createAgent(fresh);
+            agentMapper.insert(fresh);
             return fresh;
         }
         existing.setType(manifest.type() != null ? manifest.type() : DEFAULT_AGENT_TYPE);
         existing.setDescription(manifest.description());
-        agentConfigService.updateAgent(existing);
+        agentMapper.updateById(existing);
         return existing;
     }
 
@@ -128,10 +228,18 @@ public class AgentsManifestLoader {
         cfg.setModelId(manifest.modelId());
         cfg.setTemperature(manifest.temperature());
         cfg.setExecutionMode(manifest.executionMode());
-        agentConfigService.saveAgentConfig(cfg);
+        if (cfg.getId() == null) {
+            agentConfigMapper.insert(cfg);
+        } else {
+            agentConfigMapper.updateById(cfg);
+        }
     }
 
     private void replaceToolBindings(Long agentId, AgentsManifest manifest) {
+        toolBindingMapper.delete(
+                new LambdaQueryWrapper<SfAgentToolBinding>()
+                        .eq(SfAgentToolBinding::getAgentId, agentId)
+        );
         List<SfAgentToolBinding> bindings = new ArrayList<>(manifest.tools().size());
         for (AgentsManifest.ToolBinding tool : manifest.tools()) {
             SfAgentToolBinding binding = new SfAgentToolBinding();
@@ -141,6 +249,8 @@ public class AgentsManifestLoader {
             binding.setConfigJson(tool.configJson());
             bindings.add(binding);
         }
-        agentConfigService.saveToolBindings(agentId, bindings);
+        for (SfAgentToolBinding binding : bindings) {
+            toolBindingMapper.insert(binding);
+        }
     }
 }

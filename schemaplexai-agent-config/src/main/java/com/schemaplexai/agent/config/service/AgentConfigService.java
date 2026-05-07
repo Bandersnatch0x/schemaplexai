@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.schemaplexai.agent.config.entity.SfAgent;
 import com.schemaplexai.agent.config.entity.SfAgentConfig;
 import com.schemaplexai.agent.config.entity.SfAgentToolBinding;
+import com.schemaplexai.agent.config.manifest.AgentsManifestLoader;
+import com.schemaplexai.agent.config.manifest.LoadReport;
 import com.schemaplexai.agent.config.mapper.SfAgentConfigMapper;
 import com.schemaplexai.agent.config.mapper.SfAgentMapper;
 import com.schemaplexai.agent.config.mapper.SfAgentToolBindingMapper;
@@ -13,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.file.Path;
 import java.util.List;
 
 @Service
@@ -22,6 +25,12 @@ public class AgentConfigService {
     private final SfAgentMapper agentMapper;
     private final SfAgentConfigMapper agentConfigMapper;
     private final SfAgentToolBindingMapper toolBindingMapper;
+    private final AgentsManifestLoader manifestLoader;
+
+    @Transactional(rollbackFor = Exception.class)
+    public LoadReport loadFromManifest(Path repoRoot, String tenantId) {
+        return manifestLoader.load(repoRoot, tenantId);
+    }
 
     public SfAgent getAgent(Long id) {
         SfAgent agent = agentMapper.selectById(id);
