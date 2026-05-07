@@ -18,6 +18,5 @@ public class SfAgentRole extends BaseEntity {
 
     private String overlay;
 
-    /** 0=draft, 1=active, 2=archived */
     private Integer status;
 }

@@ -20,6 +20,5 @@ public class SfAgentSkill extends BaseEntity {
 
     private Integer version;
 
-    /** 0=draft, 1=active, 2=archived */
     private Integer status;
 }
