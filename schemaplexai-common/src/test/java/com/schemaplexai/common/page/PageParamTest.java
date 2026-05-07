@@ -20,4 +20,21 @@ class PageParamTest {
         param.setSize(20L);
         assertEquals(40, param.getOffset());
     }
+
+    @Test
+    void offsetWithCurrentOne_returnsZero() {
+        PageParam param = new PageParam();
+        param.setCurrent(1L);
+        param.setSize(10L);
+        assertEquals(0, param.getOffset());
+    }
+
+    @Test
+    void gettersAndSetters_workCorrectly() {
+        PageParam param = new PageParam();
+        param.setCurrent(5L);
+        param.setSize(50L);
+        assertEquals(5L, param.getCurrent());
+        assertEquals(50L, param.getSize());
+    }
 }

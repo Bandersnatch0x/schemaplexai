@@ -32,4 +32,30 @@ class ResultTest {
         Result<Void> result = Result.error(ResultCode.NOT_FOUND);
         assertEquals(404, result.getCode());
     }
+
+    @Test
+    void isSuccess_withCode200_returnsTrue() {
+        Result<String> result = Result.success("ok");
+        assertTrue(result.isSuccess());
+    }
+
+    @Test
+    void isSuccess_withCode500_returnsFalse() {
+        Result<Void> result = Result.error("fail");
+        assertFalse(result.isSuccess());
+    }
+
+    @Test
+    void error_withCodeAndMessage_returnsCorrectValues() {
+        Result<Void> result = Result.error(418, "I'm a teapot");
+        assertEquals(418, result.getCode());
+        assertEquals("I'm a teapot", result.getMessage());
+    }
+
+    @Test
+    void timestamp_isSetOnCreation() {
+        Result<Void> result = new Result<>();
+        assertNotNull(result.getTimestamp());
+        assertTrue(result.getTimestamp() > 0);
+    }
 }
