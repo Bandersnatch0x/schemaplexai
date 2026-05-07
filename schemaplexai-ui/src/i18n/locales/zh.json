@@ -187,6 +187,36 @@
     "timelineTitle": "运营时间线",
     "fetchError": "获取运营数据失败"
   },
+  "workflowCenter": {
+    "title": "工作流中心",
+    "newWorkflow": "新建工作流",
+    "searchPlaceholder": "搜索工作流",
+    "name": "名称",
+    "description": "描述",
+    "status": "状态",
+    "updatedAt": "更新时间",
+    "action": "操作",
+    "run": "运行",
+    "fetchError": "获取工作流列表失败",
+    "runSuccess": "工作流已启动",
+    "runError": "启动工作流失败"
+  },
+  "systemSettings": {
+    "title": "系统设置",
+    "general": "通用设置",
+    "modelConfig": "模型配置",
+    "notification": "通知设置",
+    "platformName": "平台名称",
+    "enableRegister": "是否开启注册",
+    "defaultModel": "默认模型",
+    "smtpHost": "邮件服务器",
+    "smtpPort": "邮件端口",
+    "fromEmail": "发送邮箱",
+    "save": "保存",
+    "saveSuccess": "保存成功",
+    "saveError": "保存失败",
+    "fetchError": "获取系统配置失败"
+  },
   "agentManager": {
     "title": "Agent 管理",
     "newAgent": "新建 Agent",

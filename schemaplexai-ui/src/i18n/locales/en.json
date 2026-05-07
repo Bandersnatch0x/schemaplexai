@@ -187,6 +187,36 @@
     "timelineTitle": "Ops Timeline",
     "fetchError": "Failed to fetch ops data"
   },
+  "workflowCenter": {
+    "title": "Workflow Center",
+    "newWorkflow": "New Workflow",
+    "searchPlaceholder": "Search workflows",
+    "name": "Name",
+    "description": "Description",
+    "status": "Status",
+    "updatedAt": "Updated At",
+    "action": "Action",
+    "run": "Run",
+    "fetchError": "Failed to fetch workflow list",
+    "runSuccess": "Workflow started",
+    "runError": "Failed to start workflow"
+  },
+  "systemSettings": {
+    "title": "System Settings",
+    "general": "General",
+    "modelConfig": "Model Config",
+    "notification": "Notifications",
+    "platformName": "Platform Name",
+    "enableRegister": "Enable Registration",
+    "defaultModel": "Default Model",
+    "smtpHost": "SMTP Host",
+    "smtpPort": "SMTP Port",
+    "fromEmail": "From Email",
+    "save": "Save",
+    "saveSuccess": "Saved successfully",
+    "saveError": "Save failed",
+    "fetchError": "Failed to fetch system config"
+  },
   "agentManager": {
     "title": "Agent Management",
     "newAgent": "New Agent",

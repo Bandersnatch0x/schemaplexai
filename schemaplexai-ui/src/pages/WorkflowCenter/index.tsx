@@ -1,11 +1,13 @@
 import { Card, Table, Button, Space, Tag, Input, message } from 'antd'
 import { PlusOutlined, PlayCircleOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { getWorkflowList, runWorkflow } from '@/api/workflow'
 import type { Workflow } from '@/api/workflow'
 import './WorkflowCenter.css'
 
 export default function WorkflowCenter() {
+  const { t } = useTranslation()
   const [keyword, setKeyword] = useState('')
   const [data, setData] = useState<Workflow[]>([])
   const [loading, setLoading] = useState(false)
@@ -24,7 +26,7 @@ export default function WorkflowCenter() {
       setData(res.list)
       setTotal(res.total)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '获取工作流列表失败'
+      const msg = err instanceof Error ? err.message : t('workflowCenter.fetchError')
       message.error(msg)
       setData([])
       setTotal(0)
@@ -36,18 +38,18 @@ export default function WorkflowCenter() {
   const handleRun = async (id: string) => {
     try {
       await runWorkflow(id)
-      message.success('工作流已启动')
+      message.success(t('workflowCenter.runSuccess'))
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '启动工作流失败'
+      const msg = err instanceof Error ? err.message : t('workflowCenter.runError')
       message.error(msg)
     }
   }
 
   const columns = [
-    { title: '名称', dataIndex: 'name', key: 'name' },
-    { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
+    { title: t('workflowCenter.name'), dataIndex: 'name', key: 'name' },
+    { title: t('workflowCenter.description'), dataIndex: 'description', key: 'description', ellipsis: true },
     {
-      title: '状态',
+      title: t('workflowCenter.status'),
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => (
@@ -56,15 +58,15 @@ export default function WorkflowCenter() {
         </Tag>
       ),
     },
-    { title: '更新时间', dataIndex: 'updatedAt', key: 'updatedAt' },
+    { title: t('workflowCenter.updatedAt'), dataIndex: 'updatedAt', key: 'updatedAt' },
     {
-      title: '操作',
+      title: t('workflowCenter.action'),
       key: 'action',
       render: (_: unknown, record: Workflow) => (
         <Space>
-          <Button icon={<PlayCircleOutlined />} size="small" type="primary" ghost onClick={() => handleRun(record.id)}>运行</Button>
-          <Button icon={<EditOutlined />} size="small">编辑</Button>
-          <Button icon={<DeleteOutlined />} size="small" danger>删除</Button>
+          <Button icon={<PlayCircleOutlined />} size="small" type="primary" ghost onClick={() => handleRun(record.id)}>{t('workflowCenter.run')}</Button>
+          <Button icon={<EditOutlined />} size="small">{t('common.edit')}</Button>
+          <Button icon={<DeleteOutlined />} size="small" danger>{t('common.delete')}</Button>
         </Space>
       ),
     },
@@ -74,16 +76,16 @@ export default function WorkflowCenter() {
     <div className="workflow-page">
       <Card
         className="workflow-card"
-        title="工作流中心"
+        title={t('workflowCenter.title')}
         extra={
           <Button type="primary" icon={<PlusOutlined />}>
-            新建工作流
+            {t('workflowCenter.newWorkflow')}
           </Button>
         }
       >
         <Input.Search
           className="workflow-search"
-          placeholder="搜索工作流"
+          placeholder={t('workflowCenter.searchPlaceholder')}
           allowClear
           onSearch={(v) => { setKeyword(v); setPage(1) }}
         />

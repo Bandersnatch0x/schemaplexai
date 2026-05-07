@@ -1,5 +1,6 @@
 import { Card, Form, Input, Button, Tabs, Switch, message } from 'antd'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { getSystemConfigs, updateSystemConfig } from '@/api/system'
 import type { SystemConfig } from '@/api/system'
 import './SystemSettings.css'
@@ -7,6 +8,7 @@ import './SystemSettings.css'
 const { TabPane } = Tabs
 
 export default function SystemSettings() {
+  const { t } = useTranslation()
   const [form] = Form.useForm()
   const [configs, setConfigs] = useState<SystemConfig[]>([])
   const [loading, setLoading] = useState(false)
@@ -30,7 +32,7 @@ export default function SystemSettings() {
       })
       form.setFieldsValue(initialValues)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '获取系统配置失败'
+      const msg = err instanceof Error ? err.message : t('systemSettings.fetchError')
       message.error(msg)
     } finally {
       setLoading(false)
@@ -45,59 +47,59 @@ export default function SystemSettings() {
         return config ? updateSystemConfig(config.id, String(value)) : Promise.resolve()
       })
       await Promise.all(updates)
-      message.success('保存成功')
+      message.success(t('systemSettings.saveSuccess'))
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '保存失败'
+      const msg = err instanceof Error ? err.message : t('systemSettings.saveError')
       message.error(msg)
     }
   }
 
   return (
     <div className="settings-page">
-      <Card title="系统设置" loading={loading}>
+      <Card title={t('systemSettings.title')} loading={loading}>
         <Tabs defaultActiveKey="general">
-          <TabPane tab="通用设置" key="general">
+          <TabPane tab={t('systemSettings.general')} key="general">
             <Form form={form} layout="vertical" className="settings-form">
-              <Form.Item label="平台名称" name="platformName" initialValue="SchemaPlexAI">
+              <Form.Item label={t('systemSettings.platformName')} name="platformName" initialValue="SchemaPlexAI">
                 <Input />
               </Form.Item>
               <Form.Item label="Logo URL" name="logoUrl">
                 <Input />
               </Form.Item>
-              <Form.Item label="是否开启注册" name="enableRegister" valuePropName="checked" initialValue={true}>
+              <Form.Item label={t('systemSettings.enableRegister')} name="enableRegister" valuePropName="checked" initialValue={true}>
                 <Switch />
               </Form.Item>
               <Form.Item>
-                <Button className="settings-save-btn" onClick={handleSave}>保存</Button>
+                <Button className="settings-save-btn" onClick={handleSave}>{t('systemSettings.save')}</Button>
               </Form.Item>
             </Form>
           </TabPane>
-          <TabPane tab="模型配置" key="model">
+          <TabPane tab={t('systemSettings.modelConfig')} key="model">
             <Form form={form} layout="vertical" className="settings-form">
-              <Form.Item label="默认模型" name="defaultModel" initialValue="gpt-4">
+              <Form.Item label={t('systemSettings.defaultModel')} name="defaultModel" initialValue="gpt-4">
                 <Input />
               </Form.Item>
               <Form.Item label="API Key" name="apiKey">
                 <Input.Password />
               </Form.Item>
               <Form.Item>
-                <Button className="settings-save-btn" onClick={handleSave}>保存</Button>
+                <Button className="settings-save-btn" onClick={handleSave}>{t('systemSettings.save')}</Button>
               </Form.Item>
             </Form>
           </TabPane>
-          <TabPane tab="通知设置" key="notification">
+          <TabPane tab={t('systemSettings.notification')} key="notification">
             <Form form={form} layout="vertical" className="settings-form">
-              <Form.Item label="邮件服务器" name="smtpHost">
+              <Form.Item label={t('systemSettings.smtpHost')} name="smtpHost">
                 <Input />
               </Form.Item>
-              <Form.Item label="邮件端口" name="smtpPort" initialValue={587}>
+              <Form.Item label={t('systemSettings.smtpPort')} name="smtpPort" initialValue={587}>
                 <Input type="number" />
               </Form.Item>
-              <Form.Item label="发送邮箱" name="fromEmail">
+              <Form.Item label={t('systemSettings.fromEmail')} name="fromEmail">
                 <Input />
               </Form.Item>
               <Form.Item>
-                <Button className="settings-save-btn" onClick={handleSave}>保存</Button>
+                <Button className="settings-save-btn" onClick={handleSave}>{t('systemSettings.save')}</Button>
               </Form.Item>
             </Form>
           </TabPane>
