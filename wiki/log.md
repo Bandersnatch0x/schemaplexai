@@ -14,6 +14,8 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
+## 2026-05-07 — docs(agent-engine-core-completion): mark all 18 tasks completed
+e766e7a
 ## 2026-05-07 — docs(spec): hybrid mode integration design - Skill/Role + Sub-agent + Compaction + MCP + Sandbox
 889dd43
 ## 2026-05-07 — docs(v1-release-readiness): mark all tasks completed + update delivery report
