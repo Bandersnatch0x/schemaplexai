@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Table, Button, Space, Tag, Modal, Form, Input, Select, message, Card, Drawer } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { getAgentList, createAgent, updateAgent, deleteAgent } from '@/api/agent'
 import { useAgentStore } from '@/stores/agentStore'
 import type { Agent } from '@/types'
@@ -10,6 +11,7 @@ import './AgentManager.css'
 const { Option } = Select
 
 export default function AgentManager() {
+  const { t } = useTranslation()
   const { agents, setAgents, loading, setLoading, updateAgentInList, removeAgentFromList } = useAgentStore()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
@@ -29,7 +31,7 @@ export default function AgentManager() {
       setAgents(data.list)
       setTotal(data.total)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '获取 Agent 列表失败'
+      const msg = err instanceof Error ? err.message : t('agentManager.fetchError')
       message.error(msg)
       setAgents([])
       setTotal(0)
@@ -43,57 +45,76 @@ export default function AgentManager() {
       if (editingAgent) {
         const updated = await updateAgent(editingAgent.id, values)
         updateAgentInList(updated)
-        message.success('更新成功')
+        message.success(t('agentManager.updateSuccess'))
       } else {
         const created = await createAgent(values)
         setAgents([...agents, created])
         setTotal(total + 1)
-        message.success('创建成功')
+        message.success(t('agentManager.createSuccess'))
       }
       setIsModalOpen(false)
       form.resetFields()
       setEditingAgent(null)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '操作失败'
+      const msg = err instanceof Error ? err.message : t('agentManager.operationError')
       message.error(msg)
     }
   }
 
   const handleDelete = async (id: string) => {
     Modal.confirm({
-      title: '确认删除?',
-      content: '删除后不可恢复',
+      title: t('agentManager.confirmDelete'),
+      content: t('agentManager.deleteWarning'),
       onOk: async () => {
         try {
           await deleteAgent(id)
           removeAgentFromList(id)
           setTotal(total - 1)
-          message.success('删除成功')
+          message.success(t('agentManager.deleteSuccess'))
         } catch (err) {
-          const msg = err instanceof Error ? err.message : '删除失败'
+          const msg = err instanceof Error ? err.message : t('agentManager.deleteError')
           message.error(msg)
         }
       },
     })
   }
 
+  const typeMap: Record<string, string> = {
+    review: t('agentManager.typeReview'),
+    test: t('agentManager.typeTest'),
+    doc: t('agentManager.typeDoc'),
+    chat: t('agentManager.typeChat'),
+    custom: t('agentManager.typeCustom'),
+  }
+
+  const statusMap: Record<string, string> = {
+    active: t('agentManager.statusActive'),
+    inactive: t('agentManager.statusInactive'),
+    draft: t('agentManager.statusDraft'),
+  }
+
   const columns = [
-    { title: '名称', dataIndex: 'name', key: 'name' },
-    { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
-    { title: '类型', dataIndex: 'type', key: 'type' },
+    { title: t('agentManager.name'), dataIndex: 'name', key: 'name' },
+    { title: t('agentManager.description'), dataIndex: 'description', key: 'description', ellipsis: true },
     {
-      title: '状态',
+      title: t('agentManager.type'),
+      dataIndex: 'type',
+      key: 'type',
+      render: (type: string) => typeMap[type] || type,
+    },
+    {
+      title: t('agentManager.status'),
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => (
         <Tag className={`agent-mgr-status-${status}`}>
-          {status}
+          {statusMap[status] || status}
         </Tag>
       ),
     },
-    { title: '更新时间', dataIndex: 'updatedAt', key: 'updatedAt' },
+    { title: t('agentManager.updatedAt'), dataIndex: 'updatedAt', key: 'updatedAt' },
     {
-      title: '操作',
+      title: t('agentManager.action'),
       key: 'action',
       render: (_: unknown, record: Agent) => (
         <Space>
@@ -108,17 +129,17 @@ export default function AgentManager() {
   return (
     <div className="agent-mgr-container">
       <Card
-        title="Agent 管理"
+        title={t('agentManager.title')}
         className="agent-mgr-card"
         extra={
           <Button type="primary" icon={<PlusOutlined />} className="agent-mgr-btn-create" onClick={() => { setEditingAgent(null); form.resetFields(); setIsModalOpen(true) }}>
-            新建 Agent
+            {t('agentManager.newAgent')}
           </Button>
         }
       >
         <Space className="agent-mgr-search">
           <Input.Search
-            placeholder="搜索 Agent"
+            placeholder={t('agentManager.searchPlaceholder')}
             allowClear
             onSearch={(v) => setQuery({ ...query, keyword: v, page: 1 })}
             style={{ width: 300 }}
@@ -140,7 +161,7 @@ export default function AgentManager() {
       </Card>
 
       <Modal
-        title={editingAgent ? '编辑 Agent' : '新建 Agent'}
+        title={editingAgent ? t('agentManager.editAgent') : t('agentManager.newAgent')}
         open={isModalOpen}
         onOk={() => form.submit()}
         onCancel={() => { setIsModalOpen(false); form.resetFields(); setEditingAgent(null) }}
@@ -148,46 +169,46 @@ export default function AgentManager() {
         className="agent-mgr-modal"
       >
         <Form form={form} onFinish={handleSubmit} layout="vertical">
-          <Form.Item name="name" label="名称" rules={[{ required: true }]}>
+          <Form.Item name="name" label={t('agentManager.name')} rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="description" label="描述">
+          <Form.Item name="description" label={t('agentManager.description')}>
             <Input.TextArea rows={3} />
           </Form.Item>
-          <Form.Item name="type" label="类型" rules={[{ required: true }]}>
-            <Select placeholder="选择类型">
-              <Option value="review">代码审查</Option>
-              <Option value="test">测试生成</Option>
-              <Option value="doc">文档编写</Option>
-              <Option value="chat">对话</Option>
-              <Option value="custom">自定义</Option>
+          <Form.Item name="type" label={t('agentManager.type')} rules={[{ required: true }]}>
+            <Select placeholder={t('agentManager.selectType')}>
+              <Option value="review">{t('agentManager.typeReview')}</Option>
+              <Option value="test">{t('agentManager.typeTest')}</Option>
+              <Option value="doc">{t('agentManager.typeDoc')}</Option>
+              <Option value="chat">{t('agentManager.typeChat')}</Option>
+              <Option value="custom">{t('agentManager.typeCustom')}</Option>
             </Select>
           </Form.Item>
-          <Form.Item name="status" label="状态" rules={[{ required: true }]}>
-            <Select placeholder="选择状态">
-              <Option value="active">活跃</Option>
-              <Option value="inactive">停用</Option>
-              <Option value="draft">草稿</Option>
+          <Form.Item name="status" label={t('agentManager.status')} rules={[{ required: true }]}>
+            <Select placeholder={t('agentManager.selectStatus')}>
+              <Option value="active">{t('agentManager.statusActive')}</Option>
+              <Option value="inactive">{t('agentManager.statusInactive')}</Option>
+              <Option value="draft">{t('agentManager.statusDraft')}</Option>
             </Select>
           </Form.Item>
         </Form>
       </Modal>
 
-      <Drawer title="Agent 详情" width={480} open={!!detailAgent} onClose={() => setDetailAgent(null)} className="agent-mgr-drawer">
+      <Drawer title={t('agentManager.detailTitle')} width={480} open={!!detailAgent} onClose={() => setDetailAgent(null)} className="agent-mgr-drawer">
         {detailAgent && (
           <div className="agent-mgr-detail">
-            <p><strong>ID:</strong> {detailAgent.id}</p>
-            <p><strong>名称:</strong> {detailAgent.name}</p>
-            <p><strong>描述:</strong> {detailAgent.description || '-'}</p>
-            <p><strong>类型:</strong> {detailAgent.type}</p>
-            <p><strong>状态:</strong> {detailAgent.status}</p>
-            <p><strong>创建时间:</strong> {detailAgent.createdAt}</p>
-            <p><strong>更新时间:</strong> {detailAgent.updatedAt}</p>
+            <p><strong>{t('agentManager.id')}:</strong> {detailAgent.id}</p>
+            <p><strong>{t('agentManager.name')}:</strong> {detailAgent.name}</p>
+            <p><strong>{t('agentManager.description')}:</strong> {detailAgent.description || '-'}</p>
+            <p><strong>{t('agentManager.type')}:</strong> {typeMap[detailAgent.type] || detailAgent.type}</p>
+            <p><strong>{t('agentManager.status')}:</strong> {statusMap[detailAgent.status] || detailAgent.status}</p>
+            <p><strong>{t('agentManager.createdAt')}:</strong> {detailAgent.createdAt}</p>
+            <p><strong>{t('agentManager.updatedAt')}:</strong> {detailAgent.updatedAt}</p>
             {detailAgent.modelConfig && (
               <div className="agent-mgr-detail-section">
-                <p><strong>模型:</strong> {detailAgent.modelConfig.model}</p>
-                <p><strong>Temperature:</strong> {detailAgent.modelConfig.temperature}</p>
-                <p><strong>Max Tokens:</strong> {detailAgent.modelConfig.maxTokens}</p>
+                <p><strong>{t('agentManager.model')}:</strong> {detailAgent.modelConfig.model}</p>
+                <p><strong>{t('agentManager.temperature')}:</strong> {detailAgent.modelConfig.temperature}</p>
+                <p><strong>{t('agentManager.maxTokens')}:</strong> {detailAgent.modelConfig.maxTokens}</p>
               </div>
             )}
           </div>

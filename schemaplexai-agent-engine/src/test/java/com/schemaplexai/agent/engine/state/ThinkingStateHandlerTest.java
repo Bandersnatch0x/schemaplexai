@@ -2,6 +2,8 @@ package com.schemaplexai.agent.engine.state;
 
 import com.schemaplexai.agent.engine.context.ContextInjector;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
+import com.schemaplexai.agent.engine.evaluation.ValidationResult;
+import com.schemaplexai.agent.engine.guardrails.GuardrailsEngine;
 import com.schemaplexai.agent.engine.loop.AgentLoopDetectionService;
 import com.schemaplexai.agent.engine.loop.LoopDetectionResult;
 import com.schemaplexai.agent.engine.memory.CompositeChatMemoryStore;
@@ -22,6 +24,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class ThinkingStateHandlerTest {
@@ -42,6 +45,9 @@ class ThinkingStateHandlerTest {
     private ModelResolver modelResolver;
 
     @Mock
+    private GuardrailsEngine guardrailsEngine;
+
+    @Mock
     private AgentStateMachine stateMachine;
 
     @InjectMocks
@@ -56,6 +62,9 @@ class ThinkingStateHandlerTest {
         execution.setAgentId(42L);
         execution.setConversationId("conv-123");
         execution.setTokenBudgetJson("32000,4096,0,0");
+
+        // Default: guardrails pass everything (lenient because not all tests exercise the full handle flow)
+        lenient().when(guardrailsEngine.validateInput(anyString())).thenReturn(ValidationResult.valid());
     }
 
     @Test
@@ -244,5 +253,59 @@ class ThinkingStateHandlerTest {
 
         verify(modelResolver, times(1)).resolve(execution);
         verify(modelRouter, times(1)).generateWithFallback(anyString(), eq("claude-3-sonnet"), anyDouble());
+    }
+
+    @Test
+    void handleShouldValidateInputWithGuardrailsBeforeLlmCall() {
+        when(chatMemoryStore.loadMessages("conv-123")).thenReturn(List.of());
+        when(modelResolver.resolve(execution)).thenReturn("gpt-4");
+        when(modelRouter.generateWithFallback(anyString(), anyString(), anyDouble()))
+                .thenReturn("Direct answer");
+
+        thinkingStateHandler.handle(stateMachine, execution);
+
+        verify(guardrailsEngine, times(1)).validateInput(anyString());
+    }
+
+    @Test
+    void handleShouldTransitionToGateBlockedWhenGuardrailsBlockInput() {
+        when(chatMemoryStore.loadMessages("conv-123")).thenReturn(List.of());
+        when(guardrailsEngine.validateInput(anyString()))
+                .thenReturn(ValidationResult.invalid("Input contains blocked keyword: jailbreak"));
+
+        thinkingStateHandler.handle(stateMachine, execution);
+
+        verify(stateMachine, times(1)).transition(AgentExecutionState.GATE_BLOCKED, execution);
+        verify(modelRouter, never()).generateWithFallback(anyString(), anyString(), anyDouble());
+        assertEquals("Input contains blocked keyword: jailbreak", execution.getMetadata("blockedReason"));
+        assertEquals("GUARDRAILS", execution.getMetadata("admissionType"));
+    }
+
+    @Test
+    void handleShouldNotCallLlmWhenGuardrailsBlockInput() {
+        when(chatMemoryStore.loadMessages("conv-123")).thenReturn(List.of());
+        when(guardrailsEngine.validateInput(anyString()))
+                .thenReturn(ValidationResult.invalid("Blocked"));
+
+        thinkingStateHandler.handle(stateMachine, execution);
+
+        verify(modelRouter, never()).generateWithFallback(anyString(), anyString(), anyDouble());
+        verify(stateMachine, never()).transition(eq(AgentExecutionState.COMPLETED), any());
+        verify(stateMachine, never()).transition(eq(AgentExecutionState.TOOL_CALLING), any());
+    }
+
+    @Test
+    void handleShouldProceedToLlmWhenGuardrailsPass() {
+        when(chatMemoryStore.loadMessages("conv-123")).thenReturn(List.of());
+        when(guardrailsEngine.validateInput(anyString())).thenReturn(ValidationResult.valid());
+        when(modelResolver.resolve(execution)).thenReturn("gpt-4");
+        when(modelRouter.generateWithFallback(anyString(), anyString(), anyDouble()))
+                .thenReturn("Safe response");
+
+        thinkingStateHandler.handle(stateMachine, execution);
+
+        verify(guardrailsEngine, times(1)).validateInput(anyString());
+        verify(modelRouter, times(1)).generateWithFallback(anyString(), anyString(), anyDouble());
+        verify(stateMachine, times(1)).transition(AgentExecutionState.COMPLETED, execution);
     }
 }

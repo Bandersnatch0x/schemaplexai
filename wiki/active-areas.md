@@ -1,10 +1,10 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-01T18:07:18Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-07T03:21:52Z -->
 
 ---
 title: Active Development Areas
 type: index
 source: auto-generated
-creation_date: 2026-05-02
+creation_date: 2026-05-07
 update_date: 2026-05-07
 tags: [active, development]
 confidence: high
@@ -22,27 +22,10 @@ confidence: high
 
 ## Active Changes (.claude/changes/)
 
-- **project-gaps-completion**: 已完成 — ClickHouse schema, Workflow Node Executors (7), Milvus collection + RAG pipeline, DocumentChunker + EmbeddingService
-- **v1-final-delivery**: 已完成 — 覆盖率基线、集成测试、前端测试、部署指南全部交付
-- **agent-engine-core-completion**: 已交付 (Judge 4.00/5.0)，等待归档至 docs/archive/
-- **v1-release-readiness**: 已交付，527/527 测试通过，等待归档
-- **v1-test-fixes-and-coverage**: 已交付，所有 21 个预存测试失败修复，等待归档
-- **core-ai-engine-design**: 已完成 — L2持久化、SSE事件流、getLatestSnapshot实现
-  - **Known Limitation**: `ExecutionEventBus` SSE emitters are stored in a local in-memory `ConcurrentHashMap`. This is single-node only; horizontal scaling requires sticky sessions or a Redis pub/sub bridge before production multi-node deployment.
-- **wiki-gaps-completion**: 已完成 — 6个wiki服务页面已创建
-- **agents-sdk-2026-alignment**: 已完成 (2026-05-07) — Track A `SandboxProvider` 抽象 + `LocalProcessSandbox` (75 tests pass)；Track B `AgentsManifest` record + `AgentsManifestParser` + `AgentsManifestLoader` `loadFromManifest` + `SfAgentMapper.findByNameAndTenant` (41 tests pass)。新增类 JaCoCo 覆盖率 ≥94%，超 80% 门槛。commit `d957b7a`。
-
-## v1.0 Release Status
-
-- **Tests**: 845/845 passing (100%), 1 skipped — agent-engine module
-- **Build**: All 17 modules compile
-- **CI/CD**: GitHub Actions + Jenkins configured
-- **API Docs**: Knife4j + docs/API.md
-- **JaCoCo**: Latest baseline (2026-05-07) for agent-engine module
-  - state: 87% (meets spec >=80%)
-  - orchestrator: 100% (meets spec >=80%)
-  - tool: 94% (meets spec >=80%)
-  - memory: 93% (meets spec >=80%)
-  - sse: 80% (no spec threshold)
-  - lifecycle: 44% (no spec threshold)
-- **Pending**: Address 2 pre-existing test infrastructure items (gaps.md #11–#12)
+- **agent-engine-core-completion**: spec=yes, tasks=yes
+- **agents-sdk-2026-alignment**: spec=yes, tasks=yes
+- **core-ai-engine-design**: spec=yes, tasks=yes
+- **ui-alignment**: spec=yes, tasks=yes
+- **v1-release-readiness**: spec=yes, tasks=yes
+- **v1-test-fixes-and-coverage**: spec=yes, tasks=yes
+- **wiki-gaps-completion**: spec=yes, tasks=yes

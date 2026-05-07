@@ -1,13 +1,18 @@
 package com.schemaplexai.agent.engine.state;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.agent.engine.admission.TokenBudget;
 import com.schemaplexai.agent.engine.context.ContextInjector;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
+import com.schemaplexai.agent.engine.evaluation.ValidationResult;
+import com.schemaplexai.agent.engine.guardrails.GuardrailsEngine;
 import com.schemaplexai.agent.engine.loop.AgentLoopDetectionService;
 import com.schemaplexai.agent.engine.loop.LoopDetectionResult;
 import com.schemaplexai.agent.engine.memory.CompositeChatMemoryStore;
 import com.schemaplexai.agent.engine.model.AiModelRouter;
 import com.schemaplexai.agent.engine.model.LlmMessage;
+import com.schemaplexai.agent.engine.plan.SubTask;
+import com.schemaplexai.agent.engine.plan.SubTaskPlan;
 import com.schemaplexai.agent.engine.util.TokenEstimator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -26,23 +31,27 @@ import java.util.List;
 public class ThinkingStateHandler implements AgentStateHandler {
 
     private static final double DEFAULT_TEMPERATURE = 0.7;
+    private static final String METADATA_KEY_PLAN = "subTaskPlan";
 
     private final ContextInjector contextInjector;
     private final CompositeChatMemoryStore chatMemoryStore;
     private final AiModelRouter modelRouter;
     private final AgentLoopDetectionService loopDetection;
     private final com.schemaplexai.agent.engine.model.ModelResolver modelResolver;
+    private final GuardrailsEngine guardrailsEngine;
 
     public ThinkingStateHandler(ContextInjector contextInjector,
                                  CompositeChatMemoryStore chatMemoryStore,
                                  AiModelRouter modelRouter,
                                  AgentLoopDetectionService loopDetection,
-                                 com.schemaplexai.agent.engine.model.ModelResolver modelResolver) {
+                                 com.schemaplexai.agent.engine.model.ModelResolver modelResolver,
+                                 GuardrailsEngine guardrailsEngine) {
         this.contextInjector = contextInjector;
         this.chatMemoryStore = chatMemoryStore;
         this.modelRouter = modelRouter;
         this.loopDetection = loopDetection;
         this.modelResolver = modelResolver;
+        this.guardrailsEngine = guardrailsEngine;
     }
 
     @Override
@@ -63,6 +72,17 @@ public class ThinkingStateHandler implements AgentStateHandler {
 
             // 3. Build prompt from messages
             String prompt = buildPrompt(messages);
+
+            // 3a. Guardrails input validation before LLM call
+            ValidationResult inputGuardResult = guardrailsEngine.validateInput(prompt);
+            if (!inputGuardResult.success()) {
+                log.warn("Guardrails blocked input for execution {}: {}",
+                        execution.getId(), inputGuardResult.errorMessage());
+                execution.setMetadata("blockedReason", inputGuardResult.errorMessage());
+                execution.setMetadata("admissionType", "GUARDRAILS");
+                stateMachine.transition(AgentExecutionState.GATE_BLOCKED, execution);
+                return;
+            }
 
             // 4. Estimate input tokens (rough: 1 token ~ 4 chars)
             long inputTokens = estimateTokens(prompt);
@@ -117,9 +137,11 @@ public class ThinkingStateHandler implements AgentStateHandler {
                 log.info("Execution {} detected tool calls, transitioning to TOOL_CALLING", execution.getId());
                 stateMachine.transition(AgentExecutionState.TOOL_CALLING, execution);
             } else {
-                log.info("Execution {} completed with direct answer, transitioning to COMPLETED", execution.getId());
+                // Check if there's an active sub-task plan to progress
+                AgentExecutionState nextState = resolveNextStateForPlan(execution);
+                log.info("Execution {} completed with direct answer, transitioning to {}", execution.getId(), nextState);
                 loopDetection.clearRecords(execution.getId());
-                stateMachine.transition(AgentExecutionState.COMPLETED, execution);
+                stateMachine.transition(nextState, execution);
             }
         } catch (Exception e) {
             log.error("Thinking state failed for execution {}", execution.getId(), e);
@@ -223,5 +245,68 @@ public class ThinkingStateHandler implements AgentStateHandler {
 
     private String resolveModelId(SfAgentExecution execution) {
         return modelResolver.resolve(execution);
+    }
+
+    /**
+     * Checks for an active SubTaskPlan and determines the next state.
+     * If a plan exists, marks the current sub-task as completed and either
+     * stays in THINKING (next sub-task) or transitions to COMPLETED (all done).
+     */
+    private AgentExecutionState resolveNextStateForPlan(SfAgentExecution execution) {
+        Object planMeta = execution.getMetadata(METADATA_KEY_PLAN);
+        if (planMeta == null) {
+            return AgentExecutionState.COMPLETED;
+        }
+
+        SubTaskPlan plan = deserializePlan(planMeta.toString());
+        if (plan == null || plan.getSubTasks().isEmpty()) {
+            return AgentExecutionState.COMPLETED;
+        }
+
+        // Mark current sub-task as completed if there is one
+        if (plan.getCurrentSubTaskId() != null) {
+            SubTask current = plan.getSubTaskById(plan.getCurrentSubTaskId());
+            if (current != null) {
+                current.setStatus(SubTask.STATUS_COMPLETED);
+                log.debug("Marked sub-task {} as COMPLETED for execution {}",
+                        current.getId(), execution.getId());
+            }
+        }
+
+        // Find next ready sub-task
+        SubTask next = plan.findNextReadySubTask();
+        if (next != null) {
+            next.setStatus(SubTask.STATUS_IN_PROGRESS);
+            plan.setCurrentSubTaskId(next.getId());
+            execution.setMetadata(METADATA_KEY_PLAN, serializePlan(plan));
+            log.info("Execution {} advancing to sub-task {}: {}",
+                    execution.getId(), next.getId(), next.getDescription());
+            return AgentExecutionState.THINKING;
+        }
+
+        // All sub-tasks complete or no ready tasks remain
+        if (plan.isAllCompleted()) {
+            log.info("Execution {} all sub-tasks completed", execution.getId());
+        }
+        execution.setMetadata(METADATA_KEY_PLAN, serializePlan(plan));
+        return AgentExecutionState.COMPLETED;
+    }
+
+    private SubTaskPlan deserializePlan(String json) {
+        try {
+            return new ObjectMapper().readValue(json, SubTaskPlan.class);
+        } catch (Exception e) {
+            log.warn("Failed to deserialize SubTaskPlan: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private String serializePlan(SubTaskPlan plan) {
+        try {
+            return new ObjectMapper().writeValueAsString(plan);
+        } catch (Exception e) {
+            log.warn("Failed to serialize SubTaskPlan: {}", e.getMessage());
+            return "";
+        }
     }
 }

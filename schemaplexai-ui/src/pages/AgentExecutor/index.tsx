@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Card, Select, Input, Button, Row, Col, message } from 'antd'
 import { SendOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { useAgentStore } from '@/stores/agentStore'
 import { useSseStore } from '@/stores/sseStore'
 import SseViewer from '@/components/SseViewer'
@@ -14,6 +15,7 @@ const { TextArea } = Input
 const { Option } = Select
 
 export default function AgentExecutor() {
+  const { t } = useTranslation()
   const { agents, setAgents } = useAgentStore()
   const addEvent = useSseStore((state) => state.addEvent)
   const clearEvents = useSseStore((state) => state.clearEvents)
@@ -35,13 +37,13 @@ export default function AgentExecutor() {
         setAgents(data.list)
       })
       .catch((err) => {
-        const msg = err instanceof Error ? err.message : '获取 Agent 列表失败'
+        const msg = err instanceof Error ? err.message : t('agentExecutor.fetchError')
         message.error(msg)
       })
       .finally(() => {
         setAgentsLoading(false)
       })
-  }, [setAgents])
+  }, [setAgents, t])
 
   useEffect(() => {
     return () => {
@@ -54,11 +56,11 @@ export default function AgentExecutor() {
 
   const handleExecute = useCallback(() => {
     if (!selectedAgent) {
-      message.warning('请先选择 Agent')
+      message.warning(t('agentExecutor.selectAgentFirst'))
       return
     }
     if (!prompt.trim()) {
-      message.warning('请输入 Prompt')
+      message.warning(t('agentExecutor.inputPrompt'))
       return
     }
 
@@ -121,17 +123,17 @@ export default function AgentExecutor() {
         es.close()
         esRef.current = null
         retryCountRef.current = 0
-        message.error('SSE 连接失败，已达到最大重试次数')
+        message.error(t('agentExecutor.sseError'))
       }
     }
-  }, [selectedAgent, prompt, clearEvents, setConnecting, setConnected, addEvent])
+  }, [selectedAgent, prompt, clearEvents, setConnecting, setConnected, addEvent, t])
 
   return (
     <div className="agent-exec-container">
       <Row gutter={[16, 16]} className="agent-exec-toolbar">
         <Col span={8}>
           <Select
-            placeholder="选择 Agent"
+            placeholder={t('agentExecutor.selectAgent')}
             className="agent-exec-select"
             value={selectedAgent}
             onChange={setSelectedAgent}
@@ -148,7 +150,7 @@ export default function AgentExecutor() {
           <div className="agent-exec-prompt-row">
             <TextArea
               rows={1}
-              placeholder="输入 Prompt..."
+              placeholder={t('agentExecutor.promptPlaceholder')}
               value={prompt}
               className="agent-exec-textarea"
               onChange={(e) => setPrompt(e.target.value)}
@@ -160,19 +162,19 @@ export default function AgentExecutor() {
               }}
             />
             <Button type="primary" icon={<SendOutlined />} className="agent-exec-btn-run" loading={executing} onClick={handleExecute}>
-              执行
+              {t('agentExecutor.execute')}
             </Button>
           </div>
         </Col>
       </Row>
       <Row gutter={[16, 16]} className="agent-exec-main">
         <Col span={12} style={{ height: '100%' }}>
-          <Card title="对话历史" className="agent-exec-panel agent-exec-chat-panel" style={{ height: '100%', overflow: 'auto' }}>
+          <Card title={t('agentExecutor.chatHistory')} className="agent-exec-panel agent-exec-chat-panel" style={{ height: '100%', overflow: 'auto' }}>
             <ChatMemory messages={messages} />
           </Card>
         </Col>
         <Col span={12} style={{ height: '100%' }}>
-          <Card title="执行状态" className="agent-exec-panel agent-exec-sse-panel" style={{ height: '100%' }}>
+          <Card title={t('agentExecutor.executionStatus')} className="agent-exec-panel agent-exec-sse-panel" style={{ height: '100%' }}>
             <SseViewer />
           </Card>
         </Col>

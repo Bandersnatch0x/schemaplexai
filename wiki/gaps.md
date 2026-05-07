@@ -115,3 +115,50 @@ The following controllers exist but have no dedicated wiki pages (most are stand
 > The auto-generated section below is from 2026-05-01 and references deleted worktree paths. Many items listed have since been resolved. Run `sync-wiki.sh` to regenerate.
 >
 > <!-- STALE: sync-wiki.sh at 2026-05-01T18:07:31Z — needs resync -->
+
+## Auto-Generated Gap Scan
+
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-07T03:22:09Z -->
+
+### Undocumented Entities
+
+- Missing wiki page for entity: `SfAgentShadowConfig` (source: D:/code_space/frige/schemaplexai-model/src/main/java/com/schemaplexai/model/entity/agent/SfAgentShadowConfig.java)
+- Missing wiki page for entity: `TenantEnvironmentConfig` (source: D:/code_space/frige/schemaplexai-model/src/main/java/com/schemaplexai/model/entity/config/TenantEnvironmentConfig.java)
+- Missing wiki page for entity: `BaseEntityTest` (source: D:/code_space/frige/schemaplexai-model/src/test/java/com/schemaplexai/model/entity/BaseEntityTest.java)
+
+### Undocumented Controllers
+
+- Missing wiki page for controller: `BaseController` (source: D:/code_space/frige/schemaplexai-web/src/main/java/com/schemaplexai/web/controller/BaseController.java)
+- Missing wiki page for controller: `TenantEnvironmentConfigController` (source: D:/code_space/frige/schemaplexai-web/src/main/java/com/schemaplexai/web/controller/config/TenantEnvironmentConfigController.java)
+
+### Undocumented Services
+
+- Missing wiki page for service: `AuditLogService` (source: D:/code_space/frige/.claude/worktrees/agent-a89981c3/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/AuditLogService.java)
+- Missing wiki page for service: `PlatformHealthService` (source: D:/code_space/frige/.claude/worktrees/agent-a89981c3/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/PlatformHealthService.java)
+- Missing wiki page for service: `RoleAdminService` (source: D:/code_space/frige/.claude/worktrees/agent-a89981c3/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/RoleAdminService.java)
+- Missing wiki page for service: `SystemConfigService` (source: D:/code_space/frige/.claude/worktrees/agent-a89981c3/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/SystemConfigService.java)
+- Missing wiki page for service: `TenantAdminService` (source: D:/code_space/frige/.claude/worktrees/agent-a89981c3/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/TenantAdminService.java)
+- Missing wiki page for service: `UserAdminService` (source: D:/code_space/frige/.claude/worktrees/agent-a89981c3/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/UserAdminService.java)
+- Missing wiki page for service: `MilvusIsolationService` (source: D:/code_space/frige/.claude/worktrees/agent-a89981c3/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/rag/MilvusIsolationService.java)
+- Missing wiki page for service: `ClickHouseCostSyncService` (source: D:/code_space/frige/.claude/worktrees/agent-a89981c3/schemaplexai-ops/src/main/java/com/schemaplexai/ops/service/ClickHouseCostSyncService.java)
+- Missing wiki page for service: `WorkflowDeployService` (source: D:/code_space/frige/.claude/worktrees/agent-a89981c3/schemaplexai-workflow/src/main/java/com/schemaplexai/workflow/service/WorkflowDeployService.java)
+- Missing wiki page for service: `AuditLogService` (source: D:/code_space/frige/.claude/worktrees/agent-ae0545fd/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/AuditLogService.java)
+- Missing wiki page for service: `PlatformHealthService` (source: D:/code_space/frige/.claude/worktrees/agent-ae0545fd/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/PlatformHealthService.java)
+- Missing wiki page for service: `RoleAdminService` (source: D:/code_space/frige/.claude/worktrees/agent-ae0545fd/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/RoleAdminService.java)
+- Missing wiki page for service: `SystemConfigService` (source: D:/code_space/frige/.claude/worktrees/agent-ae0545fd/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/SystemConfigService.java)
+- Missing wiki page for service: `TenantAdminService` (source: D:/code_space/frige/.claude/worktrees/agent-ae0545fd/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/TenantAdminService.java)
+- Missing wiki page for service: `UserAdminService` (source: D:/code_space/frige/.claude/worktrees/agent-ae0545fd/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/UserAdminService.java)
+- Missing wiki page for service: `MilvusIsolationService` (source: D:/code_space/frige/.claude/worktrees/agent-ae0545fd/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/rag/MilvusIsolationService.java)
+- Missing wiki page for service: `ClickHouseCostSyncService` (source: D:/code_space/frige/.claude/worktrees/agent-ae0545fd/schemaplexai-ops/src/main/java/com/schemaplexai/ops/service/ClickHouseCostSyncService.java)
+- Missing wiki page for service: `WorkflowDeployService` (source: D:/code_space/frige/.claude/worktrees/agent-ae0545fd/schemaplexai-workflow/src/main/java/com/schemaplexai/workflow/service/WorkflowDeployService.java)
+- Missing wiki page for service: `ClickHouseCostSyncService` (source: D:/code_space/frige/.worktrees/phase1-observability-foundation/schemaplexai-ops/src/main/java/com/schemaplexai/ops/service/ClickHouseCostSyncService.java)
+- Missing wiki page for service: `AuditLogService` (source: D:/code_space/frige/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/AuditLogService.java)
+- Missing wiki page for service: `PlatformHealthService` (source: D:/code_space/frige/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/PlatformHealthService.java)
+- Missing wiki page for service: `RoleAdminService` (source: D:/code_space/frige/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/RoleAdminService.java)
+- Missing wiki page for service: `SystemConfigService` (source: D:/code_space/frige/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/SystemConfigService.java)
+- Missing wiki page for service: `TenantAdminService` (source: D:/code_space/frige/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/TenantAdminService.java)
+- Missing wiki page for service: `UserAdminService` (source: D:/code_space/frige/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/UserAdminService.java)
+- Missing wiki page for service: `AgentShadowConfigService` (source: D:/code_space/frige/schemaplexai-agent-config/src/main/java/com/schemaplexai/agent/config/service/AgentShadowConfigService.java)
+- Missing wiki page for service: `MilvusIsolationService` (source: D:/code_space/frige/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/rag/MilvusIsolationService.java)
+- Missing wiki page for service: `ClickHouseCostSyncService` (source: D:/code_space/frige/schemaplexai-ops/src/main/java/com/schemaplexai/ops/service/ClickHouseCostSyncService.java)
+- Missing wiki page for service: `WorkflowDeployService` (source: D:/code_space/frige/schemaplexai-workflow/src/main/java/com/schemaplexai/workflow/service/WorkflowDeployService.java)

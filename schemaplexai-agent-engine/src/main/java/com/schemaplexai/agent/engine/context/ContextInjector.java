@@ -3,6 +3,7 @@ package com.schemaplexai.agent.engine.context;
 import com.schemaplexai.agent.engine.model.LlmMessage;
 import com.schemaplexai.agent.engine.rag.MilvusIsolationService;
 import com.schemaplexai.agent.engine.rag.SearchResult;
+import com.schemaplexai.common.context.TenantContextHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -44,8 +45,61 @@ public class ContextInjector {
 
     public void inject(List<LlmMessage> messages, Long agentId) {
         log.info("Injecting context for agent {}", agentId);
-        // Load team context, knowledge docs, memory summaries
-        // Prepend system context message if needed
+        if (messages == null || messages.isEmpty()) {
+            return;
+        }
+
+        String latestUserPrompt = extractLatestUserPrompt(messages);
+        if (latestUserPrompt == null || latestUserPrompt.isBlank()) {
+            log.debug("No user prompt found for RAG injection, agentId={}", agentId);
+            return;
+        }
+
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId == null) {
+            log.debug("No tenantId in context, skipping RAG injection for agentId={}", agentId);
+            return;
+        }
+
+        AgentContext agentContext = AgentContext.builder()
+                .agentId(agentId)
+                .tenantId(tenantId)
+                .build();
+
+        try {
+            String ragContext = retrieveRagContext(latestUserPrompt, agentContext);
+            if (ragContext != null && !ragContext.isBlank()) {
+                insertRagSystemMessage(messages, ragContext);
+            }
+        } catch (Exception e) {
+            log.warn("RAG context injection failed for agentId={}, proceeding with original messages", agentId, e);
+        }
+    }
+
+    private String extractLatestUserPrompt(List<LlmMessage> messages) {
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            LlmMessage msg = messages.get(i);
+            if ("user".equals(msg.getRole()) && msg.getContent() != null) {
+                return msg.getContent();
+            }
+        }
+        return null;
+    }
+
+    private void insertRagSystemMessage(List<LlmMessage> messages, String ragContext) {
+        int lastUserIndex = -1;
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            if ("user".equals(messages.get(i).getRole())) {
+                lastUserIndex = i;
+                break;
+            }
+        }
+        if (lastUserIndex < 0) {
+            return;
+        }
+
+        String systemContent = "Context from knowledge base:\n" + ragContext;
+        messages.add(lastUserIndex, new LlmMessage("system", systemContent));
     }
 
     /**

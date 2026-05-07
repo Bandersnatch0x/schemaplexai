@@ -4,6 +4,7 @@ public enum AgentExecutionState {
     QUEUED,
     INITIALIZING,
     READY,
+    PLANNING,
     THINKING,
     TOOL_CALLING,
     OBSERVATION,

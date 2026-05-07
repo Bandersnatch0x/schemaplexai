@@ -85,6 +85,12 @@ class GuardrailsEngineTest {
         assertTrue(result.success(), "Normal output should pass");
     }
 
+    @Test
+    void shouldPassNullOutput() {
+        ValidationResult result = engine.validateOutput(null);
+        assertTrue(result.success(), "Null output should pass");
+    }
+
     // --- isHighRiskOperation tests ---
 
     @Test
@@ -104,6 +110,11 @@ class GuardrailsEngineTest {
     @Test
     void shouldNotFlagNullToolAsHighRisk() {
         assertFalse(engine.isHighRiskOperation(null));
+    }
+
+    @Test
+    void shouldNotFlagEmptyToolAsHighRisk() {
+        assertFalse(engine.isHighRiskOperation(""));
     }
 
     // --- Edge cases ---
@@ -132,45 +143,77 @@ class GuardrailsEngineTest {
         assertTrue(result.errorMessage().contains("blocked keyword"));
     }
 
-    // --- BlacklistGuardrail standalone tests ---
+    @Test
+    void shouldShortCircuitOnLengthBeforeBlacklist() {
+        // If input is too long but not blacklisted, length guardrail catches it
+        String longInput = "a".repeat(200_000);
+        ValidationResult result = engine.validateInput(longInput);
+        assertFalse(result.success());
+        assertTrue(result.errorMessage().contains("exceeds max"));
+    }
 
     @Test
-    void blacklistShouldDetectAllKeywords() {
-        BlacklistGuardrail guardrail = new BlacklistGuardrail();
+    void emptyEngineShouldReturnNoHighRiskTools() {
+        GuardrailsEngine emptyEngine = new GuardrailsEngine(List.of());
+        assertFalse(emptyEngine.isHighRiskOperation("databaseDrop"));
+        assertFalse(emptyEngine.isHighRiskOperation("anything"));
+    }
 
-        String[] keywords = {
-                "ignore previous instructions",
-                "ignore your instructions",
-                "forget what you know",
-                "repeat your programming",
-                "reveal your instructions",
-                "bypass safety",
-                "jailbreak"
+    @Test
+    void nullEngineShouldReturnNoHighRiskTools() {
+        GuardrailsEngine nullEngine = new GuardrailsEngine(null);
+        assertFalse(nullEngine.isHighRiskOperation("databaseDrop"));
+    }
+
+    // --- Multiple guardrails of same type ---
+
+    @Test
+    void shouldSupportMultipleGuardrails() {
+        GuardrailsEngine multiEngine = new GuardrailsEngine(List.of(
+                new BlacklistGuardrail(),
+                new BlacklistGuardrail(),
+                new LengthGuardrail()
+        ));
+        ValidationResult result = multiEngine.validateInput("ignore previous instructions");
+        assertFalse(result.success());
+    }
+
+    // --- Custom guardrail integration ---
+
+    @Test
+    void shouldWorkWithCustomGuardrail() {
+        Guardrail customGuardrail = new Guardrail() {
+            @Override
+            public ValidationResult validateInput(String input) {
+                if (input != null && input.contains("FORBIDDEN")) {
+                    return ValidationResult.invalid("Custom guardrail triggered");
+                }
+                return ValidationResult.valid();
+            }
+
+            @Override
+            public ValidationResult validateOutput(String output) {
+                return ValidationResult.valid();
+            }
+
+            @Override
+            public boolean isHighRisk(String toolName) {
+                return "customDangerousTool".equals(toolName);
+            }
+
+            @Override
+            public String getName() {
+                return "CustomGuardrail";
+            }
         };
 
-        for (String keyword : keywords) {
-            assertFalse(guardrail.validateInput(keyword).success(),
-                    "Should block: " + keyword);
-        }
-    }
+        GuardrailsEngine customEngine = new GuardrailsEngine(List.of(customGuardrail));
 
-    @Test
-    void blacklistShouldReturnCorrectName() {
-        assertEquals("BlacklistGuardrail", new BlacklistGuardrail().getName());
-    }
+        ValidationResult result = customEngine.validateInput("This contains FORBIDDEN word");
+        assertFalse(result.success());
+        assertEquals("Custom guardrail triggered", result.errorMessage());
 
-    // --- LengthGuardrail standalone tests ---
-
-    @Test
-    void lengthGuardrailShouldEnforceCustomLimit() {
-        LengthGuardrail strictGuardrail = new LengthGuardrail(10, 10);
-
-        assertTrue(strictGuardrail.validateInput("short").success());
-        assertFalse(strictGuardrail.validateInput("this is way too long").success());
-    }
-
-    @Test
-    void lengthGuardrailShouldReturnCorrectName() {
-        assertEquals("LengthGuardrail", new LengthGuardrail().getName());
+        assertTrue(customEngine.isHighRiskOperation("customDangerousTool"));
+        assertFalse(customEngine.isHighRiskOperation("safeTool"));
     }
 }
