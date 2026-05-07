@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Component
@@ -21,8 +22,14 @@ public class CompositeChatMemoryStore {
 
     private static final long MAX_MESSAGES = 50;
     private static final Duration CHAT_HISTORY_TTL = Duration.ofDays(7);
+    private static final Duration BACKFILL_LOCK_TTL = Duration.ofSeconds(5);
+    private static final long BACKFILL_WAIT_MS = 50;
+
+    /** Per-conversation lock objects to serialize turnIndex computation (M-2 fix). */
+    private final ConcurrentHashMap<String, Object> conversationLocks = new ConcurrentHashMap<>();
 
     private final RedisTemplate<String, LlmMessage> redisTemplate;
+    private final org.springframework.data.redis.core.StringRedisTemplate stringRedisTemplate;
     private final SfChatMessageMapper chatMessageMapper;
 
     public List<LlmMessage> loadMessages(String conversationId) {
@@ -34,6 +41,22 @@ public class CompositeChatMemoryStore {
                 redisTemplate.opsForList().trim(key, size - MAX_MESSAGES, -1);
             }
             return new ArrayList<>(messages);
+        }
+
+        // L1 miss: try to acquire backfill lock to prevent duplicate PG reads (M-3 fix)
+        String lockKey = key + ":backfill_lock";
+        Boolean acquired = stringRedisTemplate.opsForValue().setIfAbsent(lockKey, "1", BACKFILL_LOCK_TTL);
+        if (Boolean.FALSE.equals(acquired)) {
+            // Another thread/process is backfilling — wait briefly and retry from Redis
+            try {
+                Thread.sleep(BACKFILL_WAIT_MS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            List<LlmMessage> retryMessages = redisTemplate.opsForList().range(key, 0, -1);
+            if (retryMessages != null && !retryMessages.isEmpty()) {
+                return new ArrayList<>(retryMessages);
+            }
         }
 
         // L1 miss: fallback to L2 (PostgreSQL)
@@ -60,16 +83,20 @@ public class CompositeChatMemoryStore {
     }
 
     public void saveMessage(String conversationId, LlmMessage message) {
-        // Compute turnIndex from L2 (source of truth) before any write
-        Integer turnIndex = computeNextTurnIndex(conversationId);
+        // Serialize per-conversation to prevent duplicate turnIndex (M-2 fix)
+        Object lock = conversationLocks.computeIfAbsent(conversationId, k -> new Object());
+        Integer turnIndex;
+        synchronized (lock) {
+            turnIndex = computeNextTurnIndex(conversationId);
 
-        // L2: PostgreSQL first
-        SfChatMessage entity = new SfChatMessage();
-        entity.setConversationId(conversationId);
-        entity.setTurnIndex(turnIndex);
-        entity.setRole(message.getRole());
-        entity.setContent(message.getContent());
-        chatMessageMapper.insert(entity);
+            // L2: PostgreSQL first
+            SfChatMessage entity = new SfChatMessage();
+            entity.setConversationId(conversationId);
+            entity.setTurnIndex(turnIndex);
+            entity.setRole(message.getRole());
+            entity.setContent(message.getContent());
+            chatMessageMapper.insert(entity);
+        }
 
         // L1: Redis after successful PG insert
         String key = String.format(CommonConstants.REDIS_KEY_CHAT_MEMORY, conversationId);

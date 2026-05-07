@@ -7,11 +7,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.ListOperations;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,17 +28,25 @@ class CompositeChatMemoryStoreTest {
     private RedisTemplate<String, LlmMessage> redisTemplate;
 
     @Mock
+    private StringRedisTemplate stringRedisTemplate;
+
+    @Mock
     private SfChatMessageMapper chatMessageMapper;
 
     @Mock
     private ListOperations<String, LlmMessage> listOps;
 
-    @InjectMocks
+    @Mock
+    private ValueOperations<String, String> stringOps;
+
     private CompositeChatMemoryStore memoryStore;
 
     @BeforeEach
     void setUp() {
         lenient().when(redisTemplate.opsForList()).thenReturn(listOps);
+        lenient().when(stringRedisTemplate.opsForValue()).thenReturn(stringOps);
+        lenient().when(stringOps.setIfAbsent(anyString(), anyString(), any())).thenReturn(true);
+        memoryStore = new CompositeChatMemoryStore(redisTemplate, stringRedisTemplate, chatMessageMapper);
     }
 
     @Test
