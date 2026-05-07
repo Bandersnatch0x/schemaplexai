@@ -28,4 +28,5 @@ confidence: high
 - **ui-alignment**: spec=yes, tasks=yes, status=completed
 - **v1-release-readiness**: spec=yes, tasks=yes, status=completed
 - **v1-test-fixes-and-coverage**: spec=yes, tasks=yes, status=completed
+- **hybrid-mode-integration**: spec=yes, tasks=yes, status=completed
 - **wiki-gaps-completion**: spec=yes, tasks=yes, status=completed
