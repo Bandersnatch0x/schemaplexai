@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-07T07:28:34Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-07T07:37:27Z -->
 
 ---
 title: Wiki Operation Log
@@ -14,6 +14,8 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
+## 2026-05-07 — docs(specs): add UI/UE alignment spec document
+79fbcf2
 ## 2026-05-07 — feat(ui): complete UI/UE alignment across all pages
 b3762ad
 ## 2026-05-07 — docs(wiki): update log and active-areas for v1-test-fixes-and-coverage completion
@@ -52,8 +54,6 @@ f94c187
 104e170
 ## 2026-05-07 — docs(wiki): update JaCoCo baseline to 2026-05-07
 d95e114
-## 2026-05-07 — docs(wiki): record agents-sdk-2026-alignment delivery
-204c164
 
 ---
 
