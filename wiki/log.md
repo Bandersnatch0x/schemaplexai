@@ -80,8 +80,28 @@ confidence: high
 - ✅ 解析器无文件系统/网络访问；Loader 路径校验
 - ✅ 无硬编码密钥；错误信息不泄漏敏感内容
 
+**Commit 3 — `d957b7a` feat(agent-config): B5 SfAgentMapper.findByNameAndTenant + B6 loadFromManifest entry**:
+- `SfAgentMapper.findByNameAndTenant(String name, String tenantId)`：default method + LambdaQueryWrapper；null tenantId 防御；@TableLogic 自动过滤 deleted=1
+- `AgentsManifestLoader.load(Path repoRoot, String tenantId)`：文件发现（AGENTS.md / .agents/*.md / agents/**/*.md）+ 批量加载 + 单文件失败隔离
+- `LoadReport` / `LoadResult`：批量加载结果汇总（ok/failed 计数）
+- `AgentConfigService.loadFromManifest(Path, String)`：公开入口，代理到 Loader
+- 重构 Loader 移除 `AgentConfigService` 循环依赖，改为直接调用 mapper
+- 测试：`SfAgentMapperTest` ×4、`AgentsManifestLoaderTest` 新增 8 个发现/容错用例（共 17）、`AgentConfigServiceManifestTest` ×2
+
+**JaCoCo 覆盖率（新增类）**:
+- `LoadReport`: 94.1% LINE
+- `LoadResult`: 100% LINE
+- `AgentsManifestLoader`（含 load(Path,String) 后）: 95.8% LINE / 90.9% BRANCH
+- `SfAgentMapper`（default method）: 100% LINE
+
+**测试结果**:
+- `mvn -pl schemaplexai-agent-engine,schemaplexai-agent-config,schemaplexai-common -am test` → **116 测试 BUILD SUCCESS**（agent-engine 75，agent-config 41）
+
 **变更目录**:
 - `.claude/changes/agents-sdk-2026-alignment/` — spec.md / design.md / tasks.md / context.md
+- `schemaplexai-agent-config/src/main/java/.../manifest/` — AgentsManifestLoader.java, LoadReport.java, LoadResult.java
+- `schemaplexai-agent-config/src/main/java/.../mapper/` — SfAgentMapper.java
+- `schemaplexai-agent-config/src/main/java/.../service/` — AgentConfigService.java
 - `wiki/gaps.md` — 增加 cross-service-integration-tests 与 flaky-retrying-state-handler-test 条目
 
 ## 2026-05-07 — JaCoCo 基线生成与 wiki gaps 文档更新
