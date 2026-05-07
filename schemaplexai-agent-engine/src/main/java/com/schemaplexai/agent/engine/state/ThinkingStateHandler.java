@@ -83,7 +83,7 @@ public class ThinkingStateHandler implements AgentStateHandler {
             // 3. Build prompt from messages with skill/role injection
             String skillName = execution.getSkillName();
             String roleName = execution.getRoleName();
-            String tenantId = String.valueOf(execution.getTenantId());
+            String tenantId = execution.getTenantId();
             String prompt = buildPrompt(messages, tenantId, roleName, skillName);
 
             // 3a. Guardrails input validation before LLM call

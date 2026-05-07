@@ -3,6 +3,7 @@ package com.schemaplexai.agent.engine.tool.mcp;
 import lombok.Getter;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -42,9 +43,27 @@ public final class McpClient {
         this.lastAccessedAt = Instant.now();
     }
 
+    /**
+     * List tools available on this MCP server.
+     * <p>
+     * Stub implementation — returns empty list. Will be replaced with
+     * actual MCP protocol call in a later phase.
+     *
+     * @return list of tools exposed by the server
+     */
+    public List<McpTool> listTools() {
+        return List.of();
+    }
+
     @Override
     public String toString() {
         return "McpClient{endpoint='%s', connected=%s, createdAt=%s, lastAccessedAt=%s}"
                 .formatted(endpoint, connected, createdAt, lastAccessedAt);
+    }
+
+    /**
+     * Represents a tool exposed by an MCP server.
+     */
+    public record McpTool(String name, String description) {
     }
 }
