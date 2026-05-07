@@ -40,11 +40,8 @@ public class McpServerRegistry {
      * null/empty (meaning all tools are allowed).
      */
     public boolean isToolAllowed(String endpoint, String toolName, Long tenantId) {
-        if (!isAllowed(endpoint, tenantId)) {
-            return false;
-        }
         SfMcpServer server = queryServer(endpoint, tenantId);
-        if (server == null) {
+        if (server == null || !Integer.valueOf(1).equals(server.getStatus())) {
             return false;
         }
         List<String> whitelist = server.getToolWhitelist();

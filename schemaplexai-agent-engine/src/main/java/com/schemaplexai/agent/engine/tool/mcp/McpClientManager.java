@@ -89,7 +89,6 @@ public class McpClientManager {
             return;
         }
         clientPool.invalidate(endpoint);
-        clientPool.cleanUp();
     }
 
     /**
@@ -97,7 +96,6 @@ public class McpClientManager {
      */
     public void closeAll() {
         clientPool.invalidateAll();
-        clientPool.cleanUp();
         log.info("All MCP clients closed (pool drained)");
     }
 
