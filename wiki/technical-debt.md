@@ -1,9 +1,10 @@
+<!-- AUTO-GENERATED: manual-maintained wiki at 2026-05-08T01:50:00Z -->
 ---
 title: Technical Debt
 type: project
 source: Codebase analysis, docs/plans/
 creation_date: 2026-04-30
-update_date: 2026-05-07
+update_date: 2026-05-08
 tags: [debt, todo, cleanup, stubs]
 confidence: high
 ---
@@ -24,11 +25,41 @@ confidence: high
 | Item | Priority | Details |
 |------|----------|---------|
 | Multi-Agent orchestration | P1 | Single-Agent execution only; no Coordinator/Swarm/Crew |
+| Milvus consistency_level 未配置 | P1 | Collection 创建和 search 均使用默认 `Bounded`；多 Agent 写后读场景会返回空结果。需在 `MilvusProperties` 增加配置项，搜索时传入 `ConsistencyLevel.STRONG`。详见 [[gaps]] #13 |
 | HITL approval flow incomplete | P1 | `PAUSED` state exists but no UI approval/reject/resume flow |
 | Long-term memory missing | P1 | Chat Memory (Redis L1) complete; no vector long-term memory |
 | Reflection shallow | P1 | `ReflectingStateHandler` exists but reflection prompt is basic; no structured rubric |
 | Exception handling shallow | P1 | `Failed`/`Retrying` states exist but no fallback chain or circuit breaker |
 | schemaplexai-admin empty | P1 | Placeholder aggregator module with no code |
+
+## MAF Absorption Roadmap (from 2026-05-08 roundtable debate)
+
+> Source: [[comparisons/microsoft-agent-framework]]
+
+### Phase 1: Foundation (~1-2 weeks) — Do First
+
+| Item | Effort | Why |
+|------|--------|-----|
+| OpenTelemetry integration | ~2 days | Replace custom PG traces; enables Jaeger/Tempo; production blocker per security review |
+| Progressive skill disclosure | ~1 day | Stop eager-loading full skill content; reduce token costs and latency |
+| Checkpoint graph signature hash | ~2 days | Prevent silent corruption on workflow restore; validate topology on resume |
+| Tool-call budget counter | ~1 day | Per-execution per-tenant tool call limit; closes exploit where agent hammers tools in loop |
+
+### Phase 2: Architecture (~2-3 weeks)
+
+| Item | Effort | Why |
+|------|--------|-----|
+| Pluggable middleware pipeline | ~1 week | Extract cross-cutting concerns from 15 state handlers; prevents FSM from becoming unmaintainable monolith; unlocks all future features |
+| ApprovalMode for tool execution | ~1 week | Human-in-the-loop for destructive ops; production blocker per security review; reuse existing `PAUSED` state |
+| Provider-agnostic core (SPI) | ~1-2 weeks | Reduce LangChain4j coupling; new providers become adapter-only changes |
+
+### Phase 3: Multi-Agent (~3-4 weeks)
+
+| Item | Effort | Why |
+|------|--------|-----|
+| Concurrent Fan-Out/Fan-In | ~1 week | Highest-value lowest-complexity multi-agent pattern; add `CONCURRENT`/`JOIN` workflow node types |
+| Handoff (agent self-routing) | ~1 week | Agents recognize wrong specialty and transfer control; reuse `PAUSED`/`RESUMING` + `ExecutionSnapshot` |
+| Group Chat (speaker selection) | ~2-3 weeks | Collaborative reasoning; agents debate and refine; requires Concurrent + Handoff first |
 
 ## Medium (Quality & Completeness)
 

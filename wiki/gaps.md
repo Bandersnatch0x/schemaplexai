@@ -1,3 +1,4 @@
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-07T07:47:42Z -->
 ---
 title: Knowledge Gaps
 type: index
@@ -86,6 +87,10 @@ The following controllers exist but have no dedicated wiki pages (most are stand
 10. **Agent-engine SSE event bus is single-node only** — `ExecutionEventBus` holds SSE emitters in a local `ConcurrentHashMap`. If an execution runs on Node A and a user connects to Node B via load balancer, Node B's event bus has no emitters for that execution and the subscriber receives nothing. Acceptable for MVP/single-node, but a blocker for horizontal scaling. Potential fixes: (a) load-balancer sticky sessions routing by `executionId`, or (b) Redis pub/sub bridge to fan out events across nodes.
 11. ~~**cross-service-integration-tests**~~ — 已移除 `CrossServiceChainIntegrationTest.java` 与 `TestServiceConfig.java`（commit 104e170）。这些测试架构上违反 agent-engine ↔ siblings 边界（引用 `quality.gate.QualityReport`、`workflow.WorkflowInstanceService`、`ops.CostService` 等未声明依赖的模块类型），且已被 `testExcludes` 长期排除不编译。若需恢复跨服务集成测试，应在独立 `schemaplexai-integration-tests` 模块中声明全部依赖后重建。
 12. ~~**flaky-retrying-state-handler-test**~~ — 已修复（commit 104e170）。在 `RetryingStateHandlerTest.clearRetryStateShouldRemoveCounters` 中 `clearRetryState(1L)` 后添加 `Mockito.reset(stateMachine)`，隔离第二个 execution 的 verify 不受第一个 execution 累积调用的影响。连续 5 次 `mvn test` 验证稳定通过。
+13. **Milvus consistency_level 未配置 — 多 Agent 写后读空风险** — 整个代码库未设置 `consistency_level`，Collection 创建和所有 search 调用均使用 Milvus 默认的 `Bounded` 级别。在多 Agent 事件驱动场景下（Writer Agent 写入向量 → Reader Agent 立即检索），Bounded 的 5 秒可见性窗口会导致 Reader 返回空结果。受影响文件：`MilvusCollectionInitializer.java`（Collection 创建）、`RagSearchServiceImpl.java`（search 调用）、`MilvusIsolationService.java`（search 调用）、`MilvusClient` 接口（缺少一致性参数）。修复方案：在 `MilvusProperties` 增加 `consistencyLevel` 配置项，搜索调用时传入 `ConsistencyLevel.STRONG`。当前为潜在风险，多 Agent 编排落地前必须修复。
+14. **Tool-call 无预算限制 — 循环内无限调用风险** — `ToolCallingStateHandler` 中没有 per-execution / per-tenant 的 tool call 次数限制。虽然 orchestrator 有 50 次迭代上限，但单次 iteration 内可触发多个 tool call。一个陷入循环的 Agent 可以在短时间内对同一工具发起数百次调用，造成资源耗尽和供应商账单爆炸。修复方案：在 `ToolCallingStateHandler` 中加入 `ToolCallBudget` 计数器（per execution, per tenant），超限后 transition 到 FAILED。与现有 `TokenBudget` 类似但针对调用次数。
+15. **Agent 决策无审计日志** — `ToolExecutionRecorder` 记录了工具执行结果，但没有记录 Agent *为什么* 选择调用该工具（即决策 provenance）。缺少推理链的审计追踪，无法满足企业合规要求。修复方案：在 `ThinkingStateHandler` 中记录 LLM 的 reasoning/chain-of-thought 到 `AgentDecisionLog` 表，关联到 executionId 和 tool call。
+16. **OpenTelemetry 缺失 — 自定义 trace 不可观测** — `ObservabilityRecorder` 将 trace/span 写入自定义 PostgreSQL 表，无法与标准观测栈（Jaeger、Grafana Tempo、Datadog）集成。12 个微服务之间无法做分布式追踪关联。修复方案：引入 `io.opentelemetry` SDK，替换自定义 trace 存储，保留 `PiiRedactor` 作为 `SpanProcessor`。
 
 ## Backlinks
 
@@ -102,13 +107,17 @@ The following controllers exist but have no dedicated wiki pages (most are stand
 | Schema elements | 6/6 | All documented |
 | Controllers | 34/34 | All have wiki pages |
 | Service interfaces | 68/68 | All have wiki pages |
-| Open questions | 11/12 resolved | #10 architectural limit only |
+| Open questions | 11/16 resolved | #10 SSE single-node, #13-16 MAF roundtable findings |
 
 ### What Remains
 
 - **Open Question #10** — Agent-engine SSE event bus is single-node only. Documented architectural limitation (see [[services/execution-event-bus]] and [[wiki/active-areas]]). Requires Redis pub/sub or sticky sessions before multi-node production.
 - **Open Question #11** — Cross-service integration tests excluded from build via `testExcludes`. Architectural debt; restoration tracked above.
 - **Open Question #12** — `RetryingStateHandlerTest.clearRetryStateShouldRemoveCounters` flaky in full reactor; passes in isolation. Pre-existing from commit 869d416.
+- **Open Question #13** — Milvus `consistency_level` 未配置。多 Agent 写后读场景下 Bounded 默认级别会导致查询空结果，需在多 Agent 编排落地前修复。
+- **Open Question #14** — Tool-call 无预算限制。单次 iteration 内可触发无限 tool call，需增加 per-execution budget。
+- **Open Question #15** — Agent 决策无审计日志。无 reasoning provenance，无法满足企业合规。
+- **Open Question #16** — OpenTelemetry 缺失。自定义 trace 不可与标准观测栈集成。
 
 ### Auto-Generated Gap Scan (Stale — Resync Required)
 
@@ -127,8 +136,6 @@ The following controllers exist but have no dedicated wiki pages (most are stand
 ## Auto-Generated Gap Scan
 
 ## Auto-Generated Gap Scan
-
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-07T07:47:42Z -->
 
 ### Undocumented Entities
 
