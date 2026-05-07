@@ -1,5 +1,6 @@
 package com.schemaplexai.gateway.filter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.common.constants.CommonConstants;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -36,7 +37,7 @@ class JwtAuthFilterTest {
 
     @BeforeEach
     void setUp() {
-        filter = new JwtAuthFilter();
+        filter = new JwtAuthFilter(new ObjectMapper());
         ReflectionTestUtils.setField(filter, "jwtSecret", SECRET);
         // Skip PostConstruct validation in tests
         exchange = mock(ServerWebExchange.class);
