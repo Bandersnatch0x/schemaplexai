@@ -24,4 +24,17 @@ public interface SandboxProvider {
      * Provider 标识，例如 {@code local} / {@code e2b} / {@code daytona}。
      */
     String providerId();
+
+    /**
+     * Creates an isolated child sandbox for sub-agent execution.
+     * Default implementation creates a completely independent sandbox.
+     *
+     * @param parent the parent sandbox session
+     * @param config the child session configuration
+     * @return a new {@link SandboxSession} scoped under the parent
+     * @throws SandboxException if creation fails
+     */
+    default SandboxSession scope(SandboxSession parent, SandboxSessionConfig config) throws SandboxException {
+        return create(config);
+    }
 }
