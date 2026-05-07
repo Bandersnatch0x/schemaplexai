@@ -1,0 +1,32 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+  test:
+    database:
+      replace: none
+
+mybatis-plus:
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+flowable:
+  database-schema-update: true
+  async-executor-activate: false
+  history-level: none
+  deployment:
+    enabled: false
+  idm:
+    enabled: false
+  rest:
+    enabled: false

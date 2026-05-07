@@ -99,7 +99,7 @@
             <conditionExpression xsi:type="tFormalExpression">${!requireHumanApproval || trustScore >= 0.8}</conditionExpression>
         </sequenceFlow>
         <sequenceFlow id="aflow3-manual" sourceRef="approvalGateway" targetRef="humanReviewTask">
-            <conditionExpression xsi:type="tFormalExpression">${requireHumanApproval && trustScore < 0.8}</conditionExpression>
+            <conditionExpression xsi:type="tFormalExpression"><![CDATA[${requireHumanApproval && trustScore < 0.8}]]></conditionExpression>
         </sequenceFlow>
 
         <sequenceFlow id="aflow4" sourceRef="humanReviewTask" targetRef="humanDecisionGateway"/>
@@ -117,10 +117,10 @@
 
         <!-- Quality gateway branches -->
         <sequenceFlow id="aflow8-pass" sourceRef="qualityGateway" targetRef="finalizeTask">
-            <conditionExpression xsi:type="tFormalExpression">${agentResult != null && agentResult.qualityScore >= 0.7}</conditionExpression>
+            <conditionExpression xsi:type="tFormalExpression"><![CDATA[${agentResult != null && agentResult.qualityScore >= 0.7}]]></conditionExpression>
         </sequenceFlow>
         <sequenceFlow id="aflow8-fail" sourceRef="qualityGateway" targetRef="humanFeedbackTask">
-            <conditionExpression xsi:type="tFormalExpression">${agentResult == null || agentResult.qualityScore < 0.7}</conditionExpression>
+            <conditionExpression xsi:type="tFormalExpression"><![CDATA[${agentResult == null || agentResult.qualityScore < 0.7}]]></conditionExpression>
         </sequenceFlow>
 
         <sequenceFlow id="aflow9" sourceRef="humanFeedbackTask" targetRef="reExecuteAgentTask"/>

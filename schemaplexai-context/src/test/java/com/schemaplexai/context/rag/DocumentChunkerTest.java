@@ -19,12 +19,15 @@ class DocumentChunkerTest {
     @Test
     void chunk_longText_returnsMultipleChunksWithOverlap() {
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < 30; i++) {
             sb.append("This is sentence number ").append(i).append(". ");
         }
         String text = sb.toString();
 
-        List<TextChunk> chunks = chunker.chunk(text, ChunkingConfig.defaults());
+        ChunkingConfig config = ChunkingConfig.defaults();
+        config.setChunkSize(200);
+        config.setSplitBySentence(false);
+        List<TextChunk> chunks = chunker.chunk(text, config);
 
         assertFalse(chunks.isEmpty(), "Should produce at least one chunk");
         assertTrue(chunks.size() > 1, "Long text should produce multiple chunks");

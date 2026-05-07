@@ -94,7 +94,16 @@ public class ConditionNodeExecutor implements NodeExecutor {
         if (key.startsWith("\"") && key.endsWith("\"")) {
             return key.substring(1, key.length() - 1);
         }
-        return variables.get(key);
+        Object value = variables.get(key);
+        if (value != null) {
+            return value;
+        }
+        // Try parsing as a numeric literal
+        try {
+            return Double.parseDouble(key);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private boolean isNumeric(Object value) {

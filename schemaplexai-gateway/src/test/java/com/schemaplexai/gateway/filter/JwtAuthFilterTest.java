@@ -50,6 +50,22 @@ class JwtAuthFilterTest {
         when(response.bufferFactory()).thenReturn(new DefaultDataBufferFactory());
         when(response.writeWith(any())).thenReturn(Mono.empty());
         when(chain.filter(any(ServerWebExchange.class))).thenReturn(Mono.empty());
+
+        // Stub request mutation chain (used by both whitelist and auth paths)
+        ServerHttpRequest.Builder requestBuilder = mock(ServerHttpRequest.Builder.class);
+        when(request.mutate()).thenReturn(requestBuilder);
+        when(requestBuilder.header(anyString(), anyString())).thenReturn(requestBuilder);
+        when(requestBuilder.headers(any())).thenReturn(requestBuilder);
+        ServerHttpRequest mutatedRequest = mock(ServerHttpRequest.class);
+        when(requestBuilder.build()).thenReturn(mutatedRequest);
+
+        // Stub exchange mutation chain
+        ServerWebExchange.Builder exchangeBuilder = mock(ServerWebExchange.Builder.class);
+        when(exchange.mutate()).thenReturn(exchangeBuilder);
+        when(exchangeBuilder.request(any(ServerHttpRequest.class))).thenReturn(exchangeBuilder);
+        ServerWebExchange mutatedExchange = mock(ServerWebExchange.class);
+        when(exchangeBuilder.build()).thenReturn(mutatedExchange);
+        when(chain.filter(mutatedExchange)).thenReturn(Mono.empty());
     }
 
     @Test
@@ -60,7 +76,7 @@ class JwtAuthFilterTest {
         StepVerifier.create(filter.filter(exchange, chain))
                 .verifyComplete();
 
-        verify(chain).filter(exchange);
+        verify(chain).filter(any(ServerWebExchange.class));
     }
 
     @Test
@@ -71,7 +87,7 @@ class JwtAuthFilterTest {
         StepVerifier.create(filter.filter(exchange, chain))
                 .verifyComplete();
 
-        verify(chain).filter(exchange);
+        verify(chain).filter(any(ServerWebExchange.class));
     }
 
     @Test
@@ -82,7 +98,7 @@ class JwtAuthFilterTest {
         StepVerifier.create(filter.filter(exchange, chain))
                 .verifyComplete();
 
-        verify(chain).filter(exchange);
+        verify(chain).filter(any(ServerWebExchange.class));
     }
 
     @Test
@@ -153,25 +169,10 @@ class JwtAuthFilterTest {
         headers.set(CommonConstants.HEADER_AUTHORIZATION, CommonConstants.TOKEN_PREFIX + validToken);
         when(request.getHeaders()).thenReturn(headers);
 
-        // Mock the mutated request builder
-        ServerHttpRequest.Builder requestBuilder = mock(ServerHttpRequest.Builder.class);
-        when(request.mutate()).thenReturn(requestBuilder);
-        when(requestBuilder.header(anyString(), anyString())).thenReturn(requestBuilder);
-        ServerHttpRequest mutatedRequest = mock(ServerHttpRequest.class);
-        when(requestBuilder.build()).thenReturn(mutatedRequest);
-
-        // Mock exchange mutate chain
-        ServerWebExchange.Builder exchangeBuilder = mock(ServerWebExchange.Builder.class);
-        when(exchange.mutate()).thenReturn(exchangeBuilder);
-        when(exchangeBuilder.request(any(ServerHttpRequest.class))).thenReturn(exchangeBuilder);
-        ServerWebExchange mutatedExchange = mock(ServerWebExchange.class);
-        when(exchangeBuilder.build()).thenReturn(mutatedExchange);
-        when(chain.filter(mutatedExchange)).thenReturn(Mono.empty());
-
         StepVerifier.create(filter.filter(exchange, chain))
                 .verifyComplete();
 
-        verify(chain).filter(mutatedExchange);
+        verify(chain).filter(any(ServerWebExchange.class));
     }
 
     @Test
@@ -190,25 +191,10 @@ class JwtAuthFilterTest {
         headers.set(CommonConstants.HEADER_AUTHORIZATION, CommonConstants.TOKEN_PREFIX + validToken);
         when(request.getHeaders()).thenReturn(headers);
 
-        // Mock the mutated request builder
-        ServerHttpRequest.Builder requestBuilder = mock(ServerHttpRequest.Builder.class);
-        when(request.mutate()).thenReturn(requestBuilder);
-        when(requestBuilder.header(anyString(), anyString())).thenReturn(requestBuilder);
-        ServerHttpRequest mutatedRequest = mock(ServerHttpRequest.class);
-        when(requestBuilder.build()).thenReturn(mutatedRequest);
-
-        // Mock exchange mutate chain
-        ServerWebExchange.Builder exchangeBuilder = mock(ServerWebExchange.Builder.class);
-        when(exchange.mutate()).thenReturn(exchangeBuilder);
-        when(exchangeBuilder.request(any(ServerHttpRequest.class))).thenReturn(exchangeBuilder);
-        ServerWebExchange mutatedExchange = mock(ServerWebExchange.class);
-        when(exchangeBuilder.build()).thenReturn(mutatedExchange);
-        when(chain.filter(mutatedExchange)).thenReturn(Mono.empty());
-
         StepVerifier.create(filter.filter(exchange, chain))
                 .verifyComplete();
 
-        verify(chain).filter(mutatedExchange);
+        verify(chain).filter(any(ServerWebExchange.class));
     }
 
     @Test

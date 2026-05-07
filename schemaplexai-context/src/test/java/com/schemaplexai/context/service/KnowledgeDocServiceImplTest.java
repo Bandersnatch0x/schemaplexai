@@ -21,6 +21,9 @@ class KnowledgeDocServiceImplTest {
     @Mock
     private SfKnowledgeDocMapper knowledgeDocMapper;
 
+    @Mock
+    private MilvusSyncService milvusSyncService;
+
     @InjectMocks
     private KnowledgeDocServiceImpl knowledgeDocService;
 
