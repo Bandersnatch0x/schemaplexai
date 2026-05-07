@@ -3,6 +3,8 @@ package com.schemaplexai.agent.engine.memory;
 import com.schemaplexai.agent.engine.entity.SfChatMessage;
 import com.schemaplexai.agent.engine.mapper.SfChatMessageMapper;
 import com.schemaplexai.agent.engine.model.LlmMessage;
+import com.schemaplexai.common.context.TenantContextHolder;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,6 +41,7 @@ class CompositeChatMemoryStoreTest {
     @Mock
     private ValueOperations<String, String> stringOps;
 
+    private TenantKeyService tenantKeyService;
     private CompositeChatMemoryStore memoryStore;
 
     @BeforeEach
@@ -46,14 +49,24 @@ class CompositeChatMemoryStoreTest {
         lenient().when(redisTemplate.opsForList()).thenReturn(listOps);
         lenient().when(stringRedisTemplate.opsForValue()).thenReturn(stringOps);
         lenient().when(stringOps.setIfAbsent(anyString(), anyString(), any())).thenReturn(true);
-        memoryStore = new CompositeChatMemoryStore(redisTemplate, stringRedisTemplate, chatMessageMapper);
+        tenantKeyService = new TenantKeyService("test-master-secret-for-unit-tests-32bytes!", true);
+        memoryStore = new CompositeChatMemoryStore(redisTemplate, stringRedisTemplate, chatMessageMapper, tenantKeyService);
+        TenantContextHolder.setTenantId("test-tenant");
+    }
+
+    @AfterEach
+    void tearDown() {
+        TenantContextHolder.clear();
     }
 
     @Test
     void loadMessagesReturnsRedisDataWhenAvailable() {
+        // Redis stores encrypted content — simulate that
+        String encHello = tenantKeyService.encrypt("hello", "test-tenant");
+        String encHi = tenantKeyService.encrypt("hi", "test-tenant");
         List<LlmMessage> redisMessages = List.of(
-                new LlmMessage("user", "hello"),
-                new LlmMessage("assistant", "hi")
+                new LlmMessage("user", encHello),
+                new LlmMessage("assistant", encHi)
         );
         when(listOps.range(anyString(), eq(0L), eq(-1L))).thenReturn(redisMessages);
         when(listOps.size(anyString())).thenReturn(2L);
@@ -61,16 +74,21 @@ class CompositeChatMemoryStoreTest {
         List<LlmMessage> result = memoryStore.loadMessages("conv-1");
 
         assertEquals(2, result.size());
+        // After decryption, content should be plaintext
         assertEquals("hello", result.get(0).getContent());
+        assertEquals("hi", result.get(1).getContent());
         verify(chatMessageMapper, never()).selectList(any());
     }
 
     @Test
     void loadMessagesFallsBackToDatabaseWhenRedisEmpty() {
         when(listOps.range(anyString(), eq(0L), eq(-1L))).thenReturn(null);
+        // DB stores encrypted content — simulate that
+        String encHello = tenantKeyService.encrypt("hello", "test-tenant");
+        String encHi = tenantKeyService.encrypt("hi", "test-tenant");
         List<SfChatMessage> dbMessages = List.of(
-                createDbMessage("conv-1", 0, "user", "hello"),
-                createDbMessage("conv-1", 1, "assistant", "hi")
+                createDbMessage("conv-1", 0, "user", encHello),
+                createDbMessage("conv-1", 1, "assistant", encHi)
         );
         when(chatMessageMapper.selectList(any())).thenReturn(dbMessages);
 
@@ -136,7 +154,8 @@ class CompositeChatMemoryStoreTest {
         SfChatMessage saved = captor.getValue();
         assertEquals("conv-1", saved.getConversationId());
         assertEquals("assistant", saved.getRole());
-        assertEquals("response", saved.getContent());
+        // Content is now encrypted — must not be plaintext
+        assertNotEquals("response", saved.getContent(), "Content should be encrypted");
     }
 
     @Test
@@ -193,7 +212,8 @@ class CompositeChatMemoryStoreTest {
         when(listOps.range(anyString(), eq(0L), eq(-1L))).thenReturn(null);
         List<SfChatMessage> dbMessages = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
-            dbMessages.add(createDbMessage("conv-1", i, "user", "msg" + i));
+            String encContent = tenantKeyService.encrypt("msg" + i, "test-tenant");
+            dbMessages.add(createDbMessage("conv-1", i, "user", encContent));
         }
         when(chatMessageMapper.selectList(any())).thenReturn(dbMessages);
 

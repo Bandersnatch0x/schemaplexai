@@ -85,6 +85,11 @@
                 <artifactId>schemaplexai-agent-engine</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.schemaplexai</groupId>
+                <artifactId>schemaplexai-integration</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- MyBatis Plus -->
             <dependency>
@@ -261,12 +266,12 @@
                                             <limit>
                                                 <counter>INSTRUCTION</counter>
                                                 <value>COVEREDRATIO</value>
-                                                <minimum>0.60</minimum>
+                                                <minimum>0.80</minimum>
                                             </limit>
                                             <limit>
                                                 <counter>BRANCH</counter>
                                                 <value>COVEREDRATIO</value>
-                                                <minimum>0.40</minimum>
+                                                <minimum>0.60</minimum>
                                             </limit>
                                         </limits>
                                     </rule>
@@ -283,6 +288,17 @@
                         <effort>Max</effort>
                         <threshold>Medium</threshold>
                         <xmlOutput>true</xmlOutput>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-checkstyle-plugin</artifactId>
+                    <version>3.3.1</version>
+                    <configuration>
+                        <configLocation>checkstyle.xml</configLocation>
+                        <consoleOutput>true</consoleOutput>
+                        <failsOnError>false</failsOnError>
+                        <violationSeverity>warning</violationSeverity>
                     </configuration>
                 </plugin>
             </plugins>

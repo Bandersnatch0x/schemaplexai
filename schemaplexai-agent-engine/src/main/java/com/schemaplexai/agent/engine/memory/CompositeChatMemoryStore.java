@@ -5,6 +5,7 @@ import com.schemaplexai.agent.engine.entity.SfChatMessage;
 import com.schemaplexai.agent.engine.mapper.SfChatMessageMapper;
 import com.schemaplexai.agent.engine.model.LlmMessage;
 import com.schemaplexai.common.constants.CommonConstants;
+import com.schemaplexai.common.context.TenantContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -31,8 +32,10 @@ public class CompositeChatMemoryStore {
     private final RedisTemplate<String, LlmMessage> redisTemplate;
     private final org.springframework.data.redis.core.StringRedisTemplate stringRedisTemplate;
     private final SfChatMessageMapper chatMessageMapper;
+    private final TenantKeyService tenantKeyService;
 
     public List<LlmMessage> loadMessages(String conversationId) {
+        String tenantId = TenantContextHolder.getTenantId();
         String key = String.format(CommonConstants.REDIS_KEY_CHAT_MEMORY, conversationId);
         List<LlmMessage> messages = redisTemplate.opsForList().range(key, 0, -1);
         if (messages != null && !messages.isEmpty()) {
@@ -40,7 +43,7 @@ public class CompositeChatMemoryStore {
             if (size != null && size > MAX_MESSAGES) {
                 redisTemplate.opsForList().trim(key, size - MAX_MESSAGES, -1);
             }
-            return new ArrayList<>(messages);
+            return decryptMessages(messages, tenantId);
         }
 
         // L1 miss: try to acquire backfill lock to prevent duplicate PG reads (M-3 fix)
@@ -55,7 +58,7 @@ public class CompositeChatMemoryStore {
             }
             List<LlmMessage> retryMessages = redisTemplate.opsForList().range(key, 0, -1);
             if (retryMessages != null && !retryMessages.isEmpty()) {
-                return new ArrayList<>(retryMessages);
+                return decryptMessages(retryMessages, tenantId);
             }
         }
 
@@ -70,38 +73,58 @@ public class CompositeChatMemoryStore {
         List<LlmMessage> result = new ArrayList<>();
         if (dbMessages != null) {
             for (SfChatMessage dbMsg : dbMessages) {
-                LlmMessage msg = new LlmMessage(dbMsg.getRole(), dbMsg.getContent());
+                String decryptedContent = tenantKeyService.decrypt(dbMsg.getContent(), tenantId);
+                LlmMessage msg = new LlmMessage(dbMsg.getRole(), decryptedContent);
                 result.add(msg);
             }
-            // Backfill L1 in a single batch
+            // Backfill L1 with encrypted content (same format as what was stored)
             if (!result.isEmpty()) {
-                redisTemplate.opsForList().rightPushAll(key, result.toArray(new LlmMessage[0]));
+                List<LlmMessage> encryptedForCache = new ArrayList<>();
+                for (SfChatMessage dbMsg : dbMessages) {
+                    encryptedForCache.add(new LlmMessage(dbMsg.getRole(), dbMsg.getContent()));
+                }
+                redisTemplate.opsForList().rightPushAll(key, encryptedForCache.toArray(new LlmMessage[0]));
                 redisTemplate.expire(key, CHAT_HISTORY_TTL);
             }
         }
         return result;
     }
 
+    /**
+     * Decrypt a list of messages loaded from Redis (stored in encrypted form).
+     */
+    private List<LlmMessage> decryptMessages(List<LlmMessage> encrypted, String tenantId) {
+        List<LlmMessage> decrypted = new ArrayList<>(encrypted.size());
+        for (LlmMessage msg : encrypted) {
+            decrypted.add(new LlmMessage(msg.getRole(), tenantKeyService.decrypt(msg.getContent(), tenantId)));
+        }
+        return decrypted;
+    }
+
     public void saveMessage(String conversationId, LlmMessage message) {
+        String tenantId = TenantContextHolder.getTenantId();
+        String encryptedContent = tenantKeyService.encrypt(message.getContent(), tenantId);
+
         // Serialize per-conversation to prevent duplicate turnIndex (M-2 fix)
         Object lock = conversationLocks.computeIfAbsent(conversationId, k -> new Object());
         Integer turnIndex;
         synchronized (lock) {
             turnIndex = computeNextTurnIndex(conversationId);
 
-            // L2: PostgreSQL first
+            // L2: PostgreSQL first — store encrypted content
             SfChatMessage entity = new SfChatMessage();
             entity.setConversationId(conversationId);
             entity.setTurnIndex(turnIndex);
             entity.setRole(message.getRole());
-            entity.setContent(message.getContent());
+            entity.setContent(encryptedContent);
             chatMessageMapper.insert(entity);
         }
 
-        // L1: Redis after successful PG insert
+        // L1: Redis after successful PG insert — store encrypted content
+        LlmMessage encryptedMsg = new LlmMessage(message.getRole(), encryptedContent);
         String key = String.format(CommonConstants.REDIS_KEY_CHAT_MEMORY, conversationId);
         try {
-            redisTemplate.opsForList().rightPush(key, message);
+            redisTemplate.opsForList().rightPush(key, encryptedMsg);
             redisTemplate.expire(key, CHAT_HISTORY_TTL);
             Long size = redisTemplate.opsForList().size(key);
             if (size != null && size > MAX_MESSAGES) {
