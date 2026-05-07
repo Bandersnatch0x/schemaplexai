@@ -184,6 +184,20 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # Jaeger - Distributed Tracing
+  jaeger:
+    image: jaegertracing/all-in-one:1.52
+    container_name: sf-jaeger
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    networks:
+      - sf-network
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:

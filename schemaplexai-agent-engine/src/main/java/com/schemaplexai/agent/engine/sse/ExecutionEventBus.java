@@ -4,7 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.agent.engine.state.AgentExecutionState;
 import lombok.RequiredArgsConstructor;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -14,10 +15,11 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-@Slf4j
 @Component
 @RequiredArgsConstructor
 public class ExecutionEventBus {
+
+    private static final Logger log = LoggerFactory.getLogger(ExecutionEventBus.class);
 
     private final ObjectMapper objectMapper;
 
