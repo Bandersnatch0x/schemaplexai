@@ -23,9 +23,9 @@ confidence: high
 ## Active Changes (.claude/changes/)
 
 - **agent-engine-core-completion**: spec=yes, tasks=yes, status=completed
-- **agents-sdk-2026-alignment**: spec=yes, tasks=yes
-- **core-ai-engine-design**: spec=yes, tasks=yes
+- **agents-sdk-2026-alignment**: spec=yes, tasks=yes, status=completed
+- **core-ai-engine-design**: spec=yes, tasks=yes, status=completed
 - **ui-alignment**: spec=yes, tasks=yes, status=completed
 - **v1-release-readiness**: spec=yes, tasks=yes, status=completed
 - **v1-test-fixes-and-coverage**: spec=yes, tasks=yes, status=completed
-- **wiki-gaps-completion**: spec=yes, tasks=yes
+- **wiki-gaps-completion**: spec=yes, tasks=yes, status=completed
