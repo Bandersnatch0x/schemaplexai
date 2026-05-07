@@ -111,7 +111,16 @@ CREATE TABLE sf_agent_role (
 );
 ```
 
-### 3.3 核心接口
+### 3.3 版本保留策略
+
+`sf_agent_skill_version` 表需设置保留上限，防止无限增长：
+
+- 每个 Skill 最多保留 **50 个版本**
+- 超出时删除最旧版本（按 `created_at` ASC）
+- 执行时锁定的版本（被 `SfAgentExecution` 引用的 `skill_version_id`）永不删除
+- 定期清理任务：删除无引用且超过 90 天的版本
+
+### 3.4 核心接口
 
 ```java
 public interface SkillRegistry {
@@ -130,7 +139,9 @@ public interface RoleRegistry {
 
 **实现**: Caffeine 内存缓存 + DB，`sf_agent_skill_version` 表记录每次变更快照。
 
-### 3.4 注入点
+### 3.5 注入点
+
+**前提**: `SfAgentExecution` 需新增 `skillName`（VARCHAR 64）和 `roleName`（VARCHAR 64）字段，可为 null。
 
 在 `ThinkingStateHandler.buildPrompt()` 中注入，改动不超过 20 行：
 
@@ -138,14 +149,18 @@ public interface RoleRegistry {
 private String buildPrompt(List<LlmMessage> messages, SfAgentExecution execution) {
     StringBuilder sb = new StringBuilder();
     // 注入 Skill instructions（system message 前缀）
-    String skillInstructions = skillRegistry.resolve(execution.getSkillName(), execution.getTenantId());
-    if (skillInstructions != null) {
-        sb.append("system: ").append(skillInstructions).append("\n");
+    if (execution.getSkillName() != null) {
+        String skillInstructions = skillRegistry.resolve(execution.getSkillName(), execution.getTenantId());
+        if (skillInstructions != null) {
+            sb.append("system: ").append(skillInstructions).append("\n");
+        }
     }
     // 注入 Role overlay（system message 后缀）
-    String roleOverlay = roleRegistry.resolve(execution.getRoleName(), execution.getTenantId());
-    if (roleOverlay != null) {
-        sb.append("system: ").append(roleOverlay).append("\n");
+    if (execution.getRoleName() != null) {
+        String roleOverlay = roleRegistry.resolve(execution.getRoleName(), execution.getTenantId());
+        if (roleOverlay != null) {
+            sb.append("system: ").append(roleOverlay).append("\n");
+        }
     }
     // 原有 message 拼接
     for (LlmMessage msg : messages) {
@@ -155,13 +170,13 @@ private String buildPrompt(List<LlmMessage> messages, SfAgentExecution execution
 }
 ```
 
-### 3.5 安全措施
+### 3.6 安全措施
 
 - **P0**: SkillLoader 沙箱化解析 — Markdown 解析在隔离线程，frontmatter 字段长度限制，禁止 HTML 标签
 - **P1**: SemanticGuardrail — 语义级注入检测（规则引擎检测行为覆盖意图）
 - **P2**: Skill 签名验证 — HMAC-SHA256，运行时验证完整性
 
-### 3.6 数据流
+### 3.7 数据流
 
 ```
 UI Monaco Editor
@@ -193,6 +208,7 @@ UI Monaco Editor
 public class TaskToolAdapter implements ToolAdapter {
 
     private final SubAgentExecutionService subAgentService;
+    private final SubAgentQuotaService quotaService;
 
     @Override
     public String getToolName() { return "task"; }
@@ -202,33 +218,61 @@ public class TaskToolAdapter implements ToolAdapter {
         String prompt = toolCall.parameters().get("prompt").toString();
         String role = toolCall.parameters().getOrDefault("role", "default").toString();
 
-        SubAgentRequest request = SubAgentRequest.builder()
-            .parentExecutionId(ctx.executionId())
-            .prompt(prompt)
-            .role(role)
-            .workspaceRoot(ctx.workspaceRoot())    // 共享 sandbox
-            .inheritedGuardrails(ctx.guardrails())  // P1: Guardrails 传播
-            .maxDepth(getRemainingDepth(ctx))
-            .build();
+        // 配额检查（前置，快速失败）
+        quotaService.checkAndIncrement(ctx.executionId());
 
-        SubAgentResult result = subAgentService.execute(request);
-        return ToolResult.success(result.output());
+        try {
+            SubAgentRequest request = SubAgentRequest.builder()
+                .parentExecutionId(ctx.executionId())
+                .prompt(prompt)
+                .role(role)
+                .workspaceRoot(ctx.workspaceRoot())    // 共享 sandbox（同层协作）
+                .inheritedGuardrails(ctx.guardrails())  // P1: Guardrails 传播
+                .maxDepth(getRemainingDepth(ctx))
+                .build();
+
+            SubAgentResult result = subAgentService.execute(request);
+            return ToolResult.success(result.output());
+        } catch (SubAgentQuotaExceededException e) {
+            return ToolResult.error("Sub-agent quota exceeded: " + e.getMessage());
+        } catch (SubAgentExecutionException e) {
+            return ToolResult.error("Sub-agent failed: " + e.getMessage());
+        } finally {
+            quotaService.decrement(ctx.executionId());
+        }
     }
 }
 ```
 
-### 4.4 四层安全防护
+**注意**: `ExecutionContext` 需新增 `guardrails()` 方法返回当前 Guardrails 配置。
+
+### 4.4 配额模型（澄清）
+
+配额为**直接子 Agent 数**限制，非递归总计：
+
+| 维度 | 键 | 阈值 | 说明 |
+|------|-----|------|------|
+| 父级配额 | `sf:subagent:count:{parentExecutionId}` | 16 | 单个父 Agent 的直接子 Agent 数 |
+| 租户级配额 | `sf:subagent:tenant:{tenantId}` | 可配置（默认 64） | 租户全局并发子 Agent 数 |
+| 深度限制 | execution metadata `depth` | 4 | 递归深度硬上限 |
+
+- 父级配额防止单 Agent 横向爆炸
+- 租户级配额防止多 Agent 协同耗尽资源
+- 深度限制防止纵向递归
+
+### 4.5 四层安全防护
 
 | 层级 | 措施 | 实施点 |
 |------|------|--------|
-| L1 | 全局子 Agent 配额 | Redis `sf:subagent:count:{parentId}`，阈值 16 |
+| L1 | 父级 + 租户级子 Agent 配额 | Redis 原子计数器 |
 | L1 | Guardrails 传播链 | 子 Agent 继承父配置 + 额外限制 |
 | L1 | 子 Agent 独立沙箱 | `SandboxProvider.scope()` 隔离 |
 | L1 | ancestryChain 防绕 | execution metadata 传递父 ID 列表 |
 
-### 4.5 关键约束
+### 4.6 关键约束
 
-- 子 Agent 独立 `conversationId`，共享 `workspaceRoot` + `tenantId`
+- 子 Agent 独立 `conversationId` + 独立 `SandboxSession`（通过 `scope()` 创建）
+- `workspaceRoot` 仅在父子需要协作编辑同一目录时共享（需显式传入，非默认行为）
 - TokenBudget 父子成本汇总到 ClickHouse 追踪
 - 子任务失败复用现有 RETRYING/FAILED 路径
 - **不引入 LangGraph Subgraph**（预定义工作流用 Flowable BPMN）
@@ -299,7 +343,19 @@ Layer 3: PTL Retry（丢弃最旧消息组，重试 Layer 2）
 GATE_BLOCKED
 ```
 
-### 6.3 Layer 0: Tool Result 清理
+### 6.3 Token 估算
+
+复用现有 `TokenEstimator.estimate(String)`（char/4 启发式），新增 `List<LlmMessage>` 重载：
+
+```java
+public static long estimate(List<LlmMessage> messages) {
+    return messages.stream().mapToLong(m -> estimate(m.getContent())).sum();
+}
+```
+
+**已知局限**: char/4 对 CJK 文本偏低（实际约 char/1.5），后续可替换为 tiktoken-jni。
+
+### 6.4 Layer 0: Tool Result 清理
 
 **参考**: Claude Code 的 `apiMicrocompact.ts` — 在发送给 LLM 前清理旧的 tool results。
 
@@ -314,7 +370,7 @@ public class ToolResultCompactionStrategy implements CompactionStrategy {
 
     @Override
     public CompactionResult compact(String conversationId, List<LlmMessage> messages, TokenBudget budget) {
-        long currentTokens = estimateTokens(messages);
+        long currentTokens = TokenEstimator.estimate(messages);
         if (currentTokens <= MAX_INPUT_TOKENS) return CompactionResult.noOp();
 
         List<LlmMessage> compacted = clearOldToolResults(messages, KEEP_RECENT);
@@ -325,11 +381,11 @@ public class ToolResultCompactionStrategy implements CompactionStrategy {
 
 **特点**: 请求发送前执行，不触发 LLM 调用，零成本。
 
-### 6.4 Layer 1: SlidingWindow（保留现有设计）
+### 6.5 Layer 1: SlidingWindow（保留现有设计）
 
 裁剪超出窗口的旧消息，保留 system message + 最近 N 条。
 
-### 6.5 Layer 2: Summarization + Post-compact 恢复
+### 6.6 Layer 2: Summarization + Post-compact 恢复
 
 **参考**: Claude Code 的 `compactConversation()` — 摘要后重新注入关键上下文。
 
@@ -367,28 +423,39 @@ public class SummarizationCompactionStrategy implements CompactionStrategy {
 | Plan 文件 | SubTaskPlan JSON | 不限 |
 | 已调用的 Skill | SkillRegistry 加载的 instructions | 5K/skill, 总计 25K |
 
-### 6.6 Layer 3: PTL Retry
+### 6.7 Layer 3: PTL Retry
 
 **参考**: Claude Code 的 `truncateHeadForPTLRetry()` — 摘要请求本身也超限时，丢弃最旧消息组重试。
 
 ```java
-public class CompactionService {
+@Component
+public class AutoCompactionService {
+
     private static final int MAX_PTL_RETRIES = 3;
 
     public CompactionResult compactIfNeeded(String conversationId, TokenBudget budget) {
         List<LlmMessage> messages = chatMemoryStore.loadMessages(conversationId);
 
-        // Layer 0: Tool result 清理
+        // 快速路径：未超限直接返回，避免进入策略链
+        long currentTokens = TokenEstimator.estimate(messages);
+        if (currentTokens <= budget.remainingInput()) {
+            return CompactionResult.noOp();
+        }
+
+        // Layer 0: Tool result 清理（零成本）
         CompactionResult l0 = toolResultStrategy.compact(conversationId, messages, budget);
         if (l0.success()) messages = l0.messages();
 
-        if (estimateTokens(messages) <= budget.remainingInput()) return CompactionResult.noOp();
+        if (TokenEstimator.estimate(messages) <= budget.remainingInput()) {
+            chatMemoryStore.replaceMessages(conversationId, messages);
+            return l0;
+        }
 
         // Layer 1: SlidingWindow
         CompactionResult l1 = slidingWindowStrategy.compact(conversationId, messages, budget);
         if (l1.success()) messages = l1.messages();
 
-        if (estimateTokens(messages) <= budget.remainingInput()) {
+        if (TokenEstimator.estimate(messages) <= budget.remainingInput()) {
             chatMemoryStore.replaceMessages(conversationId, messages);
             return l1;
         }
@@ -409,13 +476,15 @@ public class CompactionService {
 }
 ```
 
-### 6.7 安全措施
+**注意**: `CompositeChatMemoryStore` 需新增 `replaceMessages(String conversationId, List<LlmMessage> messages)` 方法。
+
+### 6.8 安全措施
 
 - **Compaction 前 PII 扫描**: 摘要生成前对历史消息运行 `PiiRedactor`
 - **摘要后 Guardrails 校验**: 生成的摘要必须通过 `GuardrailsEngine.validateOutput()`
 - **Compaction 审计日志**: 记录触发原因、原始 token 数、压缩后 token 数
 
-### 6.8 与 Claude Code 的差异
+### 6.9 与 Claude Code 的差异
 
 | 方面 | Claude Code | SchemaPlexAI |
 |------|------------|--------------|
@@ -461,32 +530,69 @@ public class McpToolAdapter implements ToolAdapter {
         McpToolRef ref = McpToolRef.parse(call.toolName());  // "mcp:<serverId>:<toolName>"
         serverRegistry.requireApproved(ref.serverId());       // 白名单检查
 
-        McpSchema.CallToolResult result = clientManager
-                .getClient(ref.serverId())
-                .callTool(ref.toolName(), call.parameters());
-
-        return ToolResult.success(serializeContent(result.content()));
+        try {
+            McpSchema.CallToolResult result = clientManager
+                    .getClient(ref.serverId())
+                    .callTool(ref.toolName(), call.parameters());
+            return ToolResult.success(serializeContent(result.content()));
+        } catch (McpServerNotFoundException e) {
+            return ToolResult.error("MCP server unavailable: " + ref.serverId());
+        } catch (McpToolExecutionException e) {
+            return ToolResult.error("MCP tool failed: " + e.getMessage());
+        }
     }
 }
 ```
 
-**McpToolDiscoveryService** — 定时同步工具定义:
+**McpToolDiscoveryService** — 并行同步工具定义（每服务器独立错误隔离）:
 
 ```java
 @Component
 public class McpToolDiscoveryService {
 
+    private final ExecutorService discoveryExecutor = Executors.newFixedThreadPool(4);
+
     @Scheduled(fixedDelayString = "${mcp.discovery.interval:60000}")
     public void syncTools() {
-        for (McpServerConfig server : serverRegistry.listApproved()) {
-            List<McpSchema.Tool> remoteTools = clientManager.getClient(server.serverId()).listTools();
-            for (McpSchema.Tool tool : remoteTools) {
-                String qualifiedName = "mcp:" + server.serverId() + ":" + tool.name();
-                // Guardrails 校验工具描述
-                if (!guardrails.validateInput(tool.description()).success()) continue;
-                toolRegistry.registerDynamic(buildDefinition(qualifiedName, tool), mcpAdapter);
-            }
+        List<McpServerConfig> servers = serverRegistry.listApproved();
+        List<CompletableFuture<Void>> futures = servers.stream()
+            .map(server -> CompletableFuture.runAsync(
+                () -> syncServerTools(server), discoveryExecutor)
+                .exceptionally(ex -> {
+                    log.warn("Failed to sync MCP server {}: {}", server.serverId(), ex.getMessage());
+                    return null;  // 单服务器失败不影响其他
+                }))
+            .toList();
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+    }
+
+    private void syncServerTools(McpServerConfig server) {
+        List<McpSchema.Tool> remoteTools = clientManager.getClient(server.serverId()).listTools();
+        for (McpSchema.Tool tool : remoteTools) {
+            String qualifiedName = "mcp:" + server.serverId() + ":" + tool.name();
+            if (!guardrails.validateInput(tool.description()).success()) continue;
+            toolRegistry.registerDynamic(buildDefinition(qualifiedName, tool), mcpAdapter);
         }
+    }
+}
+```
+
+**McpClientManager** — 连接池限制（防连接泄漏）:
+
+```java
+@Component
+public class McpClientManager {
+    // Caffeine 缓存限制并发连接数
+    private final Cache<String, McpClient> clients = Caffeine.newBuilder()
+        .maximumSize(32)                    // 最多 32 个并发 MCP 连接
+        .expireAfterAccess(Duration.ofMinutes(10))
+        .removalListener((key, client, cause) -> {
+            if (client != null) client.close();
+        })
+        .build();
+
+    public McpClient getClient(String serverId) {
+        return clients.get(serverId, this::createClient);
     }
 }
 ```
@@ -557,6 +663,21 @@ public class SfMcpServer extends BaseEntity {
 
 **理由**: 重构接口影响所有 ToolAdapter 实现，breaking change 成本高。
 
+**接口扩展**: `SandboxProvider` 需新增 `scope()` 方法用于子 Agent 沙箱隔离：
+
+```java
+public interface SandboxProvider {
+    SandboxSession create(SandboxSessionConfig config);
+
+    /** 创建隔离子沙箱（子 Agent 使用），共享父沙箱的文件系统但独立进程 */
+    default SandboxSession scope(SandboxSession parent, SandboxSessionConfig config) {
+        return create(config);  // 默认实现：创建独立沙箱
+    }
+
+    String providerId();
+}
+```
+
 ### 8.3 架构
 
 ```
@@ -583,21 +704,34 @@ public class ContainerSandboxProvider implements SandboxProvider {
     @Override
     public SandboxSession create(SandboxSessionConfig config) {
         String sessionId = UUID.randomUUID().toString();
-        CreateContainerCmd cmd = dockerClient.createContainerCmd("sandbox-base:latest")
-                .withName("splx-sbx-" + sessionId)
-                .withNetworkDisabled(true)
-                .withReadonlyRootfs(true)
-                .withHostConfig(HostConfig.newHostConfig()
-                        .withNetworkMode("none")
-                        .withReadonlyRootfs(true)
-                        .withSecurityOpts(List.of("seccomp=restricted"))
-                        .withMemory(config.memoryLimitMb() * 1024 * 1024)
-                        .withCpuPeriod(100_000)
-                        .withCpuQuota(config.cpuLimitMillis() * 100)
-                        .withBinds(volumeBind(sessionId)));
-        ContainerCreation creation = cmd.exec();
-        dockerClient.startContainerCmd(creation.getId()).exec();
-        return new ContainerSandboxSession(sessionId, creation.getId(), config, dockerClient);
+        try {
+            CreateContainerCmd cmd = dockerClient.createContainerCmd("sandbox-base:latest")
+                    .withName("splx-sbx-" + sessionId)
+                    .withNetworkDisabled(true)
+                    .withReadonlyRootfs(true)
+                    .withHostConfig(HostConfig.newHostConfig()
+                            .withNetworkMode("none")
+                            .withReadonlyRootfs(true)
+                            .withSecurityOpts(List.of("seccomp=restricted"))
+                            .withMemory(config.memoryLimitMb() * 1024 * 1024)
+                            .withCpuPeriod(100_000)
+                            .withCpuQuota(config.cpuLimitMillis() * 100)
+                            .withBinds(volumeBind(sessionId)));
+            ContainerCreation creation = cmd.exec();
+            dockerClient.startContainerCmd(creation.getId()).exec();
+            return new ContainerSandboxSession(sessionId, creation.getId(), config, dockerClient);
+        } catch (Exception e) {
+            // 容器创建失败时清理残留
+            cleanupOnFailure(sessionId);
+            throw new SandboxCreationException("Failed to create container sandbox: " + e.getMessage(), e);
+        }
+    }
+
+    private void cleanupOnFailure(String sessionId) {
+        try {
+            dockerClient.removeContainerCmd("splx-sbx-" + sessionId)
+                .withForce(true).exec();
+        } catch (Exception ignored) {}
     }
 }
 ```
@@ -653,7 +787,43 @@ Phase 4 (future): E2B/Daytona providers via same SandboxProvider interface
 
 ---
 
-## 9. 实施路线图
+## 9. 数据库迁移与 Feature Flag 策略
+
+### 9.1 数据库迁移
+
+所有 Schema 变更通过 Flyway 迁移脚本管理：
+
+| 迁移脚本 | 内容 | 依赖 |
+|---------|------|------|
+| `V2026_05_01__add_skill_role_tables.sql` | sf_agent_skill, sf_agent_skill_version, sf_agent_role | 无 |
+| `V2026_05_02__add_execution_skill_role_columns.sql` | SfAgentExecution 新增 skill_name, role_name | 上一步 |
+| `V2026_05_03__extend_mcp_server.sql` | SfMcpServer 新增 command, args, envVars, serverPublicKey, protocolVersion, toolWhitelist | 无 |
+
+迁移脚本必须：
+- 向后兼容（新列可为 null 或有默认值）
+- 可回滚（每个 up 迁移配对 down 迁移）
+- 不锁表（大表用 `ALTER TABLE ... ADD COLUMN ... DEFAULT ...` 而非 `ALTER TABLE ... ADD COLUMN NOT NULL`）
+
+### 9.2 Feature Flag 策略
+
+各维度通过 Feature Flag 独立开关，支持灰度发布：
+
+```yaml
+features:
+  skill-role-enabled: false          # Phase 1 开启
+  compaction-auto-enabled: false     # Phase 2 开启
+  mcp-integration-enabled: false     # Phase 2 开启
+  sub-agent-enabled: false           # Phase 3 开启（依赖 P0/P1 安全项）
+  container-sandbox-enabled: false   # Phase 4 开启
+```
+
+实现方式：`@ConditionalOnProperty` + 配置中心动态刷新。
+
+**子 Agent 特殊要求**: `sub-agent-enabled` 仅在所有 P0/P1 安全前置条件完成后才允许开启。通过 `SubAgentPreconditionChecker` 在启动时校验。
+
+---
+
+## 10. 实施路线图
 
 ### Phase 0: 安全基线（Week 9，1 周）
 
@@ -690,7 +860,7 @@ Phase 4 (future): E2B/Daytona providers via same SandboxProvider interface
 ### Phase 3: Task / Sub-agent（Week 15-16，2 周）
 
 - 实现 TaskToolAdapter（内置 tool）
-- SubAgentExecutionService（独立 conversationId，共享 workspaceRoot）
+- SubAgentExecutionService（独立 conversationId + 独立 SandboxSession）
 - 全局子 Agent 配额（Redis 计数器，阈值 16）
 - Guardrails 传播链
 - 子 Agent 独立沙箱隔离
@@ -706,7 +876,7 @@ Phase 4 (future): E2B/Daytona providers via same SandboxProvider interface
 
 ---
 
-## 10. 关键架构决策（ADR）
+## 11. 关键架构决策（ADR）
 
 ### ADR-1: Sub-agent 采用 Tool 内置化方案
 
@@ -742,7 +912,7 @@ Phase 4 (future): E2B/Daytona providers via same SandboxProvider interface
 
 ---
 
-## 11. 风险预警
+## 12. 风险预警
 
 | 风险 | 来源 | 影响 | 缓解措施 |
 |------|------|------|---------|
@@ -756,7 +926,7 @@ Phase 4 (future): E2B/Daytona providers via same SandboxProvider interface
 
 ---
 
-## 12. 测试覆盖要求
+## 13. 测试覆盖要求
 
 | 维度 | 测试类 | 覆盖率要求 |
 |------|--------|-----------|
@@ -769,7 +939,7 @@ Phase 4 (future): E2B/Daytona providers via same SandboxProvider interface
 
 ---
 
-## 13. 附录
+## 14. 附录
 
 ### 参考文献
 
