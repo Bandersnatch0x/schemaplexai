@@ -154,4 +154,45 @@ public class CompositeChatMemoryStore {
                         .eq(SfChatMessage::getConversationId, conversationId)
         );
     }
+
+    /**
+     * Replace all messages for a conversation (used for compaction / summarization).
+     * Deletes Redis cache and stores new messages in both PG and Redis.
+     */
+    public void replaceMessages(String conversationId, List<LlmMessage> messages) {
+        if (conversationId == null || conversationId.isBlank()) {
+            return;
+        }
+        String tenantId = TenantContextHolder.getTenantId();
+        String key = String.format(CommonConstants.REDIS_KEY_CHAT_MEMORY, conversationId);
+
+        redisTemplate.delete(key);
+
+        if (messages == null || messages.isEmpty()) {
+            return;
+        }
+
+        List<LlmMessage> encrypted = new ArrayList<>(messages.size());
+        for (LlmMessage msg : messages) {
+            encrypted.add(new LlmMessage(msg.getRole(), tenantKeyService.encrypt(msg.getContent(), tenantId)));
+        }
+        redisTemplate.opsForList().rightPushAll(key, encrypted.toArray(new LlmMessage[0]));
+        redisTemplate.expire(key, CHAT_HISTORY_TTL);
+    }
+
+    /**
+     * Rough token estimate: ~4 characters per token (approximation for CJK + ASCII mix).
+     */
+    public int estimateTokens(List<LlmMessage> messages) {
+        if (messages == null || messages.isEmpty()) {
+            return 0;
+        }
+        int totalChars = 0;
+        for (LlmMessage msg : messages) {
+            totalChars += msg.getRole().length();
+            totalChars += msg.getContent().length();
+            totalChars += 4; // overhead per message
+        }
+        return Math.max(1, totalChars / 4);
+    }
 }

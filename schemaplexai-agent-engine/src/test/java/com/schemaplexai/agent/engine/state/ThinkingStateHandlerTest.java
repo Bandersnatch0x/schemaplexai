@@ -10,6 +10,8 @@ import com.schemaplexai.agent.engine.memory.CompositeChatMemoryStore;
 import com.schemaplexai.agent.engine.model.AiModelRouter;
 import com.schemaplexai.agent.engine.model.LlmMessage;
 import com.schemaplexai.agent.engine.model.ModelResolver;
+import com.schemaplexai.agent.engine.role.RoleRegistry;
+import com.schemaplexai.agent.engine.skill.SkillRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,6 +48,12 @@ class ThinkingStateHandlerTest {
 
     @Mock
     private GuardrailsEngine guardrailsEngine;
+
+    @Mock
+    private SkillRegistry skillRegistry;
+
+    @Mock
+    private RoleRegistry roleRegistry;
 
     @Mock
     private AgentStateMachine stateMachine;

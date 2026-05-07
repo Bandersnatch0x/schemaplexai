@@ -13,6 +13,10 @@ import com.schemaplexai.agent.engine.model.AiModelRouter;
 import com.schemaplexai.agent.engine.model.LlmMessage;
 import com.schemaplexai.agent.engine.plan.SubTask;
 import com.schemaplexai.agent.engine.plan.SubTaskPlan;
+import com.schemaplexai.agent.engine.role.RoleOverlay;
+import com.schemaplexai.agent.engine.role.RoleRegistry;
+import com.schemaplexai.agent.engine.skill.SkillDefinition;
+import com.schemaplexai.agent.engine.skill.SkillRegistry;
 import com.schemaplexai.agent.engine.util.TokenEstimator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -39,19 +43,25 @@ public class ThinkingStateHandler implements AgentStateHandler {
     private final AgentLoopDetectionService loopDetection;
     private final com.schemaplexai.agent.engine.model.ModelResolver modelResolver;
     private final GuardrailsEngine guardrailsEngine;
+    private final SkillRegistry skillRegistry;
+    private final RoleRegistry roleRegistry;
 
     public ThinkingStateHandler(ContextInjector contextInjector,
                                  CompositeChatMemoryStore chatMemoryStore,
                                  AiModelRouter modelRouter,
                                  AgentLoopDetectionService loopDetection,
                                  com.schemaplexai.agent.engine.model.ModelResolver modelResolver,
-                                 GuardrailsEngine guardrailsEngine) {
+                                 GuardrailsEngine guardrailsEngine,
+                                 SkillRegistry skillRegistry,
+                                 RoleRegistry roleRegistry) {
         this.contextInjector = contextInjector;
         this.chatMemoryStore = chatMemoryStore;
         this.modelRouter = modelRouter;
         this.loopDetection = loopDetection;
         this.modelResolver = modelResolver;
         this.guardrailsEngine = guardrailsEngine;
+        this.skillRegistry = skillRegistry;
+        this.roleRegistry = roleRegistry;
     }
 
     @Override
@@ -70,8 +80,11 @@ public class ThinkingStateHandler implements AgentStateHandler {
             // 2. Inject context (system prompt, team context, knowledge)
             contextInjector.inject(messages, execution.getAgentId());
 
-            // 3. Build prompt from messages
-            String prompt = buildPrompt(messages);
+            // 3. Build prompt from messages with skill/role injection
+            String skillName = execution.getSkillName();
+            String roleName = execution.getRoleName();
+            String tenantId = String.valueOf(execution.getTenantId());
+            String prompt = buildPrompt(messages, tenantId, roleName, skillName);
 
             // 3a. Guardrails input validation before LLM call
             ValidationResult inputGuardResult = guardrailsEngine.validateInput(prompt);
@@ -149,14 +162,34 @@ public class ThinkingStateHandler implements AgentStateHandler {
         }
     }
 
-    private String buildPrompt(List<LlmMessage> messages) {
-        if (messages.isEmpty()) {
-            return "";
-        }
+    private String buildPrompt(List<LlmMessage> messages, String tenantId, String roleName, String skillName) {
         StringBuilder sb = new StringBuilder();
-        for (LlmMessage msg : messages) {
-            sb.append(msg.getRole()).append(": ").append(msg.getContent()).append("\n");
+
+        // Add role overlay if present
+        if (roleName != null && !roleName.isBlank()) {
+            RoleOverlay role = roleRegistry.resolve(roleName, tenantId);
+            if (role != null) {
+                sb.append("# Role: ").append(role.name()).append("\n");
+                sb.append(role.overlay()).append("\n\n");
+            }
         }
+
+        // Add skill instructions if present
+        if (skillName != null && !skillName.isBlank()) {
+            SkillDefinition skill = skillRegistry.resolve(skillName, tenantId);
+            if (skill != null) {
+                sb.append("# Skill: ").append(skill.name()).append("\n");
+                sb.append(skill.instructions()).append("\n\n");
+            }
+        }
+
+        // Append original prompt content from messages
+        if (messages != null && !messages.isEmpty()) {
+            for (LlmMessage msg : messages) {
+                sb.append(msg.getRole()).append(": ").append(msg.getContent()).append("\n");
+            }
+        }
+
         return sb.toString();
     }
 

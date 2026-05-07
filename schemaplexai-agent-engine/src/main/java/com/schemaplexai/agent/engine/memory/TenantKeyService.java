@@ -52,7 +52,7 @@ public class TenantKeyService {
     /**
      * Constructor for unit tests that don't have Spring context.
      */
-    public TenantKeyService(String masterSecret) {
+    public TenantKeyService(String masterSecret, boolean ignoreBlankCheck) {
         this.masterSecret = masterSecret;
     }
 
