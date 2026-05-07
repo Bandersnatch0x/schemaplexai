@@ -4,6 +4,7 @@ import com.schemaplexai.agent.engine.context.ContextInjector;
 import com.schemaplexai.agent.engine.guardrails.GuardrailsEngine;
 import com.schemaplexai.agent.engine.loop.AgentLoopDetectionService;
 import com.schemaplexai.agent.engine.memory.CompositeChatMemoryStore;
+import com.schemaplexai.agent.engine.memory.compaction.AutoCompactionService;
 import com.schemaplexai.agent.engine.model.AiModelRouter;
 import com.schemaplexai.agent.engine.model.ModelResolver;
 import com.schemaplexai.agent.engine.role.RoleOverlay;
@@ -49,6 +50,9 @@ class ThinkingStateHandlerSkillInjectionTest {
     @Mock
     private RoleRegistry roleRegistry;
 
+    @Mock
+    private AutoCompactionService autoCompactionService;
+
     private ThinkingStateHandler handler;
 
     @BeforeEach
@@ -61,7 +65,8 @@ class ThinkingStateHandlerSkillInjectionTest {
                 modelResolver,
                 guardrailsEngine,
                 skillRegistry,
-                roleRegistry
+                roleRegistry,
+                autoCompactionService
         );
     }
 

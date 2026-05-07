@@ -9,6 +9,8 @@ import com.schemaplexai.agent.engine.guardrails.GuardrailsEngine;
 import com.schemaplexai.agent.engine.loop.AgentLoopDetectionService;
 import com.schemaplexai.agent.engine.loop.LoopDetectionResult;
 import com.schemaplexai.agent.engine.memory.CompositeChatMemoryStore;
+import com.schemaplexai.agent.engine.memory.compaction.AutoCompactionService;
+import com.schemaplexai.agent.engine.memory.compaction.CompactionResult;
 import com.schemaplexai.agent.engine.model.AiModelRouter;
 import com.schemaplexai.agent.engine.model.LlmMessage;
 import com.schemaplexai.agent.engine.plan.SubTask;
@@ -45,6 +47,7 @@ public class ThinkingStateHandler implements AgentStateHandler {
     private final GuardrailsEngine guardrailsEngine;
     private final SkillRegistry skillRegistry;
     private final RoleRegistry roleRegistry;
+    private final AutoCompactionService autoCompactionService;
 
     public ThinkingStateHandler(ContextInjector contextInjector,
                                  CompositeChatMemoryStore chatMemoryStore,
@@ -53,7 +56,8 @@ public class ThinkingStateHandler implements AgentStateHandler {
                                  com.schemaplexai.agent.engine.model.ModelResolver modelResolver,
                                  GuardrailsEngine guardrailsEngine,
                                  SkillRegistry skillRegistry,
-                                 RoleRegistry roleRegistry) {
+                                 RoleRegistry roleRegistry,
+                                 AutoCompactionService autoCompactionService) {
         this.contextInjector = contextInjector;
         this.chatMemoryStore = chatMemoryStore;
         this.modelRouter = modelRouter;
@@ -62,6 +66,7 @@ public class ThinkingStateHandler implements AgentStateHandler {
         this.guardrailsEngine = guardrailsEngine;
         this.skillRegistry = skillRegistry;
         this.roleRegistry = roleRegistry;
+        this.autoCompactionService = autoCompactionService;
     }
 
     @Override
@@ -76,6 +81,25 @@ public class ThinkingStateHandler implements AgentStateHandler {
         try {
             // 1. Load conversation history
             List<LlmMessage> messages = chatMemoryStore.loadMessages(execution.getConversationId());
+
+            // 1a. Auto-compaction: try to fit messages within token budget
+            TokenBudget budget = loadBudget(execution);
+            if (budget != null) {
+                CompactionResult compaction = autoCompactionService.compactIfNeeded(
+                        execution.getConversationId(), budget);
+                if (compaction.success() && !compaction.noOp()) {
+                    log.info("Compaction applied for execution {} using strategy '{}', reloading messages",
+                            execution.getId(), compaction.strategyName());
+                    messages = chatMemoryStore.loadMessages(execution.getConversationId());
+                } else if (!compaction.success()) {
+                    log.warn("Compaction failed for execution {}: {}",
+                            execution.getId(), compaction.failureReason());
+                    execution.setMetadata("blockedReason", "compaction_failed: " + compaction.failureReason());
+                    execution.setMetadata("admissionType", "COMPACTION");
+                    stateMachine.transition(AgentExecutionState.GATE_BLOCKED, execution);
+                    return;
+                }
+            }
 
             // 2. Inject context (system prompt, team context, knowledge)
             contextInjector.inject(messages, execution.getAgentId());
@@ -100,8 +124,7 @@ public class ThinkingStateHandler implements AgentStateHandler {
             // 4. Estimate input tokens (rough: 1 token ~ 4 chars)
             long inputTokens = estimateTokens(prompt);
 
-            // 5. Check token budget if present
-            TokenBudget budget = loadBudget(execution);
+            // 5. Check token budget if present (safety gate after compaction)
             if (budget != null && !budget.consumeInput(inputTokens)) {
                 log.warn("Token budget exceeded for execution {} (input: {}, remaining: {})",
                         execution.getId(), inputTokens, budget.remainingInput());

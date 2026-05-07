@@ -7,6 +7,8 @@ import com.schemaplexai.agent.engine.guardrails.GuardrailsEngine;
 import com.schemaplexai.agent.engine.loop.AgentLoopDetectionService;
 import com.schemaplexai.agent.engine.loop.LoopDetectionResult;
 import com.schemaplexai.agent.engine.memory.CompositeChatMemoryStore;
+import com.schemaplexai.agent.engine.memory.compaction.AutoCompactionService;
+import com.schemaplexai.agent.engine.memory.compaction.CompactionResult;
 import com.schemaplexai.agent.engine.model.AiModelRouter;
 import com.schemaplexai.agent.engine.model.LlmMessage;
 import com.schemaplexai.agent.engine.model.ModelResolver;
@@ -56,6 +58,9 @@ class ThinkingStateHandlerTest {
     private RoleRegistry roleRegistry;
 
     @Mock
+    private AutoCompactionService autoCompactionService;
+
+    @Mock
     private AgentStateMachine stateMachine;
 
     @InjectMocks
@@ -73,6 +78,8 @@ class ThinkingStateHandlerTest {
 
         // Default: guardrails pass everything (lenient because not all tests exercise the full handle flow)
         lenient().when(guardrailsEngine.validateInput(anyString())).thenReturn(ValidationResult.valid());
+        // Default: compaction is noop (lenient because not all tests exercise compaction)
+        lenient().when(autoCompactionService.compactIfNeeded(anyString(), any())).thenReturn(CompactionResult.noop());
     }
 
     @Test
@@ -314,6 +321,70 @@ class ThinkingStateHandlerTest {
 
         verify(guardrailsEngine, times(1)).validateInput(anyString());
         verify(modelRouter, times(1)).generateWithFallback(anyString(), anyString(), anyDouble());
+        verify(stateMachine, times(1)).transition(AgentExecutionState.COMPLETED, execution);
+    }
+
+    @Test
+    void handleShouldCallAutoCompactionWhenBudgetIsSet() {
+        List<LlmMessage> messages = List.of(new LlmMessage("user", "Hello"));
+        when(chatMemoryStore.loadMessages("conv-123")).thenReturn(messages);
+        when(autoCompactionService.compactIfNeeded(anyString(), any()))
+                .thenReturn(CompactionResult.noop());
+        when(modelResolver.resolve(execution)).thenReturn("gpt-4");
+        when(modelRouter.generateWithFallback(anyString(), anyString(), anyDouble()))
+                .thenReturn("Direct answer");
+
+        thinkingStateHandler.handle(stateMachine, execution);
+
+        verify(autoCompactionService, times(1)).compactIfNeeded(eq("conv-123"), any());
+    }
+
+    @Test
+    void handleShouldReloadMessagesWhenCompactionSucceeds() {
+        List<LlmMessage> originalMessages = List.of(new LlmMessage("user", "Hello"));
+        List<LlmMessage> compactedMessages = List.of(new LlmMessage("user", "Hi"));
+        when(chatMemoryStore.loadMessages("conv-123"))
+                .thenReturn(originalMessages)
+                .thenReturn(compactedMessages);
+        when(autoCompactionService.compactIfNeeded(eq("conv-123"), any()))
+                .thenReturn(CompactionResult.success(compactedMessages, "sliding_window"));
+        when(modelResolver.resolve(execution)).thenReturn("gpt-4");
+        when(modelRouter.generateWithFallback(anyString(), anyString(), anyDouble()))
+                .thenReturn("Direct answer");
+
+        thinkingStateHandler.handle(stateMachine, execution);
+
+        verify(chatMemoryStore, times(2)).loadMessages("conv-123");
+        verify(autoCompactionService, times(1)).compactIfNeeded(eq("conv-123"), any());
+        verify(stateMachine, times(1)).transition(AgentExecutionState.COMPLETED, execution);
+    }
+
+    @Test
+    void handleShouldTransitionToGateBlockedWhenCompactionFails() {
+        List<LlmMessage> messages = List.of(new LlmMessage("user", "Hello"));
+        when(chatMemoryStore.loadMessages("conv-123")).thenReturn(messages);
+        when(autoCompactionService.compactIfNeeded(eq("conv-123"), any()))
+                .thenReturn(CompactionResult.failed("All compaction strategies exhausted"));
+
+        thinkingStateHandler.handle(stateMachine, execution);
+
+        verify(stateMachine, times(1)).transition(AgentExecutionState.GATE_BLOCKED, execution);
+        assertEquals("compaction_failed: All compaction strategies exhausted", execution.getMetadata("blockedReason"));
+        assertEquals("COMPACTION", execution.getMetadata("admissionType"));
+        verify(modelRouter, never()).generateWithFallback(anyString(), anyString(), anyDouble());
+    }
+
+    @Test
+    void handleShouldSkipCompactionWhenBudgetIsNull() {
+        execution.setTokenBudgetJson(null);
+        when(chatMemoryStore.loadMessages("conv-123")).thenReturn(List.of());
+        when(modelResolver.resolve(execution)).thenReturn("gpt-4");
+        when(modelRouter.generateWithFallback(anyString(), anyString(), anyDouble()))
+                .thenReturn("Answer without budget");
+
+        thinkingStateHandler.handle(stateMachine, execution);
+
+        verify(autoCompactionService, never()).compactIfNeeded(anyString(), any());
         verify(stateMachine, times(1)).transition(AgentExecutionState.COMPLETED, execution);
     }
 }
