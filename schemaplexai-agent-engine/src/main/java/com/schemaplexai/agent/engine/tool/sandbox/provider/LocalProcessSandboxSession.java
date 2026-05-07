@@ -2,6 +2,7 @@ package com.schemaplexai.agent.engine.tool.sandbox.provider;
 
 import com.schemaplexai.agent.engine.tool.ToolErrorCategory;
 import com.schemaplexai.agent.engine.tool.sandbox.ArtifactKind;
+import com.schemaplexai.agent.engine.tool.sandbox.EnvSanitizer;
 import com.schemaplexai.agent.engine.tool.sandbox.SandboxArtifact;
 import com.schemaplexai.agent.engine.tool.sandbox.SandboxException;
 import com.schemaplexai.agent.engine.tool.sandbox.SandboxSession;
@@ -77,8 +78,12 @@ public class LocalProcessSandboxSession implements SandboxSession {
         pb.directory(cwd.toFile());
 
         Map<String, String> env = pb.environment();
-        // session-level vars first
-        env.putAll(config.envVars());
+        // session-level vars first (sanitized to strip PASSWORD/SECRET/TOKEN/KEY)
+        String[] sanitizedEnv = EnvSanitizer.sanitize(config.envVars());
+        for (String entry : sanitizedEnv) {
+            int eq = entry.indexOf('=');
+            env.put(entry.substring(0, eq), entry.substring(eq + 1));
+        }
         // command-level overrides
         env.putAll(command.env());
         // soft network policy: NONE marks the env so cooperating clients can opt out
