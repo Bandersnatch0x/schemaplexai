@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import axios from 'axios'
 
 // Mock axios before importing request module

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Row, Col, Card, Statistic, Table, Tag, message } from 'antd'
 import {
@@ -56,15 +56,20 @@ export default function Dashboard() {
     }
   }
 
-  const chartData = [
-    { date: '08-01', value: 45, type: t('dashboard.executionCount') },
-    { date: '08-02', value: 52, type: t('dashboard.executionCount') },
-    { date: '08-03', value: 38, type: t('dashboard.executionCount') },
-    { date: '08-04', value: 65, type: t('dashboard.executionCount') },
-    { date: '08-05', value: 48, type: t('dashboard.executionCount') },
-    { date: '08-06', value: 70, type: t('dashboard.executionCount') },
-    { date: '08-07', value: 55, type: t('dashboard.executionCount') },
-  ]
+  const chartData = useMemo(() => {
+    const counts = new Map<string, number>()
+    records.forEach((r) => {
+      const d = new Date(r.createdAt)
+      const key = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      counts.set(key, (counts.get(key) || 0) + 1)
+    })
+    const sorted = Array.from(counts.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+    return sorted.map(([date, value]) => ({
+      date,
+      value,
+      type: t('dashboard.executionCount'),
+    }))
+  }, [records, t])
 
   const columns = [
     { title: 'Agent', dataIndex: 'agentName', key: 'agentName' },
@@ -130,6 +135,7 @@ export default function Dashboard() {
               loading={loading}
               pagination={false}
               size="small"
+              locale={{ emptyText: t('common.noData') }}
             />
           </Card>
         </Col>

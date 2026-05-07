@@ -85,6 +85,7 @@ export default function SpecCenter() {
           columns={columns}
           rowKey="id"
           loading={loading}
+          locale={{ emptyText: t('common.noData') }}
           pagination={{
             current: page,
             pageSize,

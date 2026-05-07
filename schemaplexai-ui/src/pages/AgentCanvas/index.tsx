@@ -17,6 +17,7 @@ import {
   DownOutlined,
 } from '@ant-design/icons'
 import { Button, message, Table, Tag } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
 import { TerminalLog } from '@/components/Hive'
 import type { LogEntry } from '@/components/Hive'
 import './AgentCanvas.css'
@@ -139,6 +140,170 @@ function getLabelPosition(from: CanvasNode, to: CanvasNode): { x: number; y: num
   return { x: (fromCenter.cx + toCenter.cx) / 2, y: (fromCenter.cy + toCenter.cy) / 2 - 8 }
 }
 
+/* ───────────────────────── View Components ───────────────────────── */
+
+interface TopologyViewProps {
+  nodes: CanvasNode[]
+  connections: CanvasConnection[]
+  nodeMap: Map<string, CanvasNode>
+  selectedNodeId: string | null
+  onSelectNode: (id: string) => void
+  t: (key: string) => string
+}
+
+function TopologyView({ nodes, connections, nodeMap, selectedNodeId, onSelectNode, t }: TopologyViewProps) {
+  const statusIcon = (status: CanvasNode['status']) => {
+    switch (status) {
+      case 'running':
+        return <span className="canvas-status-dot canvas-status-dot--running" />
+      case 'completed':
+        return <CheckCircleOutlined className="canvas-status-icon canvas-status-icon--completed" />
+      case 'error':
+        return <CloseCircleOutlined className="canvas-status-icon canvas-status-icon--error" />
+      default:
+        return <span className="canvas-status-dot canvas-status-dot--idle" />
+    }
+  }
+
+  return (
+    <>
+      <div className="canvas-grid" />
+
+      <svg className="canvas-svg">
+        <defs>
+          <marker
+            id="canvas-arrowhead"
+            markerWidth="10"
+            markerHeight="7"
+            refX="9"
+            refY="3.5"
+            orient="auto"
+          >
+            <polygon points="0 0, 10 3.5, 0 7" fill="#1e2a33" />
+          </marker>
+        </defs>
+        {connections.map((conn) => {
+          const fromNode = nodeMap.get(conn.from)
+          const toNode = nodeMap.get(conn.to)
+          if (!fromNode || !toNode) return null
+          const pathD = buildBezierPath(fromNode, toNode)
+          const arrowD = buildArrowPath(fromNode, toNode)
+          const labelPos = getLabelPosition(fromNode, toNode)
+          return (
+            <g key={conn.id}>
+              <path d={pathD} className="canvas-connection" fill="none" />
+              <path d={arrowD} className="canvas-connection-arrow" fill="none" />
+              {conn.label && (
+                <text
+                  x={labelPos.x}
+                  y={labelPos.y}
+                  className="canvas-connection-label"
+                  textAnchor="middle"
+                >
+                  {t(`canvas.${conn.label}`)}
+                </text>
+              )}
+            </g>
+          )
+        })}
+      </svg>
+
+      {nodes.map((node) => {
+        const isSelected = selectedNodeId === node.id
+        const nodeClass = `canvas-node canvas-node--${node.type}${isSelected ? ' canvas-node--selected' : ''}`
+
+        if (node.type === 'start' || node.type === 'end') {
+          return (
+            <div
+              key={node.id}
+              className={nodeClass}
+              style={{ left: node.x, top: node.y }}
+              onClick={() => onSelectNode(node.id)}
+              data-testid={`canvas-node-${node.id}`}
+            >
+              <div className="canvas-node-circle" />
+              <span className="canvas-node-label">{t(`canvas.${node.label}`)}</span>
+            </div>
+          )
+        }
+
+        if (node.type === 'condition') {
+          return (
+            <div
+              key={node.id}
+              className={nodeClass}
+              style={{ left: node.x, top: node.y }}
+              onClick={() => onSelectNode(node.id)}
+              data-testid={`canvas-node-${node.id}`}
+            >
+              <div className="canvas-node-diamond" />
+              <span className="canvas-node-label">{t(`canvas.${node.label}`)}</span>
+              {node.conditionExpr && (
+                <span className="canvas-node-sublabel">{node.conditionExpr}</span>
+              )}
+            </div>
+          )
+        }
+
+        return (
+          <div
+            key={node.id}
+            className={nodeClass}
+            style={{ left: node.x, top: node.y }}
+            onClick={() => onSelectNode(node.id)}
+            data-testid={`canvas-node-${node.id}`}
+          >
+            <div className="canvas-node-header">
+              <RobotOutlined className="canvas-node-icon" />
+              <span className="canvas-node-title">{t(`canvas.${node.label}`)}</span>
+              {node.status && statusIcon(node.status)}
+            </div>
+          </div>
+        )
+      })}
+    </>
+  )
+}
+
+interface ListViewProps {
+  nodes: CanvasNode[]
+  listColumns: ColumnsType<CanvasNode>
+}
+
+function ListView({ nodes, listColumns }: ListViewProps) {
+  const { t } = useTranslation()
+  return (
+    <div className="canvas-list-view">
+      <Table
+        dataSource={nodes}
+        columns={listColumns}
+        rowKey="id"
+        pagination={false}
+        size="small"
+        bordered
+        locale={{ emptyText: t('common.noData') }}
+      />
+    </div>
+  )
+}
+
+interface CodeViewProps {
+  nodes: CanvasNode[]
+  connections: CanvasConnection[]
+}
+
+function CodeView({ nodes, connections }: CodeViewProps) {
+  return (
+    <div className="canvas-code-view">
+      <pre className="canvas-code-block">
+        <code>{JSON.stringify({ nodes, connections }, null, 2)}</code>
+      </pre>
+    </div>
+  )
+}
+
+/* ───────────────────────── Main Component ───────────────────────── */
+
 export default function AgentCanvas() {
   const { t } = useTranslation()
   const [nodes, setNodes] = useState<CanvasNode[]>(INITIAL_NODES)
@@ -162,7 +327,7 @@ export default function AgentCanvas() {
 
   const handleAddNode = useCallback(
     (type: CanvasNode['type']) => {
-      const id = `n${Date.now()}`
+      const id = `n${crypto.randomUUID()}`
       const baseX = 200 + Math.random() * 400
       const baseY = 200 + Math.random() * 200
       const newNode: CanvasNode = {
@@ -191,19 +356,6 @@ export default function AgentCanvas() {
   const handleSelectNode = useCallback((id: string) => {
     setSelectedNodeId((prev) => (prev === id ? null : id))
   }, [])
-
-  const statusIcon = (status: CanvasNode['status']) => {
-    switch (status) {
-      case 'running':
-        return <span className="canvas-status-dot canvas-status-dot--running" />
-      case 'completed':
-        return <CheckCircleOutlined className="canvas-status-icon canvas-status-icon--completed" />
-      case 'error':
-        return <CloseCircleOutlined className="canvas-status-icon canvas-status-icon--error" />
-      default:
-        return <span className="canvas-status-dot canvas-status-dot--idle" />
-    }
-  }
 
   const nodeTypeLabel = (type: CanvasNode['type']) => {
     switch (type) {
@@ -250,126 +402,6 @@ export default function AgentCanvas() {
       },
     ],
     [t],
-  )
-
-  const renderTopologyView = () => (
-    <>
-      <div className="canvas-grid" />
-
-      <svg className="canvas-svg">
-        <defs>
-          <marker
-            id="canvas-arrowhead"
-            markerWidth="10"
-            markerHeight="7"
-            refX="9"
-            refY="3.5"
-            orient="auto"
-          >
-            <polygon points="0 0, 10 3.5, 0 7" fill="#1e2a33" />
-          </marker>
-        </defs>
-        {connections.map((conn) => {
-          const fromNode = nodes.find((n) => n.id === conn.from)
-          const toNode = nodes.find((n) => n.id === conn.to)
-          if (!fromNode || !toNode) return null
-          const pathD = buildBezierPath(fromNode, toNode)
-          const arrowD = buildArrowPath(fromNode, toNode)
-          const labelPos = getLabelPosition(fromNode, toNode)
-          return (
-            <g key={conn.id}>
-              <path d={pathD} className="canvas-connection" fill="none" />
-              <path d={arrowD} className="canvas-connection-arrow" fill="none" />
-              {conn.label && (
-                <text
-                  x={labelPos.x}
-                  y={labelPos.y}
-                  className="canvas-connection-label"
-                  textAnchor="middle"
-                >
-                  {t(`canvas.${conn.label}`)}
-                </text>
-              )}
-            </g>
-          )
-        })}
-      </svg>
-
-      {nodes.map((node) => {
-        const isSelected = selectedNodeId === node.id
-        const nodeClass = `canvas-node canvas-node--${node.type}${isSelected ? ' canvas-node--selected' : ''}`
-
-        if (node.type === 'start' || node.type === 'end') {
-          return (
-            <div
-              key={node.id}
-              className={nodeClass}
-              style={{ left: node.x, top: node.y }}
-              onClick={() => handleSelectNode(node.id)}
-              data-testid={`canvas-node-${node.id}`}
-            >
-              <div className="canvas-node-circle" />
-              <span className="canvas-node-label">{t(`canvas.${node.label}`)}</span>
-            </div>
-          )
-        }
-
-        if (node.type === 'condition') {
-          return (
-            <div
-              key={node.id}
-              className={nodeClass}
-              style={{ left: node.x, top: node.y }}
-              onClick={() => handleSelectNode(node.id)}
-              data-testid={`canvas-node-${node.id}`}
-            >
-              <div className="canvas-node-diamond" />
-              <span className="canvas-node-label">{t(`canvas.${node.label}`)}</span>
-              {node.conditionExpr && (
-                <span className="canvas-node-sublabel">{node.conditionExpr}</span>
-              )}
-            </div>
-          )
-        }
-
-        return (
-          <div
-            key={node.id}
-            className={nodeClass}
-            style={{ left: node.x, top: node.y }}
-            onClick={() => handleSelectNode(node.id)}
-            data-testid={`canvas-node-${node.id}`}
-          >
-            <div className="canvas-node-header">
-              <RobotOutlined className="canvas-node-icon" />
-              <span className="canvas-node-title">{t(`canvas.${node.label}`)}</span>
-              {node.status && statusIcon(node.status)}
-            </div>
-          </div>
-        )
-      })}
-    </>
-  )
-
-  const renderListView = () => (
-    <div className="canvas-list-view">
-      <Table
-        dataSource={nodes}
-        columns={listColumns}
-        rowKey="id"
-        pagination={false}
-        size="small"
-        bordered
-      />
-    </div>
-  )
-
-  const renderCodeView = () => (
-    <div className="canvas-code-view">
-      <pre className="canvas-code-block">
-        <code>{JSON.stringify({ nodes, connections }, null, 2)}</code>
-      </pre>
-    </div>
   )
 
   return (
@@ -424,9 +456,18 @@ export default function AgentCanvas() {
       {/* Canvas + Properties Panel */}
       <div className="canvas-workspace">
         <div className="canvas-area" ref={canvasRef}>
-          {viewMode === 'topology' && renderTopologyView()}
-          {viewMode === 'list' && renderListView()}
-          {viewMode === 'code' && renderCodeView()}
+          {viewMode === 'topology' && (
+            <TopologyView
+              nodes={nodes}
+              connections={connections}
+              nodeMap={nodeMap}
+              selectedNodeId={selectedNodeId}
+              onSelectNode={handleSelectNode}
+              t={t}
+            />
+          )}
+          {viewMode === 'list' && <ListView nodes={nodes} listColumns={listColumns} />}
+          {viewMode === 'code' && <CodeView nodes={nodes} connections={connections} />}
         </div>
 
         {/* Properties Panel */}

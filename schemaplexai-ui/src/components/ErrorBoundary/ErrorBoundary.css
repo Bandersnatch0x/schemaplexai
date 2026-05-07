@@ -1,0 +1,86 @@
+.error-boundary-page {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--abyss-bg, #0a0e1a);
+  font-family: var(--font-sans, system-ui, sans-serif);
+}
+
+.error-boundary-card {
+  text-align: center;
+  padding: var(--space-10, 64px) var(--space-8, 48px);
+  max-width: 480px;
+}
+
+.error-boundary-icon {
+  font-size: 48px;
+  margin-bottom: var(--space-4, 24px);
+}
+
+.error-boundary-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary, #e2e8f0);
+  margin: 0 0 var(--space-2, 12px);
+}
+
+.error-boundary-desc {
+  font-size: 14px;
+  color: var(--text-secondary, #64748b);
+  margin: 0 0 var(--space-6, 32px);
+  line-height: 1.6;
+}
+
+.error-boundary-trace {
+  background: var(--abyss-card, #111827);
+  border: 1px solid var(--abyss-border, #1e2a33);
+  border-radius: var(--radius-md, 8px);
+  padding: var(--space-3, 16px);
+  color: var(--hive-red, #ff4757);
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  text-align: left;
+  overflow: auto;
+  max-height: 120px;
+  margin-bottom: var(--space-6, 32px);
+}
+
+.error-boundary-actions {
+  display: flex;
+  gap: var(--space-3, 16px);
+  justify-content: center;
+}
+
+.error-boundary-btn {
+  padding: 10px var(--space-5, 24px);
+  border-radius: var(--radius-md, 8px);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.error-boundary-btn--primary {
+  background: var(--hive-cyan, #00d4aa);
+  color: var(--abyss-bg, #0a0e1a);
+  border-color: var(--hive-cyan, #00d4aa);
+}
+
+.error-boundary-btn--primary:hover {
+  background: #00eabb;
+  border-color: #00eabb;
+}
+
+.error-boundary-btn--ghost {
+  background: transparent;
+  color: var(--text-secondary, #64748b);
+  border-color: var(--abyss-border, #1e2a33);
+}
+
+.error-boundary-btn--ghost:hover {
+  color: var(--text-primary, #e2e8f0);
+  border-color: var(--text-secondary, #64748b);
+}

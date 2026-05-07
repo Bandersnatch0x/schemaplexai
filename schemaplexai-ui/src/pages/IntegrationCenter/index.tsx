@@ -76,7 +76,7 @@ export default function IntegrationCenter() {
   return (
     <div className="integration-page">
       <Card title={t('integrationCenter.title')} className="integration-card">
-        <Table dataSource={data} columns={columns} rowKey="id" loading={loading} />
+        <Table dataSource={data} columns={columns} rowKey="id" loading={loading} locale={{ emptyText: t('common.noData') }} />
       </Card>
     </div>
   )

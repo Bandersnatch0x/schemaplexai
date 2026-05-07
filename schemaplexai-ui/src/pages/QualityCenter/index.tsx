@@ -99,7 +99,7 @@ export default function QualityCenter() {
         </Col>
       </Row>
       <Card title={t('qualityCenter.title')} className="quality-table-card">
-        <Table dataSource={displayData} columns={columns} rowKey="id" loading={loading} pagination={false} />
+        <Table dataSource={displayData} columns={columns} rowKey="id" loading={loading} pagination={false} locale={{ emptyText: t('common.noData') }} />
       </Card>
     </div>
   )

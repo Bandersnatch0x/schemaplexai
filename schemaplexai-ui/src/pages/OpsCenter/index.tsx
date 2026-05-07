@@ -73,7 +73,7 @@ export default function OpsCenter() {
         }
         className="ops-table-card"
       >
-        <Table dataSource={data} columns={columns} rowKey="id" loading={loading} />
+        <Table dataSource={data} columns={columns} rowKey="id" loading={loading} locale={{ emptyText: t('common.noData') }} />
       </Card>
       <Card title={t('opsCenter.timelineTitle')} className="ops-timeline-card">
         <Timeline

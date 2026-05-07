@@ -1,0 +1,7 @@
+.app-suspense {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: var(--abyss-bg);
+}

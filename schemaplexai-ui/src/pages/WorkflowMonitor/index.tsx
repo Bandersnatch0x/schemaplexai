@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { message } from 'antd'
 import { getWorkflowList, getWorkflowInstances, type Workflow, type WorkflowInstance } from '@/api/workflow'
@@ -14,51 +14,6 @@ interface WorkflowRun {
   duration: number
   color: string
 }
-
-const HOURS = ['09:00', '10:00', '11:00', '12:00']
-
-const MOCK_RUNS: WorkflowRun[] = [
-  {
-    id: '1',
-    name: 'CI/CD Pipeline',
-    status: 'running',
-    startHour: 9.2,
-    duration: 1.5,
-    color: '#00d4aa',
-  },
-  {
-    id: '2',
-    name: 'Security Scan',
-    status: 'completed',
-    startHour: 9.5,
-    duration: 0.8,
-    color: '#64748b',
-  },
-  {
-    id: '3',
-    name: 'Data Ingestion',
-    status: 'failed',
-    startHour: 10.2,
-    duration: 0.5,
-    color: '#ff4757',
-  },
-  {
-    id: '4',
-    name: 'Model Training',
-    status: 'running',
-    startHour: 10.5,
-    duration: 1.2,
-    color: '#00d4aa',
-  },
-  {
-    id: '5',
-    name: 'Report Generation',
-    status: 'completed',
-    startHour: 11.0,
-    duration: 0.6,
-    color: '#64748b',
-  },
-]
 
 function mapInstanceToRun(instance: WorkflowInstance, templateMap: Map<string, Workflow>): WorkflowRun {
   const created = new Date(instance.createdAt)
@@ -85,9 +40,32 @@ function mapInstanceToRun(instance: WorkflowInstance, templateMap: Map<string, W
   }
 }
 
+interface TimelineMeta {
+  start: number
+  duration: number
+  hours: string[]
+}
+
+function buildTimelineMeta(runs: WorkflowRun[]): TimelineMeta {
+  if (runs.length === 0) {
+    return { start: 9, duration: 3, hours: ['09:00', '10:00', '11:00', '12:00'] }
+  }
+  const allStartHours = runs.map((r) => r.startHour)
+  const allEndHours = runs.map((r) => r.startHour + r.duration)
+  const minHour = Math.floor(Math.min(...allStartHours, ...allEndHours))
+  const maxHour = Math.ceil(Math.max(...allStartHours, ...allEndHours))
+  const start = Math.max(0, minHour)
+  const duration = Math.max(3, maxHour - start)
+  const hours: string[] = []
+  for (let h = start; h <= start + duration; h++) {
+    hours.push(`${String(h).padStart(2, '0')}:00`)
+  }
+  return { start, duration, hours }
+}
+
 export default function WorkflowMonitor() {
   const { t } = useTranslation()
-  const [runs, setRuns] = useState<WorkflowRun[]>(MOCK_RUNS)
+  const [runs, setRuns] = useState<WorkflowRun[]>([])
   const [filter, setFilter] = useState<StatusFilter>('all')
   const [loading, setLoading] = useState(false)
   const [apiStatus, setApiStatus] = useState<'connected' | 'disconnected'>('connected')
@@ -110,6 +88,8 @@ export default function WorkflowMonitor() {
       if (instancesRes.list.length > 0) {
         const mapped = instancesRes.list.map((i) => mapInstanceToRun(i, templateMap))
         setRuns(mapped)
+      } else {
+        setRuns([])
       }
       setApiStatus('connected')
     } catch (err) {
@@ -120,6 +100,8 @@ export default function WorkflowMonitor() {
       setLoading(false)
     }
   }
+
+  const timelineMeta = useMemo(() => buildTimelineMeta(runs), [runs])
 
   const FILTERS: { key: StatusFilter; label: string }[] = [
     { key: 'all', label: t('workflowMonitor.all') },
@@ -192,7 +174,7 @@ export default function WorkflowMonitor() {
         <div className="workflow-monitor-timeline-body">
           {/* Timeline Header */}
           <div className="workflow-monitor-axis-header">
-            {HOURS.map((h) => (
+            {timelineMeta.hours.map((h) => (
               <div key={h} className="workflow-monitor-axis-label">
                 {h}
               </div>
@@ -202,7 +184,7 @@ export default function WorkflowMonitor() {
           {/* Grid Lines */}
           <div className="workflow-monitor-grid">
             <div className="workflow-monitor-gridlines">
-              {HOURS.map((_, i) => (
+              {timelineMeta.hours.map((_, i) => (
                 <div
                   key={i}
                   className={`workflow-monitor-gridline ${i > 0 ? 'workflow-monitor-gridline--dashed' : ''}`}
@@ -220,8 +202,8 @@ export default function WorkflowMonitor() {
                   <div
                     className={`workflow-monitor-bar ${BAR_COLOR_CLASS[run.color] || ''}`}
                     style={{
-                      left: `${((run.startHour - 9) / 3) * 100}%`,
-                      width: `${(run.duration / 3) * 100}%`,
+                      left: `${((run.startHour - timelineMeta.start) / timelineMeta.duration) * 100}%`,
+                      width: `${(run.duration / timelineMeta.duration) * 100}%`,
                     }}
                   />
                 </div>

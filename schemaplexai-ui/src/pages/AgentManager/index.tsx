@@ -151,6 +151,7 @@ export default function AgentManager() {
           rowKey="id"
           loading={loading}
           className="agent-mgr-table"
+          locale={{ emptyText: t('common.noData') }}
           pagination={{
             current: query.page,
             pageSize: query.pageSize,

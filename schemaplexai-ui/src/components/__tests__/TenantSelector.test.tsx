@@ -21,11 +21,6 @@ describe('TenantSelector component', () => {
 
   it('renders with tenant list', () => {
     // Arrange
-    const tenants: Tenant[] = [
-      { id: 'tenant-1', name: '默认租户', code: 'default' },
-      { id: 'tenant-2', name: '研发一部', code: 'rd-dept-1' },
-      { id: 'tenant-3', name: '测试中心', code: 'qa-center' },
-    ]
     vi.mocked(useUserStore).mockReturnValue({
       currentTenant: null,
       setCurrentTenant: mockSetCurrentTenant,
@@ -71,11 +66,6 @@ describe('TenantSelector component', () => {
   it('restores saved tenant from localStorage on init', () => {
     // Arrange
     localStorage.setItem('schemaplexai_tenant', 'tenant-2')
-    const tenants: Tenant[] = [
-      { id: 'tenant-1', name: '默认租户', code: 'default' },
-      { id: 'tenant-2', name: '研发一部', code: 'rd-dept-1' },
-      { id: 'tenant-3', name: '测试中心', code: 'qa-center' },
-    ]
     vi.mocked(useUserStore).mockReturnValue({
       currentTenant: null,
       setCurrentTenant: mockSetCurrentTenant,
