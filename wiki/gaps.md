@@ -118,7 +118,9 @@ The following controllers exist but have no dedicated wiki pages (most are stand
 
 ## Auto-Generated Gap Scan
 
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-07T03:22:09Z -->
+## Auto-Generated Gap Scan
+
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-07T03:23:43Z -->
 
 ### Undocumented Entities
 
