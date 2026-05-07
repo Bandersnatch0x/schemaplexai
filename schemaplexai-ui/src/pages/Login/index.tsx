@@ -73,6 +73,19 @@ interface TerminalLine {
   msg: string
 }
 
+/** Safely renders terminal messages with <em> tags as React elements. */
+function SafeTerminalMsg({ html }: { html: string }) {
+  const parts = html.split(/(<em>.*?<\/em>)/g)
+  return (
+    <>
+      {parts.map((part, i) => {
+        const match = part.match(/^<em>(.*?)<\/em>$/)
+        return match ? <em key={i}>{match[1]}</em> : <span key={i}>{part}</span>
+      })}
+    </>
+  )
+}
+
 function formatTime(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
@@ -739,7 +752,7 @@ export default function Login() {
                       <span className="ts">{line.ts}</span>
                       <span className={`lvl ${line.level}`}>[{line.label}]</span>
                       <span className="msg">
-                        <span dangerouslySetInnerHTML={{ __html: line.msg }} />
+                        <SafeTerminalMsg html={line.msg} />
                         {isLast && <span className="cursor" />}
                       </span>
                     </div>
