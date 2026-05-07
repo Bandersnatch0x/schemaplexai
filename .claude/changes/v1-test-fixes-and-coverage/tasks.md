@@ -1,7 +1,7 @@
 ---
 change_id: v1-test-fixes-and-coverage
-status: in_progress
-created_at: 2026-05-05
+status: completed
+completed_at: 2026-05-07
 ---
 
 # Tasks: Fix Pre-existing Test Failures + Add Coverage
@@ -31,11 +31,11 @@ graph TD
 - **Type**: fix
 - **Description**: Fix regex pattern, immutable list, and validation ordering
 - **Acceptance Criteria**:
-  - [ ] THOUGHT_PATTERN lookahead includes `Thought`
-  - [ ] ExceptionHandlingStateHandler uses mutable list
-  - [ ] ContainerToolSandbox validates before whitelist check
+  - [x] THOUGHT_PATTERN lookahead includes `Thought`
+  - [x] ExceptionHandlingStateHandler uses mutable list
+  - [x] ContainerToolSandbox validates before whitelist check
 - **Dependencies**: None
-- **Status**: pending
+- **Status**: completed
 
 ### Task 2: Test Fixes (5 files)
 - **ID**: T2
@@ -49,12 +49,12 @@ graph TD
 - **Type**: fix
 - **Description**: Add missing mocks, stub getCurrentState, adjust expectations, fix Spring context
 - **Acceptance Criteria**:
-  - [ ] All @Mock declarations added
-  - [ ] getCurrentState stubbed in ExceptionHandlingStateHandlerTest
-  - [ ] MemoryStrategyTest expectations match content-length estimation
-  - [ ] Spring context exclusions added for integration tests
+  - [x] All @Mock declarations added
+  - [x] getCurrentState stubbed in ExceptionHandlingStateHandlerTest
+  - [x] MemoryStrategyTest expectations match content-length estimation
+  - [x] Spring context exclusions added for integration tests
 - **Dependencies**: None
-- **Status**: pending
+- **Status**: completed
 
 ### Task 3: Verify All Tests
 - **ID**: T3
@@ -62,21 +62,24 @@ graph TD
 - **Type**: verify
 - **Description**: Run full test suite, verify 0 failures
 - **Acceptance Criteria**:
-  - [ ] `mvn clean test` passes with 0 failures
-  - [ ] No regression in passing tests
+  - [x] `mvn clean test` passes with 0 failures
+  - [x] No regression in passing tests
 - **Dependencies**: T1, T2
-- **Status**: pending
+- **Status**: completed
 
 ### Task 4: JaCoCo Coverage
 - **ID**: T4
-- **Files**: `pom.xml` (parent)
+- **Files**: `pom.xml` (parent), multiple module pom.xml
 - **Type**: feature
-- **Description**: Add JaCoCo Maven plugin for coverage measurement
+- **Description**: Add JaCoCo Maven plugin for coverage measurement; fix cross-module compilation; add tests for low-coverage modules
 - **Acceptance Criteria**:
-  - [ ] JaCoCo plugin configured in parent pom
-  - [ ] `mvn verify` generates coverage reports
+  - [x] JaCoCo plugin configured in parent pom
+  - [x] `mvn verify` generates coverage reports
+  - [x] Full `mvn clean verify` passes across all 17 backend modules
+  - [x] Cross-module Spring Boot fat-jar dependency fixed (exec classifier)
+  - [x] Module-specific JaCoCo thresholds applied where needed
 - **Dependencies**: T3
-- **Status**: pending
+- **Status**: completed
 
 ### Task 5: Delivery Report
 - **ID**: T5
@@ -84,4 +87,4 @@ graph TD
 - **Type**: docs
 - **Description**: Write delivery report with test results and coverage
 - **Dependencies**: T4
-- **Status**: pending
+- **Status**: completed

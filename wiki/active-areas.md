@@ -27,5 +27,5 @@ confidence: high
 - **core-ai-engine-design**: spec=yes, tasks=yes
 - **ui-alignment**: spec=yes, tasks=yes
 - **v1-release-readiness**: spec=yes, tasks=yes
-- **v1-test-fixes-and-coverage**: spec=yes, tasks=yes
+- **v1-test-fixes-and-coverage**: spec=yes, tasks=yes, status=completed
 - **wiki-gaps-completion**: spec=yes, tasks=yes

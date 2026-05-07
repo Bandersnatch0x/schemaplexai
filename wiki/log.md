@@ -14,6 +14,8 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
+## 2026-05-07 — test(coverage): full backend test suite green + cross-module compilation fix
+93b3c9e
 ## 2026-05-07 — feat(ui): align i18n, router cleanup, workflow API integration
 cf81404
 ## 2026-05-07 — docs(wiki,tasks): mark agents-sdk-2026-alignment completed + update log
