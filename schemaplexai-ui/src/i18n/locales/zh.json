@@ -276,6 +276,10 @@
     "markReadError": "标记已读失败",
     "markAllReadError": "全部标记已读失败"
   },
+  "notFound": {
+    "subTitle": "页面不存在",
+    "backHome": "返回首页"
+  },
   "login": {
     "title": "SchemaPlexAI",
     "subtitle": "AI 研发协作平台",
@@ -308,6 +312,22 @@
     "inputIdentifier": "请输入身份标识",
     "inputPassword": "请输入信息素密钥",
     "welcomeSuccess": "已唤醒蜂巢 · 欢迎回来",
-    "loginFailed": "登录失败"
+    "loginFailed": "登录失败",
+    "defaultWorkspace": "默认工作区",
+    "altLoginNotOpen": "{{label}} 登录通道暂未开启",
+    "contactAdminForAccess": "请联系管理员申请访问",
+    "contactAdminForReset": "请联系管理员重置密码",
+    "hardwareKeyNotOpen": "硬件密钥登录暂未开启",
+    "showPassword": "显示密码",
+    "hidePassword": "隐藏密码",
+    "show": "显示",
+    "hide": "隐藏",
+    "hardwareKey": "硬件密钥 / WebAuthn",
+    "hardwareKeyLogin": "硬件密钥登录",
+    "brandTag": "Hive Operations · 蜂巢级 AI 协作",
+    "agentsDelta": "24小时内 +12",
+    "workflowsDelta": "3 个待审核",
+    "tokensDelta": "较昨日 −5%",
+    "uptimeDelta": "SLA 保持"
   }
 }

@@ -20,7 +20,7 @@ interface DefaultTenantHint {
 const DEFAULT_TENANT_HINT: DefaultTenantHint = {
   id: 'default',
   code: 'DEFAULT',
-  name: '默认工作区',
+  name: 'Default Workspace',
   badge: 'PRIMARY',
 }
 
@@ -263,7 +263,7 @@ export default function Login() {
   }, [])
 
   const altMethodNotice = (label: string) => () => {
-    message.info(`${label} 登录通道暂未开启`)
+    message.info(t('login.altLoginNotOpen', { label }))
   }
 
   return (
@@ -302,7 +302,7 @@ export default function Login() {
             <div className="login-brand-hex">SP</div>
             <div className="login-brand-text">
               <div className="login-brand-mark">SchemaPlex</div>
-              <div className="login-brand-tag">Hive Operations · 蜂巢级 AI 协作</div>
+              <div className="login-brand-tag">{t('login.brandTag')}</div>
             </div>
           </div>
 
@@ -517,26 +517,26 @@ export default function Login() {
             <div className="login-telemetry-cell">
               <div className="label">{t('login.activeAgents')}</div>
               <div className="value">{agentCount}</div>
-              <div className="delta">+12 last 24h</div>
+              <div className="delta">{t('login.agentsDelta')}</div>
             </div>
             <div className="login-telemetry-cell">
               <div className="label">{t('login.workflowsLive')}</div>
               <div className="value">{workflowCount}</div>
-              <div className="delta warm">3 awaiting review</div>
+              <div className="delta warm">{t('login.workflowsDelta')}</div>
             </div>
             <div className="login-telemetry-cell">
               <div className="label">{t('login.tokensToday')}</div>
               <div className="value">
                 8.2<span className="unit">M</span>
               </div>
-              <div className="delta">−5% vs yesterday</div>
+              <div className="delta">{t('login.tokensDelta')}</div>
             </div>
             <div className="login-telemetry-cell">
               <div className="label">{t('login.uptime')}</div>
               <div className="value">
                 99.97<span className="unit">%</span>
               </div>
-              <div className="delta">SLA preserved</div>
+              <div className="delta">{t('login.uptimeDelta')}</div>
             </div>
           </div>
         </section>
@@ -560,7 +560,7 @@ export default function Login() {
             </h2>
             <p className="login-auth-sub">
               {t('login.newToColony')}{' '}
-              <a href="#" onClick={e => { e.preventDefault(); message.info('请联系管理员申请访问') }}>
+              <a href="#" onClick={e => { e.preventDefault(); message.info(t('login.contactAdminForAccess')) }}>
                 {t('login.requestAccess')} →
               </a>
             </p>
@@ -594,7 +594,7 @@ export default function Login() {
                   onChange={e => setUsername(e.target.value)}
                   placeholder="aurora.han@aerolabs.cn"
                   autoComplete="username"
-                  aria-label="用户名"
+                  aria-label={t('login.username')}
                   data-testid="login-username"
                 />
               </div>
@@ -608,7 +608,7 @@ export default function Login() {
                     href="#"
                     onClick={e => {
                       e.preventDefault()
-                      message.info('请联系管理员重置密码')
+                      message.info(t('login.contactAdminForReset'))
                     }}
                   >
                     forgot?
@@ -624,15 +624,15 @@ export default function Login() {
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••••••"
                   autoComplete="current-password"
-                  aria-label="密码"
+                  aria-label={t('login.password')}
                   data-testid="login-password"
                 />
                 <button
                   type="button"
                   className="login-field-suffix"
                   onClick={() => setShowPassword(v => !v)}
-                  aria-label={showPassword ? '隐藏密码' : '显示密码'}
-                  title={showPassword ? '隐藏' : '显示'}
+                  aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
+                  title={showPassword ? t('login.hide') : t('login.show')}
                 >
                   {showPassword ? (
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
@@ -691,9 +691,9 @@ export default function Login() {
               <button
                 type="button"
                 className="login-btn-secondary"
-                title="硬件密钥 / WebAuthn"
-                onClick={() => message.info('硬件密钥登录暂未开启')}
-                aria-label="硬件密钥登录"
+                title={t('login.hardwareKey')}
+                onClick={() => message.info(t('login.hardwareKeyNotOpen'))}
+                aria-label={t('login.hardwareKeyLogin')}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
                   <rect x="3" y="11" width="18" height="11" rx="2" />

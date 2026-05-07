@@ -276,6 +276,10 @@
     "markReadError": "Failed to mark as read",
     "markAllReadError": "Failed to mark all as read"
   },
+  "notFound": {
+    "subTitle": "Page not found",
+    "backHome": "Back to Home"
+  },
   "login": {
     "title": "SchemaPlexAI",
     "subtitle": "AI R&D Collaboration Platform",
@@ -308,6 +312,22 @@
     "inputIdentifier": "Please enter your identifier",
     "inputPassword": "Please enter your pheromone key",
     "welcomeSuccess": "Welcome to the hive",
-    "loginFailed": "Login failed"
+    "loginFailed": "Login failed",
+    "defaultWorkspace": "Default Workspace",
+    "altLoginNotOpen": "{{label}} login not available",
+    "contactAdminForAccess": "Contact admin to request access",
+    "contactAdminForReset": "Contact admin to reset password",
+    "hardwareKeyNotOpen": "Hardware key login not available",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "show": "Show",
+    "hide": "Hide",
+    "hardwareKey": "Hardware Key / WebAuthn",
+    "hardwareKeyLogin": "Hardware key login",
+    "brandTag": "Hive Operations · AI Collaboration",
+    "agentsDelta": "+12 last 24h",
+    "workflowsDelta": "3 awaiting review",
+    "tokensDelta": "−5% vs yesterday",
+    "uptimeDelta": "SLA preserved"
   }
 }
