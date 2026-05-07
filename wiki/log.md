@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-07T07:37:27Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-07T07:46:50Z -->
 
 ---
 title: Wiki Operation Log
@@ -14,6 +14,10 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
+## 2026-05-07 — docs(spec): hybrid mode integration design - Skill/Role + Sub-agent + Compaction + MCP + Sandbox
+889dd43
+## 2026-05-07 — docs(v1-release-readiness): mark all tasks completed + update delivery report
+73bf2c5
 ## 2026-05-07 — docs(specs): add UI/UE alignment spec document
 79fbcf2
 ## 2026-05-07 — feat(ui): complete UI/UE alignment across all pages
@@ -50,10 +54,6 @@ f94c187
 89ea06a
 ## 2026-05-07 — docs(wiki): resolve Open Questions #11 and #12
 4bb2644
-## 2026-05-07 — fix(agent-engine): remove cross-service integration tests, fix flaky RetryingStateHandlerTest
-104e170
-## 2026-05-07 — docs(wiki): update JaCoCo baseline to 2026-05-07
-d95e114
 
 ---
 

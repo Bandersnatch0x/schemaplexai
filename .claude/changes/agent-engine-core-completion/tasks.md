@@ -1,8 +1,9 @@
 ---
 change_id: agent-engine-core-completion
-status: planned
+status: completed
+completed_at: 2026-05-07
 created_at: 2026-05-04
-updated_at: 2026-05-04
+updated_at: 2026-05-07
 author: Claude
 ---
 
@@ -99,13 +100,13 @@ graph TD
 - **类型**: 修改
 - **描述**: 为现有 6 个枚举值添加 `securityRelated` 和 `retryable` 字段，新增 3 个枚举值（IRREVERSIBLE_OPERATION, ENVIRONMENT_MISMATCH, UNEXPECTED_ENVIRONMENT）。保持现有 ordinal 不变，仅追加。
 - **验收标准**:
-  - [ ] 6 个现有枚举值各有 securityRelated/retryable 标志（PERMISSION_DENIED=true,false; INVALID_ARGUMENT=false,false; TIMEOUT=false,true; INTERNAL_ERROR=false,true; RATE_LIMITED=false,true; RESOURCE_EXHAUSTED=false,true）
-  - [ ] 3 个新枚举值追加：IRREVERSIBLE_OPERATION(true,false), ENVIRONMENT_MISMATCH(true,false), UNEXPECTED_ENVIRONMENT(true,false)
-  - [ ] 提供 getter 方法 isSecurityRelated() 和 isRetryable()
-  - [ ] `mvn test -pl schemaplexai-agent-engine` 通过（无破坏性变更）
+  - [x] 6 个现有枚举值各有 securityRelated/retryable 标志
+  - [x] 3 个新枚举值追加：IRREVERSIBLE_OPERATION, ENVIRONMENT_MISMATCH, UNEXPECTED_ENVIRONMENT
+  - [x] 提供 getter 方法 isSecurityRelated() 和 isRetryable()
+  - [x] `mvn test -pl schemaplexai-agent-engine` 通过（无破坏性变更）
 - **预估工时**: 1h
 - **依赖**: 无
-- **状态**: ⬜
+- **状态**: completed
 
 ### Task 2: TenantEnvironmentConfig Entity + Mapper
 - **ID**: T2
@@ -121,7 +122,7 @@ graph TD
   - [ ] 编译通过：`mvn compile -pl schemaplexai-model,schemaplexai-dao`
 - **预估工时**: 1.5h
 - **依赖**: 无
-- **状态**: ⬜
+- **状态**: completed
 
 ### Task 3: ToolAdapter + ToolCallParser 接口定义
 - **ID**: T3
@@ -137,7 +138,7 @@ graph TD
   - [ ] 编译通过：`mvn compile -pl schemaplexai-agent-engine`
 - **预估工时**: 1.5h
 - **依赖**: 无
-- **状态**: ⬜
+- **状态**: completed
 
 ### Task 4: ToolRegistry 核心实现
 - **ID**: T4
@@ -154,7 +155,7 @@ graph TD
   - [ ] 单元测试：verify(mockAdapter).execute() 被调用
 - **预估工时**: 3h
 - **依赖**: T1, T3
-- **状态**: ⬜
+- **状态**: completed
 
 ### Task 5: FileReadAdapter + 路径遍历防护
 - **ID**: T5
@@ -171,7 +172,7 @@ graph TD
   - [ ] 不存在的文件 → failure(INVALID_ARGUMENT)
 - **预估工时**: 2h
 - **依赖**: T3, T4
-- **状态**: ⬜
+- **状态**: completed
 
 ### Task 6: HttpCallAdapter + SSRF 防护
 - **ID**: T6
@@ -188,7 +189,7 @@ graph TD
   - [ ] 超时设置：连接超时 5s，读取超时 30s
 - **预估工时**: 3h
 - **依赖**: T3, T4
-- **状态**: ⬜
+- **状态**: completed
 
 ### Task 7: OpenAiToolCallParser 实现
 - **ID**: T7
@@ -203,7 +204,7 @@ graph TD
   - [ ] 测试用例：单 tool_call、多 tool_calls、空 tool_calls、非法 JSON
 - **预估工时**: 1.5h
 - **依赖**: T3, T4
-- **状态**: ⬜
+- **状态**: completed
 
 ### Task 8: AnthropicToolCallParser 实现
 - **ID**: T8
@@ -218,7 +219,7 @@ graph TD
   - [ ] 测试用例：单 tool_use、多 tool_use、空 content、非法 XML
 - **预估工时**: 1.5h
 - **依赖**: T3, T4
-- **状态**: ⬜
+- **状态**: completed
 
 ### Task 9: RetryingStateHandler 实现
 - **ID**: T9
@@ -237,7 +238,7 @@ graph TD
   - [ ] 单元测试：mock 状态机验证 transition 路径
 - **预估工时**: 2.5h
 - **依赖**: T1
-- **状态**: ⬜
+- **状态**: completed
 
 ### Task 10: ResumingStateHandler 实现
 - **ID**: T10
@@ -255,7 +256,7 @@ graph TD
   - [ ] AgentExecutionState 枚举需添加 RESUMING 值（非终端状态）
 - **预估工时**: 2.5h
 - **依赖**: 无（AgentExecutionLifecycleService + SnapshotMapper 已存在）
-- **状态**: ⬜
+- **状态**: completed
 
 ### Task 11: SecurityPolicyLoader 实现
 - **ID**: T11
@@ -272,7 +273,7 @@ graph TD
   - [ ] 单元测试：mock Mapper 验证缓存行为
 - **预估工时**: 2h
 - **依赖**: T2
-- **状态**: ⬜
+- **状态**: completed
 
 ### Task 12: ToolCallingStateHandler 重构
 - **ID**: T12
@@ -291,7 +292,7 @@ graph TD
   - [ ] 现有测试（38 个）需调整适配新接口，确保全部通过
 - **预估工时**: 3.5h
 - **依赖**: T4, T5, T9
-- **状态**: ⬜
+- **状态**: completed
 
 ### Task 13: PausedStateHandler + GateBlockedStateHandler + ThinkingStateHandler 修改
 - **ID**: T13
@@ -311,7 +312,7 @@ graph TD
   - [ ] 所有修改的 handler 保持现有 getState() 返回值不变
 - **预估工时**: 2.5h
 - **依赖**: T10, T11
-- **状态**: ⬜
+- **状态**: completed
 
 ### Task 14: ToolExecutionMetricsBinder 实现
 - **ID**: T14
@@ -331,7 +332,7 @@ graph TD
   - [ ] 集成测试：HTTP GET /actuator/prometheus 返回所有 6 个指标
 - **预估工时**: 2h
 - **依赖**: T12
-- **状态**: ⬜
+- **状态**: completed
 
 ### Task 15: TenantLineInterceptor 修改
 - **ID**: T15
@@ -344,7 +345,7 @@ graph TD
   - [ ] 编译通过 + 现有测试未破坏
 - **预估工时**: 0.5h
 - **依赖**: T2
-- **状态**: ⬜
+- **状态**: completed
 
 ### Task 16: 单元测试 (TDD RED→GREEN)
 - **ID**: T16
@@ -375,7 +376,7 @@ graph TD
   - [ ] `mvn test -pl schemaplexai-agent-engine` 全部通过，jacoco 覆盖率 ≥ 80%
 - **预估工时**: 4h
 - **依赖**: T12, T13
-- **状态**: ⬜
+- **状态**: completed
 
 ### Task 17: 集成测试 + 状态机路径测试
 - **ID**: T17
@@ -395,7 +396,7 @@ graph TD
   - [ ] `mvn test -pl schemaplexai-agent-engine` 全部通过
 - **预估工时**: 2.5h
 - **依赖**: T14, T15, T16
-- **状态**: ⬜
+- **状态**: completed
 
 ### Task 18: ADR-004 + Grafana Dashboard JSON 骨架
 - **ID**: T18
@@ -410,7 +411,7 @@ graph TD
   - [ ] JSON 可被 Grafana 9+ 导入（不含 datasource uid 硬编码，使用 ${DS_PROMETHEUS}）
 - **预估工时**: 1.5h
 - **依赖**: T17
-- **状态**: ⬜
+- **状态**: completed
 
 ## 关键路径
 
