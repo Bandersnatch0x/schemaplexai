@@ -11,6 +11,9 @@ CREATE TABLE sf_agent_skill (
     status       SMALLINT NOT NULL DEFAULT 1,
     created_at   TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at   TIMESTAMP NOT NULL DEFAULT NOW(),
+    created_by   BIGINT,
+    updated_by   BIGINT,
+    deleted      SMALLINT NOT NULL DEFAULT 0,
     UNIQUE (tenant_id, name)
 );
 
@@ -21,6 +24,9 @@ CREATE TABLE sf_agent_skill_version (
     version      INTEGER NOT NULL,
     content      TEXT NOT NULL,
     created_at   TIMESTAMP NOT NULL DEFAULT NOW(),
+    created_by   BIGINT,
+    updated_by   BIGINT,
+    deleted      SMALLINT NOT NULL DEFAULT 0,
     UNIQUE (skill_id, version)
 );
 
@@ -33,6 +39,9 @@ CREATE TABLE sf_agent_role (
     status       SMALLINT NOT NULL DEFAULT 1,
     created_at   TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at   TIMESTAMP NOT NULL DEFAULT NOW(),
+    created_by   BIGINT,
+    updated_by   BIGINT,
+    deleted      SMALLINT NOT NULL DEFAULT 0,
     UNIQUE (tenant_id, name)
 );
 
