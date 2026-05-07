@@ -17,12 +17,15 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "milvus.enabled", havingValue = "true", matchIfMissing = false)
 public class RagSearchServiceImpl implements RagSearchService {
+
+    private static final Pattern TENANT_ID_PATTERN = Pattern.compile("^[a-zA-Z0-9\\-]+$");
 
     private final MilvusClientV2 milvusClient;
     private final MilvusProperties milvusProperties;
@@ -58,7 +61,10 @@ public class RagSearchServiceImpl implements RagSearchService {
                     .outputFields(List.of("doc_id", "chunk_index", "content", "tenant_id"));
 
             if (tenantId != null && !tenantId.isBlank()) {
-                searchBuilder.filter("tenant_id == '" + tenantId + "'");
+                if (!TENANT_ID_PATTERN.matcher(tenantId).matches()) {
+                    throw new BaseException(ResultCode.PARAM_ERROR, "Invalid tenantId format");
+                }
+                searchBuilder.filter(String.format("tenant_id == \"%s\"", tenantId.replace("\"", "\\\"")));
             }
 
             SearchResp response = milvusClient.search(searchBuilder.build());
