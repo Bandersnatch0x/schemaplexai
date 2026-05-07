@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { message } from 'antd'
+import { getWorkflowList, getWorkflowInstances, type Workflow, type WorkflowInstance } from '@/api/workflow'
 import './WorkflowMonitor.css'
 
 type StatusFilter = 'all' | 'running' | 'completed' | 'failed'
@@ -13,7 +15,9 @@ interface WorkflowRun {
   color: string
 }
 
-const RUNS: WorkflowRun[] = [
+const HOURS = ['09:00', '10:00', '11:00', '12:00']
+
+const MOCK_RUNS: WorkflowRun[] = [
   {
     id: '1',
     name: 'CI/CD Pipeline',
@@ -56,11 +60,66 @@ const RUNS: WorkflowRun[] = [
   },
 ]
 
-const HOURS = ['09:00', '10:00', '11:00', '12:00']
+function mapInstanceToRun(instance: WorkflowInstance, templateMap: Map<string, Workflow>): WorkflowRun {
+  const created = new Date(instance.createdAt)
+  const updated = new Date(instance.updatedAt)
+  const startHour = created.getHours() + created.getMinutes() / 60
+  const durationMs = updated.getTime() - created.getTime()
+  const duration = Math.max(0.1, durationMs / 1000 / 60 / 60)
+
+  const status: StatusFilter =
+    instance.status === 'running' ? 'running' :
+    instance.status === 'completed' || instance.status === 'success' ? 'completed' :
+    instance.status === 'failed' || instance.status === 'error' ? 'failed' : 'completed'
+
+  const color = status === 'running' ? '#00d4aa' : status === 'failed' ? '#ff4757' : '#64748b'
+  const template = templateMap.get(instance.templateId)
+
+  return {
+    id: instance.id,
+    name: template?.name || `Workflow #${instance.id}`,
+    status,
+    startHour,
+    duration,
+    color,
+  }
+}
 
 export default function WorkflowMonitor() {
   const { t } = useTranslation()
+  const [runs, setRuns] = useState<WorkflowRun[]>(MOCK_RUNS)
   const [filter, setFilter] = useState<StatusFilter>('all')
+  const [loading, setLoading] = useState(false)
+  const [apiStatus, setApiStatus] = useState<'connected' | 'disconnected'>('connected')
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      const [templatesRes, instancesRes] = await Promise.all([
+        getWorkflowList({ page: 1, pageSize: 100 }),
+        getWorkflowInstances({ current: 1, size: 50 }),
+      ])
+
+      const templateMap = new Map<string, Workflow>()
+      templatesRes.list.forEach((w) => templateMap.set(w.id, w))
+
+      if (instancesRes.list.length > 0) {
+        const mapped = instancesRes.list.map((i) => mapInstanceToRun(i, templateMap))
+        setRuns(mapped)
+      }
+      setApiStatus('connected')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : t('common.error')
+      message.error(msg)
+      setApiStatus('disconnected')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const FILTERS: { key: StatusFilter; label: string }[] = [
     { key: 'all', label: t('workflowMonitor.all') },
@@ -70,13 +129,13 @@ export default function WorkflowMonitor() {
   ]
 
   const filteredRuns =
-    filter === 'all' ? RUNS : RUNS.filter((r) => r.status === filter)
+    filter === 'all' ? runs : runs.filter((r) => r.status === filter)
 
   const statusCount: Record<StatusFilter, number> = {
-    all: RUNS.length,
-    running: RUNS.filter((r) => r.status === 'running').length,
-    completed: RUNS.filter((r) => r.status === 'completed').length,
-    failed: RUNS.filter((r) => r.status === 'failed').length,
+    all: runs.length,
+    running: runs.filter((r) => r.status === 'running').length,
+    completed: runs.filter((r) => r.status === 'completed').length,
+    failed: runs.filter((r) => r.status === 'failed').length,
   }
 
   const BAR_COLOR_CLASS: Record<string, string> = {
@@ -94,6 +153,13 @@ export default function WorkflowMonitor() {
 
   return (
     <div className="workflow-monitor-page">
+      {loading && <div className="workflow-monitor-loading">{t('common.loading')}</div>}
+      {apiStatus === 'disconnected' && (
+        <div className="workflow-monitor-offline-notice">
+          {t('cockpit.backendUnavailable')}
+        </div>
+      )}
+
       {/* Stats Row */}
       <div className="workflow-monitor-stats">
         <StatBadge label={t('workflowMonitor.total')} value={statusCount.all} colorClass={STAT_VALUE_CLASS['#e2e8f0']} />

@@ -1,11 +1,13 @@
 import { Card, Table, Button, Space, Tag, Switch, message } from 'antd'
 import { EditOutlined } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { getIntegrationList, updateIntegration } from '@/api/integration'
 import type { Integration } from '@/api/integration'
 import './IntegrationCenter.css'
 
 export default function IntegrationCenter() {
+  const { t } = useTranslation()
   const [data, setData] = useState<Integration[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -19,7 +21,7 @@ export default function IntegrationCenter() {
       const res = await getIntegrationList()
       setData(res)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '获取集成列表失败'
+      const msg = err instanceof Error ? err.message : t('integrationCenter.fetchError')
       message.error(msg)
       setData([])
     } finally {
@@ -36,18 +38,18 @@ export default function IntegrationCenter() {
           d.id === id ? { ...d, status: newStatus } : d
         )
       )
-      message.success('状态已更新')
+      message.success(t('integrationCenter.updateSuccess'))
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '更新状态失败'
+      const msg = err instanceof Error ? err.message : t('integrationCenter.updateError')
       message.error(msg)
     }
   }
 
   const columns = [
-    { title: '名称', dataIndex: 'name', key: 'name' },
-    { title: '类型', dataIndex: 'type', key: 'type' },
+    { title: t('specCenter.name'), dataIndex: 'name', key: 'name' },
+    { title: t('specCenter.type'), dataIndex: 'type', key: 'type' },
     {
-      title: '状态',
+      title: t('specCenter.status'),
       dataIndex: 'status',
       key: 'status',
       render: (status: number) => (
@@ -55,17 +57,17 @@ export default function IntegrationCenter() {
           color={status === 1 ? 'green' : 'default'}
           className={status === 1 ? 'integration-tag--connected' : 'integration-tag--disconnected'}
         >
-          {status === 1 ? '已连接' : '未连接'}
+          {status === 1 ? t('integrationCenter.connected') : t('integrationCenter.disconnected')}
         </Tag>
       ),
     },
     {
-      title: '操作',
+      title: t('specCenter.action'),
       key: 'action',
       render: (_: unknown, record: Integration) => (
         <Space>
           <Switch checked={record.status === 1} onChange={() => toggleStatus(record.id, record.status)} />
-          <Button icon={<EditOutlined />} size="small">配置</Button>
+          <Button icon={<EditOutlined />} size="small">{t('integrationCenter.configure')}</Button>
         </Space>
       ),
     },
@@ -73,7 +75,7 @@ export default function IntegrationCenter() {
 
   return (
     <div className="integration-page">
-      <Card title="集成与工具" className="integration-card">
+      <Card title={t('integrationCenter.title')} className="integration-card">
         <Table dataSource={data} columns={columns} rowKey="id" loading={loading} />
       </Card>
     </div>

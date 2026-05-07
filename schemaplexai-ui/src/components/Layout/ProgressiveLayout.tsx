@@ -17,6 +17,13 @@ export function ProgressiveLayout({ children }: ProgressiveLayoutProps) {
     { key: 'canvas', icon: '◆', label: t('nav.canvas'), path: '/canvas' },
     { key: 'workflows', icon: '▲', label: t('nav.workflows'), path: '/workflows' },
     { key: 'agents', icon: '●', label: t('nav.agents'), path: '/agents' },
+    { key: 'specs', icon: '≡', label: t('nav.specs'), path: '/specs' },
+    { key: 'contexts', icon: '⊞', label: t('nav.contexts'), path: '/contexts' },
+    { key: 'quality', icon: '✓', label: t('nav.quality'), path: '/quality' },
+    { key: 'integrations', icon: '⚡', label: t('nav.integrations'), path: '/integrations' },
+    { key: 'ops', icon: '☁', label: t('nav.ops'), path: '/ops' },
+    { key: 'notifications', icon: '◐', label: t('nav.notifications'), path: '/notifications' },
+    { key: 'settings', icon: '◎', label: t('nav.settings'), path: '/settings' },
   ]
 
   const activeKey = NAV_ITEMS.find(item => location.pathname.startsWith(item.path))?.key || 'cockpit'

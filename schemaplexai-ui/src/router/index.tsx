@@ -4,13 +4,13 @@ import type { ReactNode } from 'react'
 import { ImmersiveLayout, ProgressiveLayout } from '@/components/Layout'
 
 const Login = lazy(() => import('@/pages/Login'))
-const Layout = lazy(() => import('@/components/Layout'))
-const Dashboard = lazy(() => import('@/pages/Dashboard'))
 const Cockpit = lazy(() => import('@/pages/Cockpit'))
+const AgentCanvas = lazy(() => import('@/pages/AgentCanvas'))
 const AgentManager = lazy(() => import('@/pages/AgentManager'))
 const AgentExecutor = lazy(() => import('@/pages/AgentExecutor'))
+const AgentDetail = lazy(() => import('@/pages/AgentDetail'))
 const SpecCenter = lazy(() => import('@/pages/SpecCenter'))
-const WorkflowCenter = lazy(() => import('@/pages/WorkflowCenter'))
+const WorkflowMonitor = lazy(() => import('@/pages/WorkflowMonitor'))
 const ContextCenter = lazy(() => import('@/pages/ContextCenter'))
 const QualityCenter = lazy(() => import('@/pages/QualityCenter'))
 const IntegrationCenter = lazy(() => import('@/pages/IntegrationCenter'))
@@ -18,9 +18,6 @@ const OpsCenter = lazy(() => import('@/pages/OpsCenter'))
 const SystemSettings = lazy(() => import('@/pages/SystemSettings'))
 const NotificationCenter = lazy(() => import('@/pages/NotificationCenter'))
 const NotFound = lazy(() => import('@/pages/NotFound'))
-const AgentDetail = lazy(() => import('@/pages/AgentDetail'))
-const WorkflowMonitor = lazy(() => import('@/pages/WorkflowMonitor'))
-const AgentCanvas = lazy(() => import('@/pages/AgentCanvas'))
 
 export interface RouteConfig {
   path: string
@@ -37,10 +34,11 @@ function RequireAuth({ children }: { children: ReactNode }) {
 }
 
 const RouterConfig: RouteConfig[] = [
-  {
-    path: '/login',
-    element: <Login />,
-  },
+  { path: '/login', element: <Login /> },
+  { path: '/', element: <Navigate to="/cockpit" replace /> },
+  { path: '/dashboard', element: <Navigate to="/cockpit" replace /> },
+
+  // ImmersiveLayout — full-screen dashboards
   {
     path: '/cockpit',
     element: (
@@ -59,17 +57,23 @@ const RouterConfig: RouteConfig[] = [
     ),
     children: [{ path: '', element: <AgentCanvas /> }],
   },
+
+  // ProgressiveLayout — detail / config pages
   {
-    path: '/agent/:id',
+    path: '/agents',
     element: (
       <RequireAuth>
         <ProgressiveLayout />
       </RequireAuth>
     ),
-    children: [{ path: '', element: <AgentDetail /> }],
+    children: [
+      { path: '', element: <AgentManager /> },
+      { path: 'executor', element: <AgentExecutor /> },
+      { path: ':id', element: <AgentDetail /> },
+    ],
   },
   {
-    path: '/workflow-monitor',
+    path: '/workflows',
     element: (
       <RequireAuth>
         <ProgressiveLayout />
@@ -78,31 +82,70 @@ const RouterConfig: RouteConfig[] = [
     children: [{ path: '', element: <WorkflowMonitor /> }],
   },
   {
-    path: '/',
+    path: '/specs',
     element: (
       <RequireAuth>
-        <Layout />
+        <ProgressiveLayout />
       </RequireAuth>
     ),
-    children: [
-      { path: '', element: <Navigate to="/dashboard" replace /> },
-      { path: 'dashboard', element: <Dashboard /> },
-      { path: 'agents', element: <AgentManager /> },
-      { path: 'agents/executor', element: <AgentExecutor /> },
-      { path: 'specs', element: <SpecCenter /> },
-      { path: 'workflows', element: <WorkflowCenter /> },
-      { path: 'contexts', element: <ContextCenter /> },
-      { path: 'quality', element: <QualityCenter /> },
-      { path: 'integrations', element: <IntegrationCenter /> },
-      { path: 'ops', element: <OpsCenter /> },
-      { path: 'notifications', element: <NotificationCenter /> },
-      { path: 'settings', element: <SystemSettings /> },
-    ],
+    children: [{ path: '', element: <SpecCenter /> }],
   },
   {
-    path: '*',
-    element: <NotFound />,
+    path: '/contexts',
+    element: (
+      <RequireAuth>
+        <ProgressiveLayout />
+      </RequireAuth>
+    ),
+    children: [{ path: '', element: <ContextCenter /> }],
   },
+  {
+    path: '/quality',
+    element: (
+      <RequireAuth>
+        <ProgressiveLayout />
+      </RequireAuth>
+    ),
+    children: [{ path: '', element: <QualityCenter /> }],
+  },
+  {
+    path: '/integrations',
+    element: (
+      <RequireAuth>
+        <ProgressiveLayout />
+      </RequireAuth>
+    ),
+    children: [{ path: '', element: <IntegrationCenter /> }],
+  },
+  {
+    path: '/ops',
+    element: (
+      <RequireAuth>
+        <ProgressiveLayout />
+      </RequireAuth>
+    ),
+    children: [{ path: '', element: <OpsCenter /> }],
+  },
+  {
+    path: '/notifications',
+    element: (
+      <RequireAuth>
+        <ProgressiveLayout />
+      </RequireAuth>
+    ),
+    children: [{ path: '', element: <NotificationCenter /> }],
+  },
+  {
+    path: '/settings',
+    element: (
+      <RequireAuth>
+        <ProgressiveLayout />
+      </RequireAuth>
+    ),
+    children: [{ path: '', element: <SystemSettings /> }],
+  },
+
+  { path: '*', element: <NotFound /> },
 ]
 
 export default RouterConfig

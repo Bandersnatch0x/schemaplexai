@@ -1,11 +1,13 @@
 import { Card, Table, Button, Space, Tag, Input, message } from 'antd'
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { getContextList } from '@/api/context'
 import type { ContextItem } from '@/api/context'
 import './ContextCenter.css'
 
 export default function ContextCenter() {
+  const { t } = useTranslation()
   const [keyword, setKeyword] = useState('')
   const [data, setData] = useState<ContextItem[]>([])
   const [loading, setLoading] = useState(false)
@@ -24,7 +26,7 @@ export default function ContextCenter() {
       setData(res.list)
       setTotal(res.total)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '获取上下文列表失败'
+      const msg = err instanceof Error ? err.message : t('contextCenter.fetchError')
       message.error(msg)
       setData([])
       setTotal(0)
@@ -34,28 +36,28 @@ export default function ContextCenter() {
   }
 
   const typeMap: Record<string, string> = {
-    knowledge: '知识库',
-    memory: '记忆',
-    document: '文档',
+    knowledge: t('contextCenter.knowledge'),
+    memory: t('contextCenter.memory'),
+    document: t('contextCenter.document'),
   }
 
   const columns = [
-    { title: '名称', dataIndex: 'name', key: 'name' },
+    { title: t('contextCenter.name'), dataIndex: 'name', key: 'name' },
     {
-      title: '类型',
+      title: t('contextCenter.type'),
       dataIndex: 'type',
       key: 'type',
       render: (type: string) => <Tag className={`context-tag context-tag-${type}`}>{typeMap[type] || type}</Tag>,
     },
-    { title: '更新时间', dataIndex: 'updatedAt', key: 'updatedAt' },
+    { title: t('contextCenter.updatedAt'), dataIndex: 'updatedAt', key: 'updatedAt' },
     {
-      title: '操作',
+      title: t('contextCenter.action'),
       key: 'action',
       render: () => (
         <Space>
-          <Button icon={<SearchOutlined />} size="small">检索</Button>
-          <Button type="link">编辑</Button>
-          <Button type="link" danger>删除</Button>
+          <Button icon={<SearchOutlined />} size="small">{t('contextCenter.search')}</Button>
+          <Button type="link">{t('common.edit')}</Button>
+          <Button type="link" danger>{t('common.delete')}</Button>
         </Space>
       ),
     },
@@ -65,16 +67,16 @@ export default function ContextCenter() {
     <div className="context-page">
       <Card
         className="context-card"
-        title="上下文与知识中心"
+        title={t('contextCenter.title')}
         extra={
           <Button type="primary" icon={<PlusOutlined />}>
-            新建上下文
+            {t('contextCenter.newContext')}
           </Button>
         }
       >
         <Input.Search
           className="context-search"
-          placeholder="搜索上下文"
+          placeholder={t('contextCenter.searchPlaceholder')}
           allowClear
           onSearch={(v) => { setKeyword(v); setPage(1) }}
         />

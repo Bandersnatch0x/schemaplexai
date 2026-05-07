@@ -1,43 +1,45 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { message } from 'antd'
+import { message, Spin } from 'antd'
 import { getAgentDetail } from '@/api/agent'
+import { TerminalLog } from '@/components/Hive'
+import type { LogEntry } from '@/components/Hive'
 import type { Agent } from '@/types'
 import './AgentDetail.css'
 
 type TabKey = 'metrics' | 'logs' | 'charts' | 'config'
 
-const LOGS = [
+const LOGS: LogEntry[] = [
   {
-    time: '10:42:15',
-    level: 'info' as const,
-    text: 'Agent initialized, config loaded from /agents/cr-v2.yaml',
+    timestamp: '10:42:15',
+    level: 'INFO',
+    message: 'Agent initialized, config loaded from /agents/cr-v2.yaml',
   },
   {
-    time: '10:42:16',
-    level: 'info' as const,
-    text: 'Connected to LLM provider: openai/gpt-4',
+    timestamp: '10:42:16',
+    level: 'INFO',
+    message: 'Connected to LLM provider: openai/gpt-4',
   },
   {
-    time: '10:42:18',
-    level: 'warn' as const,
-    text: 'Context window at 78%, triggering summarization',
+    timestamp: '10:42:18',
+    level: 'WARN',
+    message: 'Context window at 78%, triggering summarization',
   },
   {
-    time: '10:42:20',
-    level: 'info' as const,
-    text: 'Task completed: PR #1247 reviewed, 3 issues found',
+    timestamp: '10:42:20',
+    level: 'INFO',
+    message: 'Task completed: PR #1247 reviewed, 3 issues found',
   },
   {
-    time: '10:42:21',
-    level: 'error' as const,
-    text: 'Retry failed for node "security-scan", max attempts exceeded',
+    timestamp: '10:42:21',
+    level: 'ERROR',
+    message: 'Retry failed for node "security-scan", max attempts exceeded',
   },
   {
-    time: '10:42:22',
-    level: 'info' as const,
-    text: 'Fallback to backup agent triggered',
+    timestamp: '10:42:22',
+    level: 'INFO',
+    message: 'Fallback to backup agent triggered',
   },
 ]
 
@@ -91,56 +93,58 @@ export default function AgentDetail() {
   }
 
   return (
-    <div className="agent-detail-page">
-      {/* Identity Card */}
-      <div className="agent-detail-identity">
-        <div className="agent-detail-avatar">
-          🤖
-        </div>
-        <div className="agent-detail-info">
-          <div className="agent-detail-name">
-            {loading ? '—' : agent?.name || t('agentDetail.unknownAgent')}
+    <Spin spinning={loading} tip={t('common.loading')}>
+      <div className="agent-detail-page">
+        {/* Identity Card */}
+        <div className="agent-detail-identity">
+          <div className="agent-detail-avatar">
+            🤖
           </div>
-          <div className="agent-detail-meta">
-            ID: {agent?.id || '—'} · {t('agentDetail.version')}: 2.3.1 · {t('agentDetail.status')}:{" "}
-            <span
-              className={`agent-detail-status agent-detail-status--${agent?.status || 'inactive'}`}
-            >
-              {agent ? statusMap[agent.status] : '—'}
+          <div className="agent-detail-info">
+            <div className="agent-detail-name">
+              {loading ? '—' : agent?.name || t('agentDetail.unknownAgent')}
+            </div>
+            <div className="agent-detail-meta">
+              ID: {agent?.id || '—'} · {t('agentDetail.version')}: 2.3.1 · {t('agentDetail.status')}:{" "}
+              <span
+                className={`agent-detail-status agent-detail-status--${agent?.status || 'inactive'}`}
+              >
+                {agent ? statusMap[agent.status] : '—'}
+              </span>
+            </div>
+          </div>
+          <div className="agent-detail-badges">
+            <span className="agent-detail-badge agent-detail-badge--llm">
+              LLM: {agent?.modelConfig?.model || 'GPT-4'}
+            </span>
+            <span className="agent-detail-badge agent-detail-badge--feature">
+              {t('agentDetail.autoScale')}
             </span>
           </div>
         </div>
-        <div className="agent-detail-badges">
-          <span className="agent-detail-badge agent-detail-badge--llm">
-            LLM: {agent?.modelConfig?.model || 'GPT-4'}
-          </span>
-          <span className="agent-detail-badge agent-detail-badge--feature">
-            {t('agentDetail.autoScale')}
-          </span>
-        </div>
-      </div>
 
-      {/* PillNav */}
-      <div className="agent-detail-nav">
-        <div className="agent-detail-pillnav">
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`agent-detail-pillnav-btn ${activeTab === tab.key ? 'agent-detail-pillnav-btn--active' : ''}`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        {/* PillNav */}
+        <div className="agent-detail-nav">
+          <div className="agent-detail-pillnav">
+            {TABS.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`agent-detail-pillnav-btn ${activeTab === tab.key ? 'agent-detail-pillnav-btn--active' : ''}`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Tab Content */}
-      {activeTab === 'metrics' && <MetricsTab metrics={METRICS} resources={RESOURCES} t={t} />}
-      {activeTab === 'logs' && <LogsTab t={t} />}
-      {activeTab === 'charts' && <ChartsTab t={t} />}
-      {activeTab === 'config' && <ConfigTab agent={agent} t={t} />}
-    </div>
+        {/* Tab Content */}
+        {activeTab === 'metrics' && <MetricsTab metrics={METRICS} resources={RESOURCES} t={t} />}
+        {activeTab === 'logs' && <LogsTab t={t} />}
+        {activeTab === 'charts' && <ChartsTab t={t} />}
+        {activeTab === 'config' && <ConfigTab agent={agent} t={t} />}
+      </div>
+    </Spin>
   )
 }
 
@@ -205,25 +209,7 @@ function LogsPanel({ t }: { t: (key: string) => string }) {
         </span>
         <span className="agent-detail-logs-hint">{t('agentDetail.autoScroll')}</span>
       </div>
-      <TerminalLog />
-    </div>
-  )
-}
-
-function TerminalLog() {
-  return (
-    <div className="agent-detail-terminal">
-      {LOGS.map((log, i) => (
-        <div key={i} className="agent-detail-log-line">
-          <span className="agent-detail-log-time">{log.time}</span>
-          <span className={`agent-detail-log-level--${log.level}`}>[{log.level.toUpperCase()}]</span>
-          <span className="agent-detail-log-text">{log.text}</span>
-        </div>
-      ))}
-      <div className="agent-detail-log-line">
-        <span className="agent-detail-log-time">10:42:23</span>
-        <span className="agent-detail-cursor">...</span>
-      </div>
+      <TerminalLog logs={LOGS} />
     </div>
   )
 }

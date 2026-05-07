@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Card, Table, Button, Badge, Tabs, Tag, Empty } from 'antd'
+import { Card, Table, Button, Badge, Tabs, Tag, Empty, message } from 'antd'
 import { BellOutlined, CheckOutlined, CheckCircleOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { getNotificationPage, markAsRead, markAllAsRead } from '@/api/notification'
 import type { Notification } from '@/types/notification'
 import './NotificationCenter.css'
 
 export default function NotificationCenter() {
+  const { t } = useTranslation()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(false)
   const [total, setTotal] = useState(0)
@@ -22,7 +24,9 @@ export default function NotificationCenter() {
         setNotifications(res.records)
         setTotal(res.total)
       }
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : t('notificationCenter.fetchError')
+      message.error(msg)
       setNotifications([])
       setTotal(0)
     } finally {
@@ -57,8 +61,9 @@ export default function NotificationCenter() {
         prev.map(n => (n.id === id ? { ...n, read: true } : n))
       )
       setUnreadCount(prev => Math.max(0, prev - 1))
-    } catch {
-      // ignore
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : t('notificationCenter.markReadError')
+      message.error(msg)
     }
   }
 
@@ -67,14 +72,15 @@ export default function NotificationCenter() {
       await markAllAsRead()
       setNotifications(prev => prev.map(n => ({ ...n, read: true })))
       setUnreadCount(0)
-    } catch {
-      // ignore
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : t('notificationCenter.markAllReadError')
+      message.error(msg)
     }
   }
 
   const columns = [
     {
-      title: '标题',
+      title: t('specCenter.name'),
       dataIndex: 'title',
       key: 'title',
       render: (text: string, record: Notification) => (
@@ -85,13 +91,13 @@ export default function NotificationCenter() {
       ),
     },
     {
-      title: '内容',
+      title: t('agentDetail.logs'),
       dataIndex: 'content',
       key: 'content',
       ellipsis: true,
     },
     {
-      title: '类型',
+      title: t('specCenter.type'),
       dataIndex: 'type',
       key: 'type',
       width: 100,
@@ -105,14 +111,14 @@ export default function NotificationCenter() {
       },
     },
     {
-      title: '时间',
+      title: t('qualityCenter.checkedAt'),
       dataIndex: 'createdAt',
       key: 'createdAt',
       width: 180,
       render: (time: string) => <span className="notification-time">{new Date(time).toLocaleString()}</span>,
     },
     {
-      title: '操作',
+      title: t('specCenter.action'),
       key: 'action',
       width: 100,
       render: (_: unknown, record: Notification) =>
@@ -123,7 +129,7 @@ export default function NotificationCenter() {
             icon={<CheckOutlined />}
             onClick={() => handleMarkAsRead(record.id)}
           >
-            已读
+            {t('notificationCenter.markRead')}
           </Button>
         ) : (
           <CheckCircleOutlined className="notification-read-icon" />
@@ -137,7 +143,7 @@ export default function NotificationCenter() {
         title={
           <span className="notification-header">
             <BellOutlined className="notification-header-icon" />
-            通知中心
+            {t('notificationCenter.title')}
             {unreadCount > 0 && (
               <Badge
                 count={unreadCount}
@@ -149,7 +155,7 @@ export default function NotificationCenter() {
         extra={
           unreadCount > 0 && (
             <Button className="notification-mark-all-btn" icon={<CheckOutlined />} onClick={handleMarkAllAsRead}>
-              全部已读
+              {t('notificationCenter.markAllRead')}
             </Button>
           )
         }
@@ -161,9 +167,9 @@ export default function NotificationCenter() {
             setPage(1)
           }}
           items={[
-            { key: 'all', label: '全部' },
-            { key: 'unread', label: `未读 (${unreadCount})` },
-            { key: 'read', label: '已读' },
+            { key: 'all', label: t('notificationCenter.all') },
+            { key: 'unread', label: `${t('notificationCenter.unread')} (${unreadCount})` },
+            { key: 'read', label: t('notificationCenter.read') },
           ]}
         />
         <Table
@@ -176,14 +182,14 @@ export default function NotificationCenter() {
             pageSize: size,
             total,
             showSizeChanger: true,
-            showTotal: t => `共 ${t} 条`,
+            showTotal: total => `${t('notificationCenter.total') || 'Total'} ${total}`,
             onChange: (p, s) => {
               setPage(p)
               setSize(s || 20)
             },
           }}
           locale={{
-            emptyText: <Empty description="暂无通知" />,
+            emptyText: <Empty description={t('notificationCenter.empty')} />,
           }}
         />
       </Card>

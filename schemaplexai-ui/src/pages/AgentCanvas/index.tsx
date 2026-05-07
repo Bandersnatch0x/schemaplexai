@@ -10,8 +10,15 @@ import {
   FlagOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  AppstoreOutlined,
+  UnorderedListOutlined,
+  CodeOutlined,
+  UpOutlined,
+  DownOutlined,
 } from '@ant-design/icons'
-import { Button, message } from 'antd'
+import { Button, message, Table, Tag } from 'antd'
+import { TerminalLog } from '@/components/Hive'
+import type { LogEntry } from '@/components/Hive'
 import './AgentCanvas.css'
 
 interface CanvasNode {
@@ -50,6 +57,16 @@ const INITIAL_CONNECTIONS: CanvasConnection[] = [
   { id: 'c6', from: 'n3', to: 'n7', label: 'no' },
   { id: 'c7', from: 'n7', to: 'n2' },
 ]
+
+const EXECUTION_LOGS: LogEntry[] = [
+  { timestamp: '10:42:15', level: 'INFO', message: 'Workflow started: requirement-analysis' },
+  { timestamp: '10:42:16', level: 'INFO', message: 'Agent node n2 completed successfully' },
+  { timestamp: '10:42:18', level: 'WARN', message: 'Condition node n3 evaluated: true branch taken' },
+  { timestamp: '10:42:20', level: 'INFO', message: 'Agent node n4 executing: code-generation' },
+  { timestamp: '10:42:21', level: 'ERROR', message: 'Node n5 failed: timeout after 30s' },
+]
+
+type ViewMode = 'topology' | 'list' | 'code'
 
 function getNodeCenter(node: CanvasNode): { cx: number; cy: number } {
   const width = node.type === 'condition' ? 120 : node.type === 'start' || node.type === 'end' ? 80 : 140
@@ -128,11 +145,19 @@ export default function AgentCanvas() {
   const [connections] = useState<CanvasConnection[]>(INITIAL_CONNECTIONS)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [panelCollapsed, setPanelCollapsed] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>('topology')
+  const [terminalExpanded, setTerminalExpanded] = useState(true)
   const canvasRef = useRef<HTMLDivElement>(null)
 
+  const nodeMap = useMemo(() => {
+    const map = new Map<string, CanvasNode>()
+    nodes.forEach((n) => map.set(n.id, n))
+    return map
+  }, [nodes])
+
   const selectedNode = useMemo(
-    () => nodes.find((n) => n.id === selectedNodeId) || null,
-    [nodes, selectedNodeId],
+    () => (selectedNodeId ? nodeMap.get(selectedNodeId) ?? null : null),
+    [nodeMap, selectedNodeId],
   )
 
   const handleAddNode = useCallback(
@@ -193,6 +218,160 @@ export default function AgentCanvas() {
     }
   }
 
+  const listColumns = useMemo(
+    () => [
+      { title: 'ID', dataIndex: 'id', key: 'id' },
+      {
+        title: t('canvas.nodeType'),
+        dataIndex: 'type',
+        key: 'type',
+        render: (type: CanvasNode['type']) => nodeTypeLabel(type),
+      },
+      {
+        title: t('canvas.nodeName'),
+        dataIndex: 'label',
+        key: 'label',
+        render: (label: string) => t(`canvas.${label}`),
+      },
+      {
+        title: t('canvas.nodeStatus'),
+        dataIndex: 'status',
+        key: 'status',
+        render: (status: CanvasNode['status']) => {
+          if (!status) return <Tag>—</Tag>
+          const colorMap: Record<string, string> = {
+            idle: 'default',
+            running: 'cyan',
+            completed: 'green',
+            error: 'red',
+          }
+          return <Tag color={colorMap[status]}>{status}</Tag>
+        },
+      },
+    ],
+    [t],
+  )
+
+  const renderTopologyView = () => (
+    <>
+      <div className="canvas-grid" />
+
+      <svg className="canvas-svg">
+        <defs>
+          <marker
+            id="canvas-arrowhead"
+            markerWidth="10"
+            markerHeight="7"
+            refX="9"
+            refY="3.5"
+            orient="auto"
+          >
+            <polygon points="0 0, 10 3.5, 0 7" fill="#1e2a33" />
+          </marker>
+        </defs>
+        {connections.map((conn) => {
+          const fromNode = nodes.find((n) => n.id === conn.from)
+          const toNode = nodes.find((n) => n.id === conn.to)
+          if (!fromNode || !toNode) return null
+          const pathD = buildBezierPath(fromNode, toNode)
+          const arrowD = buildArrowPath(fromNode, toNode)
+          const labelPos = getLabelPosition(fromNode, toNode)
+          return (
+            <g key={conn.id}>
+              <path d={pathD} className="canvas-connection" fill="none" />
+              <path d={arrowD} className="canvas-connection-arrow" fill="none" />
+              {conn.label && (
+                <text
+                  x={labelPos.x}
+                  y={labelPos.y}
+                  className="canvas-connection-label"
+                  textAnchor="middle"
+                >
+                  {t(`canvas.${conn.label}`)}
+                </text>
+              )}
+            </g>
+          )
+        })}
+      </svg>
+
+      {nodes.map((node) => {
+        const isSelected = selectedNodeId === node.id
+        const nodeClass = `canvas-node canvas-node--${node.type}${isSelected ? ' canvas-node--selected' : ''}`
+
+        if (node.type === 'start' || node.type === 'end') {
+          return (
+            <div
+              key={node.id}
+              className={nodeClass}
+              style={{ left: node.x, top: node.y }}
+              onClick={() => handleSelectNode(node.id)}
+              data-testid={`canvas-node-${node.id}`}
+            >
+              <div className="canvas-node-circle" />
+              <span className="canvas-node-label">{t(`canvas.${node.label}`)}</span>
+            </div>
+          )
+        }
+
+        if (node.type === 'condition') {
+          return (
+            <div
+              key={node.id}
+              className={nodeClass}
+              style={{ left: node.x, top: node.y }}
+              onClick={() => handleSelectNode(node.id)}
+              data-testid={`canvas-node-${node.id}`}
+            >
+              <div className="canvas-node-diamond" />
+              <span className="canvas-node-label">{t(`canvas.${node.label}`)}</span>
+              {node.conditionExpr && (
+                <span className="canvas-node-sublabel">{node.conditionExpr}</span>
+              )}
+            </div>
+          )
+        }
+
+        return (
+          <div
+            key={node.id}
+            className={nodeClass}
+            style={{ left: node.x, top: node.y }}
+            onClick={() => handleSelectNode(node.id)}
+            data-testid={`canvas-node-${node.id}`}
+          >
+            <div className="canvas-node-header">
+              <RobotOutlined className="canvas-node-icon" />
+              <span className="canvas-node-title">{t(`canvas.${node.label}`)}</span>
+              {node.status && statusIcon(node.status)}
+            </div>
+          </div>
+        )
+      })}
+    </>
+  )
+
+  const renderListView = () => (
+    <div className="canvas-list-view">
+      <Table
+        dataSource={nodes}
+        columns={listColumns}
+        rowKey="id"
+        pagination={false}
+        size="small"
+        bordered
+      />
+    </div>
+  )
+
+  const renderCodeView = () => (
+    <div className="canvas-code-view">
+      <pre className="canvas-code-block">
+        <code>{JSON.stringify({ nodes, connections }, null, 2)}</code>
+      </pre>
+    </div>
+  )
+
   return (
     <div className="canvas-page" data-testid="agent-canvas-page">
       {/* Toolbar */}
@@ -245,103 +424,9 @@ export default function AgentCanvas() {
       {/* Canvas + Properties Panel */}
       <div className="canvas-workspace">
         <div className="canvas-area" ref={canvasRef}>
-          {/* Grid background */}
-          <div className="canvas-grid" />
-
-          {/* SVG Connections */}
-          <svg className="canvas-svg">
-            <defs>
-              <marker
-                id="canvas-arrowhead"
-                markerWidth="10"
-                markerHeight="7"
-                refX="9"
-                refY="3.5"
-                orient="auto"
-              >
-                <polygon points="0 0, 10 3.5, 0 7" fill="#1e2a33" />
-              </marker>
-            </defs>
-            {connections.map((conn) => {
-              const fromNode = nodes.find((n) => n.id === conn.from)
-              const toNode = nodes.find((n) => n.id === conn.to)
-              if (!fromNode || !toNode) return null
-              const pathD = buildBezierPath(fromNode, toNode)
-              const arrowD = buildArrowPath(fromNode, toNode)
-              const labelPos = getLabelPosition(fromNode, toNode)
-              return (
-                <g key={conn.id}>
-                  <path d={pathD} className="canvas-connection" fill="none" />
-                  <path d={arrowD} className="canvas-connection-arrow" fill="none" />
-                  {conn.label && (
-                    <text
-                      x={labelPos.x}
-                      y={labelPos.y}
-                      className="canvas-connection-label"
-                      textAnchor="middle"
-                    >
-                      {t(`canvas.${conn.label}`)}
-                    </text>
-                  )}
-                </g>
-              )
-            })}
-          </svg>
-
-          {/* Nodes */}
-          {nodes.map((node) => {
-            const isSelected = selectedNodeId === node.id
-            const nodeClass = `canvas-node canvas-node--${node.type}${isSelected ? ' canvas-node--selected' : ''}`
-
-            if (node.type === 'start' || node.type === 'end') {
-              return (
-                <div
-                  key={node.id}
-                  className={nodeClass}
-                  style={{ left: node.x, top: node.y }}
-                  onClick={() => handleSelectNode(node.id)}
-                  data-testid={`canvas-node-${node.id}`}
-                >
-                  <div className="canvas-node-circle" />
-                  <span className="canvas-node-label">{t(`canvas.${node.label}`)}</span>
-                </div>
-              )
-            }
-
-            if (node.type === 'condition') {
-              return (
-                <div
-                  key={node.id}
-                  className={nodeClass}
-                  style={{ left: node.x, top: node.y }}
-                  onClick={() => handleSelectNode(node.id)}
-                  data-testid={`canvas-node-${node.id}`}
-                >
-                  <div className="canvas-node-diamond" />
-                  <span className="canvas-node-label">{t(`canvas.${node.label}`)}</span>
-                  {node.conditionExpr && (
-                    <span className="canvas-node-sublabel">{node.conditionExpr}</span>
-                  )}
-                </div>
-              )
-            }
-
-            return (
-              <div
-                key={node.id}
-                className={nodeClass}
-                style={{ left: node.x, top: node.y }}
-                onClick={() => handleSelectNode(node.id)}
-                data-testid={`canvas-node-${node.id}`}
-              >
-                <div className="canvas-node-header">
-                  <RobotOutlined className="canvas-node-icon" />
-                  <span className="canvas-node-title">{t(`canvas.${node.label}`)}</span>
-                  {node.status && statusIcon(node.status)}
-                </div>
-              </div>
-            )
-          })}
+          {viewMode === 'topology' && renderTopologyView()}
+          {viewMode === 'list' && renderListView()}
+          {viewMode === 'code' && renderCodeView()}
         </div>
 
         {/* Properties Panel */}
@@ -416,6 +501,55 @@ export default function AgentCanvas() {
             )
           })}
         </div>
+      </div>
+
+      {/* Bottom Toolbar */}
+      <div className="canvas-bottom-bar">
+        <div className="canvas-view-switcher">
+          <button
+            className={`canvas-view-btn${viewMode === 'topology' ? ' canvas-view-btn--active' : ''}`}
+            onClick={() => setViewMode('topology')}
+            aria-label="Topology view"
+          >
+            <AppstoreOutlined />
+            <span>{t('canvas.topology')}</span>
+          </button>
+          <button
+            className={`canvas-view-btn${viewMode === 'list' ? ' canvas-view-btn--active' : ''}`}
+            onClick={() => setViewMode('list')}
+            aria-label="List view"
+          >
+            <UnorderedListOutlined />
+            <span>{t('canvas.list')}</span>
+          </button>
+          <button
+            className={`canvas-view-btn${viewMode === 'code' ? ' canvas-view-btn--active' : ''}`}
+            onClick={() => setViewMode('code')}
+            aria-label="Code view"
+          >
+            <CodeOutlined />
+            <span>{t('canvas.code')}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Terminal Log Panel */}
+      <div className={`canvas-terminal${terminalExpanded ? ' canvas-terminal--expanded' : ''}`}>
+        <div className="canvas-terminal-header">
+          <span className="canvas-terminal-title">{t('canvas.executionLog')}</span>
+          <button
+            className="canvas-terminal-toggle"
+            onClick={() => setTerminalExpanded((p) => !p)}
+            aria-label={terminalExpanded ? 'Collapse terminal' : 'Expand terminal'}
+          >
+            {terminalExpanded ? <DownOutlined /> : <UpOutlined />}
+          </button>
+        </div>
+        {terminalExpanded && (
+          <div className="canvas-terminal-body">
+            <TerminalLog logs={EXECUTION_LOGS} />
+          </div>
+        )}
       </div>
     </div>
   )

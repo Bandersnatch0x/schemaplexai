@@ -1,11 +1,13 @@
 import { Card, Table, Button, Space, Tag, Input, message } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { getSpecList } from '@/api/spec'
 import type { SpecItem } from '@/api/spec'
 import './SpecCenter.css'
 
 export default function SpecCenter() {
+  const { t } = useTranslation()
   const [keyword, setKeyword] = useState('')
   const [data, setData] = useState<SpecItem[]>([])
   const [loading, setLoading] = useState(false)
@@ -24,7 +26,7 @@ export default function SpecCenter() {
       setData(res.list)
       setTotal(res.total)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '获取规范列表失败'
+      const msg = err instanceof Error ? err.message : t('specCenter.fetchError')
       message.error(msg)
       setData([])
       setTotal(0)
@@ -34,11 +36,11 @@ export default function SpecCenter() {
   }
 
   const columns = [
-    { title: '名称', dataIndex: 'name', key: 'name' },
-    { title: '版本', dataIndex: 'version', key: 'version' },
-    { title: '类型', dataIndex: 'type', key: 'type' },
+    { title: t('specCenter.name'), dataIndex: 'name', key: 'name' },
+    { title: t('specCenter.version'), dataIndex: 'version', key: 'version' },
+    { title: t('specCenter.type'), dataIndex: 'type', key: 'type' },
     {
-      title: '状态',
+      title: t('specCenter.status'),
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => (
@@ -47,14 +49,14 @@ export default function SpecCenter() {
         </Tag>
       ),
     },
-    { title: '更新时间', dataIndex: 'updatedAt', key: 'updatedAt' },
+    { title: t('specCenter.updatedAt'), dataIndex: 'updatedAt', key: 'updatedAt' },
     {
-      title: '操作',
+      title: t('specCenter.action'),
       key: 'action',
       render: () => (
         <Space>
-          <Button type="link">查看</Button>
-          <Button type="link">编辑</Button>
+          <Button type="link">{t('specCenter.view')}</Button>
+          <Button type="link">{t('common.edit')}</Button>
         </Space>
       ),
     },
@@ -64,16 +66,16 @@ export default function SpecCenter() {
     <div className="spec-page">
       <Card
         className="spec-card"
-        title="Spec 规范中心"
+        title={t('specCenter.title')}
         extra={
           <Button type="primary" icon={<PlusOutlined />}>
-            新建规范
+            {t('specCenter.newSpec')}
           </Button>
         }
       >
         <Input.Search
           className="spec-search"
-          placeholder="搜索规范"
+          placeholder={t('specCenter.searchPlaceholder')}
           allowClear
           onSearch={(v) => { setKeyword(v); setPage(1) }}
         />

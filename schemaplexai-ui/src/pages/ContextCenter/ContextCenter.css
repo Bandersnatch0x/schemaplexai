@@ -7,19 +7,19 @@
 }
 
 .context-card {
-  background: var(--abyss-card);
-  border: 1px solid var(--abyss-border);
-  border-radius: var(--radius-lg);
+  background: #111827 !important;
+  border: 1px solid #1e2a33 !important;
+  border-radius: 8px !important;
 }
 
 .context-card .ant-card-head {
-  background: transparent;
-  border-bottom: 1px solid var(--abyss-border);
-  color: var(--text-primary);
+  background: transparent !important;
+  border-bottom: 1px solid #1e2a33 !important;
+  color: var(--text-primary) !important;
 }
 
 .context-card .ant-card-head-title {
-  color: var(--text-primary);
+  color: var(--text-primary) !important;
   font-size: 18px;
   font-weight: 600;
 }

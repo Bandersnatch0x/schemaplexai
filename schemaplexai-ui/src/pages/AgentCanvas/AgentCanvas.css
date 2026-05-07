@@ -539,6 +539,186 @@
   border-radius: 1px;
 }
 
+/* Bottom Toolbar */
+.canvas-bottom-bar {
+  position: absolute;
+  bottom: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: rgba(17, 24, 39, 0.9);
+  border: 1px solid var(--abyss-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.canvas-view-switcher {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.canvas-view-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  background: var(--abyss-sidebar);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.canvas-view-btn:hover {
+  border-color: var(--abyss-border);
+  color: var(--text-primary);
+}
+
+.canvas-view-btn--active {
+  background: rgba(0, 212, 170, 0.12);
+  border-color: rgba(0, 212, 170, 0.4);
+  color: var(--hive-cyan);
+}
+
+.canvas-view-btn--active:hover {
+  border-color: var(--hive-cyan);
+  box-shadow: var(--glow-cyan);
+}
+
+/* Terminal Log Panel */
+.canvas-terminal {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 25;
+  background: rgba(10, 14, 26, 0.95);
+  border-top: 1px solid var(--abyss-border);
+  backdrop-filter: blur(8px);
+  transition: height 0.25s ease;
+  height: 36px;
+}
+
+.canvas-terminal--expanded {
+  height: 216px;
+}
+
+.canvas-terminal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid transparent;
+  min-height: 36px;
+}
+
+.canvas-terminal--expanded .canvas-terminal-header {
+  border-bottom-color: var(--abyss-border);
+}
+
+.canvas-terminal-title {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.canvas-terminal-toggle {
+  background: transparent;
+  border: 1px solid var(--abyss-border);
+  color: var(--text-secondary);
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.canvas-terminal-toggle:hover {
+  border-color: var(--hive-cyan);
+  color: var(--hive-cyan);
+}
+
+.canvas-terminal-body {
+  padding: var(--space-3) var(--space-4);
+  height: calc(216px - 37px);
+  overflow: hidden;
+}
+
+.canvas-terminal-body > div {
+  max-height: 100%;
+  border-radius: var(--radius-md);
+}
+
+/* List View */
+.canvas-list-view {
+  padding: var(--space-6);
+  height: 100%;
+  overflow: auto;
+}
+
+.canvas-list-view .ant-table {
+  background: var(--abyss-card);
+  border: 1px solid var(--abyss-border);
+  border-radius: var(--radius-md);
+}
+
+.canvas-list-view .ant-table-thead > tr > th {
+  background: var(--abyss-sidebar);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--abyss-border);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.canvas-list-view .ant-table-tbody > tr > td {
+  background: var(--abyss-card);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--abyss-border);
+  font-size: 13px;
+}
+
+.canvas-list-view .ant-table-tbody > tr:hover > td {
+  background: rgba(0, 212, 170, 0.04);
+}
+
+/* Code View */
+.canvas-code-view {
+  padding: var(--space-6);
+  height: 100%;
+  overflow: auto;
+}
+
+.canvas-code-block {
+  background: var(--abyss-card);
+  border: 1px solid var(--abyss-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--hive-cyan);
+  overflow: auto;
+  max-height: 100%;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .canvas-toolbar {

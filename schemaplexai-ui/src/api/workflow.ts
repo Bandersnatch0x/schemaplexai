@@ -1,4 +1,5 @@
 import request from './request'
+import type { PageResult } from '@/types'
 
 export interface Workflow {
   id: string
@@ -32,4 +33,18 @@ export function deleteWorkflow(id: string) {
 
 export function runWorkflow(id: string, payload?: Record<string, unknown>) {
   return request.post<string>(`/workflow/instances/${id}/run`, payload)
+}
+
+export interface WorkflowInstance {
+  id: string
+  templateId: string
+  status: string
+  triggerType: string
+  triggerConfig?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export function getWorkflowInstances(params?: { current?: number; size?: number }) {
+  return request.get<PageResult<WorkflowInstance>>('/workflow/instances/page', { params })
 }
