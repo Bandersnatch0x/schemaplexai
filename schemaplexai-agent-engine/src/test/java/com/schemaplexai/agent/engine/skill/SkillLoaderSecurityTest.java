@@ -1,12 +1,16 @@
 package com.schemaplexai.agent.engine.skill;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@SpringBootTest(classes = {SkillLoader.class})
 class SkillLoaderSecurityTest {
 
-    private final SkillLoader skillLoader = new SkillLoader();
+    @Autowired
+    private SkillLoader skillLoader;
 
     @Test
     void shouldRejectNameLongerThan64Chars() {

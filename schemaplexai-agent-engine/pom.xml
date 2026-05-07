@@ -40,6 +40,17 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.vladsch.flexmark</groupId>
+            <artifactId>flexmark-all</artifactId>
+            <version>0.64.8</version>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <!-- Flyway 9.x (Spring Boot 3.2.5) bundles PostgreSQL support in flyway-core.
+             flyway-database-postgresql is only needed for Flyway 10+ (Spring Boot 3.3+). -->
     </dependencies>
     <build>
         <plugins>

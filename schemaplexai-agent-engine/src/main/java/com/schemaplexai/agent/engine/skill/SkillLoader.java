@@ -1,5 +1,11 @@
 package com.schemaplexai.agent.engine.skill;
 
+import com.vladsch.flexmark.ext.yaml.front.matter.AbstractYamlFrontMatterVisitor;
+import com.vladsch.flexmark.ext.yaml.front.matter.YamlFrontMatterExtension;
+import com.vladsch.flexmark.parser.Parser;
+import com.vladsch.flexmark.util.ast.Node;
+import com.vladsch.flexmark.util.data.MutableDataSet;
+import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -8,6 +14,7 @@ import java.util.regex.Pattern;
 
 /**
  * Parses skill definitions from Markdown files with YAML frontmatter.
+ * Uses flexmark-java with YamlFrontMatterExtension for spec-compliant parsing.
  * Security constraints:
  * - Name max 64 chars (matches DB column)
  * - Description max 500 chars (matches DB column)
@@ -20,10 +27,29 @@ public class SkillLoader {
     private static final int MAX_NAME_LENGTH = 64;
     private static final int MAX_DESCRIPTION_LENGTH = 500;
     private static final Pattern HTML_TAG = Pattern.compile("<[^>]+>");
-    private static final Pattern YAML_KEY_VALUE = Pattern.compile("^([a-zA-Z_-]+):\\s*(.*)$");
     private static final long PARSE_TIMEOUT_SECONDS = 5;
 
     private final ExecutorService parseExecutor = Executors.newFixedThreadPool(2);
+    private final Parser flexmarkParser;
+
+    public SkillLoader() {
+        MutableDataSet options = new MutableDataSet();
+        options.set(Parser.EXTENSIONS, Collections.singletonList(YamlFrontMatterExtension.create()));
+        this.flexmarkParser = Parser.builder(options).build();
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        parseExecutor.shutdown();
+        try {
+            if (!parseExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                parseExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            parseExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
 
     /**
      * Parse skill markdown with timeout isolation.
@@ -57,9 +83,22 @@ public class SkillLoader {
             throw new ValidationException("Skill markdown cannot be null or blank");
         }
 
-        // Parse frontmatter and body
-        ParsedMarkdown parsed = parseFrontMatterAndBody(markdown);
-        Map<String, String> frontMatter = parsed.frontMatter();
+        // Parse with flexmark-java
+        Node document = flexmarkParser.parse(markdown);
+
+        // Extract YAML frontmatter using flexmark visitor
+        AbstractYamlFrontMatterVisitor visitor = new AbstractYamlFrontMatterVisitor();
+        visitor.visit(document);
+        Map<String, List<String>> yamlData = visitor.getData();
+
+        // Flatten to single-value map (take first value for each key)
+        Map<String, String> frontMatter = new LinkedHashMap<>();
+        for (Map.Entry<String, List<String>> entry : yamlData.entrySet()) {
+            List<String> values = entry.getValue();
+            if (values != null && !values.isEmpty()) {
+                frontMatter.put(entry.getKey(), values.get(0));
+            }
+        }
 
         String name = frontMatter.get("name");
         String description = frontMatter.get("description");
@@ -79,7 +118,8 @@ public class SkillLoader {
                     "Skill description exceeds " + MAX_DESCRIPTION_LENGTH + " chars");
         }
 
-        String body = parsed.body();
+        // Extract body: use flexmark AST to get content after frontmatter
+        String body = extractBodyAfterFrontMatter(document);
 
         // Reject HTML tags (XSS prevention)
         if (HTML_TAG.matcher(body).find()) {
@@ -91,51 +131,57 @@ public class SkillLoader {
     }
 
     /**
-     * Parse YAML frontmatter between --- delimiters and extract body.
-     * Simple key: value parser — no external YAML dependency needed.
+     * Extract the markdown body after the YAML frontmatter block.
+     * The frontmatter block is delimited by '---' markers. We find the second
+     * '---' and take everything after it as the body.
      */
-    private ParsedMarkdown parseFrontMatterAndBody(String markdown) {
-        String[] lines = markdown.split("\n", -1);
-        Map<String, String> frontMatter = new LinkedHashMap<>();
-        int bodyStart = 0;
+    private String extractBodyAfterFrontMatter(Node document) {
+        // Walk the AST to find content nodes that are NOT part of the frontmatter.
+        // flexmark's YamlFrontMatterExtension represents the frontmatter as a single
+        // block node. Everything after it is the document body.
+        StringBuilder body = new StringBuilder();
+        boolean pastFrontMatter = false;
 
-        // Expect first line to be ---
-        if (lines.length > 0 && lines[0].trim().equals("---")) {
-            int separatorCount = 1;
-            for (int i = 1; i < lines.length; i++) {
-                String line = lines[i];
-                if (line.trim().equals("---")) {
-                    separatorCount++;
+        for (Node child = document.getFirstChild(); child != null; child = child.getNext()) {
+            String className = child.getClass().getSimpleName();
+            if (className.contains("YamlFrontMatter")) {
+                pastFrontMatter = true;
+                continue;
+            }
+            if (pastFrontMatter) {
+                if (body.length() > 0) {
+                    body.append("\n");
+                }
+                body.append(child.getChars());
+            }
+        }
+
+        // Fallback: if no frontmatter node found, use raw text after second '---'
+        if (!pastFrontMatter) {
+            return extractBodyFallback(document.getChars().toString());
+        }
+
+        return body.toString();
+    }
+
+    /**
+     * Fallback body extraction: split on '---' delimiters.
+     */
+    private String extractBodyFallback(String markdown) {
+        String[] lines = markdown.split("\n", -1);
+        int separatorCount = 0;
+        int bodyStart = 0;
+        for (int i = 0; i < lines.length; i++) {
+            if (lines[i].trim().equals("---")) {
+                separatorCount++;
+                if (separatorCount == 2) {
                     bodyStart = i + 1;
                     break;
                 }
-                // Parse simple key: value
-                var matcher = YAML_KEY_VALUE.matcher(line);
-                if (matcher.matches()) {
-                    String key = matcher.group(1).trim();
-                    String value = matcher.group(2).trim();
-                    // Strip surrounding quotes
-                    if (value.length() >= 2
-                            && ((value.startsWith("\"") && value.endsWith("\""))
-                            || (value.startsWith("'") && value.endsWith("'")))) {
-                        value = value.substring(1, value.length() - 1);
-                    }
-                    frontMatter.put(key, value);
-                }
             }
         }
-
-        // Build body from remaining lines
-        StringBuilder body = new StringBuilder();
-        for (int i = bodyStart; i < lines.length; i++) {
-            if (body.length() > 0) {
-                body.append("\n");
-            }
-            body.append(lines[i]);
-        }
-
-        return new ParsedMarkdown(frontMatter, body.toString());
+        return String.join("\n",
+                java.util.Arrays.copyOfRange(lines, bodyStart, lines.length));
     }
 
-    private record ParsedMarkdown(Map<String, String> frontMatter, String body) {}
 }
