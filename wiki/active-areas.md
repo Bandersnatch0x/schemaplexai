@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-07T03:23:31Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-07T07:29:18Z -->
 
 ---
 title: Active Development Areas
@@ -27,5 +27,5 @@ confidence: high
 - **core-ai-engine-design**: spec=yes, tasks=yes
 - **ui-alignment**: spec=yes, tasks=yes
 - **v1-release-readiness**: spec=yes, tasks=yes
-- **v1-test-fixes-and-coverage**: spec=yes, tasks=yes, status=completed
+- **v1-test-fixes-and-coverage**: spec=yes, tasks=yes
 - **wiki-gaps-completion**: spec=yes, tasks=yes

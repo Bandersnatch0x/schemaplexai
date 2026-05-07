@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-07T03:23:05Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-07T07:28:34Z -->
 
 ---
 title: Wiki Operation Log
@@ -14,8 +14,24 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
-## 2026-05-07 — test(coverage): full backend test suite green + cross-module compilation fix
+## 2026-05-07 — feat(ui): complete UI/UE alignment across all pages
+b3762ad
+## 2026-05-07 — docs(wiki): update log and active-areas for v1-test-fixes-and-coverage completion
+e012bd2
+## 2026-05-07 — test(coverage): fix cross-module compilation and achieve full backend test suite green
 93b3c9e
+## 2026-05-07 — test(coverage): add workflow/context tests and align JaCoCo thresholds
+d75ca91
+## 2026-05-07 — test: fix failing tests across gateway, workflow, and context modules
+5cbd6a4
+## 2026-05-07 — feat(ui): i18n for Login and NotFound pages
+c9fe8ac
+## 2026-05-07 — feat(ui): i18n for WorkflowCenter and SystemSettings
+61950b9
+## 2026-05-07 — feat(ui): i18n for AgentManager and AgentExecutor
+d3ade87
+## 2026-05-07 — feat(agent-engine): close 3 critical Agentic pattern gaps
+0701845
 ## 2026-05-07 — feat(ui): align i18n, router cleanup, workflow API integration
 cf81404
 ## 2026-05-07 — docs(wiki,tasks): mark agents-sdk-2026-alignment completed + update log
@@ -38,24 +54,6 @@ f94c187
 d95e114
 ## 2026-05-07 — docs(wiki): record agents-sdk-2026-alignment delivery
 204c164
-## 2026-05-07 — docs(wiki): add schema docs and track test infrastructure debt
-9358d21
-## 2026-05-07 — feat(context): add embedding timeouts and MinIO startup validation
-518ca6d
-## 2026-05-07 — refactor(gateway,common): extract X-User-Id header constant
-6f45338
-## 2026-05-07 — build(agent-engine,common): configure JaCoCo, add manifest parser tests
-51919c6
-## 2026-05-07 — docs(wiki): update gaps resolution and operation log
-64e51ce
-## 2026-05-07 — test(agent-engine): add parser and adapter tests
-2f619e6
-## 2026-05-07 — test(agent-engine): add state/orchestrator/tool tests, fix parser bug, fix DNS-dependent test
-4f99cdd
-## 2026-05-07 — test(agent-engine): restore integration tests and add memory unit tests
-36eba54
-## 2026-05-07 — feat(context,common): add FailedStatusWriter, environment-aware embedding, exception tests
-04890a6
 
 ---
 
@@ -70,6 +68,7 @@ d95e114
 - **spec-management** (spec v1.0): 草稿 — 2026-04-30-v1.0-spec-management.md
 - **workflow-engine** (spec v1.0): 草稿 — 2026-04-30-v1.0-workflow-engine.md
 - **notification** (spec 1.0): 已批准 — 2026-05-01-v1.0-notification.md
+- **ui-alignment** (standard 1.0): approved — 2026-05-07-v1.0-ui-alignment.md
 - **specs-index** ( ):  — README.md
 - **spec-review** (spec v1.0): 已批准 — SPEC-REVIEW-v1.0.md
 - **project-plan** (plan v1.1): 已批准 — 2026-04-29-v1.0-project-plan.md
