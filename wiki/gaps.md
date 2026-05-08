@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T13:09:15Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T15:58:25Z -->
 
 ## Auto-Generated Gap Scan
 
@@ -28,6 +28,8 @@
 - Missing wiki page for service: `McpToolDiscoveryService` (source: D:/code_space/frige/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/tool/mcp/McpToolDiscoveryService.java)
 - Missing wiki page for service: `SubAgentExecutionService` (source: D:/code_space/frige/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/tool/subagent/SubAgentExecutionService.java)
 - Missing wiki page for service: `SubAgentQuotaService` (source: D:/code_space/frige/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/tool/subagent/SubAgentQuotaService.java)
+- Missing wiki page for service: `ToolCallBudgetService` (source: D:/code_space/frige/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/tool/ToolCallBudgetService.java)
+- Missing wiki page for service: `OpenTelemetryTracingService` (source: D:/code_space/frige/schemaplexai-common/src/main/java/com/schemaplexai/common/observability/OpenTelemetryTracingService.java)
 - Missing wiki page for service: `FileScanService` (source: D:/code_space/frige/schemaplexai-context/src/main/java/com/schemaplexai/context/service/FileScanService.java)
 - Missing wiki page for service: `FileStorageService` (source: D:/code_space/frige/schemaplexai-context/src/main/java/com/schemaplexai/context/service/FileStorageService.java)
 - Missing wiki page for service: `ClamAvFileScanService` (source: D:/code_space/frige/schemaplexai-context/src/main/java/com/schemaplexai/context/service/impl/ClamAvFileScanService.java)

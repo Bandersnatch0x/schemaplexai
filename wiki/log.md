@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T13:08:24Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T15:57:33Z -->
 
 ---
 title: Wiki Operation Log
@@ -14,6 +14,32 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
+## 2026-05-08 — test: fix AgentExecutionStateTest for HANDOFF, add HandoffStateHandlerTest
+8843972
+## 2026-05-08 — test: add timeline, ChatMemory, and SseViewer component tests
+99cb64c
+## 2026-05-08 — feat(ui): update Composer component with styles and tests
+e846caf
+## 2026-05-08 — feat(workflow): add concurrent and join node executors
+9847e04
+## 2026-05-08 — feat(docker): add ClickHouse agent timeline init script
+0b128b1
+## 2026-05-08 — feat(agent-engine): add HANDOFF state and HandoffStateHandler
+9ba737a
+## 2026-05-08 — chore: sync development status and wiki timestamp
+278e33d
+## 2026-05-08 — feat: implement MAF Phase 2 architecture (middleware pipeline, approval mode, provider SPI)
+8c24c79
+## 2026-05-08 — feat: implement MAF Phase 1 foundation (OpenTelemetry, skill disclosure, topology hash, tool-call budget)
+cc48fea
+## 2026-05-08 — test(agent-engine): add ToolCallBudgetService mock to TokenBudgetEnforcementTest
+4e758c5
+## 2026-05-08 — feat(task): add tenant-aware MQ message filter for P1-7 isolation
+31e2ffc
+## 2026-05-08 — test(workflow): add jwt.secret to test config for JwtSecretStartupValidator
+185580b
+## 2026-05-08 — docs: update wiki for Layer 1 agentic patterns completion
+19b6693
 ## 2026-05-08 — chore: sync development status
 c1c2437
 ## 2026-05-08 — test: fix RateLimitFilter and AuthService tests for TenantRedisKeyResolver
@@ -28,32 +54,6 @@ f52195b
 5d7502d
 ## 2026-05-08 — chore: update ReAct comment + sync development status
 cec51bd
-## 2026-05-08 — chore: add .env.example with all mandatory environment variables
-58d9eaa
-## 2026-05-08 — chore: add coverage/ to gitignore, commit run-tasks outputs
-b0b0f94
-## 2026-05-08 — docs: v1 readiness Day-0 baseline — 7-expert review + 22 blockers
-64c1fd0
-## 2026-05-08 — chore: add 9 ralph-loop expert command templates
-2a7e432
-## 2026-05-08 — feat(agent-engine): add ReAct tool-call support and token-budget memory
-a95a501
-## 2026-05-08 — feat(security): JWT_SECRET fail-fast startup validation
-111b112
-## 2026-05-08 — docs: sync wiki from docs/ and fix gaps.md AUTO-GENERATED marker
-4516eac
-## 2026-05-08 — ci(jacoco): expand coverage to all 16 modules with whitelist ramp
-12e812f
-## 2026-05-08 — test(ui): add vitest coverage provider (v8) with 70% line threshold
-e9fafcf
-## 2026-05-08 — fix: P1 bug fixes — CostService, Notification, SSE smoke test
-f438e3a
-## 2026-05-08 — ci: add Trivy, OWASP Dependency-Check, Gitleaks security scans
-a7e5bf8
-## 2026-05-08 — chore(gitignore): add .env.production, secrets/, *.pem
-147ff15
-## 2026-05-08 — fix(config): migrate all application.yml credentials to fail-fast env vars
-74633a7
 
 ---
 
