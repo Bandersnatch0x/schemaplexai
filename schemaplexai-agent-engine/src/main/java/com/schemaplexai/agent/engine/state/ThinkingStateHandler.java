@@ -2,6 +2,7 @@ package com.schemaplexai.agent.engine.state;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.agent.engine.admission.TokenBudget;
+import com.schemaplexai.agent.engine.context.AgentContext;
 import com.schemaplexai.agent.engine.context.ContextInjector;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.evaluation.ValidationResult;
@@ -16,6 +17,8 @@ import com.schemaplexai.agent.engine.model.AiModelRouter;
 import com.schemaplexai.agent.engine.model.LlmMessage;
 import com.schemaplexai.agent.engine.plan.SubTask;
 import com.schemaplexai.agent.engine.plan.SubTaskPlan;
+import com.schemaplexai.agent.engine.reasoning.ReasoningStrategy;
+import com.schemaplexai.agent.engine.reasoning.ThinkingResult;
 import com.schemaplexai.agent.engine.role.RoleOverlay;
 import com.schemaplexai.agent.engine.role.RoleRegistry;
 import com.schemaplexai.agent.engine.skill.SkillDefinition;
@@ -24,6 +27,7 @@ import com.schemaplexai.agent.engine.tool.ToolDefinition;
 import com.schemaplexai.agent.engine.tool.ToolRegistry;
 import com.schemaplexai.agent.engine.util.TokenEstimator;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
@@ -53,6 +57,7 @@ public class ThinkingStateHandler implements AgentStateHandler {
     private final AutoCompactionService autoCompactionService;
     private final ToolRegistry toolRegistry;
     private final FinalAnswerExtractor finalAnswerExtractor;
+    private final List<ReasoningStrategy> reasoningStrategies;
 
     public ThinkingStateHandler(ContextInjector contextInjector,
                                  CompositeChatMemoryStore chatMemoryStore,
@@ -63,7 +68,8 @@ public class ThinkingStateHandler implements AgentStateHandler {
                                  SkillRegistry skillRegistry,
                                  RoleRegistry roleRegistry,
                                  AutoCompactionService autoCompactionService,
-                                 ToolRegistry toolRegistry) {
+                                 ToolRegistry toolRegistry,
+                                 @Nullable List<ReasoningStrategy> reasoningStrategies) {
         this.contextInjector = contextInjector;
         this.chatMemoryStore = chatMemoryStore;
         this.modelRouter = modelRouter;
@@ -75,6 +81,26 @@ public class ThinkingStateHandler implements AgentStateHandler {
         this.autoCompactionService = autoCompactionService;
         this.toolRegistry = toolRegistry;
         this.finalAnswerExtractor = new FinalAnswerExtractor();
+        this.reasoningStrategies = reasoningStrategies != null
+                ? List.copyOf(reasoningStrategies) : Collections.emptyList();
+    }
+
+    /**
+     * Backward-compatible constructor (no reasoning strategies).
+     */
+    public ThinkingStateHandler(ContextInjector contextInjector,
+                                 CompositeChatMemoryStore chatMemoryStore,
+                                 AiModelRouter modelRouter,
+                                 AgentLoopDetectionService loopDetection,
+                                 com.schemaplexai.agent.engine.model.ModelResolver modelResolver,
+                                 GuardrailsEngine guardrailsEngine,
+                                 SkillRegistry skillRegistry,
+                                 RoleRegistry roleRegistry,
+                                 AutoCompactionService autoCompactionService,
+                                 ToolRegistry toolRegistry) {
+        this(contextInjector, chatMemoryStore, modelRouter, loopDetection,
+                modelResolver, guardrailsEngine, skillRegistry, roleRegistry,
+                autoCompactionService, toolRegistry, null);
     }
 
     @Override
@@ -144,7 +170,23 @@ public class ThinkingStateHandler implements AgentStateHandler {
                 return;
             }
 
-            // 6. Call LLM with fallback
+            // 6a. Check if a ReasoningStrategy should handle the LLM call
+            ReasoningStrategy strategy = resolveReasoningStrategy(execution);
+            if (strategy != null) {
+                AgentContext agentContext = buildAgentContext(execution);
+                if (strategy.canContinue(agentContext)) {
+                    log.info("Execution {} delegating to reasoning strategy '{}'",
+                            execution.getId(), strategy.getName());
+                    stateMachine.emitTimelineEvent(execution, "thought",
+                            "Using reasoning strategy: " + strategy.getName());
+                    executeWithStrategy(strategy, agentContext, execution, budget, stateMachine);
+                    return;
+                }
+                log.warn("Strategy '{}' cannot continue for execution {}, falling back to inline",
+                        strategy.getName(), execution.getId());
+            }
+
+            // 6b. Call LLM with fallback (inline reasoning — existing ReAct loop)
             String modelId = resolveModelId(execution);
             stateMachine.emitTimelineEvent(execution, "thought",
                     "Calling LLM (model=" + modelId + ", tokens≈" + inputTokens + ")");
@@ -204,6 +246,122 @@ public class ThinkingStateHandler implements AgentStateHandler {
             log.error("Thinking state failed for execution {}", execution.getId(), e);
             stateMachine.emitTimelineEvent(execution, "error",
                     "THINKING failed: " + e.getMessage());
+            stateMachine.transition(AgentExecutionState.FAILED, execution);
+        }
+    }
+
+    /**
+     * Resolves a ReasoningStrategy for the given execution.
+     * Checks execution metadata "reasoningStrategy" for a named strategy.
+     * Returns null if no strategy is requested or available (falls back to inline).
+     */
+    private ReasoningStrategy resolveReasoningStrategy(SfAgentExecution execution) {
+        if (reasoningStrategies.isEmpty()) {
+            return null;
+        }
+        Object strategyMeta = execution.getMetadata("reasoningStrategy");
+        if (strategyMeta == null) {
+            return null;
+        }
+        String strategyName = strategyMeta.toString().trim();
+        if (strategyName.isBlank()) {
+            return null;
+        }
+        return reasoningStrategies.stream()
+                .filter(s -> s.getName().equalsIgnoreCase(strategyName))
+                .findFirst()
+                .orElseGet(() -> {
+                    log.warn("ReasoningStrategy '{}' not found, available: {}",
+                            strategyName,
+                            reasoningStrategies.stream().map(ReasoningStrategy::getName).toList());
+                    return null;
+                });
+    }
+
+    /**
+     * Builds an AgentContext from the execution entity for use with ReasoningStrategy.
+     * projectId and userId are extracted from metadata if present, otherwise null.
+     */
+    private AgentContext buildAgentContext(SfAgentExecution execution) {
+        String projectId = null;
+        Object projectIdMeta = execution.getMetadata("projectId");
+        if (projectIdMeta != null) {
+            projectId = projectIdMeta.toString();
+        }
+        String userId = null;
+        Object userIdMeta = execution.getMetadata("userId");
+        if (userIdMeta != null) {
+            userId = userIdMeta.toString();
+        }
+        return AgentContext.builder()
+                .tenantId(execution.getTenantId())
+                .projectId(projectId)
+                .conversationId(execution.getConversationId())
+                .agentId(execution.getAgentId())
+                .userId(userId)
+                .build();
+    }
+
+    /**
+     * Delegates reasoning to a ReasoningStrategy and maps ThinkingResult to state transitions.
+     * Preserves loop detection, memory persistence, and sub-task plan progression.
+     */
+    private void executeWithStrategy(ReasoningStrategy strategy,
+                                      AgentContext agentContext,
+                                      SfAgentExecution execution,
+                                      TokenBudget budget,
+                                      AgentStateMachine stateMachine) {
+        try {
+            ThinkingResult result = strategy.think(agentContext, budget);
+
+            switch (result.type()) {
+                case COMPLETED -> {
+                    String answer = result.finalAnswer();
+                    chatMemoryStore.saveMessage(execution.getConversationId(),
+                            new LlmMessage("assistant", answer));
+                    AgentExecutionState nextState = resolveNextStateForPlan(execution);
+                    loopDetection.clearRecords(execution.getId());
+                    stateMachine.emitTimelineEvent(execution, "output",
+                            "Strategy " + strategy.getName() + " produced final answer");
+                    stateMachine.transition(nextState, execution);
+                }
+                case TOOL_CALL -> {
+                    String toolName = result.toolCall().toolName();
+                    LoopDetectionResult loopResult = loopDetection.detectLoop(
+                            execution.getId(), strategy.getName(), List.of(toolName));
+                    if (loopResult.loopDetected()) {
+                        log.warn("Loop detected via strategy {} for execution {}: {}",
+                                strategy.getName(), execution.getId(), loopResult.reason());
+                        execution.setMetadata("blockedReason", "agent_loop_" + loopResult.reason());
+                        execution.setMetadata("admissionType", "LOOP");
+                        stateMachine.transition(AgentExecutionState.GATE_BLOCKED, execution);
+                        return;
+                    }
+                    stateMachine.emitTimelineEvent(execution, "thought",
+                            "Strategy " + strategy.getName() + " requested tool: " + toolName);
+                    execution.setMetadata("iterationToolCallCount", 0);
+                    stateMachine.transition(AgentExecutionState.TOOL_CALLING, execution);
+                }
+                case EXHAUSTED -> {
+                    log.warn("Strategy {} exhausted for execution {}: {}",
+                            strategy.getName(), execution.getId(), result.errorMessage());
+                    execution.setMetadata("blockedReason", result.errorMessage());
+                    execution.setMetadata("admissionType", "BUDGET");
+                    stateMachine.transition(AgentExecutionState.GATE_BLOCKED, execution);
+                }
+                case ERROR -> {
+                    log.error("Strategy {} error for execution {}: {}",
+                            strategy.getName(), execution.getId(), result.errorMessage());
+                    stateMachine.emitTimelineEvent(execution, "error",
+                            "Strategy " + strategy.getName() + " failed: " + result.errorMessage());
+                    stateMachine.transition(AgentExecutionState.FAILED, execution);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Strategy {} threw exception for execution {}",
+                    strategy.getName(), execution.getId(), e);
+            stateMachine.emitTimelineEvent(execution, "error",
+                    "Strategy " + strategy.getName() + " exception: " + e.getMessage());
             stateMachine.transition(AgentExecutionState.FAILED, execution);
         }
     }

@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: gen-dev-status.sh at 2026-05-08T08:33:41Z -->
+<!-- AUTO-GENERATED: gen-dev-status.sh at 2026-05-08T12:01:01Z -->
 
 # Development Status — 2026-05-08
 
@@ -23,6 +23,9 @@
 
 - **cursor-sdk-to-opensandbox** (已批准) — ADR-002-cursor-sdk-to-opensandbox.md
 - **tool-call-parsing-strategy** (accepted) — ADR-004-tool-call-parsing-strategy.md
+- **jwt-key-rotation-sla** (已批准) — ADR-011-jwt-key-rotation-sla.md
+- **cost-analytics-v1-short-path** (已批准) — ADR-012-cost-analytics-v1-short-path.md
+- **notification-v1-channel-reduction** (已批准) — ADR-013-notification-v1-channel-reduction.md
 
 ## Links
 
