@@ -1,6 +1,7 @@
 package com.schemaplexai.agent.engine.integration;
 
 import com.schemaplexai.agent.engine.admission.*;
+import com.schemaplexai.agent.engine.tool.ToolCallBudgetService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,9 @@ class TokenBudgetEnforcementTest {
     @Mock
     private ValueOperations<String, String> valueOperations;
 
+    @Mock
+    private ToolCallBudgetService toolCallBudgetService;
+
     @InjectMocks
     private ExecutionAdmissionService admissionService;
 
@@ -36,6 +40,7 @@ class TokenBudgetEnforcementTest {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.increment(anyString())).thenReturn(1L);
         when(valueOperations.get(anyString())).thenReturn(null);
+        when(toolCallBudgetService.hasRemainingBudget(anyString())).thenReturn(true);
     }
 
     @Test
