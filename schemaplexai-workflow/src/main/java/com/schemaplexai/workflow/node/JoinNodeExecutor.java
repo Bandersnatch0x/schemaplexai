@@ -182,6 +182,10 @@ public class JoinNodeExecutor implements NodeExecutor {
             return s;
         }
         if (value instanceof Map<?, ?> map) {
+            // Explicitly failed results should not be treated as valid output
+            if (Boolean.FALSE.equals(map.get("success"))) {
+                return null;
+            }
             Object output = map.get("output");
             if (output != null) {
                 return output.toString();
@@ -190,10 +194,6 @@ public class JoinNodeExecutor implements NodeExecutor {
             Object results = map.get("results");
             if (results != null) {
                 return results.toString();
-            }
-            // Check nested success flag
-            if (Boolean.TRUE.equals(map.get("success"))) {
-                return value.toString();
             }
         }
         return value.toString();
