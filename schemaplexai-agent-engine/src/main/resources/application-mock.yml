@@ -1,0 +1,36 @@
+# =============================================================================
+# SchemaPlexAI — Mock profile
+# Activate: spring.profiles.active=mock
+#
+# Provides safe defaults so the application starts without real infrastructure.
+# All LLM calls are handled by MockLlmProvider (no API key required).
+# =============================================================================
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:schemaplexai_mock;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  flyway:
+    enabled: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+agent:
+  llm:
+    openai:
+      api-key: "mock-not-needed"
+    anthropic:
+      api-key: "mock-not-needed"

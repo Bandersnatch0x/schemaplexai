@@ -72,6 +72,11 @@
         </dependency>
         <!-- Flyway 9.x (Spring Boot 3.2.5) bundles PostgreSQL support in flyway-core.
              flyway-database-postgresql is only needed for Flyway 10+ (Spring Boot 3.3+). -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

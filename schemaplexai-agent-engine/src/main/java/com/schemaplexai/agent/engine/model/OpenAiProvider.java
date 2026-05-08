@@ -12,6 +12,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.output.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -30,9 +31,12 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>Lightweight health check via models list endpoint</li>
  *   <li>Comprehensive error handling with {@link BaseException}</li>
  * </ul>
+ *
+ * <p>Excluded when the {@code mock} profile is active (see {@link MockLlmProvider}).
  */
 @Slf4j
 @Component
+@Profile("!mock")
 public class OpenAiProvider implements LlmProvider {
 
     private static final String PROVIDER_NAME = "OPENAI";
