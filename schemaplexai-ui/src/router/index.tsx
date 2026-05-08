@@ -6,17 +6,21 @@ import { ImmersiveLayout, ProgressiveLayout } from '@/components/Layout'
 const Login = lazy(() => import('@/pages/Login'))
 const Cockpit = lazy(() => import('@/pages/Cockpit'))
 const AgentCanvas = lazy(() => import('@/pages/AgentCanvas'))
-const AgentManager = lazy(() => import('@/pages/AgentManager'))
+const AgentList = lazy(() => import('@/pages/AgentList'))
 const AgentExecutor = lazy(() => import('@/pages/AgentExecutor'))
 const AgentDetail = lazy(() => import('@/pages/AgentDetail'))
-const SpecCenter = lazy(() => import('@/pages/SpecCenter'))
-const WorkflowMonitor = lazy(() => import('@/pages/WorkflowMonitor'))
-const ContextCenter = lazy(() => import('@/pages/ContextCenter'))
-const QualityCenter = lazy(() => import('@/pages/Quality/QualityCenter'))
-const IntegrationCenter = lazy(() => import('@/pages/IntegrationCenter'))
-const OpsCenter = lazy(() => import('@/pages/OpsCenter'))
-const SystemSettings = lazy(() => import('@/pages/SystemSettings'))
-const NotificationCenter = lazy(() => import('@/pages/NotificationCenter'))
+const SpecCenter = lazy(() => import('@/pages/Projects/SpecCenter'))
+const WorkflowCenter = lazy(() => import('@/pages/Projects/WorkflowCenter'))
+const ContextCenter = lazy(() => import('@/pages/Projects/ContextCenter'))
+const QualityGates = lazy(() => import('@/pages/Quality/QualityGates'))
+const QualityIssues = lazy(() => import('@/pages/Quality/QualityIssues'))
+const SecurityAudit = lazy(() => import('@/pages/Quality/SecurityAudit'))
+const SystemCenter = lazy(() => import('@/pages/Platform/SystemCenter'))
+const IntegrationCenter = lazy(() => import('@/pages/Platform/IntegrationCenter'))
+const OpsCenter = lazy(() => import('@/pages/Platform/OpsCenter'))
+const TaskBoard = lazy(() => import('@/pages/Tasks/TaskBoard'))
+const TaskJobs = lazy(() => import('@/pages/Tasks/TaskJobs'))
+const TaskDetail = lazy(() => import('@/pages/Tasks/TaskDetail'))
 const NotFound = lazy(() => import('@/pages/NotFound'))
 
 export interface RouteConfig {
@@ -38,7 +42,7 @@ const RouterConfig: RouteConfig[] = [
   { path: '/', element: <Navigate to="/cockpit" replace /> },
   { path: '/dashboard', element: <Navigate to="/cockpit" replace /> },
 
-  // ImmersiveLayout — full-screen dashboards
+  // ImmersiveLayout
   {
     path: '/cockpit',
     element: (
@@ -49,7 +53,7 @@ const RouterConfig: RouteConfig[] = [
     children: [{ path: '', element: <Cockpit /> }],
   },
   {
-    path: '/canvas',
+    path: '/agents/canvas',
     element: (
       <RequireAuth>
         <ImmersiveLayout />
@@ -58,7 +62,7 @@ const RouterConfig: RouteConfig[] = [
     children: [{ path: '', element: <AgentCanvas /> }],
   },
 
-  // ProgressiveLayout — detail / config pages
+  // ProgressiveLayout — Agents
   {
     path: '/agents',
     element: (
@@ -67,38 +71,30 @@ const RouterConfig: RouteConfig[] = [
       </RequireAuth>
     ),
     children: [
-      { path: '', element: <AgentManager /> },
+      { path: '', element: <Navigate to="list" replace /> },
+      { path: 'list', element: <AgentList /> },
       { path: 'executor', element: <AgentExecutor /> },
       { path: ':id', element: <AgentDetail /> },
     ],
   },
+
+  // ProgressiveLayout — Projects
   {
-    path: '/workflows',
+    path: '/projects',
     element: (
       <RequireAuth>
         <ProgressiveLayout />
       </RequireAuth>
     ),
-    children: [{ path: '', element: <WorkflowMonitor /> }],
+    children: [
+      { path: '', element: <Navigate to="specs" replace /> },
+      { path: 'specs', element: <SpecCenter /> },
+      { path: 'workflows', element: <WorkflowCenter /> },
+      { path: 'contexts', element: <ContextCenter /> },
+    ],
   },
-  {
-    path: '/specs',
-    element: (
-      <RequireAuth>
-        <ProgressiveLayout />
-      </RequireAuth>
-    ),
-    children: [{ path: '', element: <SpecCenter /> }],
-  },
-  {
-    path: '/contexts',
-    element: (
-      <RequireAuth>
-        <ProgressiveLayout />
-      </RequireAuth>
-    ),
-    children: [{ path: '', element: <ContextCenter /> }],
-  },
+
+  // ProgressiveLayout — Quality
   {
     path: '/quality',
     element: (
@@ -106,44 +102,54 @@ const RouterConfig: RouteConfig[] = [
         <ProgressiveLayout />
       </RequireAuth>
     ),
-    children: [{ path: '', element: <QualityCenter /> }],
+    children: [
+      { path: '', element: <Navigate to="gates" replace /> },
+      { path: 'gates', element: <QualityGates /> },
+      { path: 'issues', element: <QualityIssues /> },
+      { path: 'security', element: <SecurityAudit /> },
+    ],
   },
+
+  // ProgressiveLayout — Platform
   {
-    path: '/integrations',
+    path: '/platform',
     element: (
       <RequireAuth>
         <ProgressiveLayout />
       </RequireAuth>
     ),
-    children: [{ path: '', element: <IntegrationCenter /> }],
+    children: [
+      { path: '', element: <Navigate to="system" replace /> },
+      { path: 'system', element: <SystemCenter /> },
+      { path: 'integrations', element: <IntegrationCenter /> },
+      { path: 'ops', element: <OpsCenter /> },
+    ],
   },
+
+  // ProgressiveLayout — Tasks
   {
-    path: '/ops',
+    path: '/tasks',
     element: (
       <RequireAuth>
         <ProgressiveLayout />
       </RequireAuth>
     ),
-    children: [{ path: '', element: <OpsCenter /> }],
+    children: [
+      { path: '', element: <TaskBoard /> },
+      { path: 'jobs', element: <TaskJobs /> },
+      { path: ':id', element: <TaskDetail /> },
+    ],
   },
-  {
-    path: '/notifications',
-    element: (
-      <RequireAuth>
-        <ProgressiveLayout />
-      </RequireAuth>
-    ),
-    children: [{ path: '', element: <NotificationCenter /> }],
-  },
-  {
-    path: '/settings',
-    element: (
-      <RequireAuth>
-        <ProgressiveLayout />
-      </RequireAuth>
-    ),
-    children: [{ path: '', element: <SystemSettings /> }],
-  },
+
+  // Legacy redirects
+  { path: '/workflows', element: <Navigate to="/projects/workflows" replace /> },
+  { path: '/specs', element: <Navigate to="/projects/specs" replace /> },
+  { path: '/contexts', element: <Navigate to="/projects/contexts" replace /> },
+  { path: '/integrations', element: <Navigate to="/platform/integrations" replace /> },
+  { path: '/ops', element: <Navigate to="/platform/ops" replace /> },
+  { path: '/settings', element: <Navigate to="/platform/system" replace /> },
+  { path: '/notifications', element: <Navigate to="/tasks" replace /> },
+  { path: '/canvas', element: <Navigate to="/agents/canvas" replace /> },
 
   { path: '*', element: <NotFound /> },
 ]
