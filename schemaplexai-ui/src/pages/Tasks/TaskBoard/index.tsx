@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { message } from 'antd'
+import { message, Segmented } from 'antd'
 import { KanbanBoard } from '@/components/Hive/KanbanBoard'
+import { TaskList } from '@/components/Hive/TaskList'
 import type { SfTask, TaskStatus } from '@/types'
 import { getTaskList, updateTaskStatus } from '@/api/task'
 
@@ -15,10 +16,13 @@ const COLUMNS: TaskStatus[] = [
   'DONE',
 ]
 
+type ViewMode = 'kanban' | 'list'
+
 export default function TaskBoard() {
   const { t } = useTranslation()
   const [tasks, setTasks] = useState<SfTask[]>([])
   const [loading, setLoading] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>('kanban')
 
   useEffect(() => {
     fetchTasks()
@@ -50,14 +54,28 @@ export default function TaskBoard() {
 
   return (
     <div style={{ padding: 24, height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <h2 style={{ marginBottom: 16 }}>{t('taskBoard.title')}</h2>
-      <div style={{ flex: 1, minHeight: 0 }}>
-        <KanbanBoard
-          columns={COLUMNS}
-          tasks={tasks}
-          loading={loading}
-          onMove={handleMove}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h2 style={{ margin: 0 }}>{t('taskBoard.title')}</h2>
+        <Segmented
+          value={viewMode}
+          onChange={(v) => setViewMode(v as ViewMode)}
+          options={[
+            { label: t('taskBoard.kanbanView'), value: 'kanban' },
+            { label: t('taskBoard.listView'), value: 'list' },
+          ]}
         />
+      </div>
+      <div style={{ flex: 1, minHeight: 0 }}>
+        {viewMode === 'kanban' ? (
+          <KanbanBoard
+            columns={COLUMNS}
+            tasks={tasks}
+            loading={loading}
+            onMove={handleMove}
+          />
+        ) : (
+          <TaskList tasks={tasks} loading={loading} />
+        )}
       </div>
     </div>
   )

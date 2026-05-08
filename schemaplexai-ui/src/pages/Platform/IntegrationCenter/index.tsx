@@ -1,9 +1,10 @@
-import { Card, Table, Button, Space, Tag, Switch, message } from 'antd'
+import { Card, Table, Button, Space, Tag, Switch, message, Tabs } from 'antd'
 import { EditOutlined } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getIntegrationList, updateIntegration } from '@/api/integration'
 import type { Integration } from '@/api/integration'
+import SkillsTab from './SkillsTab'
 import './IntegrationCenter.css'
 
 export default function IntegrationCenter() {
@@ -75,8 +76,24 @@ export default function IntegrationCenter() {
 
   return (
     <div className="integration-page">
-      <Card title={t('integrationCenter.title')} className="integration-card">
-        <Table dataSource={data} columns={columns} rowKey="id" loading={loading} locale={{ emptyText: t('common.noData') }} />
+      <Card className="integration-card">
+        <Tabs
+          defaultActiveKey="integrations"
+          items={[
+            {
+              key: 'integrations',
+              label: t('integrationCenter.integrationsTab'),
+              children: (
+                <Table dataSource={data} columns={columns} rowKey="id" loading={loading} locale={{ emptyText: t('common.noData') }} />
+              ),
+            },
+            {
+              key: 'skills',
+              label: t('integrationCenter.skillsTab'),
+              children: <SkillsTab />,
+            },
+          ]}
+        />
       </Card>
     </div>
   )
