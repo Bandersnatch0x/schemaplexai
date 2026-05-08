@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -54,6 +55,8 @@ class CostServiceTest {
 
     @Test
     void queryCostByTenant_returnsMapWithAllRequiredKeys() {
+        when(budgetMapper.selectList(any())).thenReturn(Collections.emptyList());
+
         Map<String, BigDecimal> result = costService.queryCostByTenant("tenant-1");
 
         assertNotNull(result);
@@ -64,7 +67,9 @@ class CostServiceTest {
     }
 
     @Test
-    void queryCostByTenant_returnsZeroCosts() {
+    void queryCostByTenant_returnsZeroCostsWhenNoBudgets() {
+        when(budgetMapper.selectList(any())).thenReturn(Collections.emptyList());
+
         Map<String, BigDecimal> result = costService.queryCostByTenant("tenant-1");
 
         assertEquals(0, BigDecimal.ZERO.compareTo(result.get("totalCost")));
@@ -73,7 +78,37 @@ class CostServiceTest {
     }
 
     @Test
+    void queryCostByTenant_returnsAggregatedNonZeroCosts() {
+        SfBudget budget1 = createBudget("API", BigDecimal.valueOf(1000), BigDecimal.valueOf(250.50), BigDecimal.valueOf(80));
+        SfBudget budget2 = createBudget("TOKEN", BigDecimal.valueOf(5000), BigDecimal.valueOf(1200.75), BigDecimal.valueOf(90));
+        when(budgetMapper.selectList(any())).thenReturn(List.of(budget1, budget2));
+
+        Map<String, BigDecimal> result = costService.queryCostByTenant("tenant-1");
+
+        BigDecimal expectedTotal = BigDecimal.valueOf(1451.25);
+        assertEquals(0, expectedTotal.compareTo(result.get("totalCost")),
+                "totalCost should aggregate usedAmount from all budgets");
+        assertEquals(0, expectedTotal.compareTo(result.get("todayCost")),
+                "todayCost should mirror totalCost in v1 short-path");
+        assertEquals(0, expectedTotal.compareTo(result.get("monthCost")),
+                "monthCost should mirror totalCost in v1 short-path");
+    }
+
+    @Test
+    void queryCostByTenant_skipsNullUsedAmounts() {
+        SfBudget budgetWithNull = createBudget("API", BigDecimal.valueOf(100), null, BigDecimal.valueOf(80));
+        SfBudget budgetWithValue = createBudget("TOKEN", BigDecimal.valueOf(1000), BigDecimal.valueOf(500), null);
+        when(budgetMapper.selectList(any())).thenReturn(List.of(budgetWithNull, budgetWithValue));
+
+        Map<String, BigDecimal> result = costService.queryCostByTenant("tenant-1");
+
+        assertEquals(0, BigDecimal.valueOf(500).compareTo(result.get("totalCost")));
+    }
+
+    @Test
     void queryCostByTenant_returnsNewMapEachCall() {
+        when(budgetMapper.selectList(any())).thenReturn(Collections.emptyList());
+
         Map<String, BigDecimal> result1 = costService.queryCostByTenant("tenant-1");
         Map<String, BigDecimal> result2 = costService.queryCostByTenant("tenant-1");
 

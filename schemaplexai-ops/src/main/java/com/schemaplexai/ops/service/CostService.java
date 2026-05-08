@@ -12,6 +12,7 @@ import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -23,12 +24,23 @@ public class CostService {
     public Map<String, BigDecimal> queryCostByTenant(String tenantId) {
         log.info("Query cost for tenant: {}", tenantId);
 
+        // PG short-path v1: aggregate from sf_budget.used_amount as real-time cost proxy
+        // TODO(v2): replace with ClickHouse sf_cost_record for per-transaction accuracy
+        LambdaQueryWrapper<SfBudget> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SfBudget::getTenantId, tenantId);
+        List<SfBudget> budgets = budgetMapper.selectList(wrapper);
+
+        BigDecimal totalCost = budgets.stream()
+                .map(SfBudget::getUsedAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         Map<String, BigDecimal> result = new HashMap<>();
-        // Phase 1: Return placeholder cost data
-        // Phase 2: Query ClickHouse for actual cost analytics
-        result.put("totalCost", BigDecimal.valueOf(0));
-        result.put("todayCost", BigDecimal.valueOf(0));
-        result.put("monthCost", BigDecimal.valueOf(0));
+        result.put("totalCost", totalCost);
+        // v1 short-path: todayCost and monthCost mirror totalCost until
+        // time-series cost records are available in PostgreSQL
+        result.put("todayCost", totalCost);
+        result.put("monthCost", totalCost);
         return result;
     }
 

@@ -11,9 +11,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
-import org.springframework.http.HttpMethod;
-import org.springframework.web.client.RestTemplate;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -40,7 +37,7 @@ class NotificationConsumerTest {
     }
 
     @Test
-    void onMessage_emailChannel_acks() throws Exception {
+    void onMessage_emailChannel_nacksToDlq() throws Exception {
         NotificationMessage payload = new NotificationMessage();
         payload.setChannel("email");
         payload.setUserId(1L);
@@ -55,11 +52,12 @@ class NotificationConsumerTest {
         Channel channel = mock(Channel.class);
         consumer.onMessage(message, channel);
 
-        verify(channel).basicAck(1L, false);
+        verify(channel).basicNack(1L, false, false);
+        verify(messageFailLogService).log(eq(message), eq("NotificationConsumer"), anyString());
     }
 
     @Test
-    void onMessage_smsChannel_acks() throws Exception {
+    void onMessage_smsChannel_nacksToDlq() throws Exception {
         NotificationMessage payload = new NotificationMessage();
         payload.setChannel("sms");
         payload.setUserId(1L);
@@ -74,7 +72,8 @@ class NotificationConsumerTest {
         Channel channel = mock(Channel.class);
         consumer.onMessage(message, channel);
 
-        verify(channel).basicAck(1L, false);
+        verify(channel).basicNack(1L, false, false);
+        verify(messageFailLogService).log(eq(message), eq("NotificationConsumer"), anyString());
     }
 
     @Test
@@ -97,13 +96,13 @@ class NotificationConsumerTest {
     }
 
     @Test
-    void onMessage_webhookChannel_missingUrl_nacks() throws Exception {
+    void onMessage_webhookChannel_nacksToDlq() throws Exception {
         NotificationMessage payload = new NotificationMessage();
         payload.setChannel("webhook");
         payload.setUserId(1L);
         payload.setTitle("title");
         payload.setContent("content");
-        payload.setWebhookUrl(null);
+        payload.setWebhookUrl("http://example.com/hook");
         payload.setWebhookMethod("POST");
         payload.setWebhookHeaders(Map.of("X-Auth", "token"));
         payload.setTemplateParams(Map.of("key", "value"));
@@ -117,10 +116,11 @@ class NotificationConsumerTest {
         consumer.onMessage(message, channel);
 
         verify(channel).basicNack(1L, false, false);
+        verify(messageFailLogService).log(eq(message), eq("NotificationConsumer"), anyString());
     }
 
     @Test
-    void onMessage_webhookMissingUrl_nacks() throws Exception {
+    void onMessage_webhookMissingUrl_nacksToDlq() throws Exception {
         NotificationMessage payload = new NotificationMessage();
         payload.setChannel("webhook");
         payload.setUserId(1L);
