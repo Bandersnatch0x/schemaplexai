@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Input, Button, Tooltip, Badge, Spin, Tabs } from 'antd'
+import { Input, Button, Tooltip, Badge, Spin } from 'antd'
 import {
   SendOutlined,
   PaperClipOutlined,
@@ -213,6 +213,7 @@ export default function Composer({ placeholder, disabled, loading, onSend }: Com
           <Tooltip title={previewMode ? '编辑模式' : 'Markdown 预览'}>
             <Button
               type="text"
+              aria-label={previewMode ? '编辑模式' : 'Markdown 预览'}
               icon={previewMode ? <EditOutlined /> : <EyeOutlined />}
               disabled={disabled || loading}
               onClick={() => setPreviewMode((prev) => !prev)}

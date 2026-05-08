@@ -57,7 +57,9 @@ describe('ChatMemory', () => {
     ]
 
     const { container } = render(<ChatMemory messages={messages} />)
-    const bubble = container.querySelector('div')
+    // The bubble is the first div inside the List.Item content
+    const bubbles = container.querySelectorAll('.ant-list-item > div')
+    const bubble = bubbles[bubbles.length - 1]
     expect(bubble).toHaveStyle({ background: '#1677ff' })
   })
 
@@ -67,7 +69,8 @@ describe('ChatMemory', () => {
     ]
 
     const { container } = render(<ChatMemory messages={messages} />)
-    const bubble = container.querySelector('div')
+    const bubbles = container.querySelectorAll('.ant-list-item > div')
+    const bubble = bubbles[bubbles.length - 1]
     expect(bubble).toHaveStyle({ background: '#f6f8fa' })
   })
 })

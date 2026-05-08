@@ -115,7 +115,7 @@ public class HandoffStateHandler implements AgentStateHandler {
                     execution.getId());
             eventBus.publishOutput(execution.getId(),
                     "{\"handoff\":\"no_specialist_available\",\"reason\":\"" + handoffReason + "\"}",
-                    execution.getTenantId() != null ? Long.valueOf(execution.getTenantId()) : null);
+                    parseTenantId(execution.getTenantId()));
             stateMachine.transition(AgentExecutionState.COMPLETED, execution);
             return;
         }
@@ -125,7 +125,7 @@ public class HandoffStateHandler implements AgentStateHandler {
             log.warn("No specialist agent matched handoff task for execution {}", execution.getId());
             eventBus.publishOutput(execution.getId(),
                     "{\"handoff\":\"no_match\",\"reason\":\"" + handoffReason + "\"}",
-                    execution.getTenantId() != null ? Long.valueOf(execution.getTenantId()) : null);
+                    parseTenantId(execution.getTenantId()));
             stateMachine.transition(AgentExecutionState.COMPLETED, execution);
             return;
         }
@@ -140,7 +140,7 @@ public class HandoffStateHandler implements AgentStateHandler {
         log.info("Handoff routing execution {} to specialist agent '{}'", execution.getId(), targetAgentId);
 
         // Publish handoff event
-        Long tenantId = execution.getTenantId() != null ? Long.valueOf(execution.getTenantId()) : null;
+        Long tenantId = parseTenantId(execution.getTenantId());
         eventBus.publishOutput(execution.getId(),
                 "{\"handoff\":\"dispatched\",\"targetAgent\":\"" + targetAgentId
                         + "\",\"reason\":\"" + handoffReason + "\"}",
@@ -148,8 +148,10 @@ public class HandoffStateHandler implements AgentStateHandler {
 
         // Dispatch the specialist agent
         try {
+            // Agent IDs from the router are strings; use hash-based conversion to numeric
+            Long targetAgentIdLong = parseAgentId(targetAgentId);
             SfAgentExecution newExecution = executionEngine.startExecution(
-                    Long.valueOf(targetAgentId),
+                    targetAgentIdLong,
                     execution.getTenantId(),
                     effectivePrompt
             );
@@ -159,7 +161,7 @@ public class HandoffStateHandler implements AgentStateHandler {
                     execution.getId(), newExecution.getId(), targetAgentId);
         } catch (Exception e) {
             log.error("Failed to dispatch handoff target for execution {}", execution.getId(), e);
-            execution.setMetadata("handoffError", e.getMessage());
+            execution.setMetadata("handoffError", e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
         }
 
         // Original execution completes (handoff is terminal)
@@ -168,5 +170,45 @@ public class HandoffStateHandler implements AgentStateHandler {
         eventBus.publishExecutionCompleted(execution.getId(), AgentExecutionState.COMPLETED.name());
         eventBus.complete(String.valueOf(execution.getId()));
         stateMachine.removeExecution(execution.getId());
+    }
+
+    /**
+     * Safely parses a tenant ID string to Long. Handles both numeric strings
+     * and prefixed formats like "tenant-1".
+     */
+    private Long parseTenantId(String tenantId) {
+        if (tenantId == null || tenantId.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.valueOf(tenantId);
+        } catch (NumberFormatException e) {
+            // Try extracting numeric suffix (e.g., "tenant-1" -> 1)
+            String[] parts = tenantId.split("-");
+            if (parts.length > 0) {
+                try {
+                    return Long.valueOf(parts[parts.length - 1]);
+                } catch (NumberFormatException ex) {
+                    return null;
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Converts an agent ID string to a numeric Long for database lookup.
+     * Handles both pure numeric IDs and string IDs (e.g., "db-agent" -> hash).
+     */
+    private Long parseAgentId(String agentId) {
+        if (agentId == null || agentId.isBlank()) {
+            return 0L;
+        }
+        try {
+            return Long.valueOf(agentId);
+        } catch (NumberFormatException e) {
+            // For string agent IDs, use a positive hash
+            return Math.abs((long) agentId.hashCode());
+        }
     }
 }

@@ -87,8 +87,9 @@ describe('Composer', () => {
     )
     fireEvent.click(previewButton)
 
+    // After switching to preview mode, textarea is hidden and markdown is rendered
     await waitFor(() => {
-      expect(screen.getByText(/无内容可预览/i)).not.toBeInTheDocument()
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     })
   })
 
@@ -110,18 +111,19 @@ describe('Composer', () => {
     const textarea = screen.getByRole('textbox')
     fireEvent.change(textarea, { target: { value: 'some text' } })
 
+    // Switch to preview
     const previewButton = await waitFor(() =>
       screen.getByRole('button', { name: /markdown 预览/i })
     )
     fireEvent.click(previewButton)
 
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: /编辑模式/i })).toBeInTheDocument()
+    // Now the toggle should say 'edit mode'
+    const editButton = await waitFor(() =>
+      screen.getByRole('button', { name: /编辑模式/i })
     )
-
-    const editButton = screen.getByRole('button', { name: /编辑模式/i })
     fireEvent.click(editButton)
 
+    // Back to edit mode
     await waitFor(() =>
       expect(screen.getByRole('textbox')).toBeInTheDocument()
     )
