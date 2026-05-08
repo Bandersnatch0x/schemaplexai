@@ -49,6 +49,15 @@ Apply rules in order:
 1. Default backend: invoke `superpowers:dispatching-parallel-agents` via the Skill tool. Then dispatch one Task agent per task in a single message (true parallel).
 2. Escalation: if the user prompt contains strict-mode keywords, invoke `superpowers:subagent-driven-development` instead. This will require a plan file and worktree per its own rules.
 3. Track progress with TaskCreate (one row per task) so the user sees status. Mark each completed when its subagent returns.
+4. **Sub-agent prompt appendix**: Append the following block to every task brief so the agent reports doc impact:
+
+```
+## Doc Impact (REQUIRED — must include this section)
+- docs_touched: <list of docs/* paths added/modified, or "none">
+- wiki_impact: <list of wiki/* sections that need update with reason, or "none">
+- decisions_log: <one-line decision worth recording in wiki/decisions.md, or "none">
+- risk_flags: <breaking changes, deprecations, schema changes, or "none">
+```
 
 ## Mode 2 — Serial (Linear Chain)
 
@@ -76,6 +85,7 @@ Stay in the current session. **Do not use `/loop` or cron.**
 - Never silently mutate the user's task list — if you reword a task, show the diff.
 - If any mode fails or stalls, stop and report. Do not auto-retry.
 - If user cancels mid-flight, leave TaskList intact for resumption.
+- **Every sub-agent MUST include `## Doc Impact` in its final response.** Aggregate these into the report.
 
 ## Output Format
 
@@ -87,6 +97,12 @@ Stay in the current session. **Do not use `/loop` or cron.**
 - Completed: <K>
 - Failed / skipped: <list with reason>
 - Next suggested action: <one line>
+
+## Aggregated Doc Impact
+- Files touched: <聚合所有子任务的 docs_touched 去重>
+- Wiki sections needing sync: <聚合 wiki_impact>
+- Decisions to log: <聚合 decisions_log，非 none 的项>
+- Risk flags: <聚合 risk_flags>
 ```
 
 ## Edge Cases
@@ -97,3 +113,12 @@ Stay in the current session. **Do not use `/loop` or cron.**
 - 30+ tasks → warn and ask to batch.
 - Vague tasks → ask one clarifying question per ambiguous task before classifying.
 - Strict-mode keywords detected → upgrade Mode 1 to SDD; tell the user upfront.
+
+## Finalization (MUST)
+
+After emitting the report:
+
+1. Write `## Aggregated Doc Impact` to `.claude/outputs/run-tasks-doc-impact-<timestamp>.md`
+2. Run `bash scripts/sync-wiki.sh` to regenerate wiki/log.md, active-areas.md, gaps.md, and stamp
+3. If aggregated `decisions_log` is non-empty, ask the user before writing to `wiki/decisions.md`
+4. Stage wiki changes with `git add wiki/` and remind the user to include them in the next commit

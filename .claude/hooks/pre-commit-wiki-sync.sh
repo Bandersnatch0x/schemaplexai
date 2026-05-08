@@ -58,6 +58,32 @@ if [ -n "$STATUS_CHANGED" ]; then
     fi
 fi
 
+# Rule 4: review-verdict gate for workflow-adopter Deliver phase
+CHANGES_STAGED=$(echo "$STAGED_FILES" | grep "^\\.claude/changes/" || true)
+if [ -n "$CHANGES_STAGED" ]; then
+    FEATURE_DIRS=$(echo "$CHANGES_STAGED" | awk -F'/' '{print $3}' | sort -u)
+    for feat in $FEATURE_DIRS; do
+        VERDICT_DIR=".claude/changes/$feat"
+        for verdict_file in "$VERDICT_DIR/review-verdict.json" "$VERDICT_DIR/security-verdict.json"; do
+            if [ -f "$verdict_file" ]; then
+                if command -v jq >/dev/null 2>&1; then
+                    VERDICT=$(jq -r '.verdict // "missing"' "$verdict_file")
+                    CRITICAL_COUNT=$(jq '[.issues[]?.severity // empty | select(. == "CRITICAL")] | length' "$verdict_file")
+                else
+                    VERDICT=$(grep -o '"verdict"[[:space:]]*:[[:space:]]*"[^"]*"' "$verdict_file" | head -1 | sed 's/.*"verdict"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+                    CRITICAL_COUNT=$(grep -c '"severity"[[:space:]]*:[[:space:]]*"CRITICAL"' "$verdict_file" || true)
+                fi
+                if [ "$VERDICT" = "blocked" ]; then
+                    ERRORS="${ERRORS}ERROR: $verdict_file verdict is BLOCKED. Fix before commit.\n\n"
+                fi
+                if [ "$CRITICAL_COUNT" -gt 0 ] 2>/dev/null; then
+                    ERRORS="${ERRORS}ERROR: $verdict_file contains $CRITICAL_COUNT CRITICAL issue(s). Fix before commit.\n\n"
+                fi
+            fi
+        done
+    done
+fi
+
 # Report errors
 if [ -n "$ERRORS" ]; then
     echo ""
@@ -68,5 +94,8 @@ if [ -n "$ERRORS" ]; then
     echo -e "$ERRORS"
     exit 1
 fi
+
+# Clear docs-dirty marker on successful commit
+: > .claude/outputs/.docs-dirty 2>/dev/null || true
 
 exit 0

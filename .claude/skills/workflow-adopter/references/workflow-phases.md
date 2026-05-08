@@ -45,8 +45,19 @@ Quick reference for the SchemaPlexAI change lifecycle. Load on demand when SKILL
 | 变更影响 | `/verify-change` | > 30 行 |
 | 代码质量 | `/verify-quality` | > 30 行 |
 | 安全扫描 | `/verify-security` | 安全敏感代码 |
-| 代码评审 | `code-reviewer` agent | 始终 |
-| 安全评审 | `security-reviewer` agent | auth/input/tenant |
+| 代码评审 | `code-reviewer` agent → `review-verdict.json` | 始终 |
+| 安全评审 | `security-reviewer` agent → `security-verdict.json` | auth/input/tenant |
+
+### Severity Schema（统一 4 档）
+
+| 级别 | 含义 | 行动 |
+|------|------|------|
+| **CRITICAL** | 数据丢失 / 安全漏洞 / 构建失败 | **BLOCK** — 必须修复后才能通过 Deliver gate |
+| **HIGH** | Bug 或显著质量问题 | **WARN** — 应修复，或记录风险接受理由 |
+| **MEDIUM** | 可维护性问题 | **INFO** — 有空时处理 |
+| **LOW** | 风格或轻微建议 | **NOTE** — 可选 |
+
+> 废弃 0-100 置信度分数。所有 review agent 必须输出 `severity: CRITICAL|HIGH|MEDIUM|LOW`。
 
 ## Skip Rules
 

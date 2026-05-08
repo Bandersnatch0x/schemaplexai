@@ -13,6 +13,7 @@
         <dependency><groupId>io.minio</groupId><artifactId>minio</artifactId></dependency>
         <dependency><groupId>org.apache.tika</groupId><artifactId>tika-core</artifactId></dependency>
         <dependency><groupId>org.apache.tika</groupId><artifactId>tika-parsers-standard-package</artifactId></dependency>
+        <dependency><groupId>com.github.xiaoymin</groupId><artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId></dependency>
         <dependency><groupId>org.projectlombok</groupId><artifactId>lombok</artifactId><optional>true</optional></dependency>
     
         <dependency>

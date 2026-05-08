@@ -118,7 +118,11 @@
       "Bash(mkdir -p /d/code_space/frige/.claude/outputs/screenshots)",
       "Bash(cp /d/code_space/frige/schemaplexai-ui/e2e/screenshots.spec.ts-snapshots/*.png /d/code_space/frige/.claude/outputs/screenshots/)",
       "Bash(identify /d/code_space/frige/.claude/outputs/screenshots/dashboard-chromium-win32.png)",
-      "Bash(awk '{print $5, $9}')"
+      "Bash(awk '{print $5, $9}')",
+      "Bash(python *)",
+      "Bash(grep \"^\\\\\\\\.claude/changes/\")",
+      "Bash(grep -E \"\\\\.java$\")",
+      "Skill(run-tasks)"
     ]
   },
   "hooks": {
@@ -129,6 +133,10 @@
           {
             "type": "command",
             "command": "jq -r '.tool_input.file_path // empty' 2>/dev/null | grep -qE '/schemaplexai-ui/src/.*\\.(tsx?|css|html)$' && mkdir -p .claude/outputs 2>/dev/null && touch .claude/outputs/.frontend-dirty 2>/dev/null || true"
+          },
+          {
+            "type": "command",
+            "command": "echo \"$TOOL_INPUT\" | bash .claude/hooks/post-edit-mark-docs-dirty.sh 2>/dev/null || true"
           }
         ]
       }
@@ -143,6 +151,10 @@
           {
             "type": "command",
             "command": "bash .claude/hooks/screenshots-if-dirty.sh 2>/dev/null || true"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/stop-prompt-docs-review.sh 2>/dev/null || true"
           }
         ]
       }
@@ -153,7 +165,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo \"$TOOL_INPUT\" | grep -q \"git commit\" && bash .claude/hooks/pre-commit-wiki-sync.sh || true",
+            "command": "echo \"$TOOL_INPUT\" | grep -q \"git commit\" && (bash .claude/hooks/pre-commit-wiki-sync.sh && bash scripts/lint-docs-consistency.sh --staged) || true",
             "timeout": 10
           }
         ]

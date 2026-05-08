@@ -341,8 +341,12 @@ Process:
    - Visual regression baseline: `npx playwright test --update-snapshots`
 
 4. **Code Review**:
-   - `code-reviewer` agent for general quality
-   - `security-reviewer` agent if security-sensitive code (auth, input handling, tenant isolation)
+   - Spawn `code-reviewer` agent; require output to `.claude/changes/<feature-name>/review-verdict.json` per its output contract
+   - Spawn `security-reviewer` agent; require output to `.claude/changes/<feature-name>/security-verdict.json` per its output contract
+   - Main agent reads both JSON files:
+     - Any `verdict == "blocked"` → must fix and re-run Deliver
+     - `needs_changes` → evaluate whether to fix now or document waiver in `delivery-report.md`
+     - `approved` → proceed
 
 5. **CI gate simulation**:
    - `mvn jacoco:check` — coverage ≥ 80%
@@ -352,18 +356,26 @@ Process:
 6. **Write delivery report**: `.claude/changes/<feature-name>/delivery-report.md`
    - Tests: pass/fail count
    - Coverage: percentage
-   - Review findings: CRITICAL/HIGH/MEDIUM/LOW
+   - Review findings: embed both verdict summaries and metrics tables
+     ```
+     | Verdict | critical | high | medium | low | Verdict |
+     |---------|----------|------|--------|-----|---------|
+     | code-reviewer | N | N | N | N | approved/needs_changes/blocked |
+     | security-reviewer | N | N | N | N | approved/needs_changes/blocked |
+     ```
    - Verification results
 
 **Quality Gate**: `deliver-gate`
 - [ ] All tests pass (`mvn test` + `npm run test:run` + `npm run test:e2e` if frontend)
 - [ ] Coverage ≥ 80% (jacoco:check)
-- [ ] No CRITICAL or HIGH review findings
+- [ ] `review-verdict.json` exists, `verdict != "blocked"`, `critical_count == 0`
+- [ ] `security-verdict.json` exists, `verdict != "blocked"`, `critical_count == 0`
+- [ ] HIGH issues either fixed or documented as accepted risk in `delivery-report.md`
 - [ ] verify-change passed (if > 30 lines)
 - [ ] verify-quality passed (if > 30 lines)
 - [ ] verify-security passed (security-sensitive code)
 - [ ] Visual screenshots reviewed (if frontend UI changed)
-- [ ] delivery-report.md written
+- [ ] delivery-report.md written (with verdict metrics table)
 
 **On CRITICAL finding**: Must fix before gate pass. Re-apply fix, re-run deliver.
 **On HIGH finding**: Should fix. If accepted as risk, document justification in delivery-report.md.
