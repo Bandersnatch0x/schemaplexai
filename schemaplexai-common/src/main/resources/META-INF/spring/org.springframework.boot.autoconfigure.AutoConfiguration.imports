@@ -1,1 +1,2 @@
 com.schemaplexai.common.exception.CommonExceptionAutoConfiguration
+com.schemaplexai.common.security.JwtSecretValidatorAutoConfiguration
