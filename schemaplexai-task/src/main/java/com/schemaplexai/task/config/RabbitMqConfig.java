@@ -1,10 +1,15 @@
 package com.schemaplexai.task.config;
 
 import com.schemaplexai.common.constants.CommonConstants;
+import com.schemaplexai.task.mq.filter.TenantContextCleanupAdvice;
+import com.schemaplexai.task.mq.filter.TenantMqFilter;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.boot.autoconfigure.amqp.SimpleRabbitListenerContainerFactoryConfigurer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -13,6 +18,17 @@ import java.util.Map;
 
 @Configuration
 public class RabbitMqConfig {
+
+    @Bean
+    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
+            SimpleRabbitListenerContainerFactoryConfigurer configurer,
+            ConnectionFactory connectionFactory) {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        configurer.configure(factory, connectionFactory);
+        factory.setAfterReceivePostProcessors(new TenantMqFilter());
+        factory.setAdviceChain(new TenantContextCleanupAdvice());
+        return factory;
+    }
 
     @Bean
     public DirectExchange schemaplexaiExchange() {

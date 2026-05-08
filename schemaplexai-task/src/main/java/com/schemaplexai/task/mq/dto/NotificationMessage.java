@@ -15,6 +15,7 @@ public class NotificationMessage implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private String channel;
+    private String tenantId;
     private Long userId;
     private String title;
     private String content;
