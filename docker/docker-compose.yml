@@ -198,6 +198,23 @@ services:
       - sf-network
     restart: unless-stopped
 
+  # ClamAV - Virus Scanning
+  clamav:
+    image: clamav/clamav:1.3
+    container_name: sf-clamav
+    ports:
+      - "3310:3310"
+    volumes:
+      - clamav_data:/var/lib/clamav
+    networks:
+      - sf-network
+    healthcheck:
+      test: ["CMD", "clamdscan", "--ping", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
@@ -208,6 +225,7 @@ volumes:
   elasticsearch_data:
   prometheus_data:
   grafana_data:
+  clamav_data:
 
 networks:
   sf-network:

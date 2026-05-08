@@ -85,6 +85,8 @@ public class ThinkingStateHandler implements AgentStateHandler {
     @Override
     public void handle(AgentStateMachine stateMachine, SfAgentExecution execution) {
         log.info("Agent {} entering THINKING state, execution {}", execution.getAgentId(), execution.getId());
+        stateMachine.emitTimelineEvent(execution, "thought",
+                "Entering THINKING state — loading context and reasoning");
 
         try {
             // 1. Load conversation history
@@ -144,8 +146,12 @@ public class ThinkingStateHandler implements AgentStateHandler {
 
             // 6. Call LLM with fallback
             String modelId = resolveModelId(execution);
+            stateMachine.emitTimelineEvent(execution, "thought",
+                    "Calling LLM (model=" + modelId + ", tokens≈" + inputTokens + ")");
             String response = modelRouter.generateWithFallback(prompt, modelId, DEFAULT_TEMPERATURE);
             long outputTokens = estimateTokens(response);
+            stateMachine.emitTimelineEvent(execution, "output",
+                    "LLM response received (" + outputTokens + " tokens)");
 
             if (budget != null) {
                 if (!budget.consumeOutput(outputTokens)) {
@@ -181,17 +187,23 @@ public class ThinkingStateHandler implements AgentStateHandler {
                 }
 
                 log.info("Execution {} detected tool calls, transitioning to TOOL_CALLING", execution.getId());
+                stateMachine.emitTimelineEvent(execution, "thought",
+                        "Detected tool calls: " + String.join(", ", toolNames));
                 execution.setMetadata("iterationToolCallCount", 0);
                 stateMachine.transition(AgentExecutionState.TOOL_CALLING, execution);
             } else {
                 // Check if there's an active sub-task plan to progress
                 AgentExecutionState nextState = resolveNextStateForPlan(execution);
                 log.info("Execution {} completed with direct answer, transitioning to {}", execution.getId(), nextState);
+                stateMachine.emitTimelineEvent(execution, "output",
+                        "Direct answer received, transitioning to " + nextState);
                 loopDetection.clearRecords(execution.getId());
                 stateMachine.transition(nextState, execution);
             }
         } catch (Exception e) {
             log.error("Thinking state failed for execution {}", execution.getId(), e);
+            stateMachine.emitTimelineEvent(execution, "error",
+                    "THINKING failed: " + e.getMessage());
             stateMachine.transition(AgentExecutionState.FAILED, execution);
         }
     }

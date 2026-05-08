@@ -24,6 +24,8 @@ public class ObservationStateHandler implements AgentStateHandler {
     @Override
     public void handle(AgentStateMachine stateMachine, SfAgentExecution execution) {
         log.info("Agent {} observing results, execution {}", execution.getAgentId(), execution.getId());
+        stateMachine.emitTimelineEvent(execution, "thought",
+                "Entering OBSERVATION state — evaluating results (iteration " + resolveIterationCount(execution) + ")");
 
         String lastOutput = (String) execution.getMetadata("lastOutput");
         int iterationCount = resolveIterationCount(execution);
@@ -31,6 +33,8 @@ public class ObservationStateHandler implements AgentStateHandler {
         // Check if we've reached the max iterations
         if (iterationCount >= DEFAULT_MAX_ITERATIONS) {
             log.info("Max iterations ({}) reached for execution {}, completing", DEFAULT_MAX_ITERATIONS, execution.getId());
+            stateMachine.emitTimelineEvent(execution, "output",
+                    "Max iterations reached, completing execution");
             stateMachine.transition(AgentExecutionState.COMPLETED, execution);
             return;
         }
@@ -38,6 +42,8 @@ public class ObservationStateHandler implements AgentStateHandler {
         // Check if the output contains a Final Answer
         if (lastOutput != null && FinalAnswerExtractor.hasFinalAnswer(lastOutput)) {
             log.info("Final Answer detected in execution {}, transitioning to COMPLETED", execution.getId());
+            stateMachine.emitTimelineEvent(execution, "output",
+                    "Final Answer detected — completing execution");
             stateMachine.transition(AgentExecutionState.COMPLETED, execution);
             return;
         }
@@ -45,6 +51,8 @@ public class ObservationStateHandler implements AgentStateHandler {
         // No Final Answer yet — transition to REFLECTING for self-evaluation before the next cycle
         log.info("No Final Answer yet for execution {}, transitioning to REFLECTING (iteration {})",
                 execution.getId(), iterationCount + 1);
+        stateMachine.emitTimelineEvent(execution, "thought",
+                "No final answer yet, proceeding to reflection (iteration " + (iterationCount + 1) + ")");
         incrementIterationCount(stateMachine, execution);
         stateMachine.transition(AgentExecutionState.REFLECTING, execution);
     }

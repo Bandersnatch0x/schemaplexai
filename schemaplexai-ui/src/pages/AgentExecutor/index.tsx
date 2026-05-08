@@ -1,17 +1,17 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Card, Select, Input, Button, Row, Col, message } from 'antd'
-import { SendOutlined } from '@ant-design/icons'
+import { Card, Select, Row, Col, message } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useAgentStore } from '@/stores/agentStore'
 import { useSseStore } from '@/stores/sseStore'
 import SseViewer from '@/components/SseViewer'
 import ChatMemory, { type ChatMessage } from '@/components/ChatMemory'
+import Composer from '@/components/Composer'
+import type { ComposerValue } from '@/components/Composer/types'
 import { sseRequest } from '@/api/request'
 import { getAgentList } from '@/api/agent-config'
 import type { SseEvent } from '@/types'
 import './AgentExecutor.css'
 
-const { TextArea } = Input
 const { Option } = Select
 
 export default function AgentExecutor() {
@@ -22,7 +22,6 @@ export default function AgentExecutor() {
   const setConnected = useSseStore((state) => state.setConnected)
   const setConnecting = useSseStore((state) => state.setConnecting)
   const [selectedAgent, setSelectedAgent] = useState<string>()
-  const [prompt, setPrompt] = useState('')
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [executing, setExecuting] = useState(false)
   const [agentsLoading, setAgentsLoading] = useState(false)
@@ -54,17 +53,16 @@ export default function AgentExecutor() {
     }
   }, [])
 
-  const handleExecute = useCallback(() => {
+  const handleExecute = useCallback((value: ComposerValue) => {
     if (!selectedAgent) {
       message.warning(t('agentExecutor.selectAgentFirst'))
       return
     }
-    if (!prompt.trim()) {
+    if (!value.text.trim() && value.attachments.length === 0) {
       message.warning(t('agentExecutor.inputPrompt'))
       return
     }
 
-    // Close old connection to prevent duplicate EventSources
     if (esRef.current) {
       esRef.current.close()
       esRef.current = null
@@ -74,15 +72,24 @@ export default function AgentExecutor() {
     setExecuting(true)
     setConnecting(true)
 
+    const attachmentNames = value.attachments.map((a) => a.name).join(', ')
+    const displayContent = value.attachments.length > 0
+      ? `${value.text}\n[附件: ${attachmentNames}]`
+      : value.text
+
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: prompt,
+      content: displayContent,
       timestamp: Date.now(),
     }
     setMessages((prev) => [...prev, userMsg])
 
-    const es = sseRequest(`/agents/${selectedAgent}/executions/events`, { prompt })
+    const payload: Record<string, unknown> = {
+      prompt: value.text,
+      attachments: value.attachments,
+    }
+    const es = sseRequest(`/agents/${selectedAgent}/executions/events`, payload)
     esRef.current = es
 
     es.onopen = () => {
@@ -126,7 +133,7 @@ export default function AgentExecutor() {
         message.error(t('agentExecutor.sseError'))
       }
     }
-  }, [selectedAgent, prompt, clearEvents, setConnecting, setConnected, addEvent, t])
+  }, [selectedAgent, clearEvents, setConnecting, setConnected, addEvent, t])
 
   return (
     <div className="agent-exec-container">
@@ -147,24 +154,12 @@ export default function AgentExecutor() {
           </Select>
         </Col>
         <Col span={16}>
-          <div className="agent-exec-prompt-row">
-            <TextArea
-              rows={1}
-              placeholder={t('agentExecutor.promptPlaceholder')}
-              value={prompt}
-              className="agent-exec-textarea"
-              onChange={(e) => setPrompt(e.target.value)}
-              onPressEnter={(e) => {
-                if (!e.shiftKey) {
-                  e.preventDefault()
-                  handleExecute()
-                }
-              }}
-            />
-            <Button type="primary" icon={<SendOutlined />} className="agent-exec-btn-run" loading={executing} onClick={handleExecute}>
-              {t('agentExecutor.execute')}
-            </Button>
-          </div>
+          <Composer
+            placeholder={t('agentExecutor.promptPlaceholder')}
+            disabled={!selectedAgent}
+            loading={executing}
+            onSend={handleExecute}
+          />
         </Col>
       </Row>
       <Row gutter={[16, 16]} className="agent-exec-main">

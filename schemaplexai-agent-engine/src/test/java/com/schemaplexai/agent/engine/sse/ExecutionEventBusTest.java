@@ -2,6 +2,7 @@ package com.schemaplexai.agent.engine.sse;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.agent.engine.state.AgentExecutionState;
+import com.schemaplexai.agent.engine.timeline.TimelineClickHouseService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,9 +25,12 @@ class ExecutionEventBusTest {
     @Mock
     private SseEmitter emitter;
 
+    @Mock
+    private TimelineClickHouseService timelineService;
+
     @BeforeEach
     void setUp() {
-        eventBus = new ExecutionEventBus(new ObjectMapper());
+        eventBus = new ExecutionEventBus(new ObjectMapper(), timelineService);
     }
 
     @Test

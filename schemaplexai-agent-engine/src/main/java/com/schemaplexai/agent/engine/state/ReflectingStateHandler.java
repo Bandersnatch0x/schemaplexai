@@ -48,6 +48,8 @@ public class ReflectingStateHandler implements AgentStateHandler {
     @Override
     public void handle(AgentStateMachine stateMachine, SfAgentExecution execution) {
         log.info("Agent {} entering REFLECTING state, execution {}", execution.getAgentId(), execution.getId());
+        stateMachine.emitTimelineEvent(execution, "thought",
+                "Entering REFLECTING state — self-evaluation (round " + (getReflectionCount(execution) + 1) + ")");
 
         int reflectionCount = getReflectionCount(execution);
 
@@ -55,6 +57,8 @@ public class ReflectingStateHandler implements AgentStateHandler {
         if (reflectionCount >= MAX_REFLECTION_ROUNDS) {
             log.info("Max reflection rounds ({}) reached for execution {}, accepting output",
                     MAX_REFLECTION_ROUNDS, execution.getId());
+            stateMachine.emitTimelineEvent(execution, "thought",
+                    "Max reflection rounds reached, accepting output");
             stateMachine.transition(AgentExecutionState.COMPLETED, execution);
             return;
         }
@@ -68,6 +72,8 @@ public class ReflectingStateHandler implements AgentStateHandler {
             var guardResult = guardrailsEngine.validateOutput(assistantOutput);
             if (!guardResult.success()) {
                 log.warn("Guardrails blocked output for execution {}: {}", execution.getId(), guardResult.errorMessage());
+                stateMachine.emitTimelineEvent(execution, "error",
+                        "Guardrails blocked output: " + guardResult.errorMessage());
                 stateMachine.transition(AgentExecutionState.FAILED, execution);
                 return;
             }
@@ -90,18 +96,31 @@ public class ReflectingStateHandler implements AgentStateHandler {
             if (reflectionResult.needsRevision()) {
                 log.info("Execution {} reflection round {} requires revision: {}",
                         execution.getId(), reflectionCount + 1, reflectionResult.suggestions());
+                stateMachine.emitTimelineEvent(execution, "thought",
+                        "Reflection requires revision: " + truncate(reflectionResult.suggestions(), 300));
                 setReflectionCount(execution, reflectionCount + 1);
                 stateMachine.saveExecution(execution);
                 stateMachine.transition(AgentExecutionState.THINKING, execution);
             } else {
                 log.info("Execution {} reflection round {} passed review",
                         execution.getId(), reflectionCount + 1);
+                stateMachine.emitTimelineEvent(execution, "thought",
+                        "Reflection passed review");
                 stateMachine.transition(AgentExecutionState.COMPLETED, execution);
             }
         } catch (Exception e) {
             log.error("Reflection failed for execution {}, accepting current output", execution.getId(), e);
+            stateMachine.emitTimelineEvent(execution, "error",
+                    "Reflection failed: " + e.getMessage());
             stateMachine.transition(AgentExecutionState.COMPLETED, execution);
         }
+    }
+
+    private String truncate(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength) + "...";
     }
 
     String buildReflectionPrompt(String userMessage, String assistantOutput) {

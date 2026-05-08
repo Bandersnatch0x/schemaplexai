@@ -1,15 +1,19 @@
 package com.schemaplexai.agent.engine.sse;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.agent.engine.state.AgentExecutionState;
+import com.schemaplexai.agent.engine.timeline.AgentTimelineEvent;
+import com.schemaplexai.agent.engine.timeline.TimelineClickHouseService;
+import com.schemaplexai.agent.engine.timeline.TimelineEventType;
 import lombok.RequiredArgsConstructor;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,6 +26,7 @@ public class ExecutionEventBus {
     private static final Logger log = LoggerFactory.getLogger(ExecutionEventBus.class);
 
     private final ObjectMapper objectMapper;
+    private final TimelineClickHouseService timelineService;
 
     private final Map<String, List<SseEmitter>> emitters = new ConcurrentHashMap<>();
 
@@ -52,6 +57,8 @@ public class ExecutionEventBus {
                 "timestamp", System.currentTimeMillis()
         );
         broadcast(id, "state-transition", payload);
+        persistEvent(executionId, TimelineEventType.STATE_TRANSITION,
+                "State: " + from + " → " + to, payload, null);
     }
 
     public void publishExecutionCompleted(Long executionId, String finalState) {
@@ -62,6 +69,49 @@ public class ExecutionEventBus {
                 "timestamp", System.currentTimeMillis()
         );
         broadcast(id, "execution-completed", payload);
+        persistEvent(executionId, TimelineEventType.COMPLETED,
+                "Execution completed with state: " + finalState, payload, null);
+    }
+
+    public void publishThought(Long executionId, String thought, Long tenantId) {
+        Map<String, Object> payload = buildBasePayload(executionId, thought);
+        broadcast(String.valueOf(executionId), "thought", payload);
+        persistEvent(executionId, TimelineEventType.THOUGHT, thought, payload, tenantId);
+    }
+
+    public void publishToolCall(Long executionId, String toolName, String params, Long tenantId) {
+        Map<String, Object> payload = buildBasePayload(executionId, toolName);
+        payload.put("toolName", toolName);
+        payload.put("parameters", params);
+        broadcast(String.valueOf(executionId), "tool-call", payload);
+        persistEvent(executionId, TimelineEventType.TOOL_CALL,
+                "Tool: " + toolName, payload, tenantId);
+    }
+
+    public void publishToolResult(Long executionId, String toolName, String result, Long tenantId) {
+        Map<String, Object> payload = buildBasePayload(executionId, result);
+        payload.put("toolName", toolName);
+        broadcast(String.valueOf(executionId), "tool-result", payload);
+        persistEvent(executionId, TimelineEventType.TOOL_RESULT,
+                "Result from " + toolName, payload, tenantId);
+    }
+
+    public void publishPlan(Long executionId, String planDescription, Long tenantId) {
+        Map<String, Object> payload = buildBasePayload(executionId, planDescription);
+        broadcast(String.valueOf(executionId), "plan", payload);
+        persistEvent(executionId, TimelineEventType.PLAN, planDescription, payload, tenantId);
+    }
+
+    public void publishOutput(Long executionId, String output, Long tenantId) {
+        Map<String, Object> payload = buildBasePayload(executionId, output);
+        broadcast(String.valueOf(executionId), "output", payload);
+        persistEvent(executionId, TimelineEventType.OUTPUT, output, payload, tenantId);
+    }
+
+    public void publishError(Long executionId, String error, Long tenantId) {
+        Map<String, Object> payload = buildBasePayload(executionId, error);
+        broadcast(String.valueOf(executionId), "error", payload);
+        persistEvent(executionId, TimelineEventType.ERROR, error, payload, tenantId);
     }
 
     public void broadcast(String executionId, String eventName, Map<String, Object> payload) {
@@ -106,6 +156,26 @@ public class ExecutionEventBus {
                     log.debug("Error completing emitter for execution {}", executionId);
                 }
             }
+        }
+    }
+
+    private Map<String, Object> buildBasePayload(Long executionId, String content) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("executionId", executionId);
+        payload.put("content", content);
+        payload.put("timestamp", System.currentTimeMillis());
+        return payload;
+    }
+
+    private void persistEvent(Long executionId, TimelineEventType type, String content,
+                              Map<String, Object> payload, Long tenantId) {
+        try {
+            String metaJson = objectMapper.writeValueAsString(payload);
+            AgentTimelineEvent event = AgentTimelineEvent.of(
+                    executionId, type.value(), content, metaJson, tenantId);
+            timelineService.enqueue(event);
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to serialize timeline payload for execution {}", executionId, e);
         }
     }
 }

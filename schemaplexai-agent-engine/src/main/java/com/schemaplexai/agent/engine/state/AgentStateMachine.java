@@ -86,4 +86,23 @@ public class AgentStateMachine {
     public AgentExecutionState getCurrentState(Long executionId) {
         return executionStates.get(executionId);
     }
+
+    /**
+     * Emit a timeline event via SSE and persist to ClickHouse.
+     * Convenience method for state handlers to broadcast execution progress.
+     */
+    public void emitTimelineEvent(SfAgentExecution execution, String eventType, String content) {
+        Long tenantId = execution.getTenantId() != null ? Long.valueOf(execution.getTenantId()) : null;
+        switch (eventType) {
+            case "thought" -> eventBus.publishThought(execution.getId(), content, tenantId);
+            case "tool_call" -> eventBus.publishToolCall(execution.getId(), content, null, tenantId);
+            case "tool_result" -> eventBus.publishToolResult(execution.getId(), "", content, tenantId);
+            case "plan" -> eventBus.publishPlan(execution.getId(), content, tenantId);
+            case "output" -> eventBus.publishOutput(execution.getId(), content, tenantId);
+            case "error" -> eventBus.publishError(execution.getId(), content, tenantId);
+            default -> eventBus.broadcast(String.valueOf(execution.getId()), eventType,
+                    java.util.Map.of("executionId", execution.getId(), "content", content,
+                            "timestamp", System.currentTimeMillis()));
+        }
+    }
 }

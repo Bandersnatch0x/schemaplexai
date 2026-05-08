@@ -68,6 +68,8 @@ public class ToolCallingStateHandler implements AgentStateHandler {
     @Override
     public void handle(AgentStateMachine stateMachine, SfAgentExecution execution) {
         log.info("Agent {} entering TOOL_CALLING state, execution {}", execution.getAgentId(), execution.getId());
+        stateMachine.emitTimelineEvent(execution, "thought",
+                "Entering TOOL_CALLING state — parsing tool calls");
 
         try {
             // 1. Load conversation history
@@ -136,6 +138,8 @@ public class ToolCallingStateHandler implements AgentStateHandler {
                     continue;
                 }
 
+                stateMachine.emitTimelineEvent(execution, "tool_call",
+                        "Calling tool: " + toolCall.toolName());
                 ToolExecutionResult result = executeToolWithGuard(execution, toolCall);
                 executionRecorder.record(execution.getId(), result);
 
@@ -155,11 +159,15 @@ public class ToolCallingStateHandler implements AgentStateHandler {
                 if (result.blocked()) {
                     log.warn("Tool {} blocked for execution {}: {}",
                             toolCall.toolName(), execution.getId(), result.errorMessage());
+                    stateMachine.emitTimelineEvent(execution, "error",
+                            "Tool blocked: " + toolCall.toolName() + " — " + result.errorMessage());
                     stateMachine.transition(AgentExecutionState.GATE_BLOCKED, execution);
                     return;
                 }
 
                 // Save tool result to conversation memory
+                stateMachine.emitTimelineEvent(execution, "tool_result",
+                        "Tool " + toolCall.toolName() + " returned: " + truncate(result.output(), 500));
                 chatMemoryStore.saveMessage(execution.getConversationId(),
                         new LlmMessage("tool", result.output()));
 
@@ -171,6 +179,8 @@ public class ToolCallingStateHandler implements AgentStateHandler {
             stateMachine.transition(AgentExecutionState.THINKING, execution);
         } catch (Exception e) {
             log.error("Tool calling failed for execution {}", execution.getId(), e);
+            stateMachine.emitTimelineEvent(execution, "error",
+                    "TOOL_CALLING failed: " + e.getMessage());
             executionRecorder.record(execution.getId(), ToolExecutionResult.failure(
                 "unknown", ToolErrorCategory.UNEXPECTED_ENVIRONMENT,
                 e.getMessage(), 0, 0));
@@ -278,5 +288,12 @@ public class ToolCallingStateHandler implements AgentStateHandler {
     private String getWorkspaceRoot(SfAgentExecution execution) {
         String workspace = (String) execution.getMetadata("workspaceRoot");
         return workspace != null ? workspace : System.getProperty("user.dir");
+    }
+
+    private String truncate(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength) + "...";
     }
 }

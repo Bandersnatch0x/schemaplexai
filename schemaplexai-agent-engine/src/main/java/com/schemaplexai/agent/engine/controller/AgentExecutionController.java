@@ -5,6 +5,9 @@ import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.lifecycle.AgentExecutionLifecycleService;
 import com.schemaplexai.agent.engine.lifecycle.ExecutionSnapshot;
 import com.schemaplexai.agent.engine.security.SseTokenValidator;
+import com.schemaplexai.agent.engine.sse.ExecutionEventBus;
+import com.schemaplexai.agent.engine.timeline.AgentTimelineEvent;
+import com.schemaplexai.agent.engine.timeline.TimelineClickHouseService;
 import com.schemaplexai.agent.engine.tool.ValidationResult;
 import com.schemaplexai.common.result.Result;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -24,6 +28,8 @@ public class AgentExecutionController {
     private final AgentExecutionEngine executionEngine;
     private final AgentExecutionLifecycleService lifecycleService;
     private final SseTokenValidator sseTokenValidator;
+    private final ExecutionEventBus eventBus;
+    private final TimelineClickHouseService timelineService;
 
     @PostMapping("/{id}/execute")
     @Operation(summary = "Start agent execution")
@@ -79,7 +85,19 @@ public class AgentExecutionController {
         }
 
         SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
-        // TODO: Register emitter to event bus for execution events
+        eventBus.register(executionId, emitter);
         return emitter;
+    }
+
+    /**
+     * Query historical timeline events for an execution.
+     */
+    @GetMapping("/{id}/executions/{execId}/timeline")
+    @Operation(summary = "Query historical timeline events")
+    public Result<List<AgentTimelineEvent>> queryTimeline(
+            @PathVariable Long id,
+            @PathVariable Long execId) {
+        List<AgentTimelineEvent> events = timelineService.queryByExecutionId(execId);
+        return Result.success(events);
     }
 }

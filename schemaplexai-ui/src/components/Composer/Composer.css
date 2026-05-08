@@ -1,0 +1,137 @@
+.composer-root {
+  position: relative;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: #fff;
+  transition: border-color 0.2s;
+}
+
+.composer-root.composer-dragover {
+  border-color: #1677ff;
+  background: #f0f5ff;
+}
+
+.composer-mention-popover {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 4px;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 100;
+  min-width: 200px;
+}
+
+.composer-mention-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.composer-mention-item:hover {
+  background: #f5f5f5;
+}
+
+.composer-mention-type {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #8c8c8c;
+  background: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.composer-mention-name {
+  font-size: 13px;
+  color: #262626;
+}
+
+.composer-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.composer-attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: #f6f8fa;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.composer-attachment-icon {
+  color: #595959;
+}
+
+.composer-attachment-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #262626;
+}
+
+.composer-attachment-size {
+  color: #8c8c8c;
+  font-size: 11px;
+}
+
+.composer-attachment-remove {
+  color: #bfbfbf;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.composer-attachment-remove:hover {
+  color: #ff4d4f;
+}
+
+.composer-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.composer-textarea {
+  flex: 1;
+}
+
+.composer-textarea textarea {
+  resize: none;
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+
+.composer-textarea textarea:focus {
+  box-shadow: none;
+}
+
+.composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.composer-scan-badge {
+  font-size: 12px;
+}
+
+.composer-upload-spin {
+  margin-left: 4px;
+}

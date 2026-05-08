@@ -44,12 +44,30 @@ export interface ExecutionRecord {
   createdAt: string
 }
 
+export type SseEventType =
+  | 'thinking'
+  | 'tool_calling'
+  | 'observation'
+  | 'completed'
+  | 'error'
+  | 'state-transition'
+  | 'thought'
+  | 'tool_call'
+  | 'tool_result'
+  | 'approval_req'
+  | 'approval_resp'
+  | 'plan'
+  | 'file_diff'
+  | 'output'
+  | 'execution-completed'
+
 export interface SseEvent {
   id: string
-  type: 'thinking' | 'tool_calling' | 'observation' | 'completed' | 'error'
+  type: SseEventType
   content: string
   timestamp: number
   metadata?: Record<string, unknown>
+  expanded?: boolean
 }
 
 export interface PageResult<T> {

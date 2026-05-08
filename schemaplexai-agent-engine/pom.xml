@@ -60,6 +60,16 @@
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.clickhouse</groupId>
+            <artifactId>clickhouse-jdbc</artifactId>
+            <version>0.6.0</version>
+            <classifier>http</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
         <!-- Flyway 9.x (Spring Boot 3.2.5) bundles PostgreSQL support in flyway-core.
              flyway-database-postgresql is only needed for Flyway 10+ (Spring Boot 3.3+). -->
     </dependencies>

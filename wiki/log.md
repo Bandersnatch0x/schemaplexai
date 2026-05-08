@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T07:04:09Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T10:25:42Z -->
 
 ---
 title: Wiki Operation Log
@@ -14,6 +14,12 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
+## 2026-05-08 — feat(docs): add Knife4j annotations to all controllers, boost test coverage
+e134899
+## 2026-05-08 — refactor(agent-engine): extract HashUtils, add skill tier parsing, update wiki gap
+1d5e1fb
+## 2026-05-08 — feat(agent-engine): implement Reasoning + Exploration modules, v1 release readiness
+e03ccba
 ## 2026-05-08 — feat(agent-engine): per-iteration tool-call budget + Milvus consistency
 554b3b7
 ## 2026-05-08 — chore: register PreToolUse and Stop hooks for wiki sync enforcement
@@ -48,12 +54,6 @@ b209f72
 b0f8c79
 ## 2026-05-08 — feat(api): add task service API client
 1452bfc
-## 2026-05-08 — refactor(pages): remove old SpecCenter (moved to Projects/SpecCenter)
-a6b6932
-## 2026-05-08 — refactor(pages): move ContextCenter to Projects/ContextCenter
-65f43a4
-## 2026-05-08 — refactor(api): split agent.ts into agent-config and agent-engine
-14d1f55
 
 ---
 

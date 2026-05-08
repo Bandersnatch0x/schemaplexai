@@ -54,6 +54,8 @@ public class PlanningStateHandler implements AgentStateHandler {
     @Override
     public void handle(AgentStateMachine stateMachine, SfAgentExecution execution) {
         log.info("Agent {} entering PLANNING state, execution {}", execution.getAgentId(), execution.getId());
+        stateMachine.emitTimelineEvent(execution, "thought",
+                "Entering PLANNING state — decomposing goal into sub-tasks");
 
         try {
             // 1. Load conversation history
@@ -80,9 +82,17 @@ public class PlanningStateHandler implements AgentStateHandler {
             if (plan.getSubTasks().isEmpty()) {
                 log.warn("Planning produced no sub-tasks for execution {}, falling through to THINKING",
                         execution.getId());
+                stateMachine.emitTimelineEvent(execution, "plan",
+                        "No sub-tasks needed, proceeding directly");
             } else {
                 log.info("Execution {} planned with {} sub-tasks",
                         execution.getId(), plan.getSubTasks().size());
+                String planSummary = plan.getSubTasks().stream()
+                        .map(st -> "- " + st.getDescription())
+                        .reduce((a, b) -> a + "\n" + b)
+                        .orElse("(empty plan)");
+                stateMachine.emitTimelineEvent(execution, "plan",
+                        "Plan with " + plan.getSubTasks().size() + " sub-tasks:\n" + planSummary);
             }
 
             // 6. Store plan in execution metadata as JSON
@@ -95,6 +105,8 @@ public class PlanningStateHandler implements AgentStateHandler {
         } catch (Exception e) {
             log.error("Planning failed for execution {}, transitioning to THINKING without plan",
                     execution.getId(), e);
+            stateMachine.emitTimelineEvent(execution, "error",
+                    "Planning failed: " + e.getMessage());
             stateMachine.transition(AgentExecutionState.THINKING, execution);
         }
     }
