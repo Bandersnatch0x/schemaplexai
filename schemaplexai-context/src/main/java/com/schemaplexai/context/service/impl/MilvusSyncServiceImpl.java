@@ -60,7 +60,9 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
     private String minioSecretKey;
 
     @Value("${minio.bucket:documents}")
-    private String minioBucket;
+    private String minioDefaultBucket;
+
+    private static final String TENANT_BUCKET_PREFIX = "sf-files-";
 
     private MinioClient minioClient;
 
@@ -169,7 +171,8 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
     private String extractText(SfKnowledgeDoc doc) {
         if (minioEnabled && doc.getFileUrl() != null && !doc.getFileUrl().isBlank()) {
             try {
-                String bucket = minioBucket;
+                String tenantId = doc.getTenantId() != null ? doc.getTenantId().toString() : null;
+                String bucket = resolveTenantBucket(tenantId);
                 String objectName = resolveObjectName(doc.getFileUrl());
 
                 log.info("Downloading from MinIO bucket={}, object={}", bucket, objectName);
@@ -200,14 +203,25 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
                 path = path.substring(1);
             }
             // If path contains bucket prefix, strip it
-            if (path != null && path.startsWith(minioBucket + "/")) {
-                path = path.substring(minioBucket.length() + 1);
+            if (path != null && path.startsWith(minioDefaultBucket + "/")) {
+                path = path.substring(minioDefaultBucket.length() + 1);
             }
             return path != null && !path.isBlank() ? path : fileUrl;
         } catch (Exception e) {
             log.warn("Could not parse fileUrl as URI, using raw value: {}", fileUrl);
             return fileUrl;
         }
+    }
+
+    /**
+     * Resolve tenant-scoped bucket: {@code sf-files-{tenantId}} when tenantId is present,
+     * otherwise fall back to the configured default bucket.
+     */
+    String resolveTenantBucket(String tenantId) {
+        if (tenantId != null && !tenantId.isBlank()) {
+            return TENANT_BUCKET_PREFIX + tenantId;
+        }
+        return minioDefaultBucket;
     }
 
     private String simulateExtractText(SfKnowledgeDoc doc) {
