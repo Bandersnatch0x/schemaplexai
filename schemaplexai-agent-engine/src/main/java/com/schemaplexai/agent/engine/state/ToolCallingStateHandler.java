@@ -1,5 +1,6 @@
 package com.schemaplexai.agent.engine.state;
 
+import com.schemaplexai.agent.engine.approval.ToolApprovalService;
 import com.schemaplexai.agent.engine.config.AgentEngineProperties;
 import com.schemaplexai.agent.engine.config.SecurityPolicyLoader;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
@@ -40,6 +41,7 @@ public class ToolCallingStateHandler implements AgentStateHandler {
     private final ToolExecutionRecorder executionRecorder;
     private final SecurityPolicyLoader securityPolicyLoader;
     private final AgentEngineProperties engineProperties;
+    private final ToolApprovalService toolApprovalService;
 
     @Autowired
     public ToolCallingStateHandler(CompositeChatMemoryStore chatMemoryStore,
@@ -49,7 +51,8 @@ public class ToolCallingStateHandler implements AgentStateHandler {
                                     AgentLoopDetectionService loopDetection,
                                     ToolExecutionRecorder executionRecorder,
                                     SecurityPolicyLoader securityPolicyLoader,
-                                    AgentEngineProperties engineProperties) {
+                                    AgentEngineProperties engineProperties,
+                                    ToolApprovalService toolApprovalService) {
         this.chatMemoryStore = chatMemoryStore;
         this.sandbox = sandbox;
         this.toolRegistry = toolRegistry;
@@ -58,6 +61,7 @@ public class ToolCallingStateHandler implements AgentStateHandler {
         this.executionRecorder = executionRecorder;
         this.securityPolicyLoader = securityPolicyLoader;
         this.engineProperties = engineProperties;
+        this.toolApprovalService = toolApprovalService;
     }
 
     @Override
@@ -140,6 +144,14 @@ public class ToolCallingStateHandler implements AgentStateHandler {
 
                 stateMachine.emitTimelineEvent(execution, "tool_call",
                         "Calling tool: " + toolCall.toolName());
+
+                // Approval gate: check if tool requires human approval
+                if (toolApprovalService.checkAndRequestApproval(toolCall, execution, stateMachine)) {
+                    log.info("Tool {} requires approval for execution {}, paused",
+                            toolCall.toolName(), execution.getId());
+                    return; // Execution is now PAUSED, will resume after approval
+                }
+
                 ToolExecutionResult result = executeToolWithGuard(execution, toolCall);
                 executionRecorder.record(execution.getId(), result);
 

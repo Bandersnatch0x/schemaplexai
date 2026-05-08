@@ -119,7 +119,7 @@ class AnthropicProviderTest {
 
         BaseException ex = assertThrows(BaseException.class,
                 () -> anthropicProvider.generate("prompt", "claude-3-sonnet", 0.7));
-        assertTrue(ex.getMessage().contains("Anthropic generation failed"));
+        assertTrue(ex.getMessage().contains("ANTHROPIC generation failed"));
     }
 
     @Test
@@ -131,7 +131,7 @@ class AnthropicProviderTest {
         List<LlmMessage> messages = List.of(new LlmMessage("user", "Hello"));
         BaseException ex = assertThrows(BaseException.class,
                 () -> anthropicProvider.generateWithMessages(messages, "claude-3-sonnet", 0.7));
-        assertTrue(ex.getMessage().contains("Anthropic chat completion failed"));
+        assertTrue(ex.getMessage().contains("ANTHROPIC chat completion failed"));
     }
 
     @Test
@@ -241,7 +241,8 @@ class AnthropicProviderTest {
 
     @SuppressWarnings("unchecked")
     private void injectMockModel(String cacheKey, ChatLanguageModel mockModel) throws Exception {
-        Field modelCacheField = AnthropicProvider.class.getDeclaredField("modelCache");
+        // modelCache is in the parent class LlmProviderAdapter
+        Field modelCacheField = LlmProviderAdapter.class.getDeclaredField("modelCache");
         modelCacheField.setAccessible(true);
         Map<String, ChatLanguageModel> cache = (Map<String, ChatLanguageModel>) modelCacheField.get(anthropicProvider);
         cache.put(cacheKey, mockModel);

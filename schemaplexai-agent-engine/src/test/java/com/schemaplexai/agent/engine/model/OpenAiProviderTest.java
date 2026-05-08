@@ -120,7 +120,7 @@ class OpenAiProviderTest {
 
         BaseException ex = assertThrows(BaseException.class,
                 () -> openAiProvider.generate("prompt", "gpt-4", 0.7));
-        assertTrue(ex.getMessage().contains("OpenAI generation failed"));
+        assertTrue(ex.getMessage().contains("OPENAI generation failed"));
     }
 
     @Test
@@ -132,7 +132,7 @@ class OpenAiProviderTest {
         List<LlmMessage> messages = List.of(new LlmMessage("user", "Hello"));
         BaseException ex = assertThrows(BaseException.class,
                 () -> openAiProvider.generateWithMessages(messages, "gpt-4", 0.7));
-        assertTrue(ex.getMessage().contains("OpenAI chat completion failed"));
+        assertTrue(ex.getMessage().contains("OPENAI chat completion failed"));
     }
 
     @Test
@@ -244,7 +244,8 @@ class OpenAiProviderTest {
 
     @SuppressWarnings("unchecked")
     private void injectMockModel(String cacheKey, ChatLanguageModel mockModel) throws Exception {
-        Field modelCacheField = OpenAiProvider.class.getDeclaredField("modelCache");
+        // modelCache is in the parent class LlmProviderAdapter
+        Field modelCacheField = LlmProviderAdapter.class.getDeclaredField("modelCache");
         modelCacheField.setAccessible(true);
         Map<String, ChatLanguageModel> cache = (Map<String, ChatLanguageModel>) modelCacheField.get(openAiProvider);
         cache.put(cacheKey, mockModel);

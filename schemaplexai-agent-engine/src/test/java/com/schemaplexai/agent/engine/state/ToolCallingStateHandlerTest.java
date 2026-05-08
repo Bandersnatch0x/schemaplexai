@@ -1,5 +1,9 @@
 package com.schemaplexai.agent.engine.state;
 
+import com.schemaplexai.agent.engine.approval.ApprovalMode;
+import com.schemaplexai.agent.engine.approval.ToolApprovalService;
+import com.schemaplexai.agent.engine.approval.ToolRiskClassifier;
+import com.schemaplexai.agent.engine.approval.ApprovalService;
 import com.schemaplexai.agent.engine.config.SecurityPolicyLoader;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.loop.AgentLoopDetectionService;
@@ -57,12 +61,24 @@ class ToolCallingStateHandlerTest {
     @Mock
     private ToolAdapter toolAdapter;
 
+    @Mock
+    private ApprovalService approvalService;
+
+    private ToolApprovalService toolApprovalService;
+
     @InjectMocks
     private ToolCallingStateHandler handler;
 
     @BeforeEach
     void setUp() {
         lenient().when(engineProperties.getMaxToolCallsPerIteration()).thenReturn(10);
+        // Create a real ToolApprovalService with AUTO mode (no approval needed for tests)
+        ToolRiskClassifier riskClassifier = new ToolRiskClassifier();
+        toolApprovalService = new ToolApprovalService(approvalService, riskClassifier, ApprovalMode.AUTO, 60);
+        handler = new ToolCallingStateHandler(
+                chatMemoryStore, sandbox, toolRegistry, safetyGuard,
+                loopDetection, executionRecorder, securityPolicyLoader,
+                engineProperties, toolApprovalService);
     }
 
     @Test

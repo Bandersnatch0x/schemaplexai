@@ -3,6 +3,7 @@ package com.schemaplexai.agent.engine.state;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.mapper.SfAgentExecutionMapper;
 import com.schemaplexai.agent.engine.sse.ExecutionEventBus;
+import com.schemaplexai.agent.engine.state.middleware.MiddlewarePipeline;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -20,15 +21,18 @@ public class AgentStateMachine {
     private final SfAgentExecutionMapper executionMapper;
     private final ExecutionEventBus eventBus;
     private final Map<AgentExecutionState, AgentStateHandler> handlers;
+    private final MiddlewarePipeline middlewarePipeline;
     private final Map<Long, AgentExecutionState> executionStates = new ConcurrentHashMap<>();
 
     @Autowired
     public AgentStateMachine(SfAgentExecutionMapper executionMapper, ExecutionEventBus eventBus,
-                             List<AgentStateHandler> handlerList) {
+                             List<AgentStateHandler> handlerList,
+                             MiddlewarePipeline middlewarePipeline) {
         this.executionMapper = executionMapper;
         this.eventBus = eventBus;
         this.handlers = handlerList.stream()
                 .collect(Collectors.toMap(AgentStateHandler::getState, Function.identity()));
+        this.middlewarePipeline = middlewarePipeline;
     }
 
     public void start(SfAgentExecution execution) {
@@ -52,7 +56,10 @@ public class AgentStateMachine {
         AgentStateHandler handler = handlers.get(newState);
         if (handler != null) {
             try {
-                handler.handle(this, execution);
+                // Execute handler through the middleware pipeline
+                final AgentStateMachine self = this;
+                middlewarePipeline.execute(self, execution, current, newState,
+                        () -> handler.handle(self, execution));
             } catch (Exception e) {
                 log.error("State handler error for state {} execution {}", newState, execution.getId(), e);
                 if (newState != AgentExecutionState.FAILED) {
