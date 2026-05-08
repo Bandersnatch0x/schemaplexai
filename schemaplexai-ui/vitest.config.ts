@@ -11,6 +11,12 @@ export default defineConfig({
     css: false,
     passWithNoTests: true,
     exclude: ['e2e/**', 'node_modules/**'],
+    coverage: {
+      provider: 'v8',
+      thresholds: {
+        lines: 70,
+      },
+    },
   },
   resolve: {
     alias: {
