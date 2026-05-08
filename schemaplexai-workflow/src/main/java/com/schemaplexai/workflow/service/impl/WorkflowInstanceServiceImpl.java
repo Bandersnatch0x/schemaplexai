@@ -12,6 +12,8 @@ import com.schemaplexai.workflow.mapper.SfWorkflowInstanceMapper;
 import com.schemaplexai.workflow.mapper.SfWorkflowNodeExecutionMapper;
 import com.schemaplexai.workflow.mapper.SfWorkflowTemplateMapper;
 import com.schemaplexai.workflow.node.NodeExecutionResult;
+import com.schemaplexai.workflow.service.TopologyHasher;
+import com.schemaplexai.workflow.service.TopologyMismatchException;
 import com.schemaplexai.workflow.service.WorkflowInstanceService;
 import com.schemaplexai.workflow.service.WorkflowNodeEngine;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +45,22 @@ public class WorkflowInstanceServiceImpl extends ServiceImpl<SfWorkflowInstanceM
         SfWorkflowTemplate template = templateMapper.selectById(instance.getTemplateId());
         if (template == null) {
             throw new BaseException(ResultCode.WORKFLOW_NOT_FOUND, "Workflow template not found: " + instance.getTemplateId());
+        }
+
+        // Validate topology hash on resume (prevents silent corruption)
+        String currentHash = TopologyHasher.hash(template.getNodeConfigJson());
+        if (instance.getTopologyHash() != null) {
+            try {
+                TopologyHasher.verify(instance.getTopologyHash(), template.getNodeConfigJson());
+            } catch (TopologyMismatchException e) {
+                log.error("Topology mismatch for workflow instance {}: {}", instanceId, e.getMessage());
+                instance.setStatus("FAILED");
+                baseMapper.updateById(instance);
+                throw new BaseException(ResultCode.WORKFLOW_NOT_FOUND, e.getMessage());
+            }
+        } else {
+            // First trigger: store the topology hash
+            instance.setTopologyHash(currentHash);
         }
 
         instance.setStatus("RUNNING");

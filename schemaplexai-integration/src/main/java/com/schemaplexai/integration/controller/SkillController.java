@@ -2,6 +2,8 @@ package com.schemaplexai.integration.controller;
 
 import com.schemaplexai.common.result.Result;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.integration.dto.SkillContent;
+import com.schemaplexai.integration.dto.SkillSummary;
 import com.schemaplexai.integration.entity.SfSkill;
 import com.schemaplexai.integration.service.SkillService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,19 +41,41 @@ public class SkillController {
         return Result.success(skillService.removeById(id));
     }
 
+    /**
+     * Get skill summary by ID (without content).
+     * Use {@code GET /integration/skills/{id}/content} to fetch full content on demand.
+     */
     @GetMapping("/{id}")
-    @Operation(summary = "Get skill by id")
-    public Result<SfSkill> get(@PathVariable Long id) {
-        SfSkill skill = skillService.getById(id);
-        if (skill == null) {
+    @Operation(summary = "Get skill summary by id (without content)")
+    public Result<SkillSummary> get(@PathVariable Long id) {
+        SkillSummary summary = skillService.getSummaryById(id);
+        if (summary == null) {
             return Result.error(ResultCode.NOT_FOUND);
         }
-        return Result.success(skill);
+        return Result.success(summary);
     }
 
+    /**
+     * List all skill summaries (without content).
+     * Progressive disclosure: content is loaded on demand via /content endpoint.
+     */
     @GetMapping
-    @Operation(summary = "List all skills")
-    public Result<List<SfSkill>> list() {
-        return Result.success(skillService.list());
+    @Operation(summary = "List all skill summaries (without content)")
+    public Result<List<SkillSummary>> list() {
+        return Result.success(skillService.listSummaries());
+    }
+
+    /**
+     * Load skill content on demand.
+     * Reduces token costs by separating metadata from content.
+     */
+    @GetMapping("/{id}/content")
+    @Operation(summary = "Load skill content on demand")
+    public Result<SkillContent> getContent(@PathVariable Long id) {
+        SkillContent content = skillService.getContent(id);
+        if (content == null) {
+            return Result.error(ResultCode.NOT_FOUND);
+        }
+        return Result.success(content);
     }
 }

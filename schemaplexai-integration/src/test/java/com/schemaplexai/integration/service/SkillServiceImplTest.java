@@ -2,6 +2,8 @@ package com.schemaplexai.integration.service;
 
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.integration.dto.SkillContent;
+import com.schemaplexai.integration.dto.SkillSummary;
 import com.schemaplexai.integration.entity.SfSkill;
 import com.schemaplexai.integration.mapper.SkillMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -205,5 +207,101 @@ class SkillServiceImplTest {
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+    }
+
+    // ------------------------------------------------------------------
+    // listSummaries
+    // ------------------------------------------------------------------
+
+    @Test
+    void listSummaries_returnsSummariesWithoutContent() {
+        SfSkill skill = new SfSkill();
+        skill.setId(1L);
+        skill.setName("My Skill");
+        skill.setCode("my-skill");
+        skill.setDescription("desc");
+        skill.setStatus(1);
+        skill.setContent("---\nname: My Skill\n---\nBody");
+        when(skillMapper.selectList(any())).thenReturn(List.of(skill));
+
+        List<SkillSummary> summaries = skillService.listSummaries();
+
+        assertThat(summaries).hasSize(1);
+        SkillSummary summary = summaries.get(0);
+        assertThat(summary.id()).isEqualTo(1L);
+        assertThat(summary.name()).isEqualTo("My Skill");
+        assertThat(summary.code()).isEqualTo("my-skill");
+        assertThat(summary.description()).isEqualTo("desc");
+        assertThat(summary.status()).isEqualTo(1);
+        // Content is not in summary
+    }
+
+    @Test
+    void listSummaries_empty_returnsEmpty() {
+        when(skillMapper.selectList(any())).thenReturn(Collections.emptyList());
+
+        List<SkillSummary> summaries = skillService.listSummaries();
+
+        assertThat(summaries).isEmpty();
+    }
+
+    // ------------------------------------------------------------------
+    // getSummaryById
+    // ------------------------------------------------------------------
+
+    @Test
+    void getSummaryById_notFound_returnsNull() {
+        when(skillMapper.selectById(99L)).thenReturn(null);
+
+        SkillSummary summary = skillService.getSummaryById(99L);
+
+        assertThat(summary).isNull();
+    }
+
+    @Test
+    void getSummaryById_found_returnsSummaryWithoutContent() {
+        SfSkill skill = new SfSkill();
+        skill.setId(1L);
+        skill.setName("My Skill");
+        skill.setCode("my-skill");
+        skill.setDescription("desc");
+        skill.setStatus(1);
+        skill.setContent("---\nname: My Skill\n---\nBody");
+        when(skillMapper.selectById(1L)).thenReturn(skill);
+
+        SkillSummary summary = skillService.getSummaryById(1L);
+
+        assertThat(summary).isNotNull();
+        assertThat(summary.id()).isEqualTo(1L);
+        assertThat(summary.name()).isEqualTo("My Skill");
+    }
+
+    // ------------------------------------------------------------------
+    // getContent
+    // ------------------------------------------------------------------
+
+    @Test
+    void getContent_notFound_returnsNull() {
+        when(skillMapper.selectById(99L)).thenReturn(null);
+
+        SkillContent content = skillService.getContent(99L);
+
+        assertThat(content).isNull();
+    }
+
+    @Test
+    void getContent_found_returnsContent() {
+        SfSkill skill = new SfSkill();
+        skill.setId(1L);
+        skill.setCode("my-skill");
+        skill.setContent("---\nname: My Skill\n---\nFull body content");
+        when(skillMapper.selectById(1L)).thenReturn(skill);
+
+        SkillContent content = skillService.getContent(1L);
+
+        assertThat(content).isNotNull();
+        assertThat(content.id()).isEqualTo(1L);
+        assertThat(content.code()).isEqualTo("my-skill");
+        assertThat(content.content()).isEqualTo("---\nname: My Skill\n---\nFull body content");
     }
 }

@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.integration.dto.SkillContent;
+import com.schemaplexai.integration.dto.SkillSummary;
 import com.schemaplexai.integration.entity.SfSkill;
 import com.schemaplexai.integration.mapper.SkillMapper;
 import com.schemaplexai.integration.skill.SkillMarkdownParser;
@@ -12,7 +14,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -136,5 +137,25 @@ public class SkillServiceImpl extends ServiceImpl<SkillMapper, SfSkill> implemen
             log.error("Skill execution failed: skillId={}", skillId, e);
             throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED, "Skill execution failed: " + e.getMessage());
         }
+    }
+
+    @Override
+    public List<SkillSummary> listSummaries() {
+        List<SfSkill> skills = list();
+        return skills.stream()
+                .map(SkillSummary::from)
+                .toList();
+    }
+
+    @Override
+    public SkillSummary getSummaryById(Long id) {
+        SfSkill skill = getById(id);
+        return SkillSummary.from(skill);
+    }
+
+    @Override
+    public SkillContent getContent(Long id) {
+        SfSkill skill = getById(id);
+        return SkillContent.from(skill);
     }
 }

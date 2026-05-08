@@ -10,6 +10,7 @@ import com.schemaplexai.workflow.mapper.SfWorkflowInstanceMapper;
 import com.schemaplexai.workflow.mapper.SfWorkflowNodeExecutionMapper;
 import com.schemaplexai.workflow.mapper.SfWorkflowTemplateMapper;
 import com.schemaplexai.workflow.node.NodeExecutionResult;
+import com.schemaplexai.workflow.service.TopologyHasher;
 import com.schemaplexai.workflow.service.impl.WorkflowInstanceServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -181,5 +182,85 @@ class WorkflowInstanceServiceImplTest {
 
         // First update sets RUNNING, second sets COMPLETED
         verify(workflowInstanceMapper, atLeast(2)).updateById(instance);
+    }
+
+    // ------------------------------------------------------------------
+    // trigger - topology hash
+    // ------------------------------------------------------------------
+
+    @Test
+    void trigger_firstTrigger_storesTopologyHash() {
+        SfWorkflowInstance instance = new SfWorkflowInstance();
+        instance.setId(1L);
+        instance.setTemplateId(10L);
+        instance.setStatus("PENDING");
+        instance.setTopologyHash(null); // first trigger
+        when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
+
+        String nodeConfig = "[{\"nodeId\":\"n1\",\"nodeType\":\"AI\",\"input\":{}}]";
+        SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setId(10L);
+        template.setNodeConfigJson(nodeConfig);
+        when(templateMapper.selectById(10L)).thenReturn(template);
+        when(nodeExecutionMapper.insert(any())).thenReturn(1);
+        when(nodeEngine.executeNode(any())).thenReturn(NodeExecutionResult.success());
+
+        workflowInstanceService.trigger(1L);
+
+        // Verify topology hash was set
+        String expectedHash = TopologyHasher.hash(nodeConfig);
+        assertThat(instance.getTopologyHash()).isEqualTo(expectedHash);
+    }
+
+    @Test
+    void trigger_resumeWithMatchingHash_succeeds() {
+        String nodeConfig = "[{\"nodeId\":\"n1\",\"nodeType\":\"AI\",\"input\":{}}]";
+        String hash = TopologyHasher.hash(nodeConfig);
+
+        SfWorkflowInstance instance = new SfWorkflowInstance();
+        instance.setId(1L);
+        instance.setTemplateId(10L);
+        instance.setStatus("PENDING");
+        instance.setTopologyHash(hash);
+        when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
+
+        SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setId(10L);
+        template.setNodeConfigJson(nodeConfig);
+        when(templateMapper.selectById(10L)).thenReturn(template);
+        when(nodeExecutionMapper.insert(any())).thenReturn(1);
+        when(nodeEngine.executeNode(any())).thenReturn(NodeExecutionResult.success());
+
+        workflowInstanceService.trigger(1L);
+
+        assertThat(instance.getStatus()).isEqualTo("COMPLETED");
+    }
+
+    @Test
+    void trigger_resumeWithMismatchedHash_setsFailedAndThrows() {
+        String originalConfig = "[{\"nodeId\":\"n1\",\"nodeType\":\"AI\",\"input\":{}}]";
+        String originalHash = TopologyHasher.hash(originalConfig);
+
+        SfWorkflowInstance instance = new SfWorkflowInstance();
+        instance.setId(1L);
+        instance.setTemplateId(10L);
+        instance.setStatus("PENDING");
+        instance.setTopologyHash(originalHash);
+        when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
+
+        // Template has been modified since checkpoint
+        String modifiedConfig = "[{\"nodeId\":\"n2\",\"nodeType\":\"HTTP\",\"input\":{}}]";
+        SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setId(10L);
+        template.setNodeConfigJson(modifiedConfig);
+        when(templateMapper.selectById(10L)).thenReturn(template);
+
+        assertThatThrownBy(() -> workflowInstanceService.trigger(1L))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.WORKFLOW_NOT_FOUND.getCode());
+
+        // Instance should be marked as FAILED
+        assertThat(instance.getStatus()).isEqualTo("FAILED");
     }
 }

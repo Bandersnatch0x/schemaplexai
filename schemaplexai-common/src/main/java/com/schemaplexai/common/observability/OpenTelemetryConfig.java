@@ -72,4 +72,9 @@ public class OpenTelemetryConfig {
                          @Value("${spring.application.name:schemaplexai}") String serviceName) {
         return openTelemetry.getTracer(serviceName);
     }
+
+    @Bean
+    public OpenTelemetryTracingService tracingService(Tracer tracer) {
+        return new OpenTelemetryTracingService(tracer);
+    }
 }

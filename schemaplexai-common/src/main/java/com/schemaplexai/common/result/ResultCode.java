@@ -31,6 +31,7 @@ public enum ResultCode {
     AGENT_RATE_LIMIT(3003, "agent rate limit exceeded"),
     TOKEN_BUDGET_EXCEEDED(3004, "token budget exceeded"),
     LOOP_DETECTED(3005, "agent loop detected"),
+    TOOL_CALL_BUDGET_EXCEEDED(3006, "tool call budget exceeded"),
 
     // Workflow
     WORKFLOW_NOT_FOUND(4001, "workflow not found"),

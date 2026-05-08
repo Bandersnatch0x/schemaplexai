@@ -3,12 +3,16 @@ package com.schemaplexai.agent.engine.observability;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.schemaplexai.agent.engine.mapper.ObservabilitySpanMapper;
 import com.schemaplexai.agent.engine.mapper.ObservabilityTraceMapper;
+import com.schemaplexai.common.observability.PiiRedactor;
 import com.schemaplexai.model.entity.observability.ObservabilitySpan;
 import com.schemaplexai.model.entity.observability.ObservabilityTrace;
+import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,7 +22,9 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * ObservabilityRecorder — backward-compatible adapter.
  * Delegates to OpenTelemetry Tracer when available; falls back to PostgreSQL storage.
- * @deprecated Use OpenTelemetry Tracer directly for new code.
+ *
+ * <p>Set {@code agent.engine.observability.pg-storage-enabled=false} to disable PostgreSQL
+ * trace/span persistence when using Jaeger/Tempo as the primary trace store.
  */
 @Service
 @RequiredArgsConstructor
@@ -29,6 +35,9 @@ public class ObservabilityRecorder {
 
     private Tracer tracer;
     private final ConcurrentHashMap<String, Span> activeSpans = new ConcurrentHashMap<>();
+
+    @Value("${agent.engine.observability.pg-storage-enabled:true}")
+    private boolean pgStorageEnabled = true;
 
     @Autowired(required = false)
     public void setTracer(Tracer tracer) {
@@ -46,9 +55,9 @@ public class ObservabilityRecorder {
 
         if (tracer != null) {
             Span span = tracer.spanBuilder(name)
-                    .setAttribute("execution.id", executionId)
-                    .setAttribute("user.id", userId != null ? userId : "")
-                    .setAttribute("session.id", sessionId != null ? sessionId : "")
+                    .setAttribute(AttributeKey.stringKey("execution.id"), executionId)
+                    .setAttribute(AttributeKey.stringKey("user.id"), userId != null ? userId : "")
+                    .setAttribute(AttributeKey.stringKey("session.id"), sessionId != null ? sessionId : "")
                     .startSpan();
             trace.setTraceId(span.getSpanContext().getTraceId());
             activeSpans.put(trace.getTraceId(), span);
@@ -56,23 +65,28 @@ public class ObservabilityRecorder {
             trace.setTraceId(UUID.randomUUID().toString());
         }
 
-        traceMapper.insert(trace);
+        if (pgStorageEnabled) {
+            traceMapper.insert(trace);
+        }
         return trace;
     }
 
     @Transactional
     public void endTrace(String traceId, String output) {
-        ObservabilityTrace trace = traceMapper.selectOne(
-            new LambdaQueryWrapper<ObservabilityTrace>()
-                .eq(ObservabilityTrace::getTraceId, traceId));
-        if (trace != null) {
-            trace.setOutput(PiiRedactor.redact(output));
-            traceMapper.updateById(trace);
+        if (pgStorageEnabled) {
+            ObservabilityTrace trace = traceMapper.selectOne(
+                new LambdaQueryWrapper<ObservabilityTrace>()
+                    .eq(ObservabilityTrace::getTraceId, traceId));
+            if (trace != null) {
+                trace.setOutput(PiiRedactor.redact(output));
+                traceMapper.updateById(trace);
+            }
         }
 
         Span span = activeSpans.remove(traceId);
         if (span != null) {
-            span.setAttribute("output", PiiRedactor.redact(output));
+            span.setAttribute(AttributeKey.stringKey("output"), PiiRedactor.redact(output));
+            span.setStatus(StatusCode.OK);
             span.end();
         }
     }
@@ -93,7 +107,41 @@ public class ObservabilityRecorder {
         span.setInput(PiiRedactor.redact(input));
         span.setOutput(PiiRedactor.redact(output));
         span.setStatus(status);
-        spanMapper.insert(span);
+
+        // Create OTel child span if tracer is available
+        if (tracer != null) {
+            Span otelSpan = tracer.spanBuilder(name)
+                    .setAttribute(AttributeKey.stringKey("span.type"), type != null ? type : "")
+                    .setAttribute(AttributeKey.stringKey("span.status"), status != null ? status : "")
+                    .startSpan();
+            otelSpan.end();
+        }
+
+        if (pgStorageEnabled) {
+            spanMapper.insert(span);
+        }
         return span;
+    }
+
+    /**
+     * Add an event to the current active trace span.
+     *
+     * @param traceId  the trace ID
+     * @param eventName the event name
+     * @param attributes key-value attributes for the event
+     */
+    public void addTraceEvent(String traceId, String eventName,
+                               io.opentelemetry.api.common.Attributes attributes) {
+        Span span = activeSpans.get(traceId);
+        if (span != null) {
+            span.addEvent(eventName, attributes);
+        }
+    }
+
+    /**
+     * Whether PG storage is enabled for this recorder.
+     */
+    public boolean isPgStorageEnabled() {
+        return pgStorageEnabled;
     }
 }

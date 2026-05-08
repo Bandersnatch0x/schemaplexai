@@ -2,6 +2,7 @@ package com.schemaplexai.integration.controller;
 
 import com.schemaplexai.common.result.Result;
 import com.schemaplexai.integration.dto.McpToolSchema;
+import com.schemaplexai.integration.dto.SkillSummary;
 import com.schemaplexai.integration.entity.SfApiGatewayConfig;
 import com.schemaplexai.integration.entity.SfIntegration;
 import com.schemaplexai.integration.entity.SfMcpServer;
@@ -223,22 +224,22 @@ class IntegrationControllerTest {
 
     @Test
     void skill_get_found() {
-        SfSkill skill = new SfSkill(); skill.setId(1L);
-        when(skillService.getById(1L)).thenReturn(skill);
-        Result<SfSkill> result = skillController.get(1L);
+        SkillSummary summary = new SkillSummary(1L, "Test", "test", "desc", 1);
+        when(skillService.getSummaryById(1L)).thenReturn(summary);
+        Result<SkillSummary> result = skillController.get(1L);
         assertThat(result.getCode()).isEqualTo(200);
     }
 
     @Test
     void skill_get_notFound() {
-        when(skillService.getById(1L)).thenReturn(null);
-        Result<SfSkill> result = skillController.get(1L);
+        when(skillService.getSummaryById(1L)).thenReturn(null);
+        Result<SkillSummary> result = skillController.get(1L);
         assertThat(result.getCode()).isEqualTo(404);
     }
 
     @Test
     void skill_list() {
-        when(skillService.list()).thenReturn(Collections.emptyList());
+        when(skillService.listSummaries()).thenReturn(Collections.emptyList());
         Result<?> result = skillController.list();
         assertThat(result.getCode()).isEqualTo(200);
     }

@@ -14,4 +14,5 @@ public class SfWorkflowInstance extends BaseEntity {
     private String status;
     private String triggerType;
     private String triggerConfig;
+    private String topologyHash;
 }

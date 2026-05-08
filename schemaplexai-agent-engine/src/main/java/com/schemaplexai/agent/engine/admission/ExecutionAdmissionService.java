@@ -3,6 +3,7 @@ package com.schemaplexai.agent.engine.admission;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.redis.TenantRedisKeyResolver;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.agent.engine.tool.ToolCallBudgetService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -16,6 +17,7 @@ import java.time.Duration;
 public class ExecutionAdmissionService {
 
     private final StringRedisTemplate redisTemplate;
+    private final ToolCallBudgetService toolCallBudgetService;
 
     public AdmissionResult admit(String tenantId, Long agentId, TokenBudget tokenBudget) {
         // Dimension 1: Rate limit (requests per minute)
@@ -65,6 +67,14 @@ public class ExecutionAdmissionService {
             return AdmissionResult.builder()
                     .allowed(false)
                     .reason("Daily cost budget exceeded")
+                    .build();
+        }
+
+        // Dimension 5: Per-tenant daily tool-call budget
+        if (!toolCallBudgetService.hasRemainingBudget(tenantId)) {
+            return AdmissionResult.builder()
+                    .allowed(false)
+                    .reason("Daily tool-call budget exceeded (" + toolCallBudgetService.getDailyLimit() + "/day)")
                     .build();
         }
 
