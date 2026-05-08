@@ -117,13 +117,13 @@ class RateLimitFilterTest {
         HttpHeaders headers = new HttpHeaders();
         headers.set(CommonConstants.HEADER_TENANT_ID, "tenant-xyz");
         when(request.getHeaders()).thenReturn(headers);
-        when(valueOps.increment(contains("tenant:tenant-xyz"))).thenReturn(Mono.just(1L));
+        when(valueOps.increment(contains("tenant-xyz"))).thenReturn(Mono.just(1L));
         when(redisTemplate.expire(anyString(), any())).thenReturn(Mono.just(true));
 
         StepVerifier.create(filter.filter(exchange, chain))
                 .verifyComplete();
 
-        verify(valueOps).increment(contains("tenant:tenant-xyz"));
+        verify(valueOps).increment(contains("tenant-xyz"));
     }
 
     @Test

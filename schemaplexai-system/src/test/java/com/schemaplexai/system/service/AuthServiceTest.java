@@ -153,7 +153,7 @@ class AuthServiceTest {
     void logout_withUserId_deletesRedisKey() {
         authService.logout("100");
 
-        verify(stringRedisTemplate).delete(CommonConstants.REDIS_KEY_CHAT_MEMORY + ":100");
+        verify(stringRedisTemplate).delete("sf:global:token:session:100");
     }
 
     @Test
