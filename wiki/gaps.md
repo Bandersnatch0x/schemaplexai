@@ -3,7 +3,9 @@
 
 ## Auto-Generated Gap Scan
 
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T02:29:03Z -->
+## Auto-Generated Gap Scan
+
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T03:05:10Z -->
 
 ### Undocumented Entities
 

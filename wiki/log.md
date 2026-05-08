@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T02:28:20Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T03:04:31Z -->
 
 ---
 title: Wiki Operation Log
@@ -14,6 +14,10 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
+## 2026-05-08 — feat: close P0 core gaps in agent-engine and integration
+157519a
+## 2026-05-08 — docs(spec): add UI architecture alignment design
+4dfd99d
 ## 2026-05-08 — feat(agent-engine): add Layer 2 agentic patterns
 7d97896
 ## 2026-05-08 — feat(agent-engine): add ShadowReviewEvaluator for Layer 1 completion
@@ -50,10 +54,6 @@ fdbe2ed
 71fded2
 ## 2026-05-07 — feat(compaction): implement SlidingWindowCompactionStrategy (Layer 1)
 23a3876
-## 2026-05-07 — feat(mcp): implement McpToolDiscoveryService with parallel sync + per-server error isolation
-9627022
-## 2026-05-07 — feat(util): add TokenEstimator.estimate(List<LlmMessage>) overload
-40855c6
 
 ---
 
