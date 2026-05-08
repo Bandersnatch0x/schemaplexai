@@ -87,6 +87,12 @@ public class ToolCallingStateHandler implements AgentStateHandler {
 
             // 2. Structured tool call parsing (replaces heuristic parseToolCalls)
             List<ToolCall> toolCalls = toolRegistry.parse(lastMessage.getContent(), null);
+            if (toolCalls == null || toolCalls.isEmpty()) {
+                log.info("No tool calls parsed from assistant message for execution {}, transitioning to THINKING",
+                        execution.getId());
+                stateMachine.transition(AgentExecutionState.THINKING, execution);
+                return;
+            }
 
             // 3. Tool-call budget check
             int currentCount = getToolCallCount(execution);

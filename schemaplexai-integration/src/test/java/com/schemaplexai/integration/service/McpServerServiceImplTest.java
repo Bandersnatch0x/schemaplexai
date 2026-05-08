@@ -2,6 +2,7 @@ package com.schemaplexai.integration.service;
 
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.integration.dto.McpToolSchema;
 import com.schemaplexai.integration.entity.SfMcpServer;
 import com.schemaplexai.integration.mapper.McpServerMapper;
 import com.schemaplexai.integration.service.impl.McpServerServiceImpl;
@@ -13,6 +14,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
+
+import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -118,5 +122,47 @@ class McpServerServiceImplTest {
         boolean result = mcpServerService.healthCheck(300L);
 
         assertThat(result).isFalse();
+    }
+
+    @Test
+    void discoverTools_serverNotFound_returnsEmptyList() {
+        when(mcpServerMapper.selectById(100L)).thenReturn(null);
+
+        List<McpToolSchema> result = mcpServerService.discoverTools(100L);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void discoverTools_nullEndpoint_returnsEmptyList() {
+        SfMcpServer server = new SfMcpServer();
+        server.setId(200L);
+        server.setEndpoint(null);
+        when(mcpServerMapper.selectById(200L)).thenReturn(server);
+
+        List<McpToolSchema> result = mcpServerService.discoverTools(200L);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void invokeTool_serverNotFound_returnsErrorMessage() {
+        when(mcpServerMapper.selectById(100L)).thenReturn(null);
+
+        String result = mcpServerService.invokeTool(100L, "testTool", Map.of());
+
+        assertThat(result).contains("not found");
+    }
+
+    @Test
+    void invokeTool_nullEndpoint_returnsErrorMessage() {
+        SfMcpServer server = new SfMcpServer();
+        server.setId(200L);
+        server.setEndpoint(null);
+        when(mcpServerMapper.selectById(200L)).thenReturn(server);
+
+        String result = mcpServerService.invokeTool(200L, "testTool", Map.of());
+
+        assertThat(result).contains("not found");
     }
 }

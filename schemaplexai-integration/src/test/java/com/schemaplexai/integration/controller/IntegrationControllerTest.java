@@ -1,6 +1,7 @@
 package com.schemaplexai.integration.controller;
 
 import com.schemaplexai.common.result.Result;
+import com.schemaplexai.integration.dto.McpToolSchema;
 import com.schemaplexai.integration.entity.SfApiGatewayConfig;
 import com.schemaplexai.integration.entity.SfIntegration;
 import com.schemaplexai.integration.entity.SfMcpServer;
@@ -16,6 +17,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -167,6 +170,31 @@ class IntegrationControllerTest {
     void mcpServer_list() {
         when(mcpServerService.list()).thenReturn(Collections.emptyList());
         Result<?> result = mcpServerController.list();
+        assertThat(result.getCode()).isEqualTo(200);
+    }
+
+    @Test
+    void mcpServer_discoverTools() {
+        McpToolSchema tool = new McpToolSchema("testTool", "A test tool", Map.of("type", "object"));
+        when(mcpServerService.discoverTools(1L)).thenReturn(List.of(tool));
+        Result<List<McpToolSchema>> result = mcpServerController.discoverTools(1L);
+        assertThat(result.getCode()).isEqualTo(200);
+        assertThat(result.getData()).hasSize(1);
+        assertThat(result.getData().get(0).getName()).isEqualTo("testTool");
+    }
+
+    @Test
+    void mcpServer_invokeTool() {
+        when(mcpServerService.invokeTool(1L, "testTool", Map.of("key", "value"))).thenReturn("success");
+        Result<String> result = mcpServerController.invokeTool(1L, Map.of("toolName", "testTool", "arguments", Map.of("key", "value")));
+        assertThat(result.getCode()).isEqualTo(200);
+        assertThat(result.getData()).isEqualTo("success");
+    }
+
+    @Test
+    void mcpServer_invokeTool_missingToolName() {
+        when(mcpServerService.invokeTool(1L, null, Map.of())).thenReturn("Error: MCP server not found or endpoint missing");
+        Result<String> result = mcpServerController.invokeTool(1L, Map.of("arguments", Map.of()));
         assertThat(result.getCode()).isEqualTo(200);
     }
 

@@ -5,8 +5,10 @@ import com.schemaplexai.agent.engine.rag.MilvusIsolationService;
 import com.schemaplexai.agent.engine.rag.SearchResult;
 import com.schemaplexai.common.context.TenantContextHolder;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.net.SocketTimeoutException;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -23,16 +25,29 @@ public class ContextInjector {
         Pattern.compile("you\\s+are\\s+now", Pattern.CASE_INSENSITIVE)
     );
 
+    private static final int DEFAULT_MAX_RETRIES = 2;
+    private static final long DEFAULT_RETRY_DELAY_MS = 200;
+
     private MilvusIsolationService ragService;
     private EmbeddingService embeddingService;
+    private final int maxRetries;
+    private final long retryDelayMs;
 
     public ContextInjector() {
-        // No-arg constructor for Spring; RAG services wired via setters when available
+        this.maxRetries = DEFAULT_MAX_RETRIES;
+        this.retryDelayMs = DEFAULT_RETRY_DELAY_MS;
     }
 
     public ContextInjector(MilvusIsolationService ragService, EmbeddingService embeddingService) {
+        this(ragService, embeddingService, DEFAULT_MAX_RETRIES, DEFAULT_RETRY_DELAY_MS);
+    }
+
+    public ContextInjector(MilvusIsolationService ragService, EmbeddingService embeddingService,
+                           int maxRetries, long retryDelayMs) {
         this.ragService = ragService;
         this.embeddingService = embeddingService;
+        this.maxRetries = Math.max(0, maxRetries);
+        this.retryDelayMs = Math.max(0, retryDelayMs);
     }
 
     public void setRagService(MilvusIsolationService ragService) {
@@ -174,18 +189,70 @@ public class ContextInjector {
             log.debug("RAG services not available, skipping context retrieval");
             return "";
         }
+
+        int attempt = 0;
+        while (true) {
+            attempt++;
+            try {
+                float[] queryEmbedding = embeddingService.embed(prompt);
+                List<SearchResult> results = ragService.searchWithIsolation(
+                        context.getTenantId(),
+                        context.getProjectId(),
+                        queryEmbedding
+                );
+                return formatSearchResults(results);
+            } catch (Exception e) {
+                if (isRetryable(e) && attempt <= maxRetries) {
+                    log.warn("RAG retrieval failed for tenant={} on attempt {}/{}, retrying after {}ms",
+                            context.getTenantId(), attempt, maxRetries + 1, retryDelayMs, e);
+                    sleepQuietly(retryDelayMs);
+                } else {
+                    log.warn("RAG retrieval failed for tenant={} on attempt {}, proceeding without context",
+                            context.getTenantId(), attempt, e);
+                    return "";
+                }
+            }
+        }
+    }
+
+    /**
+     * Determine if an exception represents a transient failure that may succeed on retry.
+     */
+    boolean isRetryable(Exception e) {
+        if (e instanceof SocketTimeoutException) {
+            return true;
+        }
+        String message = e.getMessage();
+        if (message != null && isTransientMessage(message)) {
+            return true;
+        }
+        Throwable cause = e.getCause();
+        if (cause instanceof SocketTimeoutException) {
+            return true;
+        }
+        if (cause != null && cause.getMessage() != null && isTransientMessage(cause.getMessage())) {
+            return true;
+        }
+        return false;
+    }
+
+    private boolean isTransientMessage(String message) {
+        String lower = message.toLowerCase();
+        return lower.contains("timeout")
+                || lower.contains("timed out")
+                || lower.contains("transient")
+                || lower.contains("temporarily unavailable")
+                || lower.contains("connection reset")
+                || lower.contains("broken pipe")
+                || lower.contains("too many requests")
+                || lower.contains("rate limit");
+    }
+
+    private void sleepQuietly(long millis) {
         try {
-            float[] queryEmbedding = embeddingService.embed(prompt);
-            List<SearchResult> results = ragService.searchWithIsolation(
-                    context.getTenantId(),
-                    context.getProjectId(),
-                    queryEmbedding
-            );
-            return formatSearchResults(results);
-        } catch (Exception e) {
-            log.warn("RAG retrieval failed for tenant={}, proceeding without context",
-                    context.getTenantId(), e);
-            return "";
+            Thread.sleep(millis);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
         }
     }
 

@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -215,5 +216,264 @@ class ContextInjectorTest {
         String result = contextInjector.injectWithContext(prompt, context);
 
         assertEquals(prompt, result);
+    }
+
+    // ------------------------------------------------------------------
+    // RAG retry logic tests
+    // ------------------------------------------------------------------
+
+    @Test
+    void injectShouldRetryOnTransientEmbeddingFailureThenSucceed() throws Exception {
+        TenantContextHolder.setTenantId("tenant-1");
+        String userPrompt = "What is RAG?";
+        List<LlmMessage> messages = new ArrayList<>(List.of(new LlmMessage("user", userPrompt)));
+
+        float[] embedding = new float[]{0.1f};
+        when(embeddingService.embed(userPrompt))
+                .thenThrow(new RuntimeException("Connection timeout to embedding service"))
+                .thenReturn(embedding);
+        when(ragService.searchWithIsolation("tenant-1", null, embedding))
+                .thenReturn(List.of(new SearchResult("RAG context", "docs/rag.md", 0.95)));
+
+        ContextInjector injectorWithRetry = new ContextInjector(ragService, embeddingService, 2, 10);
+        injectorWithRetry.inject(messages, 1L);
+
+        assertEquals(2, messages.size());
+        assertEquals("system", messages.get(0).getRole());
+        assertTrue(messages.get(0).getContent().contains("RAG context"));
+        assertEquals("user", messages.get(1).getRole());
+        verify(embeddingService, times(2)).embed(userPrompt);
+    }
+
+    @Test
+    void injectShouldRetryOnTransientSearchFailureThenSucceed() throws Exception {
+        TenantContextHolder.setTenantId("tenant-1");
+        String userPrompt = "What is RAG?";
+        List<LlmMessage> messages = new ArrayList<>(List.of(new LlmMessage("user", userPrompt)));
+
+        float[] embedding = new float[]{0.1f};
+        when(embeddingService.embed(userPrompt)).thenReturn(embedding);
+        when(ragService.searchWithIsolation("tenant-1", null, embedding))
+                .thenThrow(new RuntimeException("Milvus temporarily unavailable"))
+                .thenReturn(List.of(new SearchResult("RAG context", "docs/rag.md", 0.95)));
+
+        ContextInjector injectorWithRetry = new ContextInjector(ragService, embeddingService, 2, 10);
+        injectorWithRetry.inject(messages, 1L);
+
+        assertEquals(2, messages.size());
+        assertEquals("system", messages.get(0).getRole());
+        assertTrue(messages.get(0).getContent().contains("RAG context"));
+        verify(ragService, times(2)).searchWithIsolation("tenant-1", null, embedding);
+    }
+
+    @Test
+    void injectShouldFallbackAfterExhaustingRetries() throws Exception {
+        TenantContextHolder.setTenantId("tenant-1");
+        String userPrompt = "What is RAG?";
+        List<LlmMessage> messages = new ArrayList<>(List.of(new LlmMessage("user", userPrompt)));
+
+        when(embeddingService.embed(userPrompt))
+                .thenThrow(new RuntimeException("Connection timeout to embedding service"));
+
+        ContextInjector injectorWithRetry = new ContextInjector(ragService, embeddingService, 1, 10);
+        injectorWithRetry.inject(messages, 1L);
+
+        assertEquals(1, messages.size());
+        assertEquals("user", messages.get(0).getRole());
+        verify(embeddingService, times(2)).embed(userPrompt);
+    }
+
+    @Test
+    void injectShouldNotRetryOnPermanentFailure() throws Exception {
+        TenantContextHolder.setTenantId("tenant-1");
+        String userPrompt = "What is RAG?";
+        List<LlmMessage> messages = new ArrayList<>(List.of(new LlmMessage("user", userPrompt)));
+
+        when(embeddingService.embed(userPrompt))
+                .thenThrow(new IllegalArgumentException("Invalid input format"));
+
+        ContextInjector injectorWithRetry = new ContextInjector(ragService, embeddingService, 2, 10);
+        injectorWithRetry.inject(messages, 1L);
+
+        assertEquals(1, messages.size());
+        verify(embeddingService, times(1)).embed(userPrompt);
+    }
+
+    @Test
+    void injectShouldRetryOnSocketTimeoutException() throws Exception {
+        TenantContextHolder.setTenantId("tenant-1");
+        String userPrompt = "What is RAG?";
+        List<LlmMessage> messages = new ArrayList<>(List.of(new LlmMessage("user", userPrompt)));
+
+        float[] embedding = new float[]{0.1f};
+        when(embeddingService.embed(userPrompt))
+                .thenThrow(new RuntimeException("embedding failed", new SocketTimeoutException("Read timed out")))
+                .thenReturn(embedding);
+        when(ragService.searchWithIsolation("tenant-1", null, embedding))
+                .thenReturn(List.of(new SearchResult("RAG context", "docs/rag.md", 0.95)));
+
+        ContextInjector injectorWithRetry = new ContextInjector(ragService, embeddingService, 2, 10);
+        injectorWithRetry.inject(messages, 1L);
+
+        assertEquals(2, messages.size());
+        verify(embeddingService, times(2)).embed(userPrompt);
+    }
+
+    // ------------------------------------------------------------------
+    // Tenant isolation tests
+    // ------------------------------------------------------------------
+
+    @Test
+    void injectShouldPassProjectIdForTenantIsolation() throws Exception {
+        TenantContextHolder.setTenantId("tenant-1");
+        String userPrompt = "What is RAG?";
+        List<LlmMessage> messages = new ArrayList<>(List.of(new LlmMessage("user", userPrompt)));
+
+        float[] embedding = new float[]{0.1f};
+        when(embeddingService.embed(userPrompt)).thenReturn(embedding);
+        when(ragService.searchWithIsolation("tenant-1", "project-42", embedding))
+                .thenReturn(List.of(new SearchResult("Project-specific context", "docs/project.md", 0.95)));
+
+        AgentContext agentContext = AgentContext.builder()
+                .agentId(1L)
+                .tenantId("tenant-1")
+                .projectId("project-42")
+                .build();
+
+        String result = contextInjector.injectWithContext(userPrompt, agentContext);
+
+        assertTrue(result.contains("Project-specific context"));
+        verify(ragService).searchWithIsolation("tenant-1", "project-42", embedding);
+    }
+
+    @Test
+    void injectShouldUseCorrectTenantIdFromContextHolder() throws Exception {
+        TenantContextHolder.setTenantId("tenant-alpha");
+        String userPrompt = "Hello";
+        List<LlmMessage> messages = new ArrayList<>(List.of(new LlmMessage("user", userPrompt)));
+
+        float[] embedding = new float[]{0.1f};
+        when(embeddingService.embed(userPrompt)).thenReturn(embedding);
+        when(ragService.searchWithIsolation("tenant-alpha", null, embedding))
+                .thenReturn(List.of(new SearchResult("Alpha context", "docs/alpha.md", 0.95)));
+
+        contextInjector.inject(messages, 1L);
+
+        verify(ragService).searchWithIsolation("tenant-alpha", null, embedding);
+    }
+
+    @Test
+    void injectShouldNotMixTenantContexts() throws Exception {
+        TenantContextHolder.setTenantId("tenant-a");
+        String userPrompt = "Hello";
+        List<LlmMessage> messages = new ArrayList<>(List.of(new LlmMessage("user", userPrompt)));
+
+        float[] embedding = new float[]{0.1f};
+        when(embeddingService.embed(userPrompt)).thenReturn(embedding);
+        when(ragService.searchWithIsolation("tenant-a", null, embedding))
+                .thenReturn(List.of(new SearchResult("Tenant A context", "docs/a.md", 0.95)));
+
+        contextInjector.inject(messages, 1L);
+
+        verify(ragService, never()).searchWithIsolation(eq("tenant-b"), any(), any());
+        verify(ragService).searchWithIsolation("tenant-a", null, embedding);
+    }
+
+    // ------------------------------------------------------------------
+    // isRetryable helper tests
+    // ------------------------------------------------------------------
+
+    @Test
+    void isRetryableShouldReturnTrueForTimeoutMessages() {
+        assertTrue(contextInjector.isRetryable(new RuntimeException("Connection timeout")));
+        assertTrue(contextInjector.isRetryable(new RuntimeException("Read timed out")));
+        assertTrue(contextInjector.isRetryable(new RuntimeException("Request timeout")));
+    }
+
+    @Test
+    void isRetryableShouldReturnTrueForRateLimitMessages() {
+        assertTrue(contextInjector.isRetryable(new RuntimeException("Too many requests")));
+        assertTrue(contextInjector.isRetryable(new RuntimeException("Rate limit exceeded")));
+    }
+
+    @Test
+    void isRetryableShouldReturnTrueForTransientMessages() {
+        assertTrue(contextInjector.isRetryable(new RuntimeException("Service temporarily unavailable")));
+        assertTrue(contextInjector.isRetryable(new RuntimeException("Transient error")));
+        assertTrue(contextInjector.isRetryable(new RuntimeException("Connection reset by peer")));
+        assertTrue(contextInjector.isRetryable(new RuntimeException("Broken pipe")));
+    }
+
+    @Test
+    void isRetryableShouldReturnTrueForSocketTimeoutException() {
+        assertTrue(contextInjector.isRetryable(new SocketTimeoutException("Read timed out")));
+    }
+
+    @Test
+    void isRetryableShouldReturnFalseForPermanentErrors() {
+        assertFalse(contextInjector.isRetryable(new IllegalArgumentException("Invalid input")));
+        assertFalse(contextInjector.isRetryable(new NullPointerException()));
+        assertFalse(contextInjector.isRetryable(new RuntimeException("Authentication failed")));
+        assertFalse(contextInjector.isRetryable(new RuntimeException("Not found")));
+    }
+
+    @Test
+    void isRetryableShouldReturnFalseForNullMessage() {
+        assertFalse(contextInjector.isRetryable(new RuntimeException()));
+    }
+
+    // ------------------------------------------------------------------
+    // Search failure fallback tests
+    // ------------------------------------------------------------------
+
+    @Test
+    void injectShouldFallbackWhenSearchThrowsException() throws Exception {
+        TenantContextHolder.setTenantId("tenant-1");
+        String userPrompt = "What is RAG?";
+        List<LlmMessage> messages = new ArrayList<>(List.of(new LlmMessage("user", userPrompt)));
+
+        float[] embedding = new float[]{0.1f};
+        when(embeddingService.embed(userPrompt)).thenReturn(embedding);
+        when(ragService.searchWithIsolation("tenant-1", null, embedding))
+                .thenThrow(new RuntimeException("Milvus connection failed"));
+
+        assertDoesNotThrow(() -> contextInjector.inject(messages, 1L));
+
+        assertEquals(1, messages.size());
+        assertEquals("user", messages.get(0).getRole());
+    }
+
+    @Test
+    void injectWithContextShouldReturnOriginalPromptWhenSearchFails() throws Exception {
+        String prompt = "What is RAG?";
+        AgentContext context = AgentContext.builder()
+                .agentId(1L)
+                .tenantId("tenant-1")
+                .build();
+
+        float[] embedding = new float[]{0.1f};
+        when(embeddingService.embed(prompt)).thenReturn(embedding);
+        when(ragService.searchWithIsolation("tenant-1", null, embedding))
+                .thenThrow(new RuntimeException("Search service unavailable"));
+
+        String result = contextInjector.injectWithContext(prompt, context);
+
+        assertEquals(prompt, result);
+    }
+
+    @Test
+    void injectShouldHandleNullSearchResultsGracefully() throws Exception {
+        TenantContextHolder.setTenantId("tenant-1");
+        String userPrompt = "Hello";
+        List<LlmMessage> messages = new ArrayList<>(List.of(new LlmMessage("user", userPrompt)));
+
+        float[] embedding = new float[]{0.1f};
+        when(embeddingService.embed(userPrompt)).thenReturn(embedding);
+        when(ragService.searchWithIsolation("tenant-1", null, embedding))
+                .thenReturn(null);
+
+        contextInjector.inject(messages, 1L);
+
+        assertEquals(1, messages.size());
     }
 }

@@ -82,7 +82,7 @@ public class ToolRegistry {
             return Collections.emptyList();
         }
 
-        String providerName = provider.getProviderName();
+        String providerName = provider != null ? provider.getProviderName() : "GENERIC";
         ToolCallParser parser = parsers.get(providerName);
 
         if (parser == null) {

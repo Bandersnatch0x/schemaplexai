@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.List;
 
 @Slf4j
@@ -17,6 +18,8 @@ public class AgentLoopShadowReviewService {
 
     private final ObjectMapper objectMapper;
     private final SfAgentMemoryMapper memoryMapper;
+    private final ShadowFeedbackRetriever feedbackRetriever;
+    private final ShadowFeedbackApplicator feedbackApplicator;
 
     public List<FeedbackAction> parseFeedbackActions(String feedbackActionsJson) {
         try {
@@ -47,11 +50,32 @@ public class AgentLoopShadowReviewService {
 
     public void reviewLoop(Long executionId, Long agentId, String shadowConfigJson) {
         List<FeedbackAction> actions = parseFeedbackActions(shadowConfigJson);
-        if (actions.isEmpty()) {
+        if (actions == null || actions.isEmpty()) {
             log.warn("No shadow feedback actions configured for agent {}", agentId);
             return;
         }
         // In shadow mode, log suggested actions without applying them
         log.info("Shadow review for execution {} suggests actions: {}", executionId, actions);
+    }
+
+    /**
+     * Get recent feedback entries for an agent.
+     *
+     * @param agentId the agent ID
+     * @param limit   maximum number of entries
+     * @return list of feedback summaries
+     */
+    public List<FeedbackSummary> getRecentFeedback(Long agentId, int limit) {
+        return feedbackRetriever.retrieveRecentFeedback(agentId, limit);
+    }
+
+    /**
+     * Get the aggregated feedback trend for an agent over the default window (7 days).
+     *
+     * @param agentId the agent ID
+     * @return feedback trend
+     */
+    public FeedbackTrend getFeedbackTrend(Long agentId) {
+        return feedbackRetriever.getFeedbackTrend(agentId, Duration.ofDays(7));
     }
 }
