@@ -13,6 +13,7 @@ public enum AgentExecutionState {
     GATE_BLOCKED,
     RETRYING,
     REFLECTING,
+    HANDOFF,
     COMPLETED,
     FAILED,
     CANCELLED;
