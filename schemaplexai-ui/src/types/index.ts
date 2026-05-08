@@ -64,3 +64,33 @@ export interface ApiResponse<T> {
   message: string
   data: T
 }
+
+export type TaskStatus =
+  | 'BACKLOG'
+  | 'QUEUED'
+  | 'IN_PROGRESS'
+  | 'AWAITING_REVIEW'
+  | 'REVISING'
+  | 'BLOCKED'
+  | 'DONE'
+
+export type TaskPriority = 'P0' | 'P1' | 'P2' | 'P3'
+
+export type AssignmentType = 'MANUAL' | 'AUTO' | 'MIXED'
+
+export interface SfTask {
+  id: string
+  tenantId: string
+  title: string
+  description?: string
+  skillTags?: string[]
+  priority: TaskPriority
+  status: TaskStatus
+  assignedRuntimeId?: string
+  assignedAgentId?: string
+  assignmentType: AssignmentType
+  specId?: string
+  blockerReason?: string
+  createdAt: string
+  updatedAt: string
+}
