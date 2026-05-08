@@ -22,8 +22,8 @@ class NodeExecutorRegistryTest {
         Map<String, NodeExecutor> byType = executors.stream()
                 .collect(Collectors.toMap(NodeExecutor::getNodeType, Function.identity()));
 
-        assertThat(byType).containsKeys("HTTP", "SCRIPT", "START", "END", "AI_MODEL", "TOOL_CALL", "CONDITION");
-        assertThat(byType).hasSize(7);
+        assertThat(byType).containsKeys("HTTP", "SCRIPT", "START", "END", "AI_MODEL", "TOOL_CALL", "CONDITION", "CONCURRENT", "JOIN");
+        assertThat(byType).hasSize(9);
     }
 
     @Test
