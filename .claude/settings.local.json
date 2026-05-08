@@ -138,7 +138,23 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash .claude/hooks/stop-gen-status.sh || true"
+          },
+          {
+            "type": "command",
             "command": "bash .claude/hooks/screenshots-if-dirty.sh 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"$TOOL_INPUT\" | grep -q \"git commit\" && bash .claude/hooks/pre-commit-wiki-sync.sh || true",
+            "timeout": 10
           }
         ]
       }
