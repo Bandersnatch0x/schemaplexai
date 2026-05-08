@@ -1,6 +1,7 @@
 package com.schemaplexai.agent.engine.model;
 
 import com.schemaplexai.agent.engine.config.LlmProviderProperties;
+import com.schemaplexai.agent.engine.tool.ToolDefinition;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
 import dev.langchain4j.model.anthropic.AnthropicChatModel;
@@ -14,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -86,6 +88,68 @@ public class AnthropicProvider implements LlmProvider {
             throw new BaseException(ResultCode.AGENT_EXECUTION_FAILED,
                     "Anthropic chat completion failed: " + e.getMessage());
         }
+    }
+
+    @Override
+    public String generateWithTools(List<LlmMessage> messages, List<ToolDefinition> tools,
+                                    String modelId, Double temperature) {
+        log.debug("Anthropic generateWithTools called: model={}, messageCount={}, toolCount={}, temp={}",
+                modelId, messages != null ? messages.size() : 0,
+                tools != null ? tools.size() : 0, temperature);
+        validateConfiguration();
+
+        if (messages == null || messages.isEmpty()) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "Message list cannot be null or empty");
+        }
+
+        List<LlmMessage> enriched = enrichWithToolDescriptions(messages, tools);
+        return generateWithMessages(enriched, modelId, temperature);
+    }
+
+    /**
+     * Enriches the message list by prepending tool descriptions to the first system message,
+     * or inserting a new system message if none exists.
+     */
+    private List<LlmMessage> enrichWithToolDescriptions(List<LlmMessage> messages, List<ToolDefinition> tools) {
+        if (tools == null || tools.isEmpty()) {
+            return messages;
+        }
+
+        String toolSection = formatToolSection(tools);
+        List<LlmMessage> enriched = new ArrayList<>(messages.size() + 1);
+
+        boolean systemInjected = false;
+        for (LlmMessage msg : messages) {
+            if (!systemInjected && "system".equalsIgnoreCase(msg.getRole())) {
+                enriched.add(new LlmMessage("system",
+                        msg.getContent() + "\n\n" + toolSection));
+                systemInjected = true;
+            } else {
+                enriched.add(msg);
+            }
+        }
+
+        if (!systemInjected) {
+            enriched.add(0, new LlmMessage("system", toolSection));
+        }
+
+        return enriched;
+    }
+
+    private String formatToolSection(List<ToolDefinition> tools) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Available tools:\n\n");
+        for (ToolDefinition tool : tools) {
+            sb.append("- ").append(tool.name()).append(": ").append(tool.description()).append("\n");
+            if (tool.parameters() != null) {
+                tool.parameters().forEach(p ->
+                        sb.append(String.format("  - %s (%s)%s: %s%n",
+                                p.name(), p.type(), p.required() ? ", required" : "", p.description())));
+            }
+        }
+        sb.append("\nUse Thought/Action/Action Input format to invoke tools. ");
+        sb.append("Use Final Answer when you have the answer.");
+        return sb.toString();
     }
 
     @Override

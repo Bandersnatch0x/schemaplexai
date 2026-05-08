@@ -1,5 +1,6 @@
 package com.schemaplexai.agent.engine.memory;
 
+import com.schemaplexai.agent.engine.admission.TokenBudget;
 import com.schemaplexai.agent.engine.entity.SfChatMessage;
 import com.schemaplexai.agent.engine.mapper.SfChatMessageMapper;
 import com.schemaplexai.agent.engine.model.LlmMessage;
@@ -229,5 +230,94 @@ class CompositeChatMemoryStoreTest {
         msg.setRole(role);
         msg.setContent(content);
         return msg;
+    }
+
+    // ------------------------------------------------------------------
+    // MemoryStrategy integration tests
+    // ------------------------------------------------------------------
+
+    @Test
+    void loadMessagesWithBudgetReturnsAllWhenStrategyIsNull() {
+        when(listOps.range(anyString(), eq(0L), eq(-1L))).thenReturn(null);
+        when(chatMessageMapper.selectList(any())).thenReturn(null);
+
+        List<LlmMessage> result = memoryStore.loadMessages("conv-1", new TokenBudget(1000, 1000));
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void loadMessagesWithBudgetAppliesStrategyWhenConfigured() {
+        String encMsg1 = tenantKeyService.encrypt("hello", "test-tenant");
+        String encMsg2 = tenantKeyService.encrypt("world", "test-tenant");
+        List<LlmMessage> redisMessages = List.of(
+                new LlmMessage("user", encMsg1),
+                new LlmMessage("assistant", encMsg2)
+        );
+        when(listOps.range(anyString(), eq(0L), eq(-1L))).thenReturn(redisMessages);
+        when(listOps.size(anyString())).thenReturn(2L);
+
+        SlidingWindowStrategy strategy = new SlidingWindowStrategy(25);
+        memoryStore.setMemoryStrategy(strategy);
+
+        TokenBudget budget = new TokenBudget(10000, 10000);
+        List<LlmMessage> result = memoryStore.loadMessages("conv-1", budget);
+
+        assertEquals(2, result.size());
+        assertEquals("hello", result.get(0).getContent());
+        assertEquals("world", result.get(1).getContent());
+    }
+
+    @Test
+    void loadMessagesWithBudgetDropsOldMessagesWhenBudgetTight() {
+        String encMsg1 = tenantKeyService.encrypt(
+            "first long message that costs many tokens because it is very lengthy indeed", "test-tenant");
+        String encMsg2 = tenantKeyService.encrypt(
+            "second message also quite long to consume token budget quickly", "test-tenant");
+        String encMsg3 = tenantKeyService.encrypt(
+            "third message is also long enough to matter for token counting", "test-tenant");
+        List<LlmMessage> redisMessages = List.of(
+                new LlmMessage("user", encMsg1),
+                new LlmMessage("assistant", encMsg2),
+                new LlmMessage("user", encMsg3)
+        );
+        when(listOps.range(anyString(), eq(0L), eq(-1L))).thenReturn(redisMessages);
+        when(listOps.size(anyString())).thenReturn(3L);
+
+        SlidingWindowStrategy strategy = new SlidingWindowStrategy(25);
+        memoryStore.setMemoryStrategy(strategy);
+
+        TokenBudget budget = new TokenBudget(15, 15);
+        List<LlmMessage> result = memoryStore.loadMessages("conv-1", budget);
+
+        assertTrue(result.size() < 3, "Should drop oldest messages due to budget");
+        assertEquals("third message is also long enough to matter for token counting",
+            result.get(result.size() - 1).getContent());
+    }
+
+    @Test
+    void setMemoryStrategyUpdatesStrategy() {
+        SlidingWindowStrategy strategy = new SlidingWindowStrategy(50);
+        memoryStore.setMemoryStrategy(strategy);
+
+        assertSame(strategy, memoryStore.getMemoryStrategy());
+    }
+
+    @Test
+    void getMemoryStrategyReturnsNullByDefault() {
+        assertNull(memoryStore.getMemoryStrategy());
+    }
+
+    @Test
+    void loadMessagesWithBudgetReturnsEmptyWhenNoMessages() {
+        when(listOps.range(anyString(), eq(0L), eq(-1L))).thenReturn(null);
+        when(chatMessageMapper.selectList(any())).thenReturn(null);
+
+        SlidingWindowStrategy strategy = new SlidingWindowStrategy(25);
+        memoryStore.setMemoryStrategy(strategy);
+
+        List<LlmMessage> result = memoryStore.loadMessages("conv-1", new TokenBudget(1000, 1000));
+
+        assertTrue(result.isEmpty());
     }
 }

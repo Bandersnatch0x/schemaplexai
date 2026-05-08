@@ -1,6 +1,7 @@
 package com.schemaplexai.agent.engine.memory;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.schemaplexai.agent.engine.admission.TokenBudget;
 import com.schemaplexai.agent.engine.entity.SfChatMessage;
 import com.schemaplexai.agent.engine.mapper.SfChatMessageMapper;
 import com.schemaplexai.agent.engine.model.LlmMessage;
@@ -33,6 +34,7 @@ public class CompositeChatMemoryStore {
     private final org.springframework.data.redis.core.StringRedisTemplate stringRedisTemplate;
     private final SfChatMessageMapper chatMessageMapper;
     private final TenantKeyService tenantKeyService;
+    private MemoryStrategy memoryStrategy;
 
     public List<LlmMessage> loadMessages(String conversationId) {
         String tenantId = TenantContextHolder.getTenantId();
@@ -143,6 +145,59 @@ public class CompositeChatMemoryStore {
                         .last("LIMIT 1")
         );
         return latest != null ? latest.getTurnIndex() + 1 : 0;
+    }
+
+    /**
+     * Load messages with memory strategy applied for token-budget-aware selection.
+     * Falls back to plain loadMessages if no strategy is configured.
+     *
+     * @param conversationId conversation identifier
+     * @param budget         token budget constraint
+     * @return selected messages fitting within the budget
+     */
+    public List<LlmMessage> loadMessages(String conversationId, TokenBudget budget) {
+        List<LlmMessage> allMessages = loadMessages(conversationId);
+        if (memoryStrategy == null || allMessages.isEmpty()) {
+            return allMessages;
+        }
+
+        List<ChatMessage> chatMessages = toChatMessages(allMessages);
+        List<ChatMessage> selected = memoryStrategy.select(chatMessages, budget);
+        return toLlmMessages(selected);
+    }
+
+    /**
+     * Set the memory strategy for token-budget-aware message selection.
+     *
+     * @param memoryStrategy the strategy to apply (nullable)
+     */
+    public void setMemoryStrategy(MemoryStrategy memoryStrategy) {
+        this.memoryStrategy = memoryStrategy;
+    }
+
+    /**
+     * Get the currently configured memory strategy.
+     *
+     * @return current strategy, or null if none configured
+     */
+    public MemoryStrategy getMemoryStrategy() {
+        return memoryStrategy;
+    }
+
+    private List<ChatMessage> toChatMessages(List<LlmMessage> messages) {
+        List<ChatMessage> result = new ArrayList<>(messages.size());
+        for (LlmMessage msg : messages) {
+            result.add(new ChatMessage(msg.getRole(), msg.getContent()));
+        }
+        return result;
+    }
+
+    private List<LlmMessage> toLlmMessages(List<ChatMessage> messages) {
+        List<LlmMessage> result = new ArrayList<>(messages.size());
+        for (ChatMessage msg : messages) {
+            result.add(new LlmMessage(msg.getRole(), msg.getContent()));
+        }
+        return result;
     }
 
     public void clear(String conversationId) {

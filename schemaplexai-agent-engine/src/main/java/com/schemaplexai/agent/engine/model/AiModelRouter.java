@@ -1,5 +1,6 @@
 package com.schemaplexai.agent.engine.model;
 
+import com.schemaplexai.agent.engine.tool.ToolDefinition;
 import com.schemaplexai.common.constants.CommonConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -81,6 +82,31 @@ public class AiModelRouter {
                 }
             }
             throw new IllegalStateException("All LLM providers failed for messages");
+        }
+    }
+
+    public String generateWithTools(List<LlmMessage> messages, List<ToolDefinition> tools,
+                                    String modelId, Double temperature) {
+        LlmProvider primary = null;
+        try {
+            primary = route(modelId);
+            return primary.generateWithTools(messages, tools, modelId, temperature);
+        } catch (Exception e) {
+            log.error("Primary provider failed for generateWithTools, attempting fallback", e);
+            if (primary != null) {
+                activateCooldown(primary.getProviderName());
+            }
+            for (LlmProvider fallback : providers) {
+                if (fallback.isHealthy()) {
+                    try {
+                        return fallback.generateWithTools(messages, tools, modelId, temperature);
+                    } catch (Exception ex) {
+                        log.error("Fallback provider {} failed", fallback.getProviderName(), ex);
+                        activateCooldown(fallback.getProviderName());
+                    }
+                }
+            }
+            throw new IllegalStateException("All LLM providers failed for generateWithTools");
         }
     }
 
