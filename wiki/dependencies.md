@@ -1,3 +1,4 @@
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T13:00:00Z -->
 ---
 title: Dependencies & Tech Stack
 type: architecture
@@ -55,6 +56,20 @@ confidence: high
 | Elasticsearch | 8.12.0 |
 | Prometheus | 2.50.0 |
 | Grafana | 10.3.0 |
+
+## Mandatory Environment Variables
+
+> Copy `.env.example` to `.env` and fill in all REQUIRED fields before running `docker-compose up`.
+
+| Variable | Service | Purpose |
+|----------|---------|---------|
+| `POSTGRES_PASSWORD` | PostgreSQL | Database password — fail-fast if missing |
+| `RABBITMQ_DEFAULT_PASS` | RabbitMQ | MQ password — fail-fast if missing |
+| `MINIO_ROOT_PASSWORD` | MinIO | Object storage password — fail-fast if missing |
+| `GRAFANA_ADMIN_PASSWORD` | Grafana | Dashboard admin password — fail-fast if missing |
+| `JWT_SECRET` | Application | Token signing key — min 32 bytes, validated at startup by `JwtSecretStartupValidator` |
+
+Full list of env vars: see `.env.example` at project root.
 
 ## Backlinks
 

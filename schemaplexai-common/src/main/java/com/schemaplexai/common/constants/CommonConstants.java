@@ -15,12 +15,25 @@ public final class CommonConstants {
     public static final String HEADER_AUTHORIZATION = "Authorization";
     public static final String TOKEN_PREFIX = "Bearer ";
 
-    // Redis Keys
+    // Redis Keys — DEPRECATED: use TenantRedisKeyResolver instead.
+    // These are kept only for reference; new code MUST use TenantRedisKeyResolver.
+    /** @deprecated Use {@link com.schemaplexai.common.redis.TenantRedisKeyResolver#chatMemory} */
+    @Deprecated
     public static final String REDIS_KEY_CHAT_MEMORY = "sf:memory:chat:%s";
+    /** @deprecated Use {@link com.schemaplexai.common.redis.TenantRedisKeyResolver} */
+    @Deprecated
     public static final String REDIS_KEY_TEAM_CONTEXT = "sf:context:team:%s";
+    /** @deprecated Use {@link com.schemaplexai.common.redis.TenantRedisKeyResolver#idempotency} */
+    @Deprecated
     public static final String REDIS_KEY_IDEMPOTENCY = "sf:idempotency:%s";
+    /** @deprecated Use {@link com.schemaplexai.common.redis.TenantRedisKeyResolver#rateLimit} */
+    @Deprecated
     public static final String REDIS_KEY_RATE_LIMIT = "sf:rate:%s:%s";
+    /** @deprecated Use {@link com.schemaplexai.common.redis.TenantRedisKeyResolver#executionPaused} */
+    @Deprecated
     public static final String REDIS_KEY_EXECUTION_PAUSED = "sf:execution:paused:%s";
+    /** @deprecated Use {@link com.schemaplexai.common.redis.TenantRedisKeyResolver#modelCooldown} */
+    @Deprecated
     public static final String REDIS_KEY_MODEL_COOLDOWN = "sf:model:cooldown:%s";
 
     // MQ Exchange & Routing Keys

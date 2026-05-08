@@ -2,6 +2,7 @@ package com.schemaplexai.system.service;
 
 import com.schemaplexai.common.constants.CommonConstants;
 import com.schemaplexai.common.exception.BaseException;
+import com.schemaplexai.common.redis.TenantRedisKeyResolver;
 import com.schemaplexai.common.result.ResultCode;
 import com.schemaplexai.system.entity.SfUser;
 import com.schemaplexai.system.security.JwtTokenProvider;
@@ -69,7 +70,7 @@ public class AuthService {
         String refreshToken = generateToken(user.getId().toString(), tenantId, jwtRefreshExpiration);
 
         stringRedisTemplate.opsForValue().set(
-                CommonConstants.REDIS_KEY_CHAT_MEMORY + ":" + user.getId(),
+                TenantRedisKeyResolver.tokenSession(user.getId().toString()),
                 accessToken,
                 Duration.ofMillis(jwtExpiration)
         );
@@ -117,7 +118,7 @@ public class AuthService {
 
     public void logout(String userId, String token) {
         if (StringUtils.hasText(userId)) {
-            stringRedisTemplate.delete(CommonConstants.REDIS_KEY_CHAT_MEMORY + ":" + userId);
+            stringRedisTemplate.delete(TenantRedisKeyResolver.tokenSession(userId));
         }
         if (StringUtils.hasText(token)) {
             blacklistToken(token);

@@ -20,7 +20,7 @@
 | schemaplexai-integration | 0.0% | 0.0% | 0.0% |
 | **Average** | **37.6%** | **32.4%** | **37.5%** |
 
-*Modules not listed (schemaplexai-context, schemaplexai-quality, schemaplexai-ops, schemaplexai-spec, schemaplexai-workflow, schemaplexai-task, schemaplexai-admin) have no JaCoCo reports — either no test sources exist or the build was skipped.*
+*Modules not listed (schemaplexai-context, schemaplexai-quality, schemaplexai-ops, schemaplexai-spec, schemaplexai-workflow, schemaplexai-task) have no JaCoCo reports — either no test sources exist or the build was skipped. schemaplexai-admin has tests (12) but JaCoCo report may not be generated yet.*
 
 ---
 
@@ -67,7 +67,7 @@ schemaplexai-spec:           5 passed
 schemaplexai-ops:            2 passed
 schemaplexai-task:           0 tests (no test sources)
 schemaplexai-workflow:      15 passed
-schemaplexai-admin:          0 tests (empty module)
+schemaplexai-admin:         12 passed (6 controller + 6 service tests)
 ---
 TOTAL BACKEND:             281 passed
 ```

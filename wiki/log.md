@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T11:38:35Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T12:48:24Z -->
 
 ---
 title: Wiki Operation Log
@@ -14,6 +14,18 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
+## 2026-05-08 — feat(agent-engine): add MockLlmProvider + tenant-aware admission keys
+f52195b
+## 2026-05-08 — feat(common): add TenantRedisKeyResolver for tenant-scoped Redis keys
+5d7502d
+## 2026-05-08 — chore: update ReAct comment + sync development status
+cec51bd
+## 2026-05-08 — chore: add .env.example with all mandatory environment variables
+58d9eaa
+## 2026-05-08 — chore: add coverage/ to gitignore, commit run-tasks outputs
+b0b0f94
+## 2026-05-08 — docs: v1 readiness Day-0 baseline — 7-expert review + 22 blockers
+64c1fd0
 ## 2026-05-08 — chore: add 9 ralph-loop expert command templates
 2a7e432
 ## 2026-05-08 — feat(agent-engine): add ReAct tool-call support and token-budget memory
@@ -42,18 +54,6 @@ a35c785
 e22e1de
 ## 2026-05-08 — feat(docs): add Knife4j annotations to all controllers, boost test coverage
 e134899
-## 2026-05-08 — refactor(agent-engine): extract HashUtils, add skill tier parsing, update wiki gap
-1d5e1fb
-## 2026-05-08 — feat(agent-engine): implement Reasoning + Exploration modules, v1 release readiness
-e03ccba
-## 2026-05-08 — feat(agent-engine): per-iteration tool-call budget + Milvus consistency
-554b3b7
-## 2026-05-08 — chore: register PreToolUse and Stop hooks for wiki sync enforcement
-75a7ba5
-## 2026-05-08 — chore: update wiki sync timestamp
-8c1dd2c
-## 2026-05-08 — docs: add P1/P2/P4 batch implementation spec
-74c0d55
 
 ---
 

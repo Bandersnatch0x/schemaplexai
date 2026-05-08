@@ -1,6 +1,7 @@
 package com.schemaplexai.gateway.filter;
 
 import com.schemaplexai.common.constants.CommonConstants;
+import com.schemaplexai.common.redis.TenantRedisKeyResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -33,8 +34,8 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
-        String clientId = resolveClientId(request);
-        String key = String.format(CommonConstants.REDIS_KEY_RATE_LIMIT, clientId, System.currentTimeMillis() / 1000 / 60);
+        String windowKey = String.valueOf(System.currentTimeMillis() / 1000 / 60);
+        String key = resolveRateLimitKey(request, windowKey);
 
         return reactiveStringRedisTemplate.opsForValue()
                 .increment(key)
@@ -57,15 +58,20 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
                 });
     }
 
-    private String resolveClientId(ServerHttpRequest request) {
+    /**
+     * Resolve rate limit key with tenant prefix.
+     * Tenant requests use: sf:{tenantId}:ratelimit:tenant:{windowKey}
+     * IP fallback uses:    sf:global:ratelimit:ip:{ip}:{windowKey}
+     */
+    private String resolveRateLimitKey(ServerHttpRequest request, String windowKey) {
         String tenantId = request.getHeaders().getFirst(CommonConstants.HEADER_TENANT_ID);
         if (StringUtils.hasText(tenantId)) {
-            return "tenant:" + tenantId;
+            return TenantRedisKeyResolver.rateLimit(tenantId, "tenant", windowKey);
         }
         String ip = request.getRemoteAddress() != null
                 ? request.getRemoteAddress().getAddress().getHostAddress()
                 : "unknown";
-        return "ip:" + ip;
+        return TenantRedisKeyResolver.rateLimitGlobal("ip", ip, windowKey);
     }
 
     private Mono<Void> rateLimitExceeded(ServerHttpResponse response) {

@@ -26,7 +26,9 @@
         "bradlc.vscode-tailwindcss",
         "eamodio.gitlens",
         "GitHub.copilot",
-        "GitHub.copilot-chat"
+        "GitHub.copilot-chat",
+        "ms-vscode.vscode-typescript-next",
+        "ms-azuretools.vscode-docker"
       ],
       "settings": {
         "java.compile.nullAnalysis.mode": "automatic",
@@ -36,13 +38,18 @@
       }
     }
   },
-  "forwardPorts": [3000, 8080, 8081, 8082, 8083, 8084, 8085, 8086, 8087, 8088, 8089, 8090, 8091],
+  "forwardPorts": [3000, 5173, 5432, 5672, 6379, 8080, 8081, 8082, 8083, 8084, 8085, 8086, 8087, 8088, 8089, 8090, 8091, 15672],
   "portsAttributes": {
     "3000": { "label": "Frontend Dev Server", "onAutoForward": "openBrowser" },
+    "5173": { "label": "Vite Alt Port" },
+    "5432": { "label": "PostgreSQL" },
+    "5672": { "label": "RabbitMQ" },
+    "6379": { "label": "Redis" },
     "8080": { "label": "API Gateway" },
-    "8082": { "label": "Web / Knife4j Docs" }
+    "8082": { "label": "Web / Knife4j Docs" },
+    "15672": { "label": "RabbitMQ Management" }
   },
-  "postCreateCommand": "java -version && mvn -version && node -v && docker --version && docker-compose --version",
-  "postStartCommand": "git config --global --add safe.directory /workspaces/schemaplexai",
+  "postCreateCommand": "bash -c 'if [ ! -f .env ] && [ -f .env.example ]; then cp .env.example .env && echo \".env created from .env.example\"; fi'",
+  "postStartCommand": "git config --global --add safe.directory ${containerWorkspaceFolder} && bash -c 'if [ -f docker/docker-compose.yml ]; then cd docker && docker-compose up -d; fi'",
   "remoteUser": "vscode"
 }

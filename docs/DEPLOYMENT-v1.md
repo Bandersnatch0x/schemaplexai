@@ -39,24 +39,28 @@
 git clone <repo-url>
 cd schemaplexai
 
-# 2. Start infrastructure services
+# 2. Configure environment (REQUIRED)
+cp .env.example .env
+# Edit .env and fill in all REQUIRED fields (POSTGRES_PASSWORD, JWT_SECRET, etc.)
+
+# 3. Start infrastructure services
 cd docker
 docker-compose up -d
 cd ..
 
-# 3. Wait for services to be healthy (postgres, redis, rabbitmq, milvus)
+# 4. Wait for services to be healthy (postgres, redis, rabbitmq, milvus)
 docker-compose ps
 
-# 4. Build all backend modules
+# 5. Build all backend modules
 mvn clean compile -DskipTests
 
-# 5. Start core services in separate terminals
+# 6. Start core services in separate terminals
 mvn spring-boot:run -pl schemaplexai-gateway
 mvn spring-boot:run -pl schemaplexai-system
 mvn spring-boot:run -pl schemaplexai-web
 mvn spring-boot:run -pl schemaplexai-agent-engine
 
-# 6. Start frontend
+# 7. Start frontend
 cd schemaplexai-ui
 npm install
 npm run dev
