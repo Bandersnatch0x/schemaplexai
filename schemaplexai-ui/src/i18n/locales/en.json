@@ -20,17 +20,29 @@
     "disconnected": "Disconnected"
   },
   "nav": {
-    "cockpit": "Cockpit",
-    "canvas": "Canvas",
-    "workflows": "Workflows",
-    "agents": "Agents",
-    "specs": "Specs",
-    "contexts": "Contexts",
-    "quality": "Quality",
-    "integrations": "Integrations",
-    "ops": "Ops",
-    "notifications": "Notifications",
-    "settings": "Settings"
+    "domain": {
+      "cockpit": "Cockpit",
+      "agents": "Agents",
+      "projects": "Projects",
+      "quality": "Quality",
+      "platform": "Platform",
+      "tasks": "Tasks"
+    },
+    "sub": {
+      "list": "List",
+      "executor": "Executor",
+      "canvas": "Canvas",
+      "specs": "Specs",
+      "workflows": "Workflows",
+      "contexts": "Contexts",
+      "gates": "Gates",
+      "issues": "Issues",
+      "security": "Security",
+      "system": "System",
+      "integrations": "Integrations",
+      "ops": "Ops",
+      "jobs": "Jobs"
+    }
   },
   "cockpit": {
     "title": "Agent Cockpit",
@@ -279,6 +291,76 @@
   "notFound": {
     "subTitle": "Page not found",
     "backHome": "Back to Home"
+  },
+  "agentList": {
+    "title": "Agent List",
+    "newAgent": "New Agent",
+    "searchPlaceholder": "Search agents",
+    "name": "Name",
+    "description": "Description",
+    "type": "Type",
+    "status": "Status",
+    "updatedAt": "Updated At",
+    "action": "Action",
+    "fetchError": "Failed to fetch agent list"
+  },
+  "qualityGates": {
+    "title": "Quality Gates",
+    "newGate": "New Gate",
+    "name": "Name",
+    "status": "Status",
+    "score": "Score",
+    "fetchError": "Failed to fetch gate data"
+  },
+  "qualityIssues": {
+    "title": "Quality Issues",
+    "newIssue": "New Issue",
+    "issueTitle": "Title",
+    "category": "Category",
+    "status": "Status",
+    "fetchError": "Failed to fetch issue data"
+  },
+  "securityAudit": {
+    "title": "Security Audit",
+    "policy": "Policy",
+    "event": "Event",
+    "fetchError": "Failed to fetch audit data"
+  },
+  "systemCenter": {
+    "title": "System Center",
+    "users": "Users",
+    "roles": "Roles",
+    "tenants": "Tenants",
+    "models": "Model Config",
+    "fetchError": "Failed to fetch system data"
+  },
+  "taskBoard": {
+    "title": "Task Board",
+    "newTask": "New Task",
+    "backlog": "Backlog",
+    "queued": "Queued",
+    "inProgress": "In Progress",
+    "awaitingReview": "Awaiting Review",
+    "revising": "Revising",
+    "blocked": "Blocked",
+    "done": "Done",
+    "approve": "Approve",
+    "requestChanges": "Request Changes",
+    "escalate": "Escalate",
+    "fetchError": "Failed to fetch task data"
+  },
+  "taskJobs": {
+    "title": "Background Jobs",
+    "queue": "Queue",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "fetchError": "Failed to fetch job data"
+  },
+  "taskDetail": {
+    "title": "Task Detail",
+    "comments": "Comments",
+    "addComment": "Add Comment",
+    "fetchError": "Failed to fetch task detail"
   },
   "login": {
     "title": "SchemaPlexAI",

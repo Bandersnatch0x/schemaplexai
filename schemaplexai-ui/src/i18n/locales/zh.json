@@ -20,17 +20,29 @@
     "disconnected": "未连接"
   },
   "nav": {
-    "cockpit": "驾驶舱",
-    "canvas": "编排画布",
-    "workflows": "工作流",
-    "agents": "Agent 管理",
-    "specs": "Spec 中心",
-    "contexts": "上下文",
-    "quality": "质量与安全",
-    "integrations": "集成与工具",
-    "ops": "交付与运营",
-    "notifications": "通知中心",
-    "settings": "系统设置"
+    "domain": {
+      "cockpit": "驾驶舱",
+      "agents": "智能体",
+      "projects": "项目",
+      "quality": "质量",
+      "platform": "平台",
+      "tasks": "任务"
+    },
+    "sub": {
+      "list": "列表",
+      "executor": "执行器",
+      "canvas": "画布",
+      "specs": "规格",
+      "workflows": "工作流",
+      "contexts": "上下文",
+      "gates": "门禁",
+      "issues": "问题",
+      "security": "安全审计",
+      "system": "系统",
+      "integrations": "集成",
+      "ops": "运维",
+      "jobs": "作业"
+    }
   },
   "cockpit": {
     "title": "Agent 驾驶舱",
@@ -279,6 +291,76 @@
   "notFound": {
     "subTitle": "页面不存在",
     "backHome": "返回首页"
+  },
+  "agentList": {
+    "title": "Agent 列表",
+    "newAgent": "新建 Agent",
+    "searchPlaceholder": "搜索 Agent",
+    "name": "名称",
+    "description": "描述",
+    "type": "类型",
+    "status": "状态",
+    "updatedAt": "更新时间",
+    "action": "操作",
+    "fetchError": "获取 Agent 列表失败"
+  },
+  "qualityGates": {
+    "title": "质量门禁",
+    "newGate": "新建门禁",
+    "name": "名称",
+    "status": "状态",
+    "score": "评分",
+    "fetchError": "获取门禁数据失败"
+  },
+  "qualityIssues": {
+    "title": "质量问题",
+    "newIssue": "新建问题",
+    "issueTitle": "标题",
+    "category": "类别",
+    "status": "状态",
+    "fetchError": "获取问题数据失败"
+  },
+  "securityAudit": {
+    "title": "安全审计",
+    "policy": "策略",
+    "event": "事件",
+    "fetchError": "获取审计数据失败"
+  },
+  "systemCenter": {
+    "title": "系统中心",
+    "users": "用户管理",
+    "roles": "角色管理",
+    "tenants": "租户管理",
+    "models": "模型配置",
+    "fetchError": "获取系统数据失败"
+  },
+  "taskBoard": {
+    "title": "任务看板",
+    "newTask": "新建任务",
+    "backlog": "待办",
+    "queued": "排队",
+    "inProgress": "进行中",
+    "awaitingReview": "待审核",
+    "revising": "修改中",
+    "blocked": "阻塞",
+    "done": "已完成",
+    "approve": "通过",
+    "requestChanges": "请求修改",
+    "escalate": "升级",
+    "fetchError": "获取任务数据失败"
+  },
+  "taskJobs": {
+    "title": "后台作业",
+    "queue": "队列",
+    "retry": "重试",
+    "cancel": "取消",
+    "fetchError": "获取作业数据失败"
+  },
+  "taskDetail": {
+    "title": "任务详情",
+    "comments": "评论",
+    "addComment": "添加评论",
+    "fetchError": "获取任务详情失败"
   },
   "login": {
     "title": "SchemaPlexAI",
