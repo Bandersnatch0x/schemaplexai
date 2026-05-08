@@ -248,17 +248,6 @@ public class ThinkingStateHandler implements AgentStateHandler {
         return sb.toString();
     }
 
-    /**
-     * Backward-compatible overload for tests that do not supply an execution.
-     * Defaults to maxTier = 3 (all tiers available).
-     */
-    private String buildPrompt(List<LlmMessage> messages, String tenantId, String roleName, String skillName) {
-        // Create a minimal execution with default tier (round 1, but we want all tiers for compatibility)
-        SfAgentExecution dummyExecution = new SfAgentExecution();
-        dummyExecution.setMetadata("currentRound", 99); // unlocks tier 3
-        return buildPrompt(messages, tenantId, roleName, skillName, dummyExecution);
-    }
-
     private int resolveMaxTier(SfAgentExecution execution) {
         int currentRound = 1;
         Object roundMeta = execution.getMetadata("currentRound");

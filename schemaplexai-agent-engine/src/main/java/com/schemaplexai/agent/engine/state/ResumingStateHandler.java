@@ -6,9 +6,7 @@ import com.schemaplexai.agent.engine.mapper.SfAgentExecutionSnapshotMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import com.schemaplexai.agent.engine.util.HashUtils;
 
 /**
  * Handles the RESUMING state - loads persisted snapshot and restores execution context.
@@ -68,12 +66,14 @@ public class ResumingStateHandler implements AgentStateHandler {
         // Verify snapshot hash (tamper detection)
         String snapshotHash = snapshot.getSnapshotHash();
         if (snapshotHash != null && !snapshotHash.isBlank()) {
-            String computedHash = computeSha256(snapshot.getSnapshotJson());
-            if (!snapshotHash.equals(computedHash)) {
+            String computedHash = HashUtils.sha256(snapshot.getSnapshotJson());
+            if (!HashUtils.constantTimeEquals(snapshotHash, computedHash)) {
                 log.error("Snapshot {} hash mismatch for execution {}. Data may have been tampered.", snapshotId, execution.getId());
                 stateMachine.transition(AgentExecutionState.FAILED, execution);
                 return;
             }
+        } else {
+            log.warn("Snapshot hash missing for snapshot {} (legacy data). Allowing resume without integrity check.", snapshotId);
         }
 
         // Restore execution context from snapshot
@@ -93,17 +93,4 @@ public class ResumingStateHandler implements AgentStateHandler {
         stateMachine.transition(AgentExecutionState.THINKING, execution);
     }
 
-    private static String computeSha256(String input) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
-            StringBuilder hexString = new StringBuilder(64);
-            for (byte b : hash) {
-                hexString.append(String.format("%02x", b));
-            }
-            return hexString.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 algorithm not available", e);
-        }
-    }
 }

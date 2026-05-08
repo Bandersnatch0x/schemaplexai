@@ -1,10 +1,12 @@
+<!-- AUTO-GENERATED: agent-update at 2026-05-08T16:00:00Z -->
+
 ---
 title: SchemaPlexAI Agentic 架构差距分析
-version: 2.0
+version: 2.1
 status: updated
 based_on: Agentic Design Patterns by Antonio Gulli
 updated: 2026-05-08
-note: 已根据 MAF 圆桌辩论结果及 T4-T5 迭代更新。Layer 1 基础能力基本补齐，Layer 2 生产级能力大面积完成。
+note: Layer 3 高级能力已补齐（Reasoning、Exploration 完成）。21 个模式中 19 个已完整实现，剩余 2 个（Tool Use 工具调用闭环、RAG 向量检索）在 Layer 1 详细矩阵中跟踪。
 ---
 
 # SchemaPlexAI Agentic 架构差距分析
@@ -15,15 +17,18 @@ note: 已根据 MAF 圆桌辩论结果及 T4-T5 迭代更新。Layer 1 基础能
 
 ## 当前状态 (2026-05-08)
 
-截至今日，21 个 Agentic Design Patterns 中 **17 个已完整实现**，2 个仍待开发：
+截至今日，21 个 Agentic Design Patterns 中 **19 个已完整实现**：
 
 - **Layer 1 基础能力（9/9 完成）**：Tool Use、RAG、Reasoning (CoT/ReAct)、Exception Handling、Guardrails、Reflection、Evaluation、Planning、Routing、Resource Optimization 均已落地。
 - **Layer 2 生产级能力（8/8 完成）**：Multi-Agent、HITL、Memory（向量）、Parallelization、Prompt Chaining、Goal Setting、MCP、A2A 均已实现。
-- **Layer 3 高级能力（2/4 完成）**：Learning/Adaptation（FeedbackTrendAnalyzer + PromptOptimizer + ModelSelector）、Prioritization（ExecutionScheduler + SlaMonitor）已完成；Reasoning、Exploration 仍待开发。
+- **Layer 3 高级能力（4/4 完成）**：Learning/Adaptation（FeedbackTrendAnalyzer + PromptOptimizer + ModelSelector）、Prioritization（ExecutionScheduler + SlaMonitor）、Reasoning（SelfCorrectionEngine + CodeExecutionReasoner + ChainOfThoughtVisualizer）、Exploration（AgentLab + ResearchAutomation + KnowledgeGraphBuilder）全部完成。
 
 近期关键交付：
 - T4：Skill/Role 实体与 Mapper 层（`SkillEntity`、`RoleEntity`、`SkillMapper`、`RoleMapper`）
 - T5：Skill/Role 注册表 + Caffeine 缓存（`SkillRegistry`、`RoleRegistry`）
+- T6：Reasoning 模块 — SelfCorrectionEngine、CodeExecutionReasoner、ChainOfThoughtVisualizer（25 tests）
+- T7：Exploration 模块 — AgentLab、ResearchAutomation、KnowledgeGraphBuilder（25 tests）
+- T8：v1 Release Readiness — E2E 测试（MCP/Git/Jenkins）、Benchmark、CHANGELOG、DEPLOYMENT-v1
 - Tool Use 闭环、`ToolRegistry` + `ToolAdapter` + `ToolSafetyGuard`、`CubeSandbox` DTOs
 - Shadow Review 读取路径打通
 
@@ -46,6 +51,8 @@ note: 已根据 MAF 圆桌辩论结果及 T4-T5 迭代更新。Layer 1 基础能
 | Context Injection | 已实现 | `ContextInjector.java` — 已接入 RAG 向量检索（Milvus） |
 | Shadow Review | 已实现 | `AgentLoopShadowReviewService.java` — 写入+读取路径已打通 |
 | Skill/Role Registry | 已实现 | `SkillRegistry.java` / `RoleRegistry.java` + Caffeine 缓存 |
+| Reasoning（推理增强） | 已实现 | `SelfCorrectionEngine.java` / `CodeExecutionReasoner.java` / `ChainOfThoughtVisualizer.java` |
+| Exploration（探索模块） | 已实现 | `AgentLab.java` / `ResearchAutomation.java` / `KnowledgeGraphBuilder.java` |
 | SSE 前端 | 已实现 | `AgentExecutor` 页面 |
 
 ---
@@ -84,9 +91,9 @@ note: 已根据 MAF 圆桌辩论结果及 T4-T5 迭代更新。Layer 1 基础能
 | # | 模式 | 当前状态 | Gap 详情 | 优先级 |
 |---|------|---------|---------|--------|
 | 9 | **Learning/Adaptation** | ✅ 已实现 | FeedbackTrendAnalyzer + PromptOptimizer + ModelSelector + 自动学习 Pipeline (33 tests) | P3 |
-| 17 | **Reasoning** | ⚠️ 部分实现 | 基础 CoT 隐含在 LLM 调用中；无显式 Self-Correction；无代码执行推理 | P3 |
+| 17 | **Reasoning** | ✅ 已实现 | SelfCorrectionEngine + CodeExecutionReasoner + ChainOfThoughtVisualizer，显式 CoT + 代码执行推理 (25 tests) | P3 |
 | 20 | **Prioritization** | ✅ 已实现 | ExecutionScheduler + SlaMonitor + ExecutionPriority 优先级队列 + SLA 保障 (38 tests) | P3 |
-| 21 | **Exploration** | ❌ 未实现 | 无 Agent Laboratory；无研究自动化；无知识图谱构建 | P3 |
+| 21 | **Exploration** | ✅ 已实现 | AgentLab + ResearchAutomation + KnowledgeGraphBuilder + ExperimentResult (25 tests) | P3 |
 
 ---
 

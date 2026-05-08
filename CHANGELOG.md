@@ -77,14 +77,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rate limiting and concurrency controls on agent execution
 
 ### Testing
-- 1,567 backend tests (agent-engine)
+- 1,586 backend tests (agent-engine, 4 skipped for Docker)
 - 129 backend tests (context)
-- 97 backend tests (integration)
+- 111 backend tests (integration)
 - 63 backend tests (system)
 - 43 backend tests (web)
 - 41 backend tests (agent-config)
 - 31 backend tests (gateway)
 - 98 backend tests (common, model, dao, task)
+- 499 backend tests (dao, model, common combined)
 - 100 frontend tests (vitest)
 
 ### Documentation
@@ -97,7 +98,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Metric | Value |
 |--------|-------|
-| Total Backend Tests | 2,069 |
+| Total Backend Tests | 2,601 |
 | Total Frontend Tests | 100 |
 | Backend Modules | 11 |
 | Services | 11 microservices |

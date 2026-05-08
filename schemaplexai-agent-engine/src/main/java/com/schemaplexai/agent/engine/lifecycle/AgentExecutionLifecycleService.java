@@ -15,9 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import com.schemaplexai.agent.engine.util.HashUtils;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
@@ -72,7 +70,7 @@ public class AgentExecutionLifecycleService {
             SfAgentExecutionSnapshot entity = new SfAgentExecutionSnapshot();
             entity.setExecutionId(snapshot.getExecutionId());
             entity.setSnapshotJson(snapshotJson);
-            entity.setSnapshotHash(computeSha256(snapshotJson));
+            entity.setSnapshotHash(HashUtils.sha256(snapshotJson));
             entity.setTenantId(null); // will be filled by interceptor
             snapshotMapper.insert(entity);
         } catch (JsonProcessingException e) {
@@ -94,8 +92,8 @@ public class AgentExecutionLifecycleService {
         String snapshotJson = entity.getSnapshotJson();
         String storedHash = entity.getSnapshotHash();
         if (storedHash != null && !storedHash.isBlank()) {
-            String computedHash = computeSha256(snapshotJson);
-            if (!storedHash.equals(computedHash)) {
+            String computedHash = HashUtils.sha256(snapshotJson);
+            if (!HashUtils.constantTimeEquals(storedHash, computedHash)) {
                 log.error("Snapshot hash mismatch for execution {}. Data may have been tampered.", executionId);
                 return null;
             }
@@ -111,17 +109,4 @@ public class AgentExecutionLifecycleService {
         }
     }
 
-    private static String computeSha256(String input) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
-            StringBuilder hexString = new StringBuilder(64);
-            for (byte b : hash) {
-                hexString.append(String.format("%02x", b));
-            }
-            return hexString.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 algorithm not available", e);
-        }
-    }
 }

@@ -6,6 +6,7 @@ import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.util.ast.Node;
 import com.vladsch.flexmark.util.data.MutableDataSet;
 import jakarta.annotation.PreDestroy;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -21,6 +22,7 @@ import java.util.regex.Pattern;
  * - HTML tags rejected (XSS prevention)
  * - Parsing runs in isolated thread with 5s timeout (DoS prevention)
  */
+@Slf4j
 @Component
 public class SkillLoader {
 
@@ -118,6 +120,20 @@ public class SkillLoader {
                     "Skill description exceeds " + MAX_DESCRIPTION_LENGTH + " chars");
         }
 
+        // Parse tier from frontmatter (default to 1)
+        int tier = 1;
+        String tierStr = frontMatter.get("tier");
+        if (tierStr != null) {
+            try {
+                tier = Integer.parseInt(tierStr.trim());
+                if (tier < 1) {
+                    tier = 1;
+                }
+            } catch (NumberFormatException e) {
+                log.warn("Invalid tier value '{}' in skill frontmatter, defaulting to 1", tierStr);
+            }
+        }
+
         // Extract body: use flexmark AST to get content after frontmatter
         String body = extractBodyAfterFrontMatter(document);
 
@@ -127,7 +143,7 @@ public class SkillLoader {
                     "HTML tags are not allowed in skill content");
         }
 
-        return new SkillDefinition(name.trim(), description, body.trim(), 1);
+        return new SkillDefinition(name.trim(), description, body.trim(), tier);
     }
 
     /**
