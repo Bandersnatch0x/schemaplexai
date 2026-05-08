@@ -1,5 +1,5 @@
 import request from './request'
-import type { Agent, ExecutionRecord } from '@/types'
+import type { Agent } from '@/types'
 
 export interface AgentQuery {
   page?: number
@@ -40,21 +40,4 @@ export function updateAgent(id: string, data: CreateAgentPayload) {
 
 export function deleteAgent(id: string) {
   return request.delete<void>(`/agent-config/agents/${id}`)
-}
-
-export function executeAgent(id: string, prompt: string) {
-  return request.post<string>(`/agents/${id}/execute`, { prompt })
-}
-
-export function getExecutionRecords(agentId?: string) {
-  return request.get<ExecutionRecord[]>('/api/v1/agents/executions', { params: { agentId } })
-}
-
-export function getAgentStats() {
-  return request.get<{
-    totalAgents: number
-    totalExecutions: number
-    totalTokens: number
-    pendingApprovals: number
-  }>('/api/v1/agents/stats')
 }

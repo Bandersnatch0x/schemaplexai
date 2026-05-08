@@ -7,7 +7,7 @@ import { useSseStore } from '@/stores/sseStore'
 import SseViewer from '@/components/SseViewer'
 import ChatMemory, { type ChatMessage } from '@/components/ChatMemory'
 import { sseRequest } from '@/api/request'
-import { getAgentList } from '@/api/agent'
+import { getAgentList } from '@/api/agent-config'
 import type { SseEvent } from '@/types'
 import './AgentExecutor.css'
 

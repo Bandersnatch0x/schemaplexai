@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Card, Table, Tag, Button, message } from 'antd'
+import { Card, Table, Tag, message } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { getQualityGates, type QualityGate } from '@/api/quality'
 

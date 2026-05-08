@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getAgentStats } from '@/api/agent'
+import { getAgentStats } from '@/api/agent-engine'
 import { HexIcon, StatCard } from '@/components/Hive'
 import './Cockpit.css'
 

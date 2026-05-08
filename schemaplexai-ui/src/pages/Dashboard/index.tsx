@@ -8,7 +8,7 @@ import {
   ClockCircleOutlined,
 } from '@ant-design/icons'
 import { Line } from '@ant-design/charts'
-import { getAgentStats, getExecutionRecords } from '@/api/agent'
+import { getAgentStats, getExecutionRecords } from '@/api/agent-engine'
 import type { ExecutionRecord } from '@/types'
 import './Dashboard.css'
 

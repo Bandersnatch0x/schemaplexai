@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { Table, Button, Space, Tag, Modal, Form, Input, Select, message, Card, Drawer } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
-import { getAgentList, createAgent, updateAgent, deleteAgent } from '@/api/agent'
+import { getAgentList, createAgent, updateAgent, deleteAgent } from '@/api/agent-config'
 import { useAgentStore } from '@/stores/agentStore'
 import type { Agent } from '@/types'
-import type { CreateAgentPayload } from '@/api/agent'
+import type { CreateAgentPayload } from '@/api/agent-config'
 import './AgentManager.css'
 
 const { Option } = Select
