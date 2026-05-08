@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-07T19:00:46Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T02:28:20Z -->
 
 ---
 title: Wiki Operation Log
@@ -14,6 +14,14 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
+## 2026-05-08 — feat(agent-engine): add Layer 2 agentic patterns
+7d97896
+## 2026-05-08 — feat(agent-engine): add ShadowReviewEvaluator for Layer 1 completion
+e462668
+## 2026-05-08 — feat(agent-engine): complete Layer 1 agentic patterns
+a23e48e
+## 2026-05-08 — feat(observability): enable OTLP tracing in all services
+9bffe98
 ## 2026-05-08 — feat(gateway): add traceparent propagation filter
 72a673d
 ## 2026-05-08 — feat(observability): OpenTelemetry integration with PII redaction and tenant tagging
@@ -46,14 +54,6 @@ fdbe2ed
 9627022
 ## 2026-05-07 — feat(util): add TokenEstimator.estimate(List<LlmMessage>) overload
 40855c6
-## 2026-05-07 — feat(util): add TokenEstimator.estimate(List<LlmMessage>) overload
-3badfcc
-## 2026-05-07 — feat(compaction): add CompactionStrategy interface and CompactionResult record
-83604dd
-## 2026-05-07 — feat(sandbox): add scope() default method to SandboxProvider interface
-97d5a27
-## 2026-05-07 — fix(agent-engine): address code review findings in T2/T15/T17
-9aa5d63
 
 ---
 

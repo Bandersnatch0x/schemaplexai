@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-07T19:01:51Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T02:28:56Z -->
 
 ---
 title: Architecture Decision Records Index
