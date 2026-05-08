@@ -82,3 +82,6 @@ wiki/.qmd/
 # Frontend screenshot outputs
 .claude/outputs/.frontend-dirty
 .claude/outputs/screenshots/
+
+# Test coverage output
+coverage/
