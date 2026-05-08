@@ -7,8 +7,8 @@ spring:
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USERNAME:sf_user}
-    password: ${RABBITMQ_PASSWORD:sf_password}
+    username: ${RABBITMQ_USERNAME:?required}
+    password: ${RABBITMQ_PASSWORD:?required}
     virtual-host: /
     listener:
       simple:
@@ -30,8 +30,8 @@ spring:
           min-idle: 10
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/schemaplexai
-    username: ${DB_USERNAME:sf_user}
-    password: ${DB_PASSWORD:sf_password}
+    username: ${DB_USERNAME:?required}
+    password: ${DB_PASSWORD:?required}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
