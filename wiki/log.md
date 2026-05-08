@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T12:48:24Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T13:08:24Z -->
 
 ---
 title: Wiki Operation Log
@@ -14,6 +14,14 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
+## 2026-05-08 — chore: sync development status
+c1c2437
+## 2026-05-08 — test: fix RateLimitFilter and AuthService tests for TenantRedisKeyResolver
+ea73181
+## 2026-05-08 — chore: update wiki sync timestamp
+87c72f5
+## 2026-05-08 — feat(gateway): tenant-aware rate limiting and auth token lifecycle
+1a72d22
 ## 2026-05-08 — feat(agent-engine): add MockLlmProvider + tenant-aware admission keys
 f52195b
 ## 2026-05-08 — feat(common): add TenantRedisKeyResolver for tenant-scoped Redis keys
@@ -46,14 +54,6 @@ a7e5bf8
 147ff15
 ## 2026-05-08 — fix(config): migrate all application.yml credentials to fail-fast env vars
 74633a7
-## 2026-05-08 — fix(docker): remove plaintext passwords, bind ports to 127.0.0.1
-a35c785
-## 2026-05-08 — feat: add Skills Dashboard UI and Task List view
-7ddbdda
-## 2026-05-08 — feat: Tessera-inspired improvements
-e22e1de
-## 2026-05-08 — feat(docs): add Knife4j annotations to all controllers, boost test coverage
-e134899
 
 ---
 

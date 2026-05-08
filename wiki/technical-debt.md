@@ -18,19 +18,13 @@ confidence: high
 | Item | Priority | Details |
 |------|----------|---------|
 | SSE Event Bus single-node only | P0 | `ExecutionEventBus` holds SSE emitters in local `ConcurrentHashMap`. Horizontal scaling requires Redis pub/sub or sticky sessions. See [[services/execution-event-bus]] |
-| Tool Use sandbox missing | P0 | `ToolCallingStateHandler` + `ToolRegistry` implemented, but no `SandboxProvider` execution for SCRIPT/HTTP tools |
 
 ## High (Major Feature Gaps)
 
 | Item | Priority | Details |
 |------|----------|---------|
 | Multi-Agent orchestration | P1 | Single-Agent execution only; no Coordinator/Swarm/Crew |
-| Milvus consistency_level 未配置 | P1 | Collection 创建和 search 均使用默认 `Bounded`；多 Agent 写后读场景会返回空结果。需在 `MilvusProperties` 增加配置项，搜索时传入 `ConsistencyLevel.STRONG`。详见 [[gaps]] #13 |
 | HITL approval flow incomplete | P1 | `PAUSED` state exists but no UI approval/reject/resume flow |
-| Long-term memory missing | P1 | Chat Memory (Redis L1) complete; no vector long-term memory |
-| Reflection shallow | P1 | `ReflectingStateHandler` exists but reflection prompt is basic; no structured rubric |
-| Exception handling shallow | P1 | `Failed`/`Retrying` states exist but no fallback chain or circuit breaker |
-| schemaplexai-admin empty | P1 | Placeholder aggregator module with no code |
 
 ## MAF Absorption Roadmap (from 2026-05-08 roundtable debate)
 
@@ -71,8 +65,8 @@ confidence: high
 | Goal Setting absent | P2 | No goal tracking or completion detection |
 | MCP integration stub | P2 | `McpServerController` is a stub; no FastMCP integration |
 | Frontend page depth | P2 | 16 pages exist but many are UI shells |
-| Resource Optimization skeleton | P2 | `TokenBudget` + `AdmissionControl` have scaffolding |
-| Evaluation framework skeleton | P2 | `ToolErrorCategory` added; no LLM-as-Judge |
+| Resource Optimization skeleton | P2 | `TokenBudget` + `AdmissionControl` + per-iteration tool-call budget have scaffolding; LLM-as-Judge missing |
+| Evaluation framework skeleton | P2 | `Evaluator` + `GuardrailsEngine` + `ToolErrorCategory` added; LLM-as-Judge missing |
 
 ## Low (Polish & Enhancement)
 
@@ -101,6 +95,14 @@ confidence: high
 | **RAG wired into agent-engine** | 2026-05-07 | `ContextInjector.inject()` now calls `retrieveRagContext()` via `TenantContextHolder`; 13 tests added |
 | **Guardrails integrated** | 2026-05-07 | `GuardrailsConfig` + `ThinkingStateHandler.validateInput()` + 101 new tests |
 | **Planning mode implemented** | 2026-05-07 | `PLANNING` state + `PlanningStateHandler` + `SubTask`/`SubTaskPlan` + `ThinkingStateHandler` plan progression; 35 tests added |
+| **Tool Use sandbox** | 2026-05-08 | `ToolSandbox` + `ContainerToolSandbox` + `InputValidator` + `SseTokenValidator`; Layer 1 Task 1 |
+| **Milvus consistency_level** | 2026-05-08 | `MilvusIsolationService` with configurable consistency level; Layer 1 Task 4 |
+| **Long-term memory** | 2026-05-08 | `MemoryStrategy` + `RagIsolationConfig` + `TenantKeyService`; Layer 1 Task 4 |
+| **Reflection structured** | 2026-05-08 | `ReflectingStateHandler` with structured rubric + `Evaluator`; Layer 1 Task 5 |
+| **Exception handling chain** | 2026-05-08 | `RetryRecoveryStrategy` + `FallbackRecoveryStrategy` + `ExceptionHandlingStateHandler`; Layer 1 Task 3 |
+| **schemaplexai-admin not empty** | 2026-05-08 | Corrected: has 7 controllers, DTOs, services, 12 test files |
+| **Tool-call budget** | 2026-05-08 | Per-execution per-iteration tool-call budget enforcement; Layer 1 Task 3 |
+| **Guardrails engine** | 2026-05-08 | `GuardrailsEngine` with input/output validation; Layer 1 Task 5 |
 
 ## Backlinks
 
