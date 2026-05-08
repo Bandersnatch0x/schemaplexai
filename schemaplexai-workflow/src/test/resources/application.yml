@@ -13,6 +13,9 @@ spring:
     database:
       replace: none
 
+jwt:
+  secret: test-secret-for-workflow-module-must-be-32bytes
+
 mybatis-plus:
   global-config:
     db-config:
