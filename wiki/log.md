@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T11:33:55Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T11:38:35Z -->
 
 ---
 title: Wiki Operation Log
@@ -14,6 +14,14 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
+## 2026-05-08 — chore: add 9 ralph-loop expert command templates
+2a7e432
+## 2026-05-08 — feat(agent-engine): add ReAct tool-call support and token-budget memory
+a95a501
+## 2026-05-08 — feat(security): JWT_SECRET fail-fast startup validation
+111b112
+## 2026-05-08 — docs: sync wiki from docs/ and fix gaps.md AUTO-GENERATED marker
+4516eac
 ## 2026-05-08 — ci(jacoco): expand coverage to all 16 modules with whitelist ramp
 12e812f
 ## 2026-05-08 — test(ui): add vitest coverage provider (v8) with 70% line threshold
@@ -46,14 +54,6 @@ e03ccba
 8c1dd2c
 ## 2026-05-08 — docs: add P1/P2/P4 batch implementation spec
 74c0d55
-## 2026-05-08 — chore(verify): pass typecheck, lint, tests, and build
-f82527c
-## 2026-05-08 — chore: regenerate wiki/ files via sync-wiki.sh
-9b8676a
-## 2026-05-08 — chore(cleanup): remove dead code (Dashboard, AgentManager, NotificationCenter)
-51da5c4
-## 2026-05-08 — feat(router): restructure routes into 6 domain groups with sub-routes
-f3ac476
 
 ---
 
