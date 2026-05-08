@@ -21,6 +21,7 @@ const antdLocales: Record<string, typeof zhCN> = {
   en: enUS,
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 function AppWithI18n() {
   const { i18n } = useTranslation()
   const antdLocale = antdLocales[i18n.language] || zhCN

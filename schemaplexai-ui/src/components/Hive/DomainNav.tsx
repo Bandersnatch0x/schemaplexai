@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
 
 export interface DomainNavItem {
@@ -17,7 +16,6 @@ export interface DomainNavProps {
 const STORAGE_KEY = 'nav_expanded'
 
 export function DomainNav({ items }: DomainNavProps) {
-  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -80,7 +78,7 @@ export function DomainNav({ items }: DomainNavProps) {
 
             {hasChildren && isExpanded && (
               <div className="domain-nav-children">
-                {item.children.map((child) => (
+                {item.children?.map((child) => (
                   <div
                     key={child.key}
                     className={`domain-nav-child${isActive(child.path) ? ' domain-nav-child--active' : ''}`}
