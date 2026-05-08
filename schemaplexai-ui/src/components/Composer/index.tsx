@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Input, Button, Tooltip, Badge, Spin } from 'antd'
+import { Input, Button, Tooltip, Badge, Spin, Tabs } from 'antd'
 import {
   SendOutlined,
   PaperClipOutlined,
@@ -7,8 +7,11 @@ import {
   FileImageOutlined,
   FileTextOutlined,
   FileOutlined,
+  EyeOutlined,
+  EditOutlined,
 } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
+import { marked } from 'marked'
 import { useMentions } from './useMentions'
 import { useFileUpload } from './useFileUpload'
 import type { ComposerValue, MentionCandidate, ComposerAttachment } from './types'
@@ -41,6 +44,7 @@ export default function Composer({ placeholder, disabled, loading, onSend }: Com
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
   const [dragOver, setDragOver] = useState(false)
+  const [previewMode, setPreviewMode] = useState(false)
 
   const mentions = useMentions()
   const files = useFileUpload()
@@ -180,19 +184,41 @@ export default function Composer({ placeholder, disabled, loading, onSend }: Com
       )}
 
       <div className="composer-input-row">
-        <TextArea
-          ref={textareaRef}
-          rows={1}
-          placeholder={placeholder || t('agentExecutor.promptPlaceholder')}
-          value={text}
-          disabled={disabled || loading}
-          className="composer-textarea"
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-        />
+        {previewMode ? (
+          <div className="composer-preview">
+            {text.trim() ? (
+              <div
+                className="composer-preview-content"
+                dangerouslySetInnerHTML={{ __html: marked.parse(text) as string }}
+              />
+            ) : (
+              <div className="composer-preview-empty">无内容可预览</div>
+            )}
+          </div>
+        ) : (
+          <TextArea
+            ref={textareaRef}
+            rows={1}
+            placeholder={placeholder || t('agentExecutor.promptPlaceholder')}
+            value={text}
+            disabled={disabled || loading}
+            className="composer-textarea"
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+          />
+        )}
 
         <div className="composer-actions">
+          <Tooltip title={previewMode ? '编辑模式' : 'Markdown 预览'}>
+            <Button
+              type="text"
+              icon={previewMode ? <EditOutlined /> : <EyeOutlined />}
+              disabled={disabled || loading}
+              onClick={() => setPreviewMode((prev) => !prev)}
+            />
+          </Tooltip>
+
           <input
             type="file"
             multiple

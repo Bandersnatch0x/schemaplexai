@@ -69,4 +69,61 @@ describe('Composer', () => {
     render(<Composer onSend={mockSend} />)
     await waitFor(() => expect(screen.getByText('扫描不可用')).toBeInTheDocument())
   })
+
+  it('shows markdown preview toggle button', async () => {
+    render(<Composer onSend={mockSend} />)
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /markdown 预览/i })).toBeInTheDocument()
+    )
+  })
+
+  it('shows preview content when markdown mode is active', async () => {
+    render(<Composer onSend={mockSend} />)
+    const textarea = screen.getByRole('textbox')
+    fireEvent.change(textarea, { target: { value: '# Hello **world**' } })
+
+    const previewButton = await waitFor(() =>
+      screen.getByRole('button', { name: /markdown 预览/i })
+    )
+    fireEvent.click(previewButton)
+
+    await waitFor(() => {
+      expect(screen.getByText(/无内容可预览/i)).not.toBeInTheDocument()
+    })
+  })
+
+  it('shows empty preview when no text in preview mode', async () => {
+    render(<Composer onSend={mockSend} />)
+
+    const previewButton = await waitFor(() =>
+      screen.getByRole('button', { name: /markdown 预览/i })
+    )
+    fireEvent.click(previewButton)
+
+    await waitFor(() =>
+      expect(screen.getByText('无内容可预览')).toBeInTheDocument()
+    )
+  })
+
+  it('switches back to edit mode from preview', async () => {
+    render(<Composer onSend={mockSend} />)
+    const textarea = screen.getByRole('textbox')
+    fireEvent.change(textarea, { target: { value: 'some text' } })
+
+    const previewButton = await waitFor(() =>
+      screen.getByRole('button', { name: /markdown 预览/i })
+    )
+    fireEvent.click(previewButton)
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /编辑模式/i })).toBeInTheDocument()
+    )
+
+    const editButton = screen.getByRole('button', { name: /编辑模式/i })
+    fireEvent.click(editButton)
+
+    await waitFor(() =>
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
+    )
+  })
 })
