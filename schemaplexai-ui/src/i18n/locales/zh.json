@@ -211,7 +211,9 @@
     "run": "运行",
     "fetchError": "获取工作流列表失败",
     "runSuccess": "工作流已启动",
-    "runError": "启动工作流失败"
+    "runError": "启动工作流失败",
+    "templates": "模板管理",
+    "instances": "实例监控"
   },
   "systemSettings": {
     "title": "系统设置",

@@ -211,7 +211,9 @@
     "run": "Run",
     "fetchError": "Failed to fetch workflow list",
     "runSuccess": "Workflow started",
-    "runError": "Failed to start workflow"
+    "runError": "Failed to start workflow",
+    "templates": "Templates",
+    "instances": "Instances"
   },
   "systemSettings": {
     "title": "System Settings",
