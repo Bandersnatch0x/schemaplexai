@@ -15,8 +15,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.time.LocalDateTime;
 
 @Slf4j
 @Service
@@ -65,9 +68,11 @@ public class AgentExecutionLifecycleService {
 
     public void saveSnapshot(ExecutionSnapshot snapshot) {
         try {
+            String snapshotJson = objectMapper.writeValueAsString(snapshot);
             SfAgentExecutionSnapshot entity = new SfAgentExecutionSnapshot();
             entity.setExecutionId(snapshot.getExecutionId());
-            entity.setSnapshotJson(objectMapper.writeValueAsString(snapshot));
+            entity.setSnapshotJson(snapshotJson);
+            entity.setSnapshotHash(computeSha256(snapshotJson));
             entity.setTenantId(null); // will be filled by interceptor
             snapshotMapper.insert(entity);
         } catch (JsonProcessingException e) {
@@ -85,11 +90,38 @@ public class AgentExecutionLifecycleService {
         if (entity == null || entity.getSnapshotJson() == null) {
             return null;
         }
+
+        String snapshotJson = entity.getSnapshotJson();
+        String storedHash = entity.getSnapshotHash();
+        if (storedHash != null && !storedHash.isBlank()) {
+            String computedHash = computeSha256(snapshotJson);
+            if (!storedHash.equals(computedHash)) {
+                log.error("Snapshot hash mismatch for execution {}. Data may have been tampered.", executionId);
+                return null;
+            }
+        } else {
+            log.warn("Snapshot hash missing for execution {} (legacy data). Allowing through without integrity check.", executionId);
+        }
+
         try {
-            return objectMapper.readValue(entity.getSnapshotJson(), ExecutionSnapshot.class);
+            return objectMapper.readValue(snapshotJson, ExecutionSnapshot.class);
         } catch (Exception e) {
             log.error("Failed to deserialize snapshot for execution {}", executionId, e);
             return null;
+        }
+    }
+
+    private static String computeSha256(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder(64);
+            for (byte b : hash) {
+                hexString.append(String.format("%02x", b));
+            }
+            return hexString.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 algorithm not available", e);
         }
     }
 }

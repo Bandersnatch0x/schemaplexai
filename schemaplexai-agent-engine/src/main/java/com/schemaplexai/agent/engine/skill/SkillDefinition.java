@@ -6,9 +6,11 @@ package com.schemaplexai.agent.engine.skill;
  * @param name         skill identifier (max 64 chars)
  * @param description  human-readable summary (max 500 chars, nullable)
  * @param instructions markdown body with skill instructions
+ * @param tier         skill tier: 1 = basic (available immediately), 2 = intermediate, 3+ = advanced
  */
 public record SkillDefinition(
     String name,
     String description,
-    String instructions
+    String instructions,
+    Integer tier
 ) {}

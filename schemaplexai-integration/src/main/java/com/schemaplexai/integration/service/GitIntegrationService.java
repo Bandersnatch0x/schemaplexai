@@ -53,7 +53,7 @@ public class GitIntegrationService {
         repo.put("repoName", repoName);
         repo.put("cloneUrl", cloneUrl);
         repo.put("defaultBranch", defaultBranch != null ? defaultBranch : "main");
-        repo.put("accessToken", accessToken);
+        repo.put("accessToken", accessToken != null ? accessToken : "");
         repo.put("createdAt", Instant.now().toString());
         repo.put("status", "active");
         repoStore.put(repoId, repo);
@@ -87,6 +87,13 @@ public class GitIntegrationService {
             throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
         }
         log.info("Repository deleted: {}", repoId);
+    }
+
+    /** Public helper for test isolation. */
+    public void clearStore() {
+        repoStore.clear();
+        webhookStore.clear();
+        repoIdSequence = 1;
     }
 
     // --- Git Operations ---

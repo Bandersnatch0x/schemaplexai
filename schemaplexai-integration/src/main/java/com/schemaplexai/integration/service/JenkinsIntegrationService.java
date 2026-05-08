@@ -186,4 +186,9 @@ public class JenkinsIntegrationService {
         // TODO: integrate with workflow engine or agent engine to trigger downstream actions
         // e.g., notify agent engine, update spec review status, trigger deployment workflow
     }
+
+    /** Public helper for test isolation. */
+    public void clearCache() {
+        buildCache.clear();
+    }
 }

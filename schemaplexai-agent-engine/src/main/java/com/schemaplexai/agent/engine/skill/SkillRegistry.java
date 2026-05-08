@@ -8,8 +8,10 @@ import com.schemaplexai.agent.engine.mapper.SfAgentSkillMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -25,6 +27,10 @@ public class SkillRegistry {
                 .maximumSize(500)
                 .expireAfterWrite(30, TimeUnit.MINUTES)
                 .build();
+    }
+
+    private static Integer defaultTier(Integer tier) {
+        return tier != null ? tier : 1;
     }
 
     /**
@@ -61,9 +67,56 @@ public class SkillRegistry {
         SkillDefinition def = new SkillDefinition(
                 entity.getName(),
                 entity.getDescription(),
-                entity.getContent()
+                entity.getContent(),
+                defaultTier(entity.getTier())
         );
         cache.put(cacheKey, def);
+        return def;
+    }
+
+    /**
+     * Resolve all active skills up to the given tier (inclusive).
+     * Cache key: tenantId:available:maxTier
+     */
+    public List<SkillDefinition> resolveAvailable(String tenantId, int maxTier) {
+        String cacheKey = tenantId + ":available:" + maxTier;
+        // Note: Caffeine Cache<String, SkillDefinition> can't hold List; skip list caching.
+        List<SfAgentSkill> entities = skillMapper.selectList(
+                new LambdaQueryWrapper<SfAgentSkill>()
+                        .eq(SfAgentSkill::getTenantId, tenantId)
+                        .eq(SfAgentSkill::getStatus, 1)
+                        .le(SfAgentSkill::getTier, maxTier)
+        );
+        List<SkillDefinition> defs = entities.stream()
+                .map(e -> new SkillDefinition(
+                        e.getName(),
+                        e.getDescription(),
+                        e.getContent(),
+                        defaultTier(e.getTier())
+                ))
+                .collect(Collectors.toList());
+        if (!defs.isEmpty()) {
+            // Cache individual skills and the list result
+            for (SkillDefinition def : defs) {
+                cache.put(tenantId + ":" + def.name(), def);
+            }
+            // Caffeine Cache<String, SkillDefinition> can't hold List; we rely on individual skill caching.
+        }
+        return defs;
+    }
+
+    /**
+     * Resolve a single skill if it exists and its tier <= maxTier.
+     */
+    public SkillDefinition resolveByTier(String skillName, String tenantId, int maxTier) {
+        SkillDefinition def = resolve(skillName, tenantId);
+        if (def == null) {
+            return null;
+        }
+        if (def.tier() > maxTier) {
+            log.warn("Skill '{}' tier {} exceeds maxTier {} for tenant {}", skillName, def.tier(), maxTier, tenantId);
+            return null;
+        }
         return def;
     }
 

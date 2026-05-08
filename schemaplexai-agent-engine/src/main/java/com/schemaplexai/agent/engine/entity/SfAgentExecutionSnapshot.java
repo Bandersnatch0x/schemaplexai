@@ -15,4 +15,6 @@ public class SfAgentExecutionSnapshot extends BaseEntity {
     private Long executionId;
 
     private String snapshotJson;
+
+    private String snapshotHash;
 }

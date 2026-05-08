@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T04:18:17Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T07:04:09Z -->
 
 ---
 title: Wiki Operation Log
@@ -14,6 +14,14 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
+## 2026-05-08 — feat(agent-engine): per-iteration tool-call budget + Milvus consistency
+554b3b7
+## 2026-05-08 — chore: register PreToolUse and Stop hooks for wiki sync enforcement
+75a7ba5
+## 2026-05-08 — chore: update wiki sync timestamp
+8c1dd2c
+## 2026-05-08 — docs: add P1/P2/P4 batch implementation spec
+74c0d55
 ## 2026-05-08 — chore(verify): pass typecheck, lint, tests, and build
 f82527c
 ## 2026-05-08 — chore: regenerate wiki/ files via sync-wiki.sh
@@ -46,14 +54,6 @@ a6b6932
 65f43a4
 ## 2026-05-08 — refactor(api): split agent.ts into agent-config and agent-engine
 14d1f55
-## 2026-05-08 — chore(deps): add @dnd-kit for Kanban board
-4db9d8c
-## 2026-05-08 — feat(pages): create AgentList from AgentManager at /agents/list
-f24ff34
-## 2026-05-08 — feat(pages): split QualityCenter into QualityGates, QualityIssues, SecurityAudit
-0d91fb3
-## 2026-05-08 — feat(api): expand system API with users, roles, tenants, models
-207500c
 
 ---
 

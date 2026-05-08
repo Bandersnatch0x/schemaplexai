@@ -7,6 +7,8 @@ import com.schemaplexai.agent.engine.lifecycle.ExecutionSnapshot;
 import com.schemaplexai.agent.engine.security.SseTokenValidator;
 import com.schemaplexai.agent.engine.tool.ValidationResult;
 import com.schemaplexai.common.result.Result;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -16,6 +18,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/agents")
 @RequiredArgsConstructor
+@Tag(name = "Agent Execution", description = "Agent execution lifecycle and SSE event streaming")
 public class AgentExecutionController {
 
     private final AgentExecutionEngine executionEngine;
@@ -23,6 +26,7 @@ public class AgentExecutionController {
     private final SseTokenValidator sseTokenValidator;
 
     @PostMapping("/{id}/execute")
+    @Operation(summary = "Start agent execution")
     public Result<SfAgentExecution> execute(@PathVariable Long id, @RequestBody Map<String, String> body) {
         String tenantId = body.get("tenantId");
         String prompt = body.get("prompt");
@@ -31,37 +35,38 @@ public class AgentExecutionController {
     }
 
     @PostMapping("/{id}/executions/{execId}/pause")
+    @Operation(summary = "Pause execution")
     public Result<Void> pause(@PathVariable Long id, @PathVariable Long execId, @RequestParam String reason) {
         lifecycleService.pauseExecution(execId, com.schemaplexai.agent.engine.lifecycle.PauseReason.valueOf(reason));
         return Result.success();
     }
 
     @PostMapping("/{id}/executions/{execId}/resume")
+    @Operation(summary = "Resume execution")
     public Result<Void> resume(@PathVariable Long id, @PathVariable Long execId) {
         lifecycleService.resumeExecution(execId);
         return Result.success();
     }
 
     @PostMapping("/{id}/executions/{execId}/cancel")
+    @Operation(summary = "Cancel execution")
     public Result<Void> cancel(@PathVariable Long id, @PathVariable Long execId) {
         lifecycleService.cancelExecution(execId);
         return Result.success();
     }
 
     @GetMapping("/{id}/executions/{execId}/snapshot")
+    @Operation(summary = "Get execution snapshot")
     public Result<ExecutionSnapshot> snapshot(@PathVariable Long id, @PathVariable Long execId) {
         ExecutionSnapshot snapshot = lifecycleService.getLatestSnapshot(execId);
         return Result.success(snapshot);
     }
 
     /**
-     * 订阅 Agent 执行事件（SSE），需要 Token 验证。
-     * @param id Agent ID
-     * @param execId 执行 ID
-     * @param token SSE Token
-     * @return SSE Emitter
+     * Subscribe to agent execution events (SSE). Requires token validation.
      */
     @GetMapping("/{id}/executions/{execId}/events")
+    @Operation(summary = "Subscribe to execution events via SSE")
     public SseEmitter subscribeExecutionEvents(
             @PathVariable Long id,
             @PathVariable Long execId,

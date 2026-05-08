@@ -116,7 +116,7 @@ public class ThinkingStateHandler implements AgentStateHandler {
             String skillName = execution.getSkillName();
             String roleName = execution.getRoleName();
             String tenantId = execution.getTenantId();
-            String prompt = buildPrompt(messages, tenantId, roleName, skillName);
+            String prompt = buildPrompt(messages, tenantId, roleName, skillName, execution);
 
             // 3a. Guardrails input validation before LLM call
             ValidationResult inputGuardResult = guardrailsEngine.validateInput(prompt);
@@ -196,8 +196,11 @@ public class ThinkingStateHandler implements AgentStateHandler {
         }
     }
 
-    private String buildPrompt(List<LlmMessage> messages, String tenantId, String roleName, String skillName) {
+    private String buildPrompt(List<LlmMessage> messages, String tenantId, String roleName, String skillName, SfAgentExecution execution) {
         StringBuilder sb = new StringBuilder();
+
+        // Determine execution maturity tier based on current round
+        int maxTier = resolveMaxTier(execution);
 
         // Add role overlay if present
         if (roleName != null && !roleName.isBlank()) {
@@ -208,13 +211,25 @@ public class ThinkingStateHandler implements AgentStateHandler {
             }
         }
 
-        // Add skill instructions if present
+        // Add skill instructions if present and within tier
         if (skillName != null && !skillName.isBlank()) {
-            SkillDefinition skill = skillRegistry.resolve(skillName, tenantId);
+            SkillDefinition skill = skillRegistry.resolveByTier(skillName, tenantId, maxTier);
             if (skill != null) {
                 sb.append("# Skill: ").append(skill.name()).append("\n");
                 sb.append(skill.instructions()).append("\n\n");
+            } else {
+                log.warn("Skill '{}' skipped for execution {}: tier exceeds maxTier {}", skillName, execution.getId(), maxTier);
             }
+        }
+
+        // Inject available skills up to current tier as context
+        List<SkillDefinition> availableSkills = skillRegistry.resolveAvailable(tenantId, maxTier);
+        if (!availableSkills.isEmpty()) {
+            sb.append("# Available Skills (Tier ").append(maxTier).append(")\n");
+            for (SkillDefinition s : availableSkills) {
+                sb.append("- ").append(s.name()).append(": ").append(s.description()).append("\n");
+            }
+            sb.append("\n");
         }
 
         // Inject available tool descriptions
@@ -231,6 +246,38 @@ public class ThinkingStateHandler implements AgentStateHandler {
         }
 
         return sb.toString();
+    }
+
+    /**
+     * Backward-compatible overload for tests that do not supply an execution.
+     * Defaults to maxTier = 3 (all tiers available).
+     */
+    private String buildPrompt(List<LlmMessage> messages, String tenantId, String roleName, String skillName) {
+        // Create a minimal execution with default tier (round 1, but we want all tiers for compatibility)
+        SfAgentExecution dummyExecution = new SfAgentExecution();
+        dummyExecution.setMetadata("currentRound", 99); // unlocks tier 3
+        return buildPrompt(messages, tenantId, roleName, skillName, dummyExecution);
+    }
+
+    private int resolveMaxTier(SfAgentExecution execution) {
+        int currentRound = 1;
+        Object roundMeta = execution.getMetadata("currentRound");
+        if (roundMeta instanceof Number) {
+            currentRound = ((Number) roundMeta).intValue();
+        } else if (roundMeta != null) {
+            try {
+                currentRound = Integer.parseInt(roundMeta.toString());
+            } catch (NumberFormatException e) {
+                log.warn("Invalid currentRound metadata for execution {}: {}", execution.getId(), roundMeta);
+            }
+        }
+        if (currentRound <= 2) {
+            return 1;
+        } else if (currentRound <= 5) {
+            return 2;
+        } else {
+            return 3;
+        }
     }
 
     private String buildToolDescriptions() {

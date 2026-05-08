@@ -6,6 +6,10 @@ import com.schemaplexai.agent.engine.mapper.SfAgentExecutionSnapshotMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
 /**
  * Handles the RESUMING state - loads persisted snapshot and restores execution context.
  *
@@ -61,6 +65,17 @@ public class ResumingStateHandler implements AgentStateHandler {
             return;
         }
 
+        // Verify snapshot hash (tamper detection)
+        String snapshotHash = snapshot.getSnapshotHash();
+        if (snapshotHash != null && !snapshotHash.isBlank()) {
+            String computedHash = computeSha256(snapshot.getSnapshotJson());
+            if (!snapshotHash.equals(computedHash)) {
+                log.error("Snapshot {} hash mismatch for execution {}. Data may have been tampered.", snapshotId, execution.getId());
+                stateMachine.transition(AgentExecutionState.FAILED, execution);
+                return;
+            }
+        }
+
         // Restore execution context from snapshot
         String snapshotJson = snapshot.getSnapshotJson();
         if (snapshotJson != null && !snapshotJson.isBlank()) {
@@ -76,5 +91,19 @@ public class ResumingStateHandler implements AgentStateHandler {
 
         // Agent continues from the pause point
         stateMachine.transition(AgentExecutionState.THINKING, execution);
+    }
+
+    private static String computeSha256(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder(64);
+            for (byte b : hash) {
+                hexString.append(String.format("%02x", b));
+            }
+            return hexString.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 algorithm not available", e);
+        }
     }
 }

@@ -14,6 +14,8 @@ import com.schemaplexai.agent.engine.model.LlmMessage;
 import com.schemaplexai.agent.engine.model.ModelResolver;
 import com.schemaplexai.agent.engine.role.RoleRegistry;
 import com.schemaplexai.agent.engine.skill.SkillRegistry;
+import com.schemaplexai.agent.engine.skill.SkillDefinition;
+import com.schemaplexai.agent.engine.tool.ToolDefinition;
 import com.schemaplexai.agent.engine.tool.ToolRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -79,11 +82,16 @@ class ThinkingStateHandlerTest {
         execution.setAgentId(42L);
         execution.setConversationId("conv-123");
         execution.setTokenBudgetJson("32000,4096,0,0");
+        execution.setTenantId("tenant-1");
 
         // Default: guardrails pass everything (lenient because not all tests exercise the full handle flow)
         lenient().when(guardrailsEngine.validateInput(anyString())).thenReturn(ValidationResult.valid());
         // Default: compaction is noop (lenient because not all tests exercise compaction)
         lenient().when(autoCompactionService.compactIfNeeded(anyString(), any())).thenReturn(CompactionResult.empty());
+        // Default: no skills available (lenient)
+        lenient().when(skillRegistry.resolveAvailable(anyString(), anyInt())).thenReturn(Collections.emptyList());
+        // Default: tool registry returns empty list (lenient)
+        lenient().when(toolRegistry.getAll()).thenReturn(Collections.emptyList());
     }
 
     @Test
@@ -390,5 +398,60 @@ class ThinkingStateHandlerTest {
 
         verify(autoCompactionService, never()).compactIfNeeded(anyString(), any());
         verify(stateMachine, times(1)).transition(AgentExecutionState.COMPLETED, execution);
+    }
+
+    @Test
+    void buildPrompt_includesSkillsUpToCurrentTier() {
+        execution.setSkillName("reviewer");
+        execution.setRoleName(null);
+        execution.setMetadata("currentRound", 1);
+        execution.setTenantId("tenant-1");
+
+        SkillDefinition reviewer = new SkillDefinition("reviewer", "Code reviewer", "Review code carefully", 1);
+        SkillDefinition planner = new SkillDefinition("planner", "Task planner", "Plan tasks", 2);
+
+        when(skillRegistry.resolveByTier("reviewer", "tenant-1", 1)).thenReturn(reviewer);
+        when(skillRegistry.resolveAvailable("tenant-1", 1)).thenReturn(List.of(reviewer));
+        when(toolRegistry.getAll()).thenReturn(Collections.emptyList());
+
+        // Use reflection to call private buildPrompt
+        String prompt = invokeBuildPrompt(List.of(new LlmMessage("user", "Hello")));
+
+        assertTrue(prompt.contains("# Skill: reviewer"));
+        assertTrue(prompt.contains("Review code carefully"));
+        assertTrue(prompt.contains("# Available Skills (Tier 1)"));
+        assertTrue(prompt.contains("- reviewer: Code reviewer"));
+        assertFalse(prompt.contains("planner"));
+    }
+
+    @Test
+    void buildPrompt_skipsSkillAboveCurrentTier() {
+        execution.setSkillName("advanced");
+        execution.setRoleName(null);
+        execution.setMetadata("currentRound", 1);
+        execution.setTenantId("tenant-1");
+
+        SkillDefinition basic = new SkillDefinition("basic", "Basic skill", "Basic instructions", 1);
+
+        when(skillRegistry.resolveByTier("advanced", "tenant-1", 1)).thenReturn(null);
+        when(skillRegistry.resolveAvailable("tenant-1", 1)).thenReturn(List.of(basic));
+        when(toolRegistry.getAll()).thenReturn(Collections.emptyList());
+
+        String prompt = invokeBuildPrompt(List.of(new LlmMessage("user", "Hello")));
+
+        assertFalse(prompt.contains("# Skill: advanced"));
+        assertTrue(prompt.contains("# Available Skills (Tier 1)"));
+        assertTrue(prompt.contains("- basic: Basic skill"));
+    }
+
+    private String invokeBuildPrompt(List<LlmMessage> messages) {
+        try {
+            java.lang.reflect.Method method = ThinkingStateHandler.class.getDeclaredMethod(
+                    "buildPrompt", List.class, String.class, String.class, String.class, SfAgentExecution.class);
+            method.setAccessible(true);
+            return (String) method.invoke(thinkingStateHandler, messages, execution.getTenantId(), execution.getRoleName(), execution.getSkillName(), execution);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }

@@ -21,4 +21,6 @@ public class SfAgentSkill extends BaseEntity {
     private Integer version;
 
     private Integer status;
+
+    private Integer tier;
 }

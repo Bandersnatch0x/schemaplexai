@@ -1,0 +1,1 @@
+ALTER TABLE sf_agent_execution_snapshot ADD COLUMN snapshot_hash VARCHAR(64);

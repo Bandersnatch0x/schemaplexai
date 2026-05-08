@@ -1,6 +1,7 @@
 package com.schemaplexai.agent.engine.state;
 
 import com.schemaplexai.agent.engine.context.ContextInjector;
+import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.guardrails.GuardrailsEngine;
 import com.schemaplexai.agent.engine.loop.AgentLoopDetectionService;
 import com.schemaplexai.agent.engine.memory.CompositeChatMemoryStore;
@@ -75,13 +76,19 @@ class ThinkingStateHandlerSkillInjectionTest {
         );
     }
 
+    private SfAgentExecution createExecution() {
+        SfAgentExecution e = new SfAgentExecution();
+        e.setId(1L);
+        return e;
+    }
+
     @Test
     void shouldInjectRoleOverlayIntoPrompt() throws Exception {
         when(roleRegistry.resolve("senior-dev", "tenant-1"))
                 .thenReturn(new RoleOverlay("senior-dev", "Senior developer", "You are a senior developer."));
 
         Method buildPromptMethod = ThinkingStateHandler.class.getDeclaredMethod(
-                "buildPrompt", List.class, String.class, String.class, String.class);
+                "buildPrompt", List.class, String.class, String.class, String.class, SfAgentExecution.class);
         buildPromptMethod.setAccessible(true);
 
         String prompt = (String) buildPromptMethod.invoke(
@@ -89,7 +96,8 @@ class ThinkingStateHandlerSkillInjectionTest {
                 List.of(),
                 "tenant-1",
                 "senior-dev",
-                null
+                null,
+                createExecution()
         );
 
         assertThat(prompt).contains("# Role: senior-dev");
@@ -98,11 +106,12 @@ class ThinkingStateHandlerSkillInjectionTest {
 
     @Test
     void shouldInjectSkillInstructionsIntoPrompt() throws Exception {
-        when(skillRegistry.resolve("code-reviewer", "tenant-1"))
-                .thenReturn(new SkillDefinition("code-reviewer", "Code reviewer", "Review code for quality."));
+        when(skillRegistry.resolveByTier("code-reviewer", "tenant-1", 1))
+                .thenReturn(new SkillDefinition("code-reviewer", "Code reviewer", "Review code for quality.", 1));
+        when(skillRegistry.resolveAvailable("tenant-1", 1)).thenReturn(List.of());
 
         Method buildPromptMethod = ThinkingStateHandler.class.getDeclaredMethod(
-                "buildPrompt", List.class, String.class, String.class, String.class);
+                "buildPrompt", List.class, String.class, String.class, String.class, SfAgentExecution.class);
         buildPromptMethod.setAccessible(true);
 
         String prompt = (String) buildPromptMethod.invoke(
@@ -110,7 +119,8 @@ class ThinkingStateHandlerSkillInjectionTest {
                 List.of(),
                 "tenant-1",
                 null,
-                "code-reviewer"
+                "code-reviewer",
+                createExecution()
         );
 
         assertThat(prompt).contains("# Skill: code-reviewer");
@@ -121,11 +131,12 @@ class ThinkingStateHandlerSkillInjectionTest {
     void shouldInjectBothRoleAndSkill() throws Exception {
         when(roleRegistry.resolve("senior-dev", "tenant-1"))
                 .thenReturn(new RoleOverlay("senior-dev", "Senior", "You are a senior developer."));
-        when(skillRegistry.resolve("code-reviewer", "tenant-1"))
-                .thenReturn(new SkillDefinition("code-reviewer", "Reviewer", "Review code."));
+        when(skillRegistry.resolveByTier("code-reviewer", "tenant-1", 1))
+                .thenReturn(new SkillDefinition("code-reviewer", "Reviewer", "Review code.", 1));
+        when(skillRegistry.resolveAvailable("tenant-1", 1)).thenReturn(List.of());
 
         Method buildPromptMethod = ThinkingStateHandler.class.getDeclaredMethod(
-                "buildPrompt", List.class, String.class, String.class, String.class);
+                "buildPrompt", List.class, String.class, String.class, String.class, SfAgentExecution.class);
         buildPromptMethod.setAccessible(true);
 
         String prompt = (String) buildPromptMethod.invoke(
@@ -133,7 +144,8 @@ class ThinkingStateHandlerSkillInjectionTest {
                 List.of(),
                 "tenant-1",
                 "senior-dev",
-                "code-reviewer"
+                "code-reviewer",
+                createExecution()
         );
 
         assertThat(prompt).contains("# Role: senior-dev");
@@ -145,7 +157,7 @@ class ThinkingStateHandlerSkillInjectionTest {
     @Test
     void shouldReturnEmptyPromptWhenNoRoleOrSkillAndNoMessages() throws Exception {
         Method buildPromptMethod = ThinkingStateHandler.class.getDeclaredMethod(
-                "buildPrompt", List.class, String.class, String.class, String.class);
+                "buildPrompt", List.class, String.class, String.class, String.class, SfAgentExecution.class);
         buildPromptMethod.setAccessible(true);
 
         String prompt = (String) buildPromptMethod.invoke(
@@ -153,7 +165,8 @@ class ThinkingStateHandlerSkillInjectionTest {
                 List.of(),
                 "tenant-1",
                 null,
-                null
+                null,
+                createExecution()
         );
 
         assertThat(prompt).isEmpty();
@@ -162,7 +175,7 @@ class ThinkingStateHandlerSkillInjectionTest {
     @Test
     void shouldReturnOriginalPromptWhenNoRoleOrSkill() throws Exception {
         Method buildPromptMethod = ThinkingStateHandler.class.getDeclaredMethod(
-                "buildPrompt", List.class, String.class, String.class, String.class);
+                "buildPrompt", List.class, String.class, String.class, String.class, SfAgentExecution.class);
         buildPromptMethod.setAccessible(true);
 
         String prompt = (String) buildPromptMethod.invoke(
@@ -170,7 +183,8 @@ class ThinkingStateHandlerSkillInjectionTest {
                 List.of(new com.schemaplexai.agent.engine.model.LlmMessage("user", "Hello")),
                 "tenant-1",
                 null,
-                null
+                null,
+                createExecution()
         );
 
         assertThat(prompt).isEqualTo("user: Hello\n");
@@ -181,7 +195,7 @@ class ThinkingStateHandlerSkillInjectionTest {
         when(roleRegistry.resolve("unknown-role", "tenant-1")).thenReturn(null);
 
         Method buildPromptMethod = ThinkingStateHandler.class.getDeclaredMethod(
-                "buildPrompt", List.class, String.class, String.class, String.class);
+                "buildPrompt", List.class, String.class, String.class, String.class, SfAgentExecution.class);
         buildPromptMethod.setAccessible(true);
 
         String prompt = (String) buildPromptMethod.invoke(
@@ -189,7 +203,8 @@ class ThinkingStateHandlerSkillInjectionTest {
                 List.of(new com.schemaplexai.agent.engine.model.LlmMessage("user", "Hello")),
                 "tenant-1",
                 "unknown-role",
-                null
+                null,
+                createExecution()
         );
 
         assertThat(prompt).doesNotContain("# Role:");
@@ -198,10 +213,11 @@ class ThinkingStateHandlerSkillInjectionTest {
 
     @Test
     void shouldSkipSkillWhenRegistryReturnsNull() throws Exception {
-        when(skillRegistry.resolve("unknown-skill", "tenant-1")).thenReturn(null);
+        when(skillRegistry.resolveByTier("unknown-skill", "tenant-1", 1)).thenReturn(null);
+        when(skillRegistry.resolveAvailable("tenant-1", 1)).thenReturn(List.of());
 
         Method buildPromptMethod = ThinkingStateHandler.class.getDeclaredMethod(
-                "buildPrompt", List.class, String.class, String.class, String.class);
+                "buildPrompt", List.class, String.class, String.class, String.class, SfAgentExecution.class);
         buildPromptMethod.setAccessible(true);
 
         String prompt = (String) buildPromptMethod.invoke(
@@ -209,7 +225,8 @@ class ThinkingStateHandlerSkillInjectionTest {
                 List.of(new com.schemaplexai.agent.engine.model.LlmMessage("user", "Hello")),
                 "tenant-1",
                 null,
-                "unknown-skill"
+                "unknown-skill",
+                createExecution()
         );
 
         assertThat(prompt).doesNotContain("# Skill:");

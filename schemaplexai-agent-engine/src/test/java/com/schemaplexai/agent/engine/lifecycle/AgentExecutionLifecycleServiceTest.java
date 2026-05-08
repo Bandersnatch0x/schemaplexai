@@ -12,12 +12,16 @@ import com.schemaplexai.agent.engine.state.AgentStateMachine;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -166,5 +170,92 @@ class AgentExecutionLifecycleServiceTest {
 
         assertNotNull(retrieved);
         assertEquals(now, retrieved.getCreatedAt());
+    }
+
+    // -------------------------------------------------------------------------
+    // Hash integrity tests
+    // -------------------------------------------------------------------------
+
+    @Test
+    void saveSnapshot_computesHash() throws Exception {
+        ExecutionSnapshot snapshot = ExecutionSnapshot.builder()
+                .executionId(1L)
+                .state(AgentExecutionState.THINKING)
+                .build();
+
+        lifecycleService.saveSnapshot(snapshot);
+
+        ArgumentCaptor<SfAgentExecutionSnapshot> captor = ArgumentCaptor.forClass(SfAgentExecutionSnapshot.class);
+        verify(snapshotMapper).insert(captor.capture());
+        SfAgentExecutionSnapshot saved = captor.getValue();
+
+        assertNotNull(saved.getSnapshotHash());
+        assertEquals(64, saved.getSnapshotHash().length());
+
+        // Verify hash matches recomputed value
+        String expectedHash = computeSha256(saved.getSnapshotJson());
+        assertEquals(expectedHash, saved.getSnapshotHash());
+    }
+
+    @Test
+    void getLatestSnapshot_validHash_returnsSnapshot() throws Exception {
+        String snapshotJson = "{\"executionId\":1,\"state\":\"PAUSED\"}";
+        String validHash = computeSha256(snapshotJson);
+
+        SfAgentExecutionSnapshot entity = new SfAgentExecutionSnapshot();
+        entity.setExecutionId(1L);
+        entity.setSnapshotJson(snapshotJson);
+        entity.setSnapshotHash(validHash);
+
+        when(snapshotMapper.selectOne(any())).thenReturn(entity);
+
+        ExecutionSnapshot result = lifecycleService.getLatestSnapshot(1L);
+
+        assertNotNull(result);
+        assertEquals(1L, result.getExecutionId());
+        assertEquals(AgentExecutionState.PAUSED, result.getState());
+    }
+
+    @Test
+    void getLatestSnapshot_invalidHash_returnsNull() throws Exception {
+        String snapshotJson = "{\"executionId\":1,\"state\":\"PAUSED\"}";
+
+        SfAgentExecutionSnapshot entity = new SfAgentExecutionSnapshot();
+        entity.setExecutionId(1L);
+        entity.setSnapshotJson(snapshotJson);
+        entity.setSnapshotHash("0000000000000000000000000000000000000000000000000000000000000000");
+
+        when(snapshotMapper.selectOne(any())).thenReturn(entity);
+
+        ExecutionSnapshot result = lifecycleService.getLatestSnapshot(1L);
+
+        assertNull(result);
+    }
+
+    @Test
+    void getLatestSnapshot_nullHash_logsWarning() throws Exception {
+        String snapshotJson = "{\"executionId\":1,\"state\":\"PAUSED\"}";
+
+        SfAgentExecutionSnapshot entity = new SfAgentExecutionSnapshot();
+        entity.setExecutionId(1L);
+        entity.setSnapshotJson(snapshotJson);
+        entity.setSnapshotHash(null);
+
+        when(snapshotMapper.selectOne(any())).thenReturn(entity);
+
+        ExecutionSnapshot result = lifecycleService.getLatestSnapshot(1L);
+
+        assertNotNull(result);
+        assertEquals(1L, result.getExecutionId());
+    }
+
+    private static String computeSha256(String input) throws NoSuchAlgorithmException {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+        StringBuilder hexString = new StringBuilder(64);
+        for (byte b : hash) {
+            hexString.append(String.format("%02x", b));
+        }
+        return hexString.toString();
     }
 }

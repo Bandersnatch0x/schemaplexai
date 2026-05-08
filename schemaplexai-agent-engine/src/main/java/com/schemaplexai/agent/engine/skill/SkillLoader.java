@@ -127,7 +127,7 @@ public class SkillLoader {
                     "HTML tags are not allowed in skill content");
         }
 
-        return new SkillDefinition(name.trim(), description, body.trim());
+        return new SkillDefinition(name.trim(), description, body.trim(), 1);
     }
 
     /**
