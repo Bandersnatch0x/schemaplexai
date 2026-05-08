@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T10:25:42Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T11:33:55Z -->
 
 ---
 title: Wiki Operation Log
@@ -14,6 +14,24 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
+## 2026-05-08 — ci(jacoco): expand coverage to all 16 modules with whitelist ramp
+12e812f
+## 2026-05-08 — test(ui): add vitest coverage provider (v8) with 70% line threshold
+e9fafcf
+## 2026-05-08 — fix: P1 bug fixes — CostService, Notification, SSE smoke test
+f438e3a
+## 2026-05-08 — ci: add Trivy, OWASP Dependency-Check, Gitleaks security scans
+a7e5bf8
+## 2026-05-08 — chore(gitignore): add .env.production, secrets/, *.pem
+147ff15
+## 2026-05-08 — fix(config): migrate all application.yml credentials to fail-fast env vars
+74633a7
+## 2026-05-08 — fix(docker): remove plaintext passwords, bind ports to 127.0.0.1
+a35c785
+## 2026-05-08 — feat: add Skills Dashboard UI and Task List view
+7ddbdda
+## 2026-05-08 — feat: Tessera-inspired improvements
+e22e1de
 ## 2026-05-08 — feat(docs): add Knife4j annotations to all controllers, boost test coverage
 e134899
 ## 2026-05-08 — refactor(agent-engine): extract HashUtils, add skill tier parsing, update wiki gap
@@ -36,24 +54,6 @@ f82527c
 51da5c4
 ## 2026-05-08 — feat(router): restructure routes into 6 domain groups with sub-routes
 f3ac476
-## 2026-05-08 — test(components): add TaskCard tests for title, priority, tags, and description
-53f8081
-## 2026-05-08 — feat(pages): add Tasks domain pages (TaskBoard, TaskJobs, TaskDetail)
-fe2152f
-## 2026-05-08 — feat(components): export KanbanBoard and TaskCard from Hive index
-4d8149d
-## 2026-05-08 — feat(components): add KanbanBoard with @dnd-kit drag-and-drop
-76a0f6d
-## 2026-05-08 — feat(pages): reorganize Platform pages (SystemCenter, IntegrationCenter, OpsCenter)
-df59c9e
-## 2026-05-08 — feat(layout): ProgressiveLayout uses DomainNav with expandable submenus
-083f434
-## 2026-05-08 — feat(layout): expand ImmersiveLayout to 7 nav icons (6 domains + canvas)
-b209f72
-## 2026-05-08 — feat(pages): resurrect WorkflowCenter as tabbed page (templates + instances)
-b0f8c79
-## 2026-05-08 — feat(api): add task service API client
-1452bfc
 
 ---
 

@@ -153,19 +153,22 @@ echo "  → Updating wiki/gaps.md auto section..."
 GAPS_MANUAL=""
 if [ -f "$WIKI_DIR/gaps.md" ]; then
     # Extract content before AUTO-GENERATED marker (if exists)
+    # Strip any stray auto-generated headers to prevent snowball accumulation
     if grep -q "AUTO-GENERATED:" "$WIKI_DIR/gaps.md"; then
-        GAPS_MANUAL=$(sed '/AUTO-GENERATED:/q' "$WIKI_DIR/gaps.md" | head -n -1)
+        GAPS_MANUAL=$(sed '/AUTO-GENERATED:/q' "$WIKI_DIR/gaps.md" | head -n -1 | sed '/^## Auto-Generated Gap Scan$/d' | sed '/^$/N;/^\n$/d')
+        # If only whitespace remains, treat as empty
+        [ -z "$(echo "$GAPS_MANUAL" | tr -d '[:space:]')" ] && GAPS_MANUAL=""
     else
         GAPS_MANUAL=$(cat "$WIKI_DIR/gaps.md")
     fi
 fi
 
 {
-    [ -n "$GAPS_MANUAL" ] && echo "$GAPS_MANUAL"
-    echo ""
-    echo "## Auto-Generated Gap Scan"
-    echo ""
+    # AUTO-GENERATED marker MUST be line 1 for pre-commit hook
     auto_gen_marker
+    echo ""
+    [ -n "$GAPS_MANUAL" ] && echo "$GAPS_MANUAL"
+    echo "## Auto-Generated Gap Scan"
     echo ""
 
     echo "### Undocumented Entities"

@@ -1,9 +1,6 @@
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T11:34:49Z -->
 
 ## Auto-Generated Gap Scan
-
-## Auto-Generated Gap Scan
-
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T07:05:04Z -->
 
 ### Undocumented Entities
 
@@ -27,8 +24,14 @@
 - Missing wiki page for service: `TenantKeyService` (source: D:/code_space/frige/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/memory/TenantKeyService.java)
 - Missing wiki page for service: `MemoryConsolidationService` (source: D:/code_space/frige/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/memory/vector/MemoryConsolidationService.java)
 - Missing wiki page for service: `MilvusIsolationService` (source: D:/code_space/frige/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/rag/MilvusIsolationService.java)
+- Missing wiki page for service: `TimelineClickHouseService` (source: D:/code_space/frige/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/timeline/TimelineClickHouseService.java)
 - Missing wiki page for service: `McpToolDiscoveryService` (source: D:/code_space/frige/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/tool/mcp/McpToolDiscoveryService.java)
 - Missing wiki page for service: `SubAgentExecutionService` (source: D:/code_space/frige/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/tool/subagent/SubAgentExecutionService.java)
 - Missing wiki page for service: `SubAgentQuotaService` (source: D:/code_space/frige/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/tool/subagent/SubAgentQuotaService.java)
+- Missing wiki page for service: `FileScanService` (source: D:/code_space/frige/schemaplexai-context/src/main/java/com/schemaplexai/context/service/FileScanService.java)
+- Missing wiki page for service: `FileStorageService` (source: D:/code_space/frige/schemaplexai-context/src/main/java/com/schemaplexai/context/service/FileStorageService.java)
+- Missing wiki page for service: `ClamAvFileScanService` (source: D:/code_space/frige/schemaplexai-context/src/main/java/com/schemaplexai/context/service/impl/ClamAvFileScanService.java)
+- Missing wiki page for service: `MinioFileStorageService` (source: D:/code_space/frige/schemaplexai-context/src/main/java/com/schemaplexai/context/service/impl/MinioFileStorageService.java)
+- Missing wiki page for service: `NoOpFileScanService` (source: D:/code_space/frige/schemaplexai-context/src/main/java/com/schemaplexai/context/service/impl/NoOpFileScanService.java)
 - Missing wiki page for service: `ClickHouseCostSyncService` (source: D:/code_space/frige/schemaplexai-ops/src/main/java/com/schemaplexai/ops/service/ClickHouseCostSyncService.java)
 - Missing wiki page for service: `WorkflowDeployService` (source: D:/code_space/frige/schemaplexai-workflow/src/main/java/com/schemaplexai/workflow/service/WorkflowDeployService.java)

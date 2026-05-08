@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T10:26:18Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T11:34:37Z -->
 
 ---
 title: Architecture Decision Records Index
@@ -23,4 +23,7 @@ confidence: high
 - [domain-decomposition](D:/code_space/frige/docs/decisions/ADR-008-domain-decomposition.md) (v1.0) — 已批准
 - [agent-state-machine](D:/code_space/frige/docs/decisions/ADR-009-agent-state-machine.md) (v1.0) — 已批准
 - [token-budget](D:/code_space/frige/docs/decisions/ADR-010-token-budget.md) (v1.0) — 已批准
+- [jwt-key-rotation-sla](D:/code_space/frige/docs/decisions/ADR-011-jwt-key-rotation-sla.md) (v1.0) — 已批准
+- [cost-analytics-v1-short-path](D:/code_space/frige/docs/decisions/ADR-012-cost-analytics-v1-short-path.md) (v1.0) — 已批准
+- [notification-v1-channel-reduction](D:/code_space/frige/docs/decisions/ADR-013-notification-v1-channel-reduction.md) (v1.0) — 已批准
 - [](D:/code_space/frige/docs/decisions/ADR-TEMPLATE.md) () — 
