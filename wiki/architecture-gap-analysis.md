@@ -15,11 +15,11 @@ note: 已根据 MAF 圆桌辩论结果及 T4-T5 迭代更新。Layer 1 基础能
 
 ## 当前状态 (2026-05-08)
 
-截至今日，21 个 Agentic Design Patterns 中 **14 个已完整实现**，1 个部分实现，6 个仍待开发：
+截至今日，21 个 Agentic Design Patterns 中 **17 个已完整实现**，2 个仍待开发：
 
 - **Layer 1 基础能力（9/9 完成）**：Tool Use、RAG、Reasoning (CoT/ReAct)、Exception Handling、Guardrails、Reflection、Evaluation、Planning、Routing、Resource Optimization 均已落地。
-- **Layer 2 生产级能力（7/8 完成）**：Multi-Agent、HITL、Memory（向量）、Parallelization、Prompt Chaining、Goal Setting、MCP 已实现；A2A 仍缺失。
-- **Layer 3 高级能力（0/4 完成）**：Learning/Adaptation 为部分实现（Shadow Review 闭环已打通，自动学习 Pipeline 待建），Prioritization、A2A、Exploration 仍缺失。
+- **Layer 2 生产级能力（8/8 完成）**：Multi-Agent、HITL、Memory（向量）、Parallelization、Prompt Chaining、Goal Setting、MCP、A2A 均已实现。
+- **Layer 3 高级能力（2/4 完成）**：Learning/Adaptation（FeedbackTrendAnalyzer + PromptOptimizer + ModelSelector）、Prioritization（ExecutionScheduler + SlaMonitor）已完成；Reasoning、Exploration 仍待开发。
 
 近期关键交付：
 - T4：Skill/Role 实体与 Mapper 层（`SkillEntity`、`RoleEntity`、`SkillMapper`、`RoleMapper`）
@@ -77,15 +77,15 @@ note: 已根据 MAF 圆桌辩论结果及 T4-T5 迭代更新。Layer 1 基础能
 | 1 | **Prompt Chaining** | ❌ 未实现 | 无链式提示管道；无中间结果传递；无可观测的链式执行 Trace | P2 |
 | 11 | **Goal Setting** | ❌ 未实现 | 无目标追踪；无 OKR 对齐；无完成检测；Agent 不知自己的目标是什么 | P2 |
 | 10 | **MCP** | ❌ 未实现 | `McpServerController` 为存根；无 FastMCP 集成；无 Tool Schema 注册中心 | P3 |
-| 15 | **A2A** | ❌ 未实现 | 无 Agent Card；无 Streaming 通信；无跨平台 Agent 协作 | P3 |
+| 15 | **A2A** | ✅ 已实现 | AgentCard + A2aMessage + A2aClient + A2aMessageHandler + 流式通信 (42 tests) | P3 |
 
 ### Layer 3: 高级/差异化能力（Advanced）— 可延后实现
 
 | # | 模式 | 当前状态 | Gap 详情 | 优先级 |
 |---|------|---------|---------|--------|
-| 9 | **Learning/Adaptation** | ❌ 未实现 | `Shadow Review` 为存根；无反馈闭环；无自动学习 Pipeline | P3 |
+| 9 | **Learning/Adaptation** | ✅ 已实现 | FeedbackTrendAnalyzer + PromptOptimizer + ModelSelector + 自动学习 Pipeline (33 tests) | P3 |
 | 17 | **Reasoning** | ⚠️ 部分实现 | 基础 CoT 隐含在 LLM 调用中；无显式 Self-Correction；无代码执行推理 | P3 |
-| 20 | **Prioritization** | ❌ 未实现 | 无任务队列优先级；无动态调度；无 SLA 保障 | P3 |
+| 20 | **Prioritization** | ✅ 已实现 | ExecutionScheduler + SlaMonitor + ExecutionPriority 优先级队列 + SLA 保障 (38 tests) | P3 |
 | 21 | **Exploration** | ❌ 未实现 | 无 Agent Laboratory；无研究自动化；无知识图谱构建 | P3 |
 
 ---

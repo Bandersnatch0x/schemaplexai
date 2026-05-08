@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T04:09:38Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T04:18:17Z -->
 
 ---
 title: Wiki Operation Log
@@ -14,6 +14,10 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
+## 2026-05-08 — chore(verify): pass typecheck, lint, tests, and build
+f82527c
+## 2026-05-08 — chore: regenerate wiki/ files via sync-wiki.sh
+9b8676a
 ## 2026-05-08 — chore(cleanup): remove dead code (Dashboard, AgentManager, NotificationCenter)
 51da5c4
 ## 2026-05-08 — feat(router): restructure routes into 6 domain groups with sub-routes
@@ -50,10 +54,6 @@ f24ff34
 0d91fb3
 ## 2026-05-08 — feat(api): expand system API with users, roles, tenants, models
 207500c
-## 2026-05-08 — feat(types): add SfTask, TaskStatus, TaskPriority, AssignmentType
-2108bcf
-## 2026-05-08 — docs(plan): add UI architecture alignment implementation plan
-9b3cc60
 
 ---
 
@@ -75,6 +75,7 @@ f24ff34
 - **ui-alignment** (standard 1.0): approved — 2026-05-07-v1.0-ui-alignment.md
 - **agent-engine-agentic-gaps** (spec v1.0): implemented — agent-engine-agentic-gaps-2026-05-07.md
 - **agent-engine-core-completion** (spec 1.0): approved — agent-engine-core-completion.md
+- **agent-engine-p1-p2-p4-batch** (spec v1.0): implemented — agent-engine-p1-p2-p4-batch-2026-05-08.md
 - **core-ai-engine** (spec v1.0): draft — core-ai-engine.md
 - **specs-index** ( ):  — README.md
 - **spec-review** (spec v1.0): 已批准 — SPEC-REVIEW-v1.0.md
