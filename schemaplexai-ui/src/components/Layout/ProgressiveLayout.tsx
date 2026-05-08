@@ -1,6 +1,9 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
+import { DomainNav } from '@/components/Hive/DomainNav'
+import type { DomainNavItem } from '@/components/Hive/DomainNav'
 import './Layout.css'
 
 export interface ProgressiveLayoutProps {
@@ -9,60 +12,88 @@ export interface ProgressiveLayoutProps {
 
 export function ProgressiveLayout({ children }: ProgressiveLayoutProps) {
   const { t } = useTranslation()
-  const navigate = useNavigate()
-  const location = useLocation()
 
-  const NAV_ITEMS = [
-    { key: 'cockpit', icon: '◉', label: t('nav.cockpit'), path: '/cockpit' },
-    { key: 'canvas', icon: '◆', label: t('nav.canvas'), path: '/canvas' },
-    { key: 'workflows', icon: '▲', label: t('nav.workflows'), path: '/workflows' },
-    { key: 'agents', icon: '●', label: t('nav.agents'), path: '/agents' },
-    { key: 'specs', icon: '≡', label: t('nav.specs'), path: '/specs' },
-    { key: 'contexts', icon: '⊞', label: t('nav.contexts'), path: '/contexts' },
-    { key: 'quality', icon: '✓', label: t('nav.quality'), path: '/quality' },
-    { key: 'integrations', icon: '⚡', label: t('nav.integrations'), path: '/integrations' },
-    { key: 'ops', icon: '☁', label: t('nav.ops'), path: '/ops' },
-    { key: 'notifications', icon: '◐', label: t('nav.notifications'), path: '/notifications' },
-    { key: 'settings', icon: '◎', label: t('nav.settings'), path: '/settings' },
-  ]
-
-  const activeKey = NAV_ITEMS.find(item => location.pathname.startsWith(item.path))?.key || 'cockpit'
+  const DOMAINS: DomainNavItem[] = useMemo(
+    () => [
+      { key: 'cockpit', icon: '◉', label: t('nav.domain.cockpit'), path: '/cockpit' },
+      {
+        key: 'agents',
+        icon: '●',
+        label: t('nav.domain.agents'),
+        path: '/agents',
+        children: [
+          { key: 'list', label: t('nav.sub.list'), path: '/agents/list' },
+          { key: 'executor', label: t('nav.sub.executor'), path: '/agents/executor' },
+          { key: 'canvas', label: t('nav.sub.canvas'), path: '/agents/canvas' },
+        ],
+      },
+      {
+        key: 'projects',
+        icon: '▲',
+        label: t('nav.domain.projects'),
+        path: '/projects',
+        children: [
+          { key: 'specs', label: t('nav.sub.specs'), path: '/projects/specs' },
+          { key: 'workflows', label: t('nav.sub.workflows'), path: '/projects/workflows' },
+          { key: 'contexts', label: t('nav.sub.contexts'), path: '/projects/contexts' },
+        ],
+      },
+      {
+        key: 'quality',
+        icon: '✓',
+        label: t('nav.domain.quality'),
+        path: '/quality',
+        children: [
+          { key: 'gates', label: t('nav.sub.gates'), path: '/quality/gates' },
+          { key: 'issues', label: t('nav.sub.issues'), path: '/quality/issues' },
+          { key: 'security', label: t('nav.sub.security'), path: '/quality/security' },
+        ],
+      },
+      {
+        key: 'platform',
+        icon: '◎',
+        label: t('nav.domain.platform'),
+        path: '/platform',
+        children: [
+          { key: 'system', label: t('nav.sub.system'), path: '/platform/system' },
+          { key: 'integrations', label: t('nav.sub.integrations'), path: '/platform/integrations' },
+          { key: 'ops', label: t('nav.sub.ops'), path: '/platform/ops' },
+        ],
+      },
+      {
+        key: 'tasks',
+        icon: '⚡',
+        label: t('nav.domain.tasks'),
+        path: '/tasks',
+        children: [
+          { key: 'board', label: t('nav.domain.tasks'), path: '/tasks' },
+          { key: 'jobs', label: t('nav.sub.jobs'), path: '/tasks/jobs' },
+        ],
+      },
+    ],
+    [t]
+  )
 
   return (
     <div className="layout-progressive">
-      {/* Header */}
       <header className="layout-progressive-header">
         <span className="layout-progressive-header-brand">SchemaPlexAI</span>
         <div className="layout-progressive-header-actions">
           <LanguageSwitcher />
-          <span className="layout-progressive-header-tenant">{t('nav.settings')} ▼</span>
+          <span className="layout-progressive-header-tenant">{t('nav.domain.platform')} ▼</span>
           <span className="layout-progressive-header-bell">🔔</span>
           <div className="layout-progressive-header-avatar" />
         </div>
       </header>
 
-      {/* Body */}
       <div className="layout-progressive-body">
-        {/* Sidebar */}
         <aside className="layout-progressive-sidebar">
-          {NAV_ITEMS.map(item => {
-            const isActive = item.key === activeKey
-            return (
-              <div
-                key={item.key}
-                onClick={() => navigate(item.path)}
-                className={`layout-progressive-nav-item${isActive ? ' layout-progressive-nav-item--active' : ''}`}
-              >
-                <span className={`layout-progressive-nav-item-icon${isActive ? ' layout-progressive-nav-item-icon--active' : ''}`}>
-                  {item.icon}
-                </span>
-                {item.label}
-              </div>
-            )
-          })}
+          <DomainNav items={DOMAINS} />
+          <div style={{ marginTop: 'auto', padding: '16px 12px', fontSize: 12, opacity: 0.6 }}>
+            <LanguageSwitcher />
+          </div>
         </aside>
 
-        {/* Content */}
         <main className="layout-progressive-content">
           {children ?? <Outlet />}
         </main>

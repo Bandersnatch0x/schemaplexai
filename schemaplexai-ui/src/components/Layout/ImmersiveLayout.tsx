@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
@@ -14,24 +14,29 @@ export function ImmersiveLayout({ children }: ImmersiveLayoutProps) {
   const location = useLocation()
   const [hovered, setHovered] = useState<string | null>(null)
 
-  const NAV_ITEMS = [
-    { key: 'cockpit', icon: '◉', label: t('nav.cockpit'), path: '/cockpit' },
-    { key: 'canvas', icon: '◆', label: t('nav.canvas'), path: '/canvas' },
-    { key: 'workflows', icon: '▲', label: t('nav.workflows'), path: '/workflows' },
-    { key: 'agents', icon: '●', label: t('nav.agents'), path: '/agents' },
-  ]
+  const NAV_ITEMS = useMemo(
+    () => [
+      { key: 'cockpit', icon: '◉', label: t('nav.domain.cockpit'), path: '/cockpit', immersive: true },
+      { key: 'agents', icon: '●', label: t('nav.domain.agents'), path: '/agents/list', immersive: false },
+      { key: 'projects', icon: '▲', label: t('nav.domain.projects'), path: '/projects', immersive: false },
+      { key: 'quality', icon: '✓', label: t('nav.domain.quality'), path: '/quality', immersive: false },
+      { key: 'platform', icon: '◎', label: t('nav.domain.platform'), path: '/platform', immersive: false },
+      { key: 'tasks', icon: '⚡', label: t('nav.domain.tasks'), path: '/tasks', immersive: false },
+      { key: 'canvas', icon: '◆', label: t('nav.sub.canvas'), path: '/agents/canvas', immersive: true },
+    ],
+    [t]
+  )
 
-  const activeKey = NAV_ITEMS.find(item => location.pathname.startsWith(item.path))?.key || 'cockpit'
+  const activeKey = NAV_ITEMS.find(
+    (item) => location.pathname === item.path || location.pathname.startsWith(item.path + '/')
+  )?.key || 'cockpit'
 
   return (
     <div className="layout-immersive">
-      {/* Left Icon Sidebar */}
       <div className="layout-icon-sidebar">
-        <div className="layout-icon-sidebar-logo">
-          S
-        </div>
+        <div className="layout-icon-sidebar-logo">S</div>
 
-        {NAV_ITEMS.map(item => {
+        {NAV_ITEMS.map((item) => {
           const isActive = item.key === activeKey
           return (
             <div
@@ -42,13 +47,13 @@ export function ImmersiveLayout({ children }: ImmersiveLayoutProps) {
               onMouseLeave={() => setHovered(null)}
               className={`layout-nav-item${isActive ? ' layout-nav-item--active' : ''}`}
             >
-              <span className={`layout-nav-item-icon${isActive ? ' layout-nav-item-icon--active' : ''}`}>
+              <span
+                className={`layout-nav-item-icon${isActive ? ' layout-nav-item-icon--active' : ''}`}
+              >
                 {item.icon}
               </span>
               {hovered === item.key && (
-                <div className="layout-nav-tooltip">
-                  {item.label}
-                </div>
+                <div className="layout-nav-tooltip">{item.label}</div>
               )}
             </div>
           )
@@ -59,23 +64,19 @@ export function ImmersiveLayout({ children }: ImmersiveLayoutProps) {
         </div>
       </div>
 
-      {/* Main Canvas */}
       <div className="layout-canvas">
-        {/* Subtle grid background */}
         <div className="layout-canvas-grid" />
-
-        {/* Floating Header */}
         <div className="layout-floating-header">
           <span>SchemaPlexAI</span>
           <span className="layout-floating-header-divider">|</span>
-          <span><span className="layout-floating-header-dot--cyan">●</span> 12 Agents</span>
-          <span><span className="layout-floating-header-dot--amber">●</span> 3 Executing</span>
+          <span>
+            <span className="layout-floating-header-dot--cyan">●</span> 12 Agents
+          </span>
+          <span>
+            <span className="layout-floating-header-dot--amber">●</span> 3 Executing
+          </span>
         </div>
-
-        {/* Content */}
-        <div className="layout-canvas-content">
-          {children ?? <Outlet />}
-        </div>
+        <div className="layout-canvas-content">{children ?? <Outlet />}</div>
       </div>
     </div>
   )
