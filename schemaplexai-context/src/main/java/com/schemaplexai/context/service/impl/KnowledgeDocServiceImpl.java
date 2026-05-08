@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.Serializable;
+
 @Service
 public class KnowledgeDocServiceImpl extends ServiceImpl<SfKnowledgeDocMapper, SfKnowledgeDoc> implements KnowledgeDocService {
 
@@ -25,8 +27,37 @@ public class KnowledgeDocServiceImpl extends ServiceImpl<SfKnowledgeDocMapper, S
     @Transactional(rollbackFor = Exception.class)
     public void uploadAndVectorize(SfKnowledgeDoc doc) {
         doc.setStatus("UPLOADED");
+        doc.setSyncStatus("PENDING");
         save(doc);
         log.info("Knowledge doc uploaded: {}, triggering vectorization", doc.getId());
         milvusSyncService.syncToMilvus(doc.getId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean removeById(Serializable id) {
+        Long docId = (Long) id;
+        log.info("Removing knowledge doc {} and cleaning Milvus vectors", docId);
+        try {
+            milvusSyncService.deleteByDocId(docId);
+        } catch (Exception e) {
+            log.warn("Failed to delete Milvus vectors for doc {}, proceeding with DB removal: {}", docId, e.getMessage());
+        }
+        return super.removeById(id);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateById(SfKnowledgeDoc entity) {
+        boolean updated = super.updateById(entity);
+        if (updated && entity.getId() != null) {
+            log.info("Knowledge doc {} updated, triggering re-vectorization", entity.getId());
+            try {
+                milvusSyncService.reSyncDoc(entity.getId());
+            } catch (Exception e) {
+                log.error("Failed to re-sync doc {} to Milvus after update: {}", entity.getId(), e.getMessage());
+            }
+        }
+        return updated;
     }
 }

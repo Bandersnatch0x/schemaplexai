@@ -181,6 +181,7 @@ public class ThinkingStateHandler implements AgentStateHandler {
                 }
 
                 log.info("Execution {} detected tool calls, transitioning to TOOL_CALLING", execution.getId());
+                execution.setMetadata("iterationToolCallCount", 0);
                 stateMachine.transition(AgentExecutionState.TOOL_CALLING, execution);
             } else {
                 // Check if there's an active sub-task plan to progress
@@ -299,22 +300,32 @@ public class ThinkingStateHandler implements AgentStateHandler {
                 java.util.Map<String, Object> map = mapper.readValue(json, java.util.Map.class);
                 long maxInput = ((Number) map.getOrDefault("maxInput", 0L)).longValue();
                 long maxOutput = ((Number) map.getOrDefault("maxOutput", 0L)).longValue();
+                long maxToolCalls = ((Number) map.getOrDefault("maxToolCalls", Long.MAX_VALUE)).longValue();
                 long consumedInput = ((Number) map.getOrDefault("consumedInput", 0L)).longValue();
                 long consumedOutput = ((Number) map.getOrDefault("consumedOutput", 0L)).longValue();
-                TokenBudget budget = new TokenBudget(maxInput, maxOutput);
+                long consumedToolCalls = ((Number) map.getOrDefault("consumedToolCalls", 0L)).longValue();
+                TokenBudget budget = new TokenBudget(maxInput, maxOutput, maxToolCalls);
                 budget.consumeInput(consumedInput);
                 budget.consumeOutput(consumedOutput);
+                for (long i = 0; i < consumedToolCalls; i++) {
+                    budget.consumeToolCall();
+                }
                 return budget;
             }
             // Legacy fallback: comma-separated format
             String[] parts = json.split(",");
             long maxInput = Long.parseLong(parts[0]);
             long maxOutput = Long.parseLong(parts[1]);
+            long maxToolCalls = parts.length > 4 ? Long.parseLong(parts[4]) : Long.MAX_VALUE;
             long consumedInput = parts.length > 2 ? Long.parseLong(parts[2]) : 0;
             long consumedOutput = parts.length > 3 ? Long.parseLong(parts[3]) : 0;
-            TokenBudget budget = new TokenBudget(maxInput, maxOutput);
+            long consumedToolCalls = parts.length > 5 ? Long.parseLong(parts[5]) : 0;
+            TokenBudget budget = new TokenBudget(maxInput, maxOutput, maxToolCalls);
             budget.consumeInput(consumedInput);
             budget.consumeOutput(consumedOutput);
+            for (long i = 0; i < consumedToolCalls; i++) {
+                budget.consumeToolCall();
+            }
             return budget;
         } catch (Exception e) {
             log.warn("Failed to parse token budget for execution {}", execution.getId());
@@ -325,12 +336,13 @@ public class ThinkingStateHandler implements AgentStateHandler {
     private void saveBudget(SfAgentExecution execution, TokenBudget budget) {
         try {
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            java.util.Map<String, Long> map = java.util.Map.of(
-                "maxInput", budget.getMaxInputTokens(),
-                "maxOutput", budget.getMaxOutputTokens(),
-                "consumedInput", budget.getConsumedInputTokens().get(),
-                "consumedOutput", budget.getConsumedOutputTokens().get()
-            );
+            java.util.Map<String, Object> map = new java.util.HashMap<>();
+            map.put("maxInput", budget.getMaxInputTokens());
+            map.put("maxOutput", budget.getMaxOutputTokens());
+            map.put("maxToolCalls", budget.getMaxToolCalls());
+            map.put("consumedInput", budget.getConsumedInputTokens().get());
+            map.put("consumedOutput", budget.getConsumedOutputTokens().get());
+            map.put("consumedToolCalls", budget.getConsumedToolCalls().get());
             execution.setTokenBudgetJson(mapper.writeValueAsString(map));
         } catch (Exception e) {
             log.warn("Failed to serialize token budget for execution {}", execution.getId());

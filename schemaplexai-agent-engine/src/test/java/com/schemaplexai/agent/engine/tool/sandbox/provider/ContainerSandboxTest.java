@@ -48,9 +48,22 @@ class ContainerSandboxTest {
         assertTrue(ex.getMessage().contains("config required"));
     }
 
+    private boolean dockerAvailable() {
+        if (provider == null) {
+            return false;
+        }
+        try {
+            provider.create(SandboxSessionConfig.defaults());
+            return true;
+        } catch (com.schemaplexai.agent.engine.tool.sandbox.SandboxException e) {
+            return false;
+        }
+    }
+
     @Test
     void shouldCreateSessionWithValidConfig() throws Exception {
         assumeTrue(provider != null, "ContainerSandboxProvider not enabled");
+        assumeTrue(dockerAvailable(), "Docker not available");
         try (SandboxSession session = provider.create(SandboxSessionConfig.defaults())) {
             assertNotNull(session.sessionId());
             assertNotNull(session.workspaceRoot());
@@ -60,6 +73,7 @@ class ContainerSandboxTest {
     @Test
     void shouldCreateMultipleSessionsIndependently() throws Exception {
         assumeTrue(provider != null, "ContainerSandboxProvider not enabled");
+        assumeTrue(dockerAvailable(), "Docker not available");
         try (SandboxSession session1 = provider.create(SandboxSessionConfig.defaults())) {
             try (SandboxSession session2 = provider.create(SandboxSessionConfig.defaults())) {
                 assertNotEquals(session1.sessionId(), session2.sessionId());
@@ -71,6 +85,7 @@ class ContainerSandboxTest {
     @Test
     void shouldScopeChildSession() throws Exception {
         assumeTrue(provider != null, "ContainerSandboxProvider not enabled");
+        assumeTrue(dockerAvailable(), "Docker not available");
         try (SandboxSession parent = provider.create(SandboxSessionConfig.defaults())) {
             SandboxSessionConfig childConfig = new SandboxSessionConfig(
                     Duration.ofSeconds(10),

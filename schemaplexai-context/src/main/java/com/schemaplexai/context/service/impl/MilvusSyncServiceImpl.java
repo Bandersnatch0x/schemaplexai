@@ -14,7 +14,9 @@ import com.schemaplexai.context.service.MilvusSyncService;
 import io.minio.GetObjectArgs;
 import io.minio.MinioClient;
 import io.milvus.v2.client.MilvusClientV2;
+import io.milvus.v2.service.vector.request.DeleteReq;
 import io.milvus.v2.service.vector.request.InsertReq;
+import io.milvus.v2.service.vector.response.DeleteResp;
 import io.milvus.v2.service.vector.response.InsertResp;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -104,6 +106,11 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
             return;
         }
 
+        doSync(doc);
+    }
+
+    private void doSync(SfKnowledgeDoc doc) {
+        Long docId = doc.getId();
         try {
             String content = extractText(doc);
 
@@ -120,16 +127,43 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
             }
 
             doc.setStatus("SYNCED");
+            doc.setSyncStatus("SYNCED");
             knowledgeDocMapper.updateById(doc);
             log.info("Document {} successfully synced to Milvus", docId);
 
         } catch (Exception e) {
             log.error("Failed to sync document {} to Milvus", docId, e);
-            // Persist FAILED status in an independent transaction so it survives the outer rollback.
             failedStatusWriter.markFailed(docId, e.getMessage());
             throw new BaseException(ResultCode.INTERNAL_ERROR,
                     "Milvus sync failed for document: " + docId + ", cause: " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public void deleteByDocId(Long docId) {
+        String collectionName = milvusProperties.getCollectionName();
+        String docIdStr = docId.toString();
+
+        DeleteReq deleteReq = DeleteReq.builder()
+                .collectionName(collectionName)
+                .filter("doc_id == '" + docIdStr + "'")
+                .build();
+
+        DeleteResp response = milvusClient.delete(deleteReq);
+        log.info("Deleted vectors from Milvus for doc {}, delete count: {}", docId, response.getDeleteCnt());
+    }
+
+    @Override
+    public void reSyncDoc(Long docId) {
+        log.info("Re-sync doc {} to Milvus", docId);
+
+        SfKnowledgeDoc doc = knowledgeDocMapper.selectById(docId);
+        if (doc == null) {
+            throw new BaseException(ResultCode.NOT_FOUND, "Knowledge document not found: " + docId);
+        }
+
+        deleteByDocId(docId);
+        doSync(doc);
     }
 
     private String extractText(SfKnowledgeDoc doc) {

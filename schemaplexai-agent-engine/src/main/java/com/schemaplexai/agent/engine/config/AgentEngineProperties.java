@@ -13,4 +13,6 @@ import org.springframework.stereotype.Component;
 public class AgentEngineProperties {
 
     private int maxToolCalls = 10;
+
+    private int maxToolCallsPerIteration = 5;
 }

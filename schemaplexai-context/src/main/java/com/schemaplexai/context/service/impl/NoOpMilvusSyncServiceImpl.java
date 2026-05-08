@@ -18,4 +18,14 @@ public class NoOpMilvusSyncServiceImpl implements MilvusSyncService {
     public void syncToMilvus(Long docId) {
         log.warn("Milvus is disabled. Document {} will not be vectorized.", docId);
     }
+
+    @Override
+    public void deleteByDocId(Long docId) {
+        log.warn("Milvus is disabled. Document {} vectors will not be deleted.", docId);
+    }
+
+    @Override
+    public void reSyncDoc(Long docId) {
+        log.warn("Milvus is disabled. Document {} will not be re-vectorized.", docId);
+    }
 }

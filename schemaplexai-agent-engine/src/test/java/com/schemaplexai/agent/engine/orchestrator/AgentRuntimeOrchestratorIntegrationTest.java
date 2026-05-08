@@ -34,6 +34,9 @@ class AgentRuntimeOrchestratorIntegrationTest {
     @Mock
     private ObservabilityRecorder observabilityRecorder;
 
+    @Mock
+    private com.schemaplexai.agent.engine.config.AgentEngineProperties engineProperties;
+
     @InjectMocks
     private AgentRuntimeOrchestrator orchestrator;
 
@@ -51,6 +54,8 @@ class AgentRuntimeOrchestratorIntegrationTest {
         when(observabilityRecorder.startTrace(
             eq("1"), eq("agent-execution"), eq("100"), eq("conv-1"), anyString()))
             .thenReturn(mockTrace);
+
+        when(engineProperties.getMaxToolCalls()).thenReturn(10);
 
         when(admissionService.admit(eq("tenant-1"), eq(1L), any(TokenBudget.class)))
             .thenReturn(AdmissionResult.builder().allowed(true).build());

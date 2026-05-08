@@ -15,5 +15,6 @@ public class SfKnowledgeDoc extends BaseEntity {
     private String fileUrl;
     private Long fileSize;
     private String status;
+    private String syncStatus;
     private String docType;
 }

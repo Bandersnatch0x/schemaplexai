@@ -94,12 +94,23 @@ public class ToolCallingStateHandler implements AgentStateHandler {
                 return;
             }
 
-            // 3. Tool-call budget check
+            // 3a. Global tool-call budget check
             int currentCount = getToolCallCount(execution);
             if (currentCount + toolCalls.size() > engineProperties.getMaxToolCalls()) {
                 log.warn("Tool-call budget exceeded for execution {}: current={}, pending={}, max={}",
                         execution.getId(), currentCount, toolCalls.size(), engineProperties.getMaxToolCalls());
                 execution.setMetadata("blockedReason", "tool_call_budget_exceeded");
+                execution.setMetadata("admissionType", "BUDGET");
+                stateMachine.transition(AgentExecutionState.GATE_BLOCKED, execution);
+                return;
+            }
+
+            // 3b. Per-iteration tool-call budget check (prevents excessive tool calls in a single LLM round)
+            int iterationCount = getIterationToolCallCount(execution);
+            if (iterationCount + toolCalls.size() > engineProperties.getMaxToolCallsPerIteration()) {
+                log.warn("Per-iteration tool-call budget exceeded for execution {}: iteration={}, pending={}, maxPerIter={}",
+                        execution.getId(), iterationCount, toolCalls.size(), engineProperties.getMaxToolCallsPerIteration());
+                execution.setMetadata("blockedReason", "tool_call_per_iteration_budget_exceeded");
                 execution.setMetadata("admissionType", "BUDGET");
                 stateMachine.transition(AgentExecutionState.GATE_BLOCKED, execution);
                 return;
@@ -153,6 +164,7 @@ public class ToolCallingStateHandler implements AgentStateHandler {
                         new LlmMessage("tool", result.output()));
 
                 incrementToolCallCount(execution);
+                incrementIterationToolCallCount(execution);
             }
 
             // 5. Transition back to THINKING for next LLM round
@@ -228,6 +240,19 @@ public class ToolCallingStateHandler implements AgentStateHandler {
     private void incrementToolCallCount(SfAgentExecution execution) {
         int current = getToolCallCount(execution);
         execution.setMetadata("toolCallCount", current + 1);
+    }
+
+    private int getIterationToolCallCount(SfAgentExecution execution) {
+        Object count = execution.getMetadata("iterationToolCallCount");
+        if (count instanceof Number) {
+            return ((Number) count).intValue();
+        }
+        return 0;
+    }
+
+    private void incrementIterationToolCallCount(SfAgentExecution execution) {
+        int current = getIterationToolCallCount(execution);
+        execution.setMetadata("iterationToolCallCount", current + 1);
     }
 
     private boolean isRetryContext(SfAgentExecution execution) {

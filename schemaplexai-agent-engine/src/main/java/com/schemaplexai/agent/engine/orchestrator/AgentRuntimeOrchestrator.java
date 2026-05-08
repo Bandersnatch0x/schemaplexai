@@ -24,6 +24,7 @@ public class AgentRuntimeOrchestrator {
     private final ExecutionAdmissionService admissionService;
     private final CompositeChatMemoryStore chatMemoryStore;
     private final ObservabilityRecorder observabilityRecorder;
+    private final com.schemaplexai.agent.engine.config.AgentEngineProperties engineProperties;
 
     private static final int MAX_ITERATIONS = 50;
 
@@ -38,10 +39,11 @@ public class AgentRuntimeOrchestrator {
 
         int roundCount = 0;
         try {
-            // Initialize token budget
+            // Initialize token budget (with tool-call limit)
             TokenBudget tokenBudget = new TokenBudget(
                     CommonConstants.DEFAULT_MAX_INPUT_TOKENS,
-                    CommonConstants.DEFAULT_MAX_OUTPUT_TOKENS
+                    CommonConstants.DEFAULT_MAX_OUTPUT_TOKENS,
+                    engineProperties.getMaxToolCalls()
             );
             execution.setTokenBudgetJson(serializeBudget(tokenBudget));
 
@@ -90,6 +92,6 @@ public class AgentRuntimeOrchestrator {
     }
 
     private String serializeBudget(TokenBudget budget) {
-        return budget.getMaxInputTokens() + "," + budget.getMaxOutputTokens() + ",0,0";
+        return budget.getMaxInputTokens() + "," + budget.getMaxOutputTokens() + ",0,0," + budget.getMaxToolCalls() + ",0";
     }
 }

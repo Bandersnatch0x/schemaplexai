@@ -9,12 +9,19 @@ public class TokenBudget {
 
     private final long maxInputTokens;
     private final long maxOutputTokens;
+    private final long maxToolCalls;
     private final AtomicLong consumedInputTokens = new AtomicLong(0);
     private final AtomicLong consumedOutputTokens = new AtomicLong(0);
+    private final AtomicLong consumedToolCalls = new AtomicLong(0);
 
     public TokenBudget(long maxInputTokens, long maxOutputTokens) {
+        this(maxInputTokens, maxOutputTokens, Long.MAX_VALUE);
+    }
+
+    public TokenBudget(long maxInputTokens, long maxOutputTokens, long maxToolCalls) {
         this.maxInputTokens = maxInputTokens;
         this.maxOutputTokens = maxOutputTokens;
+        this.maxToolCalls = maxToolCalls;
     }
 
     public boolean consumeInput(long tokens) {
@@ -51,8 +58,25 @@ public class TokenBudget {
         return consumedOutputTokens.get() > maxOutputTokens;
     }
 
+    public boolean consumeToolCall() {
+        while (true) {
+            long current = consumedToolCalls.get();
+            long next = current + 1;
+            if (next > maxToolCalls) {
+                return false;
+            }
+            if (consumedToolCalls.compareAndSet(current, next)) {
+                return true;
+            }
+        }
+    }
+
+    public boolean isToolCallsExceeded() {
+        return consumedToolCalls.get() > maxToolCalls;
+    }
+
     public boolean isExceeded() {
-        return isInputExceeded() || isOutputExceeded();
+        return isInputExceeded() || isOutputExceeded() || isToolCallsExceeded();
     }
 
     public boolean hasRemaining() {
@@ -66,6 +90,11 @@ public class TokenBudget {
 
     public long remainingOutput() {
         long remaining = maxOutputTokens - consumedOutputTokens.get();
+        return Math.max(remaining, 0);
+    }
+
+    public long remainingToolCalls() {
+        long remaining = maxToolCalls - consumedToolCalls.get();
         return Math.max(remaining, 0);
     }
 }

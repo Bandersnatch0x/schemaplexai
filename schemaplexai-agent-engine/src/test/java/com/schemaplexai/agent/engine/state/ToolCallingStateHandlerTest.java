@@ -10,6 +10,7 @@ import com.schemaplexai.agent.engine.tool.*;
 import com.schemaplexai.agent.engine.tool.adapter.ExecutionContext;
 import com.schemaplexai.agent.engine.tool.adapter.ToolAdapter;
 import com.schemaplexai.agent.engine.tool.registry.ToolRegistry;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,6 +21,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -57,6 +59,11 @@ class ToolCallingStateHandlerTest {
 
     @InjectMocks
     private ToolCallingStateHandler handler;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(engineProperties.getMaxToolCallsPerIteration()).thenReturn(10);
+    }
 
     @Test
     void shouldBlockIrreversibleToolAndTransitionToFailed() {
@@ -459,6 +466,97 @@ class ToolCallingStateHandlerTest {
                 && result.errorCategory() == ToolErrorCategory.INVALID_ARGUMENT
                 && result.errorMessage().contains("Tool not registered")));
         verify(stateMachine).transition(AgentExecutionState.FAILED, execution);
+    }
+
+    @Test
+    void shouldBlockWhenPerIterationToolCallBudgetExceeded() {
+        when(engineProperties.getMaxToolCalls()).thenReturn(10);
+        when(engineProperties.getMaxToolCallsPerIteration()).thenReturn(2);
+        SfAgentExecution execution = createExecution(31L);
+        execution.setMetadata("iterationToolCallCount", 2);
+
+        LlmMessage assistantMsg = new LlmMessage("assistant", "calling fileRead");
+        when(chatMemoryStore.loadMessages("conv-31")).thenReturn(List.of(assistantMsg));
+        when(toolRegistry.parse("calling fileRead", null)).thenReturn(List.of(new ToolCall("fileRead")));
+
+        handler.handle(stateMachine, execution);
+
+        verify(stateMachine).transition(AgentExecutionState.GATE_BLOCKED, execution);
+        assertEquals("tool_call_per_iteration_budget_exceeded", execution.getMetadata("blockedReason"));
+        assertEquals("BUDGET", execution.getMetadata("admissionType"));
+        verifyNoInteractions(toolAdapter);
+    }
+
+    @Test
+    void shouldBlockWhenPendingToolCallsExceedPerIterationBudget() {
+        when(engineProperties.getMaxToolCalls()).thenReturn(10);
+        when(engineProperties.getMaxToolCallsPerIteration()).thenReturn(2);
+        SfAgentExecution execution = createExecution(32L);
+        execution.setMetadata("iterationToolCallCount", 1);
+
+        LlmMessage assistantMsg = new LlmMessage("assistant", "calling tool1 and tool2");
+        when(chatMemoryStore.loadMessages("conv-32")).thenReturn(List.of(assistantMsg));
+        // 1 already used + 2 pending = 3 > 2 max per iteration
+        when(toolRegistry.parse("calling tool1 and tool2", null))
+            .thenReturn(List.of(new ToolCall("tool1"), new ToolCall("tool2")));
+
+        handler.handle(stateMachine, execution);
+
+        verify(stateMachine).transition(AgentExecutionState.GATE_BLOCKED, execution);
+        assertEquals("tool_call_per_iteration_budget_exceeded", execution.getMetadata("blockedReason"));
+        verifyNoInteractions(toolAdapter);
+    }
+
+    @Test
+    void shouldIncrementIterationToolCallCountOnSuccess() throws ToolExecutionException {
+        when(engineProperties.getMaxToolCalls()).thenReturn(10);
+        when(engineProperties.getMaxToolCallsPerIteration()).thenReturn(5);
+        SfAgentExecution execution = createExecution(33L);
+        execution.setMetadata("iterationToolCallCount", 1);
+
+        LlmMessage assistantMsg = new LlmMessage("assistant", "calling fileRead");
+        when(chatMemoryStore.loadMessages("conv-33")).thenReturn(List.of(assistantMsg));
+        when(toolRegistry.parse("calling fileRead", null)).thenReturn(List.of(new ToolCall("fileRead")));
+        when(loopDetection.detectLoop(eq(33L), anyString(), anyList())).thenReturn(LoopDetectionResult.noLoop());
+        when(toolRegistry.resolve("fileRead")).thenReturn(toolAdapter);
+        when(securityPolicyLoader.load("tenant-33")).thenReturn(null);
+        when(safetyGuard.check("fileRead", "{}", "tenant-33")).thenReturn(
+            new ToolSafetyGuard.SafetyCheckResult(true, false, null, null));
+        when(toolAdapter.execute(any(ToolCall.class), any(ExecutionContext.class)))
+            .thenReturn(ToolResult.success("Tool fileRead executed"));
+
+        handler.handle(stateMachine, execution);
+
+        assertEquals(2, execution.getMetadata("iterationToolCallCount"));
+        assertEquals(1, execution.getMetadata("toolCallCount"));
+        verify(stateMachine).transition(AgentExecutionState.THINKING, execution);
+    }
+
+    @Test
+    void shouldAllowToolCallsWhenIterationBudgetNotExceeded() throws ToolExecutionException {
+        when(engineProperties.getMaxToolCalls()).thenReturn(10);
+        when(engineProperties.getMaxToolCallsPerIteration()).thenReturn(3);
+        SfAgentExecution execution = createExecution(34L);
+        execution.setMetadata("iterationToolCallCount", 0);
+
+        LlmMessage assistantMsg = new LlmMessage("assistant", "calling tool1 tool2");
+        when(chatMemoryStore.loadMessages("conv-34")).thenReturn(List.of(assistantMsg));
+        when(toolRegistry.parse("calling tool1 tool2", null))
+            .thenReturn(List.of(new ToolCall("tool1"), new ToolCall("tool2")));
+        when(loopDetection.detectLoop(eq(34L), anyString(), anyList())).thenReturn(LoopDetectionResult.noLoop());
+        when(toolRegistry.resolve("tool1")).thenReturn(toolAdapter);
+        when(toolRegistry.resolve("tool2")).thenReturn(toolAdapter);
+        when(securityPolicyLoader.load("tenant-34")).thenReturn(null);
+        when(safetyGuard.check(anyString(), any(), eq("tenant-34"))).thenReturn(
+            new ToolSafetyGuard.SafetyCheckResult(true, false, null, null));
+        when(toolAdapter.execute(any(ToolCall.class), any(ExecutionContext.class)))
+            .thenReturn(ToolResult.success("ok"));
+
+        handler.handle(stateMachine, execution);
+
+        assertEquals(2, execution.getMetadata("iterationToolCallCount"));
+        assertEquals(2, execution.getMetadata("toolCallCount"));
+        verify(stateMachine).transition(AgentExecutionState.THINKING, execution);
     }
 
     private SfAgentExecution createExecution(Long id) {

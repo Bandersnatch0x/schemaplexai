@@ -233,25 +233,84 @@ class TokenBudgetTest {
     }
 
     @Nested
+    @DisplayName("consumeToolCall")
+    class ConsumeToolCallTests {
+
+        @Test
+        @DisplayName("should consume tool calls within budget")
+        void shouldConsumeToolCallsWithinBudget() {
+            TokenBudget budget = new TokenBudget(1000, 500, 3);
+
+            assertTrue(budget.consumeToolCall());
+            assertTrue(budget.consumeToolCall());
+            assertTrue(budget.consumeToolCall());
+            assertEquals(0, budget.remainingToolCalls());
+        }
+
+        @Test
+        @DisplayName("should reject tool call exceeding budget")
+        void shouldRejectToolCallExceedingBudget() {
+            TokenBudget budget = new TokenBudget(1000, 500, 2);
+
+            assertTrue(budget.consumeToolCall());
+            assertTrue(budget.consumeToolCall());
+            assertFalse(budget.consumeToolCall());
+            assertEquals(0, budget.remainingToolCalls());
+        }
+
+        @Test
+        @DisplayName("should default to unlimited tool calls when max not specified")
+        void shouldDefaultToUnlimitedToolCalls() {
+            TokenBudget budget = new TokenBudget(1000, 500);
+
+            assertTrue(budget.consumeToolCall());
+            assertTrue(budget.consumeToolCall());
+            assertTrue(budget.consumeToolCall());
+            assertTrue(budget.consumeToolCall());
+            assertTrue(budget.consumeToolCall());
+            assertFalse(budget.isToolCallsExceeded());
+        }
+    }
+
+    @Nested
+    @DisplayName("isExceeded with tool calls")
+    class IsExceededWithToolCallsTests {
+
+        @Test
+        @DisplayName("should be exceeded when tool calls over budget")
+        void shouldBeExceededWhenToolCallsOverBudget() {
+            TokenBudget budget = new TokenBudget(1000, 500, 1);
+
+            assertFalse(budget.isExceeded());
+            budget.consumeToolCall();
+            assertFalse(budget.isExceeded()); // exactly at limit
+            budget.consumeToolCall(); // rejected, state unchanged
+            assertFalse(budget.isExceeded());
+        }
+    }
+
+    @Nested
     @DisplayName("getters")
     class GetterTests {
 
         @Test
         @DisplayName("should return correct max values")
         void shouldReturnCorrectMax() {
-            TokenBudget budget = new TokenBudget(4096, 2048);
+            TokenBudget budget = new TokenBudget(4096, 2048, 10);
 
             assertEquals(4096, budget.getMaxInputTokens());
             assertEquals(2048, budget.getMaxOutputTokens());
+            assertEquals(10, budget.getMaxToolCalls());
         }
 
         @Test
         @DisplayName("should return zero consumed initially")
         void shouldReturnZeroConsumedInitially() {
-            TokenBudget budget = new TokenBudget(1000, 500);
+            TokenBudget budget = new TokenBudget(1000, 500, 5);
 
             assertEquals(0, budget.getConsumedInputTokens().get());
             assertEquals(0, budget.getConsumedOutputTokens().get());
+            assertEquals(0, budget.getConsumedToolCalls().get());
         }
     }
 }

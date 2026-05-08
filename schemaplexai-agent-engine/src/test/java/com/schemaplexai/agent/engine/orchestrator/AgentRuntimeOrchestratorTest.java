@@ -37,6 +37,9 @@ class AgentRuntimeOrchestratorTest {
     @Mock
     private ObservabilityRecorder observabilityRecorder;
 
+    @Mock
+    private com.schemaplexai.agent.engine.config.AgentEngineProperties engineProperties;
+
     @InjectMocks
     private AgentRuntimeOrchestrator orchestrator;
 
@@ -58,6 +61,8 @@ class AgentRuntimeOrchestratorTest {
         mockTrace.setTraceId(TRACE_ID);
         when(observabilityRecorder.startTrace(any(), any(), any(), any(), any()))
             .thenReturn(mockTrace);
+
+        when(engineProperties.getMaxToolCalls()).thenReturn(10);
     }
 
     @Test

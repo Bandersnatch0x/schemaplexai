@@ -49,7 +49,13 @@ public class ExecutionAdmissionService {
         }
 
         // Dimension 3: Token budget check
-        if (tokenBudget.isExceeded()) {
+        if (tokenBudget != null && tokenBudget.isExceeded()) {
+            if (tokenBudget.isToolCallsExceeded()) {
+                return AdmissionResult.builder()
+                        .allowed(false)
+                        .reason("Tool-call budget exceeded")
+                        .build();
+            }
             return AdmissionResult.builder()
                     .allowed(false)
                     .reason("Token budget exceeded")
