@@ -33,12 +33,12 @@ public class AutoCompactionService {
     public CompactionResult compactIfNeeded(String conversationId, TokenBudget budget) {
         List<LlmMessage> messages = chatMemoryStore.loadMessages(conversationId);
         if (messages == null || messages.isEmpty()) {
-            return CompactionResult.noop();
+            return CompactionResult.empty();
         }
 
         // Quick path: already within budget
         if (TokenEstimator.estimate(messages) <= budget.remainingInput()) {
-            return CompactionResult.noop();
+            return CompactionResult.empty();
         }
 
         // Layer 0: Tool result compaction

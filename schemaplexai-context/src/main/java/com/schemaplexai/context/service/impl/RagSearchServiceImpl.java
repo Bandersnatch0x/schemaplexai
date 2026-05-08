@@ -58,7 +58,8 @@ public class RagSearchServiceImpl implements RagSearchService {
                     .collectionName(milvusProperties.getCollectionName())
                     .data(List.of(queryEmbedding))
                     .topK(topK)
-                    .outputFields(List.of("doc_id", "chunk_index", "content", "tenant_id"));
+                    .outputFields(List.of("doc_id", "chunk_index", "content", "tenant_id"))
+                    .consistencyLevel(milvusProperties.getConsistencyLevel());
 
             if (tenantId != null && !tenantId.isBlank()) {
                 if (!TENANT_ID_PATTERN.matcher(tenantId).matches()) {

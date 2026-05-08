@@ -93,7 +93,7 @@ class AutoCompactionServiceTest {
         List<LlmMessage> compactedMessages = buildMessages(2, 8, "compact");
         when(chatMemoryStore.loadMessages(conversationId)).thenReturn(originalMessages);
         when(toolResultStrategy.compact(eq(conversationId), anyList(), eq(budget)))
-            .thenReturn(CompactionResult.noop());
+            .thenReturn(CompactionResult.empty());
         when(slidingWindowStrategy.compact(eq(conversationId), anyList(), eq(budget)))
             .thenReturn(CompactionResult.success(compactedMessages, "sliding_window"));
 
@@ -115,9 +115,9 @@ class AutoCompactionServiceTest {
         List<LlmMessage> compactedMessages = buildMessages(2, 8, "compact");
         when(chatMemoryStore.loadMessages(conversationId)).thenReturn(originalMessages);
         when(toolResultStrategy.compact(eq(conversationId), anyList(), eq(budget)))
-            .thenReturn(CompactionResult.noop());
+            .thenReturn(CompactionResult.empty());
         when(slidingWindowStrategy.compact(eq(conversationId), anyList(), eq(budget)))
-            .thenReturn(CompactionResult.noop());
+            .thenReturn(CompactionResult.empty());
         when(summarizationStrategy.compact(eq(conversationId), anyList(), eq(budget)))
             .thenReturn(CompactionResult.success(compactedMessages, "summarization_with_restoration"));
 
@@ -142,9 +142,9 @@ class AutoCompactionServiceTest {
         List<LlmMessage> secondAttemptMessages = buildMessages(1, 8, "second");
         when(chatMemoryStore.loadMessages(conversationId)).thenReturn(originalMessages);
         when(toolResultStrategy.compact(eq(conversationId), anyList(), eq(budget)))
-            .thenReturn(CompactionResult.noop());
+            .thenReturn(CompactionResult.empty());
         when(slidingWindowStrategy.compact(eq(conversationId), anyList(), eq(budget)))
-            .thenReturn(CompactionResult.noop());
+            .thenReturn(CompactionResult.empty());
         when(summarizationStrategy.compact(eq(conversationId), anyList(), eq(budget)))
             .thenReturn(
                 CompactionResult.success(firstAttemptMessages, "summarization_with_restoration"),
@@ -169,9 +169,9 @@ class AutoCompactionServiceTest {
         List<LlmMessage> originalMessages = buildMessages(4, 40, "orig");
         when(chatMemoryStore.loadMessages(conversationId)).thenReturn(originalMessages);
         when(toolResultStrategy.compact(eq(conversationId), anyList(), eq(budget)))
-            .thenReturn(CompactionResult.noop());
+            .thenReturn(CompactionResult.empty());
         when(slidingWindowStrategy.compact(eq(conversationId), anyList(), eq(budget)))
-            .thenReturn(CompactionResult.noop());
+            .thenReturn(CompactionResult.empty());
         // Summarization always returns messages that are still over budget (or fails)
         when(summarizationStrategy.compact(eq(conversationId), anyList(), eq(budget)))
             .thenReturn(CompactionResult.success(buildMessages(2, 20, "still_over"), "summarization_with_restoration"));
@@ -192,7 +192,7 @@ class AutoCompactionServiceTest {
         List<LlmMessage> compactedMessages = buildMessages(2, 8, "compact");
         when(chatMemoryStore.loadMessages(conversationId)).thenReturn(originalMessages);
         when(toolResultStrategy.compact(eq(conversationId), anyList(), eq(budget)))
-            .thenReturn(CompactionResult.noop());
+            .thenReturn(CompactionResult.empty());
         when(slidingWindowStrategy.compact(eq(conversationId), anyList(), eq(budget)))
             .thenReturn(CompactionResult.success(compactedMessages, "sliding_window"));
 

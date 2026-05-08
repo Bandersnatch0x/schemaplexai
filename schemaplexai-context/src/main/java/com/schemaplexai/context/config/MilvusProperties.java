@@ -1,5 +1,6 @@
 package com.schemaplexai.context.config;
 
+import io.milvus.v2.common.ConsistencyLevel;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -12,4 +13,5 @@ public class MilvusProperties {
     private String token;
     private String databaseName = "default";
     private String collectionName = "knowledge_doc_embedding";
+    private ConsistencyLevel consistencyLevel = ConsistencyLevel.STRONG;
 }

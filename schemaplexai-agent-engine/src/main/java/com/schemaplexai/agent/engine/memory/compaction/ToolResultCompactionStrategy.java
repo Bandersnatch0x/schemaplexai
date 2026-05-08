@@ -23,7 +23,7 @@ public class ToolResultCompactionStrategy implements CompactionStrategy {
     public CompactionResult compact(String conversationId, List<LlmMessage> messages, TokenBudget budget) {
         long currentTokens = TokenEstimator.estimate(messages);
         if (currentTokens <= MAX_INPUT_TOKENS) {
-            return CompactionResult.noop();
+            return CompactionResult.empty();
         }
         List<LlmMessage> compacted = clearOldToolResults(messages, KEEP_RECENT);
         return CompactionResult.success(compacted, getName());

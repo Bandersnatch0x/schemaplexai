@@ -11,6 +11,7 @@ import com.schemaplexai.agent.engine.role.RoleOverlay;
 import com.schemaplexai.agent.engine.role.RoleRegistry;
 import com.schemaplexai.agent.engine.skill.SkillDefinition;
 import com.schemaplexai.agent.engine.skill.SkillRegistry;
+import com.schemaplexai.agent.engine.tool.ToolRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -53,6 +54,9 @@ class ThinkingStateHandlerSkillInjectionTest {
     @Mock
     private AutoCompactionService autoCompactionService;
 
+    @Mock
+    private ToolRegistry toolRegistry;
+
     private ThinkingStateHandler handler;
 
     @BeforeEach
@@ -66,7 +70,8 @@ class ThinkingStateHandlerSkillInjectionTest {
                 guardrailsEngine,
                 skillRegistry,
                 roleRegistry,
-                autoCompactionService
+                autoCompactionService,
+                toolRegistry
         );
     }
 

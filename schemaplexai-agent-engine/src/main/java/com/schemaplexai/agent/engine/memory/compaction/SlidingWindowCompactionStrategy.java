@@ -19,11 +19,11 @@ public class SlidingWindowCompactionStrategy implements CompactionStrategy {
     @Override
     public CompactionResult compact(String conversationId, List<LlmMessage> messages, TokenBudget budget) {
         if (budget == null) {
-            return CompactionResult.noop();
+            return CompactionResult.empty();
         }
         long currentTokens = TokenEstimator.estimate(messages);
         if (currentTokens <= budget.remainingInput()) {
-            return CompactionResult.noop();
+            return CompactionResult.empty();
         }
 
         List<LlmMessage> systemMessages = messages.stream()

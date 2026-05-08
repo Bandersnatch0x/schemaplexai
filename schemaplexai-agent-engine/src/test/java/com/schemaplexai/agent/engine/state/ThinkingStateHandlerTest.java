@@ -14,6 +14,7 @@ import com.schemaplexai.agent.engine.model.LlmMessage;
 import com.schemaplexai.agent.engine.model.ModelResolver;
 import com.schemaplexai.agent.engine.role.RoleRegistry;
 import com.schemaplexai.agent.engine.skill.SkillRegistry;
+import com.schemaplexai.agent.engine.tool.ToolRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -61,6 +62,9 @@ class ThinkingStateHandlerTest {
     private AutoCompactionService autoCompactionService;
 
     @Mock
+    private ToolRegistry toolRegistry;
+
+    @Mock
     private AgentStateMachine stateMachine;
 
     @InjectMocks
@@ -79,7 +83,7 @@ class ThinkingStateHandlerTest {
         // Default: guardrails pass everything (lenient because not all tests exercise the full handle flow)
         lenient().when(guardrailsEngine.validateInput(anyString())).thenReturn(ValidationResult.valid());
         // Default: compaction is noop (lenient because not all tests exercise compaction)
-        lenient().when(autoCompactionService.compactIfNeeded(anyString(), any())).thenReturn(CompactionResult.noop());
+        lenient().when(autoCompactionService.compactIfNeeded(anyString(), any())).thenReturn(CompactionResult.empty());
     }
 
     @Test
@@ -329,7 +333,7 @@ class ThinkingStateHandlerTest {
         List<LlmMessage> messages = List.of(new LlmMessage("user", "Hello"));
         when(chatMemoryStore.loadMessages("conv-123")).thenReturn(messages);
         when(autoCompactionService.compactIfNeeded(anyString(), any()))
-                .thenReturn(CompactionResult.noop());
+                .thenReturn(CompactionResult.empty());
         when(modelResolver.resolve(execution)).thenReturn("gpt-4");
         when(modelRouter.generateWithFallback(anyString(), anyString(), anyDouble()))
                 .thenReturn("Direct answer");

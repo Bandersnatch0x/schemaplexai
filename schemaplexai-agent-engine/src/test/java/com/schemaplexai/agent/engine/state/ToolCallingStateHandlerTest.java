@@ -47,6 +47,9 @@ class ToolCallingStateHandlerTest {
     private SecurityPolicyLoader securityPolicyLoader;
 
     @Mock
+    private com.schemaplexai.agent.engine.config.AgentEngineProperties engineProperties;
+
+    @Mock
     private AgentStateMachine stateMachine;
 
     @Mock
@@ -57,6 +60,7 @@ class ToolCallingStateHandlerTest {
 
     @Test
     void shouldBlockIrreversibleToolAndTransitionToFailed() {
+        when(engineProperties.getMaxToolCalls()).thenReturn(10);
         SfAgentExecution execution = createExecution(1L);
         LlmMessage assistantMsg = new LlmMessage("assistant", "calling volumeDelete");
         when(chatMemoryStore.loadMessages("conv-1")).thenReturn(List.of(assistantMsg));
@@ -79,6 +83,7 @@ class ToolCallingStateHandlerTest {
 
     @Test
     void shouldExecuteSafeToolAndRecordSuccess() {
+        when(engineProperties.getMaxToolCalls()).thenReturn(10);
         SfAgentExecution execution = createExecution(2L);
         LlmMessage assistantMsg = new LlmMessage("assistant", "calling fileRead");
         when(chatMemoryStore.loadMessages("conv-2")).thenReturn(List.of(assistantMsg));
@@ -149,6 +154,47 @@ class ToolCallingStateHandlerTest {
         verify(executionRecorder).record(eq(6L), argThat(result ->
             !result.success() && result.errorCategory() == ToolErrorCategory.UNEXPECTED_ENVIRONMENT));
         verify(stateMachine).transition(AgentExecutionState.FAILED, execution);
+    }
+
+    @Test
+    void shouldBlockWhenToolCallBudgetExceeded() {
+        when(engineProperties.getMaxToolCalls()).thenReturn(3);
+        SfAgentExecution execution = createExecution(7L);
+        execution.setMetadata("toolCallCount", 3);
+
+        LlmMessage assistantMsg = new LlmMessage("assistant", "calling fileRead");
+        when(chatMemoryStore.loadMessages("conv-7")).thenReturn(List.of(assistantMsg));
+        when(toolRegistry.parse("calling fileRead", null)).thenReturn(List.of(new ToolCall("fileRead")));
+
+        handler.handle(stateMachine, execution);
+
+        verify(stateMachine).transition(AgentExecutionState.GATE_BLOCKED, execution);
+        assertEquals("tool_call_budget_exceeded", execution.getMetadata("blockedReason"));
+        assertEquals("BUDGET", execution.getMetadata("admissionType"));
+        verifyNoInteractions(toolAdapter);
+    }
+
+    @Test
+    void shouldIncrementToolCallCountOnSuccess() throws ToolExecutionException {
+        when(engineProperties.getMaxToolCalls()).thenReturn(10);
+        SfAgentExecution execution = createExecution(8L);
+        execution.setMetadata("toolCallCount", 2);
+
+        LlmMessage assistantMsg = new LlmMessage("assistant", "calling fileRead");
+        when(chatMemoryStore.loadMessages("conv-8")).thenReturn(List.of(assistantMsg));
+        when(toolRegistry.parse("calling fileRead", null)).thenReturn(List.of(new ToolCall("fileRead")));
+        when(loopDetection.detectLoop(eq(8L), anyString(), anyList())).thenReturn(LoopDetectionResult.noLoop());
+        when(toolRegistry.resolve("fileRead")).thenReturn(toolAdapter);
+        when(securityPolicyLoader.load("tenant-8")).thenReturn(null);
+        when(safetyGuard.check("fileRead", "{}", "tenant-8")).thenReturn(
+            new ToolSafetyGuard.SafetyCheckResult(true, false, null, null));
+        when(toolAdapter.execute(any(ToolCall.class), any(ExecutionContext.class)))
+            .thenReturn(ToolResult.success("Tool fileRead executed"));
+
+        handler.handle(stateMachine, execution);
+
+        assertEquals(3, execution.getMetadata("toolCallCount"));
+        verify(stateMachine).transition(AgentExecutionState.THINKING, execution);
     }
 
     @Test

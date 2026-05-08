@@ -13,6 +13,7 @@ class MilvusPropertiesTest {
         assertThat(props.getPort()).isEqualTo(19530);
         assertThat(props.getDatabaseName()).isEqualTo("default");
         assertThat(props.getCollectionName()).isEqualTo("knowledge_doc_embedding");
+        assertThat(props.getConsistencyLevel()).isEqualTo(io.milvus.v2.common.ConsistencyLevel.STRONG);
     }
 
     @Test

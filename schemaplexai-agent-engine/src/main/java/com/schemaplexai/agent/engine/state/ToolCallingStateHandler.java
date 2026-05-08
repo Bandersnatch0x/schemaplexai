@@ -1,5 +1,6 @@
 package com.schemaplexai.agent.engine.state;
 
+import com.schemaplexai.agent.engine.config.AgentEngineProperties;
 import com.schemaplexai.agent.engine.config.SecurityPolicyLoader;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.loop.AgentLoopDetectionService;
@@ -38,6 +39,7 @@ public class ToolCallingStateHandler implements AgentStateHandler {
     private final AgentLoopDetectionService loopDetection;
     private final ToolExecutionRecorder executionRecorder;
     private final SecurityPolicyLoader securityPolicyLoader;
+    private final AgentEngineProperties engineProperties;
 
     @Autowired
     public ToolCallingStateHandler(CompositeChatMemoryStore chatMemoryStore,
@@ -46,7 +48,8 @@ public class ToolCallingStateHandler implements AgentStateHandler {
                                     ToolSafetyGuard safetyGuard,
                                     AgentLoopDetectionService loopDetection,
                                     ToolExecutionRecorder executionRecorder,
-                                    SecurityPolicyLoader securityPolicyLoader) {
+                                    SecurityPolicyLoader securityPolicyLoader,
+                                    AgentEngineProperties engineProperties) {
         this.chatMemoryStore = chatMemoryStore;
         this.sandbox = sandbox;
         this.toolRegistry = toolRegistry;
@@ -54,6 +57,7 @@ public class ToolCallingStateHandler implements AgentStateHandler {
         this.loopDetection = loopDetection;
         this.executionRecorder = executionRecorder;
         this.securityPolicyLoader = securityPolicyLoader;
+        this.engineProperties = engineProperties;
     }
 
     @Override
@@ -84,7 +88,18 @@ public class ToolCallingStateHandler implements AgentStateHandler {
             // 2. Structured tool call parsing (replaces heuristic parseToolCalls)
             List<ToolCall> toolCalls = toolRegistry.parse(lastMessage.getContent(), null);
 
-            // 3. Loop detection — check for repeated tool calls
+            // 3. Tool-call budget check
+            int currentCount = getToolCallCount(execution);
+            if (currentCount + toolCalls.size() > engineProperties.getMaxToolCalls()) {
+                log.warn("Tool-call budget exceeded for execution {}: current={}, pending={}, max={}",
+                        execution.getId(), currentCount, toolCalls.size(), engineProperties.getMaxToolCalls());
+                execution.setMetadata("blockedReason", "tool_call_budget_exceeded");
+                execution.setMetadata("admissionType", "BUDGET");
+                stateMachine.transition(AgentExecutionState.GATE_BLOCKED, execution);
+                return;
+            }
+
+            // 4. Loop detection — check for repeated tool calls
             String responseHash = hashContent(lastMessage.getContent());
             List<String> toolNames = toolCalls.stream().map(ToolCall::toolName).toList();
             LoopDetectionResult loopResult = loopDetection.detectLoop(execution.getId(), responseHash, toolNames);
@@ -94,7 +109,7 @@ public class ToolCallingStateHandler implements AgentStateHandler {
                 return;
             }
 
-            // 4. Execute each tool call with security checks
+            // 5. Execute each tool call with security checks
             boolean isRetry = isRetryContext(execution);
             for (ToolCall toolCall : toolCalls) {
                 // If retrying, only execute the failed tool call (not all calls)
@@ -130,6 +145,8 @@ public class ToolCallingStateHandler implements AgentStateHandler {
                 // Save tool result to conversation memory
                 chatMemoryStore.saveMessage(execution.getConversationId(),
                         new LlmMessage("tool", result.output()));
+
+                incrementToolCallCount(execution);
             }
 
             // 5. Transition back to THINKING for next LLM round
@@ -192,6 +209,19 @@ public class ToolCallingStateHandler implements AgentStateHandler {
             return ToolExecutionResult.failure(toolCall.toolName(),
                     ToolErrorCategory.INTERNAL_ERROR, e.getMessage(), latency, 0);
         }
+    }
+
+    private int getToolCallCount(SfAgentExecution execution) {
+        Object count = execution.getMetadata("toolCallCount");
+        if (count instanceof Number) {
+            return ((Number) count).intValue();
+        }
+        return 0;
+    }
+
+    private void incrementToolCallCount(SfAgentExecution execution) {
+        int current = getToolCallCount(execution);
+        execution.setMetadata("toolCallCount", current + 1);
     }
 
     private boolean isRetryContext(SfAgentExecution execution) {

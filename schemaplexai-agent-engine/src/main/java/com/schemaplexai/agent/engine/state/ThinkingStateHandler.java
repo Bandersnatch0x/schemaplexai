@@ -11,6 +11,7 @@ import com.schemaplexai.agent.engine.loop.LoopDetectionResult;
 import com.schemaplexai.agent.engine.memory.CompositeChatMemoryStore;
 import com.schemaplexai.agent.engine.memory.compaction.AutoCompactionService;
 import com.schemaplexai.agent.engine.memory.compaction.CompactionResult;
+import com.schemaplexai.agent.engine.extractor.FinalAnswerExtractor;
 import com.schemaplexai.agent.engine.model.AiModelRouter;
 import com.schemaplexai.agent.engine.model.LlmMessage;
 import com.schemaplexai.agent.engine.plan.SubTask;
@@ -19,6 +20,8 @@ import com.schemaplexai.agent.engine.role.RoleOverlay;
 import com.schemaplexai.agent.engine.role.RoleRegistry;
 import com.schemaplexai.agent.engine.skill.SkillDefinition;
 import com.schemaplexai.agent.engine.skill.SkillRegistry;
+import com.schemaplexai.agent.engine.tool.ToolDefinition;
+import com.schemaplexai.agent.engine.tool.ToolRegistry;
 import com.schemaplexai.agent.engine.util.TokenEstimator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -48,6 +51,8 @@ public class ThinkingStateHandler implements AgentStateHandler {
     private final SkillRegistry skillRegistry;
     private final RoleRegistry roleRegistry;
     private final AutoCompactionService autoCompactionService;
+    private final ToolRegistry toolRegistry;
+    private final FinalAnswerExtractor finalAnswerExtractor;
 
     public ThinkingStateHandler(ContextInjector contextInjector,
                                  CompositeChatMemoryStore chatMemoryStore,
@@ -57,7 +62,8 @@ public class ThinkingStateHandler implements AgentStateHandler {
                                  GuardrailsEngine guardrailsEngine,
                                  SkillRegistry skillRegistry,
                                  RoleRegistry roleRegistry,
-                                 AutoCompactionService autoCompactionService) {
+                                 AutoCompactionService autoCompactionService,
+                                 ToolRegistry toolRegistry) {
         this.contextInjector = contextInjector;
         this.chatMemoryStore = chatMemoryStore;
         this.modelRouter = modelRouter;
@@ -67,6 +73,8 @@ public class ThinkingStateHandler implements AgentStateHandler {
         this.skillRegistry = skillRegistry;
         this.roleRegistry = roleRegistry;
         this.autoCompactionService = autoCompactionService;
+        this.toolRegistry = toolRegistry;
+        this.finalAnswerExtractor = new FinalAnswerExtractor();
     }
 
     @Override
@@ -152,7 +160,9 @@ public class ThinkingStateHandler implements AgentStateHandler {
             }
 
             // 7. Save assistant response to memory
-            chatMemoryStore.saveMessage(execution.getConversationId(), new LlmMessage("assistant", response));
+            String cleanAnswer = finalAnswerExtractor.extractFinalAnswer(response);
+            String memoryContent = cleanAnswer != null ? cleanAnswer : response;
+            chatMemoryStore.saveMessage(execution.getConversationId(), new LlmMessage("assistant", memoryContent));
 
             // 8. Loop detection before transitioning to TOOL_CALLING
             if (containsToolCalls(response)) {
@@ -206,6 +216,12 @@ public class ThinkingStateHandler implements AgentStateHandler {
             }
         }
 
+        // Inject available tool descriptions
+        String toolDesc = buildToolDescriptions();
+        if (!toolDesc.isBlank()) {
+            sb.append("# Available Tools\n").append(toolDesc).append("\n\n");
+        }
+
         // Append original prompt content from messages
         if (messages != null && !messages.isEmpty()) {
             for (LlmMessage msg : messages) {
@@ -213,6 +229,26 @@ public class ThinkingStateHandler implements AgentStateHandler {
             }
         }
 
+        return sb.toString();
+    }
+
+    private String buildToolDescriptions() {
+        if (toolRegistry == null) {
+            return "";
+        }
+        List<ToolDefinition> tools = toolRegistry.getAll();
+        if (tools == null || tools.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (ToolDefinition tool : tools) {
+            sb.append("- ").append(tool.name()).append(": ").append(tool.description()).append("\n");
+            if (tool.parameters() != null && !tool.parameters().isEmpty()) {
+                tool.parameters().forEach(p ->
+                    sb.append(String.format("  - %s (%s)%s: %s%n",
+                        p.name(), p.type(), p.required() ? ", required" : "", p.description())));
+            }
+        }
         return sb.toString();
     }
 
@@ -229,7 +265,9 @@ public class ThinkingStateHandler implements AgentStateHandler {
                 || response.contains("<function>")
                 || response.contains("<tool>")
                 || response.contains("```tool")
-                || response.contains("invoke_tool");
+                || response.contains("invoke_tool")
+                || response.contains("Action:")
+                || response.contains("Action Input:");
     }
 
     private List<String> extractToolNames(String response) {

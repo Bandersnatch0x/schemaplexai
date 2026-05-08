@@ -7,14 +7,24 @@ import java.util.List;
 public record CompactionResult(
     List<LlmMessage> messages,
     String strategy,
-    boolean noop
+    boolean success,
+    boolean noOp,
+    String failureReason
 ) {
 
-    public static CompactionResult noop() {
-        return new CompactionResult(null, null, true);
+    public static CompactionResult empty() {
+        return new CompactionResult(null, null, true, true, null);
     }
 
     public static CompactionResult success(List<LlmMessage> messages, String strategy) {
-        return new CompactionResult(messages, strategy, false);
+        return new CompactionResult(messages, strategy, true, false, null);
+    }
+
+    public static CompactionResult failed(String failureReason) {
+        return new CompactionResult(null, null, false, false, failureReason);
+    }
+
+    public String strategyName() {
+        return strategy;
     }
 }
