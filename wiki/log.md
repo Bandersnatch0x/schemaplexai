@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T03:04:31Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T04:09:38Z -->
 
 ---
 title: Wiki Operation Log
@@ -14,46 +14,46 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
-## 2026-05-08 — feat: close P0 core gaps in agent-engine and integration
-157519a
-## 2026-05-08 — docs(spec): add UI architecture alignment design
-4dfd99d
-## 2026-05-08 — feat(agent-engine): add Layer 2 agentic patterns
-7d97896
-## 2026-05-08 — feat(agent-engine): add ShadowReviewEvaluator for Layer 1 completion
-e462668
-## 2026-05-08 — feat(agent-engine): complete Layer 1 agentic patterns
-a23e48e
-## 2026-05-08 — feat(observability): enable OTLP tracing in all services
-9bffe98
-## 2026-05-08 — feat(gateway): add traceparent propagation filter
-72a673d
-## 2026-05-08 — feat(observability): OpenTelemetry integration with PII redaction and tenant tagging
-9a15161
-## 2026-05-08 — docs(wiki): add MAF roundtable findings and /run-tasks command
-e15e1bf
-## 2026-05-08 — fix(agent-engine): add missing CubeSandbox DTOs and properties
-e803dd1
-## 2026-05-08 — docs(wiki): mark hybrid-mode-integration completed in active-areas
-37428d2
-## 2026-05-08 — feat(agent-engine): add Skill/Role registries with Caffeine cache (T5)
-d8275b3
-## 2026-05-07 — feat(agent-engine): add Skill/Role entities and mappers (T4)
-2dc7783
-## 2026-05-07 — feat(agent-engine): integrate AutoCompactionService into ThinkingStateHandler (T13)
-54315f1
-## 2026-05-07 — feat(agent-engine): TaskToolAdapter + SubAgentExecutionService (T21)
-43bfb4a
-## 2026-05-07 — feat(agent-engine): AutoCompactionService with PTL Retry (T12)
-64e9fdc
-## 2026-05-07 — feat(agent-engine): AgentSessionPersistence (T22) + ContainerSandboxProvider (T23)
-f81ab39
-## 2026-05-07 — feat(agent-engine): SlidingWindowCompactionStrategy (Layer 1)
-fdbe2ed
-## 2026-05-07 — feat(compaction): implement SummarizationCompactionStrategy (Layer 2) + ConversationFileTracker
-71fded2
-## 2026-05-07 — feat(compaction): implement SlidingWindowCompactionStrategy (Layer 1)
-23a3876
+## 2026-05-08 — chore(cleanup): remove dead code (Dashboard, AgentManager, NotificationCenter)
+51da5c4
+## 2026-05-08 — feat(router): restructure routes into 6 domain groups with sub-routes
+f3ac476
+## 2026-05-08 — test(components): add TaskCard tests for title, priority, tags, and description
+53f8081
+## 2026-05-08 — feat(pages): add Tasks domain pages (TaskBoard, TaskJobs, TaskDetail)
+fe2152f
+## 2026-05-08 — feat(components): export KanbanBoard and TaskCard from Hive index
+4d8149d
+## 2026-05-08 — feat(components): add KanbanBoard with @dnd-kit drag-and-drop
+76a0f6d
+## 2026-05-08 — feat(pages): reorganize Platform pages (SystemCenter, IntegrationCenter, OpsCenter)
+df59c9e
+## 2026-05-08 — feat(layout): ProgressiveLayout uses DomainNav with expandable submenus
+083f434
+## 2026-05-08 — feat(layout): expand ImmersiveLayout to 7 nav icons (6 domains + canvas)
+b209f72
+## 2026-05-08 — feat(pages): resurrect WorkflowCenter as tabbed page (templates + instances)
+b0f8c79
+## 2026-05-08 — feat(api): add task service API client
+1452bfc
+## 2026-05-08 — refactor(pages): remove old SpecCenter (moved to Projects/SpecCenter)
+a6b6932
+## 2026-05-08 — refactor(pages): move ContextCenter to Projects/ContextCenter
+65f43a4
+## 2026-05-08 — refactor(api): split agent.ts into agent-config and agent-engine
+14d1f55
+## 2026-05-08 — chore(deps): add @dnd-kit for Kanban board
+4db9d8c
+## 2026-05-08 — feat(pages): create AgentList from AgentManager at /agents/list
+f24ff34
+## 2026-05-08 — feat(pages): split QualityCenter into QualityGates, QualityIssues, SecurityAudit
+0d91fb3
+## 2026-05-08 — feat(api): expand system API with users, roles, tenants, models
+207500c
+## 2026-05-08 — feat(types): add SfTask, TaskStatus, TaskPriority, AssignmentType
+2108bcf
+## 2026-05-08 — docs(plan): add UI architecture alignment implementation plan
+9b3cc60
 
 ---
 
