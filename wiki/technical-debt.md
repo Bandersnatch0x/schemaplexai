@@ -23,7 +23,7 @@ confidence: high
 
 | Item | Priority | Details |
 |------|----------|---------|
-| Multi-Agent orchestration | P1 | Single-Agent execution only; no Coordinator/Swarm/Crew |
+| ~~Multi-Agent orchestration~~ | ~~P1~~ | **Resolved 2026-05-09**: Concurrent Fan-Out/Fan-In + Handoff + Group Chat implemented in MAF Phase 3 |
 | HITL approval flow incomplete | P1 | `PAUSED` state exists but no UI approval/reject/resume flow |
 
 ## MAF Absorption Roadmap (from 2026-05-08 roundtable debate)
@@ -103,6 +103,12 @@ confidence: high
 | **schemaplexai-admin not empty** | 2026-05-08 | Corrected: has 7 controllers, DTOs, services, 12 test files |
 | **Tool-call budget** | 2026-05-08 | Per-execution per-iteration tool-call budget enforcement; Layer 1 Task 3 |
 | **Guardrails engine** | 2026-05-08 | `GuardrailsEngine` with input/output validation; Layer 1 Task 5 |
+| **MAF Phase 1** | 2026-05-09 | OpenTelemetry + Progressive skill disclosure + Topology hash + Tool-call budget |
+| **MAF Phase 2** | 2026-05-09 | Middleware pipeline + ApprovalMode + Provider-agnostic SPI |
+| **MAF Phase 3** | 2026-05-09 | Concurrent Fan-Out/Fan-In + Handoff + Group Chat |
+| **Tessera P0** | 2026-05-09 | Skills Dashboard + Composer + Session Timeline |
+| **Tessera P1** | 2026-05-09 | External Agent SPI + Task Branch Manager |
+| **v1 Test Coverage** | 2026-05-09 | Model (27) + DAO (20) + Web (102) + Integration (249) tests added |
 
 ## Backlinks
 

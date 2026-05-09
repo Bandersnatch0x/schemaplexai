@@ -1,11 +1,11 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-08T15:57:33Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-09T02:08:13Z -->
 
 ---
 title: Wiki Operation Log
 type: log
 source: auto-generated
-creation_date: 2026-05-08
-update_date: 2026-05-08
+creation_date: 2026-05-09
+update_date: 2026-05-09
 tags: [wiki, log, maintenance]
 confidence: high
 ---
@@ -14,6 +14,22 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
+## 2026-05-09 — test: v1 coverage for model, dao, web, integration, context, gateway
+1ceb528
+## 2026-05-09 — feat: Tessera P1 Task Branch Manager
+116d075
+## 2026-05-09 — feat: MAF Phase 3 Group Chat + Tessera P1 External Agent SPI
+2dab4a0
+## 2026-05-09 — test(common): add TenantRedisKeyResolverTest — 24 tests, 91% redis pkg coverage
+27f491c
+## 2026-05-09 — chore: sync development status
+82c36e3
+## 2026-05-09 — refactor: refine HandoffStateHandler, streamline UI component tests
+c00e329
+## 2026-05-08 — fix(workflow): JoinNodeExecutor should skip failed results in join
+a2f1d0a
+## 2026-05-08 — chore: sync wiki from recent commits
+3dc963b
 ## 2026-05-08 — test: fix AgentExecutionStateTest for HANDOFF, add HandoffStateHandlerTest
 8843972
 ## 2026-05-08 — test: add timeline, ChatMemory, and SseViewer component tests
@@ -38,22 +54,6 @@ cc48fea
 31e2ffc
 ## 2026-05-08 — test(workflow): add jwt.secret to test config for JwtSecretStartupValidator
 185580b
-## 2026-05-08 — docs: update wiki for Layer 1 agentic patterns completion
-19b6693
-## 2026-05-08 — chore: sync development status
-c1c2437
-## 2026-05-08 — test: fix RateLimitFilter and AuthService tests for TenantRedisKeyResolver
-ea73181
-## 2026-05-08 — chore: update wiki sync timestamp
-87c72f5
-## 2026-05-08 — feat(gateway): tenant-aware rate limiting and auth token lifecycle
-1a72d22
-## 2026-05-08 — feat(agent-engine): add MockLlmProvider + tenant-aware admission keys
-f52195b
-## 2026-05-08 — feat(common): add TenantRedisKeyResolver for tenant-scoped Redis keys
-5d7502d
-## 2026-05-08 — chore: update ReAct comment + sync development status
-cec51bd
 
 ---
 
