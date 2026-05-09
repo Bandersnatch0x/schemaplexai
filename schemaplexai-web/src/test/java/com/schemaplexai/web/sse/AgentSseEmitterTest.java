@@ -1,7 +1,9 @@
 package com.schemaplexai.web.sse;
 
+import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.message.MessageType;
 import com.schemaplexai.common.message.UnifiedMessage;
+import com.schemaplexai.common.result.ResultCode;
 import com.schemaplexai.web.security.JwtValidator;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -9,6 +11,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -89,5 +92,72 @@ class AgentSseEmitterTest {
 
         // Should not throw even if client does not exist
         emitterManager.sendUnified("nonexistent-client", message);
+    }
+
+    @Test
+    void createEmitter_shouldThrow_whenTokenIsNull() {
+        AgentSseEmitter emitterManager = new AgentSseEmitter(jwtValidator);
+        assertThatThrownBy(() -> emitterManager.createEmitter("client-1", null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.UNAUTHORIZED.getCode());
+    }
+
+    @Test
+    void createEmitter_shouldThrow_whenTokenIsInvalid() {
+        when(jwtValidator.validateToken("Bearer invalid")).thenReturn(false);
+        AgentSseEmitter emitterManager = new AgentSseEmitter(jwtValidator);
+        assertThatThrownBy(() -> emitterManager.createEmitter("client-1", "Bearer invalid"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.UNAUTHORIZED.getCode());
+    }
+
+    @Test
+    void sendEvent_shouldNotThrow_whenClientExists() throws IOException {
+        when(jwtValidator.validateToken("Bearer valid-token")).thenReturn(true);
+        AgentSseEmitter emitterManager = new AgentSseEmitter(jwtValidator);
+        SseEmitter emitter = emitterManager.createEmitter("client-1", "Bearer valid-token");
+        assertThat(emitter).isNotNull();
+
+        emitterManager.sendEvent("client-1", "test-event", "data");
+    }
+
+    @Test
+    void sendEvent_shouldIgnore_whenClientNotFound() {
+        AgentSseEmitter emitterManager = new AgentSseEmitter(jwtValidator);
+        emitterManager.sendEvent("nonexistent", "event", "data");
+    }
+
+    @Test
+    void complete_shouldRemoveEmitter() throws IOException {
+        when(jwtValidator.validateToken("Bearer valid-token")).thenReturn(true);
+        AgentSseEmitter emitterManager = new AgentSseEmitter(jwtValidator);
+        SseEmitter emitter = emitterManager.createEmitter("client-1", "Bearer valid-token");
+        assertThat(emitter).isNotNull();
+
+        emitterManager.complete("client-1");
+    }
+
+    @Test
+    void complete_shouldIgnore_whenClientNotFound() {
+        AgentSseEmitter emitterManager = new AgentSseEmitter(jwtValidator);
+        emitterManager.complete("nonexistent");
+    }
+
+    @Test
+    void completeWithError_shouldRemoveEmitter() throws IOException {
+        when(jwtValidator.validateToken("Bearer valid-token")).thenReturn(true);
+        AgentSseEmitter emitterManager = new AgentSseEmitter(jwtValidator);
+        SseEmitter emitter = emitterManager.createEmitter("client-1", "Bearer valid-token");
+        assertThat(emitter).isNotNull();
+
+        emitterManager.completeWithError("client-1", new RuntimeException("boom"));
+    }
+
+    @Test
+    void completeWithError_shouldIgnore_whenClientNotFound() {
+        AgentSseEmitter emitterManager = new AgentSseEmitter(jwtValidator);
+        emitterManager.completeWithError("nonexistent", new RuntimeException("boom"));
     }
 }

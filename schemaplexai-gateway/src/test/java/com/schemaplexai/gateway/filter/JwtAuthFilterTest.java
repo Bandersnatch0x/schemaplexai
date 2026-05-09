@@ -50,6 +50,7 @@ class JwtAuthFilterTest {
         when(response.getHeaders()).thenReturn(new HttpHeaders());
         when(response.bufferFactory()).thenReturn(new DefaultDataBufferFactory());
         when(response.writeWith(any())).thenReturn(Mono.empty());
+        when(response.setComplete()).thenReturn(Mono.empty());
         when(chain.filter(any(ServerWebExchange.class))).thenReturn(Mono.empty());
 
         // Stub request mutation chain (used by both whitelist and auth paths)
@@ -209,6 +210,25 @@ class JwtAuthFilterTest {
                 .verifyComplete();
 
         verify(response).setStatusCode(HttpStatus.UNAUTHORIZED);
+        verify(chain, never()).filter(any());
+    }
+
+    @Test
+    void filter_jsonProcessingException_returnsSetComplete() throws Exception {
+        ObjectMapper mockObjectMapper = mock(ObjectMapper.class);
+        when(mockObjectMapper.writeValueAsBytes(any())).thenThrow(new com.fasterxml.jackson.core.JsonProcessingException("fail") {});
+        filter = new JwtAuthFilter(mockObjectMapper);
+        ReflectionTestUtils.setField(filter, "jwtSecret", SECRET);
+
+        when(request.getURI()).thenReturn(java.net.URI.create("http://localhost/agent/execute"));
+        HttpHeaders headers = new HttpHeaders();
+        when(request.getHeaders()).thenReturn(headers);
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        verify(response).setStatusCode(HttpStatus.UNAUTHORIZED);
+        verify(response).setComplete();
         verify(chain, never()).filter(any());
     }
 
