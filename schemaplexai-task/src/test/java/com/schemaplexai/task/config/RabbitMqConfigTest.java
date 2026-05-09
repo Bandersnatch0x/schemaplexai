@@ -109,4 +109,18 @@ class RabbitMqConfigTest {
         Binding binding = config.milvusSyncBinding();
         assertThat(binding.getRoutingKey()).isEqualTo(CommonConstants.RK_MILVUS_SYNC);
     }
+
+    @Test
+    void executionEventQueue_hasDeadLetterArgs() {
+        Queue queue = config.executionEventQueue();
+        assertThat(queue.getName()).isEqualTo("sf.execution.event.queue");
+        Map<String, Object> args = queue.getArguments();
+        assertThat(args).containsEntry("x-dead-letter-exchange", DeadLetterConfig.DLX_EXCHANGE);
+    }
+
+    @Test
+    void executionEventBinding_routingKeyMatches() {
+        Binding binding = config.executionEventBinding();
+        assertThat(binding.getRoutingKey()).isEqualTo(CommonConstants.RK_AGENT_EXEC_EVENT);
+    }
 }

@@ -378,4 +378,79 @@ class BudgetServiceImplTest {
         assertThat(result.getLimitAmount()).isEqualTo(BigDecimal.valueOf(200));
         verify(budgetMapper).updateById(budget);
     }
+
+    // ------------------------------------------------------------------
+    // addUsedAmount
+    // ------------------------------------------------------------------
+
+    @Test
+    void addUsedAmount_nullTenantId_doesNothing() {
+        budgetService.addUsedAmount(null, BigDecimal.valueOf(10));
+
+        verify(budgetMapper, never()).selectList(any());
+        verify(budgetMapper, never()).updateById(any());
+    }
+
+    @Test
+    void addUsedAmount_blankTenantId_doesNothing() {
+        budgetService.addUsedAmount("   ", BigDecimal.valueOf(10));
+
+        verify(budgetMapper, never()).selectList(any());
+    }
+
+    @Test
+    void addUsedAmount_nullUsedAmount_doesNothing() {
+        budgetService.addUsedAmount("tenant-1", null);
+
+        verify(budgetMapper, never()).selectList(any());
+    }
+
+    @Test
+    void addUsedAmount_zeroUsedAmount_doesNothing() {
+        budgetService.addUsedAmount("tenant-1", BigDecimal.ZERO);
+
+        verify(budgetMapper, never()).selectList(any());
+    }
+
+    @Test
+    void addUsedAmount_negativeUsedAmount_doesNothing() {
+        budgetService.addUsedAmount("tenant-1", BigDecimal.valueOf(-10));
+
+        verify(budgetMapper, never()).selectList(any());
+    }
+
+    @Test
+    void addUsedAmount_noBudgets_doesNothing() {
+        when(budgetMapper.selectList(any())).thenReturn(Collections.emptyList());
+
+        budgetService.addUsedAmount("tenant-1", BigDecimal.valueOf(10));
+
+        verify(budgetMapper, never()).updateById(any());
+    }
+
+    @Test
+    void addUsedAmount_withExistingUsedAmount_addsToExisting() {
+        SfBudget budget = new SfBudget();
+        budget.setId(1L);
+        budget.setUsedAmount(BigDecimal.valueOf(50));
+        when(budgetMapper.selectList(any())).thenReturn(List.of(budget));
+
+        budgetService.addUsedAmount("tenant-1", BigDecimal.valueOf(25));
+
+        assertThat(budget.getUsedAmount()).isEqualTo(BigDecimal.valueOf(75));
+        verify(budgetMapper).updateById(budget);
+    }
+
+    @Test
+    void addUsedAmount_withNullUsedAmount_setsToAddedAmount() {
+        SfBudget budget = new SfBudget();
+        budget.setId(1L);
+        budget.setUsedAmount(null);
+        when(budgetMapper.selectList(any())).thenReturn(List.of(budget));
+
+        budgetService.addUsedAmount("tenant-1", BigDecimal.valueOf(25));
+
+        assertThat(budget.getUsedAmount()).isEqualTo(BigDecimal.valueOf(25));
+        verify(budgetMapper).updateById(budget);
+    }
 }
