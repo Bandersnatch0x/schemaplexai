@@ -5,6 +5,7 @@ import com.rabbitmq.client.Channel;
 import com.schemaplexai.model.event.ExecutionEventMessage;
 import com.schemaplexai.quality.entity.SfAuditEvent;
 import com.schemaplexai.quality.service.AuditEventService;
+import com.schemaplexai.quality.service.InboxDeduplicationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,9 @@ class AuditEventConsumerTest {
     private AuditEventService auditEventService;
 
     @Mock
+    private InboxDeduplicationService inboxDeduplicationService;
+
+    @Mock
     private Channel channel;
 
     @InjectMocks
@@ -40,16 +44,20 @@ class AuditEventConsumerTest {
 
     @BeforeEach
     void setUp() {
-        auditEventConsumer = new AuditEventConsumer(auditEventService, objectMapper);
+        auditEventConsumer = new AuditEventConsumer(auditEventService, objectMapper, inboxDeduplicationService);
     }
 
     @Test
     @DisplayName("Projects AUDIT event to sf_audit_event with content hash")
     void projectsAuditEvent() throws Exception {
+        UUID eventId = UUID.randomUUID();
         ExecutionEventMessage event = new ExecutionEventMessage(
-                UUID.randomUUID(), 1L, 3, "TOOL_CALLED",
+                eventId, 1L, 3, "TOOL_CALLED",
                 "{\"tool\":\"git.push\"}", Instant.now(), 10L, 2L, "AUDIT");
         Message message = createMessage(event);
+
+        when(inboxDeduplicationService.isProcessed(eventId, "AuditEventConsumer")).thenReturn(false);
+        doNothing().when(inboxDeduplicationService).markProcessed(eventId, "AuditEventConsumer");
 
         auditEventConsumer.onMessage(message, channel);
 
@@ -70,10 +78,13 @@ class AuditEventConsumerTest {
     @Test
     @DisplayName("Skips DEBUG and EPHEMERAL events")
     void skipsNonAuditEvents() throws Exception {
+        UUID eventId = UUID.randomUUID();
         ExecutionEventMessage debugEvent = new ExecutionEventMessage(
-                UUID.randomUUID(), 1L, 1, "THOUGHT",
+                eventId, 1L, 1, "THOUGHT",
                 "{}", Instant.now(), 10L, 2L, "DEBUG");
         Message message = createMessage(debugEvent);
+
+        when(inboxDeduplicationService.isProcessed(eventId, "AuditEventConsumer")).thenReturn(false);
 
         auditEventConsumer.onMessage(message, channel);
 
@@ -91,6 +102,25 @@ class AuditEventConsumerTest {
 
         verifyNoInteractions(auditEventService);
         verify(channel).basicNack(5L, false, false);
+    }
+
+    @Test
+    @DisplayName("Skips already processed event via deduplication")
+    void skipsAlreadyProcessedEvent() throws Exception {
+        UUID eventId = UUID.randomUUID();
+        ExecutionEventMessage event = new ExecutionEventMessage(
+                eventId, 1L, 3, "TOOL_CALLED",
+                "{\"tool\":\"git.push\"}", Instant.now(), 10L, 2L, "AUDIT");
+        Message message = createMessage(event);
+
+        when(inboxDeduplicationService.isProcessed(eventId, "AuditEventConsumer")).thenReturn(true);
+
+        auditEventConsumer.onMessage(message, channel);
+
+        verify(inboxDeduplicationService).isProcessed(eventId, "AuditEventConsumer");
+        verifyNoInteractions(auditEventService);
+        verify(channel).basicAck(anyLong(), eq(false));
+        verify(inboxDeduplicationService, never()).markProcessed(any(), any());
     }
 
     @Test

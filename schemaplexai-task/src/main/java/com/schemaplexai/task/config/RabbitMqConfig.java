@@ -124,4 +124,19 @@ public class RabbitMqConfig {
                 .to(schemaplexaiExchange())
                 .with(CommonConstants.RK_MILVUS_SYNC);
     }
+
+    @Bean
+    public Queue executionEventQueue() {
+        Map<String, Object> args = new HashMap<>();
+        args.put("x-dead-letter-exchange", DeadLetterConfig.DLX_EXCHANGE);
+        args.put("x-dead-letter-routing-key", DeadLetterConfig.DLX_ROUTING_KEY);
+        return new Queue("sf.execution.event.queue", true, false, false, args);
+    }
+
+    @Bean
+    public Binding executionEventBinding() {
+        return BindingBuilder.bind(executionEventQueue())
+                .to(schemaplexaiExchange())
+                .with(CommonConstants.RK_AGENT_EXEC_EVENT);
+    }
 }

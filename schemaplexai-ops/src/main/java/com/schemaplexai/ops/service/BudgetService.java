@@ -48,4 +48,12 @@ public interface BudgetService extends IService<SfBudget> {
      * @return the updated budget
      */
     SfBudget updateBudgetAllocation(Long budgetId, BigDecimal newLimitAmount);
+
+    /**
+     * Add used amount to a tenant's budget.
+     *
+     * @param tenantId   the tenant ID
+     * @param usedAmount the amount to add
+     */
+    void addUsedAmount(String tenantId, BigDecimal usedAmount);
 }

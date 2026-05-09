@@ -101,4 +101,23 @@ public class BudgetServiceImpl extends ServiceImpl<BudgetMapper, SfBudget> imple
         log.info("Updated budget allocation: id={}, oldLimit={}, newLimit={}", budgetId, oldLimit, newLimitAmount);
         return budget;
     }
+
+    @Override
+    public void addUsedAmount(String tenantId, BigDecimal usedAmount) {
+        if (tenantId == null || tenantId.isBlank() || usedAmount == null || usedAmount.compareTo(ZERO) <= 0) {
+            return;
+        }
+        List<SfBudget> budgets = listBudgetsByTenant(tenantId);
+        if (budgets.isEmpty()) {
+            log.warn("No budget found for tenant {}, skipping cost sync", tenantId);
+            return;
+        }
+        SfBudget budget = budgets.get(0);
+        BigDecimal newUsed = budget.getUsedAmount() != null
+                ? budget.getUsedAmount().add(usedAmount)
+                : usedAmount;
+        budget.setUsedAmount(newUsed);
+        baseMapper.updateById(budget);
+        log.info("Updated budget used amount: tenantId={}, added={}, newUsed={}", tenantId, usedAmount, newUsed);
+    }
 }
