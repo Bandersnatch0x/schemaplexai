@@ -35,5 +35,6 @@ class AgentExecutionStateTest {
         assertFalse(AgentExecutionState.RETRYING.isTerminal());
         assertFalse(AgentExecutionState.REFLECTING.isTerminal());
         assertFalse(AgentExecutionState.HANDOFF.isTerminal());
+        assertFalse(AgentExecutionState.GROUP_CHAT.isTerminal());
     }
 }

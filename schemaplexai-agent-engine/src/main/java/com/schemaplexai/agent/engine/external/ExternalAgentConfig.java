@@ -1,53 +1,38 @@
 package com.schemaplexai.agent.engine.external;
 
+import lombok.Data;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
+
 /**
- * Configuration for an external agent adapter.
+ * Configuration properties for external agent adapters.
+ *
+ * <p>Bound from {@code agent.external.*} in application.yml.
+ * Disabled by default; set {@code agent.external.enabled=true} to activate.
  */
+@Data
+@Component
+@ConfigurationProperties(prefix = "agent.external")
 public class ExternalAgentConfig {
 
-    private String provider;
-    private String model;
-    private String apiKey;
-    private String baseUrl;
-    private int timeoutMs;
+    /** Feature flag — external agent adapters are disabled by default. */
+    private boolean enabled = false;
 
-    public String getProvider() {
-        return provider;
-    }
+    /** Provider identifier (e.g. "codex", "openai", "anthropic"). */
+    private String provider = "";
 
-    public void setProvider(String provider) {
-        this.provider = provider;
-    }
+    /** Model identifier to use with the external agent. */
+    private String model = "";
 
-    public String getModel() {
-        return model;
-    }
+    /** API key for the external agent provider (read from env, never hardcoded). */
+    private String apiKey = "";
 
-    public void setModel(String model) {
-        this.model = model;
-    }
+    /** Base URL for the external agent API (empty = provider default). */
+    private String baseUrl = "";
 
-    public String getApiKey() {
-        return apiKey;
-    }
+    /** Request timeout in milliseconds. */
+    private int timeoutMs = 60000;
 
-    public void setApiKey(String apiKey) {
-        this.apiKey = apiKey;
-    }
-
-    public String getBaseUrl() {
-        return baseUrl;
-    }
-
-    public void setBaseUrl(String baseUrl) {
-        this.baseUrl = baseUrl;
-    }
-
-    public int getTimeoutMs() {
-        return timeoutMs;
-    }
-
-    public void setTimeoutMs(int timeoutMs) {
-        this.timeoutMs = timeoutMs;
-    }
+    /** Maximum number of retries for failed requests. */
+    private int maxRetries = 3;
 }

@@ -1,31 +1,46 @@
 package com.schemaplexai.agent.engine.external;
 
+import java.util.List;
+
 /**
  * SPI for external agent adapters.
  * Defines the lifecycle and communication contract for third-party agent providers.
+ *
+ * <p>Implementations (e.g. {@link com.schemaplexai.agent.engine.external.codex.CodexAdapter})
+ * manage a session-oriented conversation with an external agent process or service.
  */
 public interface ExternalAgentAdapter {
 
     /**
-     * Initialize the adapter and establish connection to the external agent.
-     */
-    void start();
-
-    /**
-     * Send a message or task to the external agent.
+     * Start a new session with the external agent.
      *
-     * @param message the payload to send
+     * @param sessionId unique identifier for this session
+     * @throws com.schemaplexai.common.exception.BaseException if the session cannot be started
+     */
+    void startSession(String sessionId);
+
+    /**
+     * Send a message to the external agent within the current session.
+     *
+     * @param sessionId the active session identifier
+     * @param message   the payload to send
      * @return the event response from the external agent
+     * @throws com.schemaplexai.common.exception.BaseException if no session is active or send fails
      */
-    AgentEvent send(String message);
+    AgentEvent sendMessage(String sessionId, String message);
 
     /**
-     * Interrupt the current operation of the external agent.
+     * Retrieve all events emitted by the external agent for the given session.
+     *
+     * @param sessionId the session identifier
+     * @return list of events recorded for this session (may be empty)
      */
-    void interrupt();
+    List<AgentEvent> getEvents(String sessionId);
 
     /**
-     * Release resources and close the connection.
+     * Terminate the session and release associated resources.
+     *
+     * @param sessionId the session identifier to terminate
      */
-    void close();
+    void terminateSession(String sessionId);
 }

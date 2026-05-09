@@ -14,6 +14,7 @@ public enum AgentExecutionState {
     RETRYING,
     REFLECTING,
     HANDOFF,
+    GROUP_CHAT,
     COMPLETED,
     FAILED,
     CANCELLED;
