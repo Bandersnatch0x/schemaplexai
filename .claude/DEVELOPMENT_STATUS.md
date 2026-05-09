@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: gen-dev-status.sh at 2026-05-08T16:14:30Z -->
+<!-- AUTO-GENERATED: gen-dev-status.sh at 2026-05-09T07:02:21Z -->
 
 # Development Status — 2026-05-09
 
@@ -15,3 +15,24 @@
 | core-ai-engine-design | - - - -  | unknown |
 | hybrid-mode-integration | - - - -  | unknown |
 | ui-alignment | - Spec Design Plan  | unknown |
+| v1-release-readiness | Propose Spec - Plan  | draft |
+| v1-test-fixes-and-coverage | Propose Spec - Plan  | draft |
+| wiki-gaps-completion | - - - -  | unknown |
+
+## Recent Decisions
+
+- **cursor-sdk-to-opensandbox** (已批准) — ADR-002-cursor-sdk-to-opensandbox.md
+- **tool-call-parsing-strategy** (accepted) — ADR-004-tool-call-parsing-strategy.md
+- **jwt-key-rotation-sla** (已批准) — ADR-011-jwt-key-rotation-sla.md
+- **cost-analytics-v1-short-path** (已批准) — ADR-012-cost-analytics-v1-short-path.md
+- **notification-v1-channel-reduction** (已批准) — ADR-013-notification-v1-channel-reduction.md
+- **agent-engine-flyway-schema-owner** (已批准) — ADR-014-agent-engine-flyway-schema-owner.md
+- **approval-domain-module-ownership** (已批准) — ADR-015-approval-domain-module-ownership.md
+- **event-driven-architecture-outbox-inbox** (已批准) — ADR-016-event-driven-architecture-outbox-inbox.md
+- **mybatis-plus-optimistic-locking-execution-concurrency** (已批准) — ADR-017-mybatis-plus-optimistic-locking-execution-concurrency.md
+
+## Links
+
+- [Specs](docs/specs/) | [Plans](docs/plans/) | [Designs](docs/designs/)
+- [Wiki Index](wiki/index.md) | [Change Log](wiki/log.md) | [Active Areas](wiki/active-areas.md)
+- [Decisions](docs/decisions/) | [Standards](docs/standards/)

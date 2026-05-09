@@ -17,9 +17,10 @@ public enum AgentExecutionState {
     GROUP_CHAT,
     COMPLETED,
     FAILED,
-    CANCELLED;
+    CANCELLED,
+    REJECTED;
 
     public boolean isTerminal() {
-        return this == COMPLETED || this == FAILED || this == CANCELLED;
+        return this == COMPLETED || this == FAILED || this == CANCELLED || this == REJECTED;
     }
 }

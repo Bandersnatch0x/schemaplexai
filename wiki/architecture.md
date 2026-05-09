@@ -1,18 +1,89 @@
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-09T07:07:51Z -->
+
 ---
 title: System Architecture
 type: architecture
 source: CLAUDE.md, docs/designs/system-architecture.md, pom.xml
 creation_date: 2026-04-30
-update_date: 2026-04-30
-tags: [architecture, microservices, spring-boot, patterns]
+update_date: 2026-05-09
+tags: [architecture, microservices, spring-boot, patterns, control-plane, pivot]
 confidence: high
 ---
 
 # System Architecture
 
-> One-sentence summary: SchemaPlexAI is a Spring Cloud microservices platform with 16 Maven modules, Gateway routing, multi-tenant PostgreSQL, and a React SPA frontend.
+> One-sentence summary: SchemaPlexAI has pivoted to an "Agent Execution Control Plane" — 4 deployable units (Gateway, Agent-Engine, Workflow, Core monolith) communicating via Outbox + MQ over PostgreSQL.
 
-## Service Topology
+## Pivot: Agent Execution Control Plane (2026-05-09)
+
+The platform has pivoted from a general "AI R&D collaboration platform" to a focused "Agent Execution Control Plane." Core value: safely launch, observe, control, and audit agent executions.
+
+### Deployable Units (4 units, down from 12 microservices)
+
+| Unit | Modules | Port | Role |
+|------|---------|------|------|
+| **Gateway** | gateway | 8080 | JWT, tenant, rate limit, routing |
+| **Agent-Engine** | agent-engine | 8084 | State machine, execution orchestration, event production (Outbox) |
+| **Workflow** | workflow | 8087 | Flowable BPMN for complex multi-step approvals |
+| **Core** | system + web + ops + quality + task + integration + context + agent-config + common + model + dao | 8081-8091 | Modular monolith: CRUD, web controllers, SSE, cost, audit, approval tickets, MQ consumers |
+
+### Event Flow (4-Step Product Line)
+
+```
+User → Gateway → Core/Web Controller → Core validates auth/budget → MQ → Agent-Engine
+                                                                           │
+Agent-Engine: StateMachine drives execution → produces ExecutionEvents → Outbox → MQ → Core
+                                                                           │
+High-risk tool call → ApprovalPolicyEngine (local cache) → FAST_APPROVAL / BPMN_APPROVAL
+                                                                           │
+FAST: Engine pauses, sends ApprovalRequestEvent → MQ → Core creates ApprovalTicket
+BPMN: Core creates ticket, starts Workflow instance with businessKey=ticketId
+                                                                           │
+User approves → Core → Outbox(approval.decisions) → MQ → Engine → StateMachine resume
+                                                                           │
+Execution ends → CostEvent + AuditEvent → Core projection → ReadModel + SSE push
+```
+
+### State Ownership Matrix
+
+| Data | Store | Truth Source | Owner | Notes |
+|------|-------|--------------|-------|-------|
+| `Execution` (state, version, lastEventSeq) | PG | YES | Agent-Engine | Version optimistic lock |
+| `ExecutionEvent` (immutable event stream) | PG | YES | Agent-Engine | Append-only |
+| `ExecutionOutbox` | PG | YES | Agent-Engine | At-least-once MQ publish |
+| `ProcessedEvent` (inbox dedup) | PG | YES | Core | Exactly-once per consumer |
+| `ApprovalTicket` | PG | YES | Core | Unified truth for all approvals |
+| `AuditEvent` | PG | YES | Core | Projected from ExecutionEvent |
+| `CostRecord` | PG | YES | Core | Projected from ExecutionEvent |
+| `Budget` | PG | YES | Core | Tenant-level budget config |
+| `TenantPolicy` | PG | YES | Core | Approval policies, tool whitelist |
+| `WorkflowInstance` | PG | YES | Workflow | Flowable native tables |
+
+### Core Principles
+
+1. **PG = truth source.** All business state primary copies in PostgreSQL.
+2. **Redis = hot cache + recovery.** Rebuildable from PG.
+3. **Engine = event producer only.** Never directly writes Core tables.
+4. **Core = event consumer + read model builder.** Maintains query views.
+5. **Single state owner per aggregate.** Execution owned by Engine. Approval owned by Core.
+
+### Infrastructure Changes
+
+| Component | Status | Rationale |
+|-----------|--------|-----------|
+| PostgreSQL | KEEP | Primary data store |
+| Redis | KEEP | Hot cache, locks, sessions |
+| RabbitMQ | KEEP | Event bus Engine ↔ Core |
+| Flowable | KEEP | BPMN for complex approvals |
+| ClickHouse | v1.1 | Cost analytics deferred |
+| Elasticsearch | REMOVE | No active code references |
+| Prometheus/Grafana | REMOVE | No metrics endpoints configured |
+| Milvus | REMOVE | RAG not core to control plane |
+| MinIO | DEFER | File storage not in v1 MVP |
+
+## Original Architecture (pre-pivot)
+
+### Service Topology
 
 ```
                       +-------------+

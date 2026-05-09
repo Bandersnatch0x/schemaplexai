@@ -36,6 +36,11 @@ public class SfAgentExecution extends BaseEntity {
 
     private String roleName;
 
+    @com.baomidou.mybatisplus.annotation.Version
+    private Integer version;
+
+    private Integer lastEventSeq;
+
     public Object getMetadata(String key) {
         if (metadata == null) metadata = new ConcurrentHashMap<>();
         return metadata.get(key);

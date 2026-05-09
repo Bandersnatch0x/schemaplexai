@@ -22,6 +22,11 @@ class AgentExecutionStateTest {
     }
 
     @Test
+    void isTerminalReturnsTrueForRejected() {
+        assertTrue(AgentExecutionState.REJECTED.isTerminal());
+    }
+
+    @Test
     void isTerminalReturnsFalseForNonTerminalStates() {
         assertFalse(AgentExecutionState.QUEUED.isTerminal());
         assertFalse(AgentExecutionState.INITIALIZING.isTerminal());

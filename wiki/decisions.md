@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-09T02:09:02Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-09T07:13:08Z -->
 
 ---
 title: Architecture Decision Records Index
@@ -26,4 +26,8 @@ confidence: high
 - [jwt-key-rotation-sla](D:/code_space/frige/docs/decisions/ADR-011-jwt-key-rotation-sla.md) (v1.0) — 已批准
 - [cost-analytics-v1-short-path](D:/code_space/frige/docs/decisions/ADR-012-cost-analytics-v1-short-path.md) (v1.0) — 已批准
 - [notification-v1-channel-reduction](D:/code_space/frige/docs/decisions/ADR-013-notification-v1-channel-reduction.md) (v1.0) — 已批准
+- [agent-engine-flyway-schema-owner](D:/code_space/frige/docs/decisions/ADR-014-agent-engine-flyway-schema-owner.md) (v1.0) — 已批准
+- [approval-domain-module-ownership](D:/code_space/frige/docs/decisions/ADR-015-approval-domain-module-ownership.md) (v1.0) — 已批准
+- [event-driven-architecture-outbox-inbox](D:/code_space/frige/docs/decisions/ADR-016-event-driven-architecture-outbox-inbox.md) (v1.0) — 已批准
+- [mybatis-plus-optimistic-locking-execution-concurrency](D:/code_space/frige/docs/decisions/ADR-017-mybatis-plus-optimistic-locking-execution-concurrency.md) (v1.0) — 已批准
 - [](D:/code_space/frige/docs/decisions/ADR-TEMPLATE.md) () — 

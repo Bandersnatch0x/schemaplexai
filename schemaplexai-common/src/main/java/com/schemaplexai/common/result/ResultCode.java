@@ -52,7 +52,10 @@ public enum ResultCode {
     KNOWLEDGE_DOC_NOT_FOUND(8002, "knowledge document not found"),
 
     // Sync
-    SYNC_CURSOR_ERROR(9001, "sync cursor error");
+    SYNC_CURSOR_ERROR(9001, "sync cursor error"),
+
+    // Concurrency
+    CONFLICT(409, "version conflict");
 
     private final Integer code;
     private final String message;

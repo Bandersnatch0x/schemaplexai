@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-09T02:08:13Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-09T07:12:11Z -->
 
 ---
 title: Wiki Operation Log
@@ -14,6 +14,8 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
+## 2026-05-09 — docs: update wiki for MAF Phase 1-3 + Tessera P0-P1 completion
+1871270
 ## 2026-05-09 — test: v1 coverage for model, dao, web, integration, context, gateway
 1ceb528
 ## 2026-05-09 — feat: Tessera P1 Task Branch Manager
@@ -52,8 +54,6 @@ cc48fea
 4e758c5
 ## 2026-05-08 — feat(task): add tenant-aware MQ message filter for P1-7 isolation
 31e2ffc
-## 2026-05-08 — test(workflow): add jwt.secret to test config for JwtSecretStartupValidator
-185580b
 
 ---
 
