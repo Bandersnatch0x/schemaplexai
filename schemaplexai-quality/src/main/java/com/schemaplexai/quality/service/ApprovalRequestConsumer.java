@@ -4,31 +4,34 @@ import com.schemaplexai.model.event.ApprovalRequestEvent;
 import com.schemaplexai.quality.entity.ApprovalTicket;
 import com.schemaplexai.quality.mapper.ApprovalTicketMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * MQ consumer for approval requests with idempotency guard.
- * Phase 1: in-memory dedup; Phase 2+ will use sf_processed_event table.
+ * MQ consumer for approval requests with DB-backed idempotency via InboxDeduplicationService.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ApprovalRequestConsumer {
 
+    private static final String CONSUMER_NAME = "ApprovalRequestConsumer";
+
     private final ApprovalTicketMapper approvalTicketMapper;
-    private final Set<UUID> processed = ConcurrentHashMap.newKeySet();
+    private final InboxDeduplicationService dedupService;
 
     public void consume(ApprovalRequestEvent event) {
         if (event == null || event.approvalRequestId() == null) {
             return;
         }
 
-        if (!processed.add(event.approvalRequestId())) {
-            return; // already processed
+        UUID eventId = event.approvalRequestId();
+        if (dedupService.isProcessed(eventId, CONSUMER_NAME)) {
+            log.debug("[ApprovalRequestConsumer] Duplicate approval request skipped: eventId={}", eventId);
+            return;
         }
 
         ApprovalTicket ticket = new ApprovalTicket();
@@ -48,5 +51,11 @@ public class ApprovalRequestConsumer {
         ticket.setUpdatedAt(Instant.now());
 
         approvalTicketMapper.insert(ticket);
+
+        try {
+            dedupService.markProcessed(eventId, CONSUMER_NAME);
+        } catch (Exception e) {
+            log.error("[ApprovalRequestConsumer] Failed to mark event as processed: eventId={}", eventId, e);
+        }
     }
 }

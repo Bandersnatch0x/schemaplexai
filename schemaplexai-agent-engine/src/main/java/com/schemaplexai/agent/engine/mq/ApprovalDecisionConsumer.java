@@ -3,9 +3,9 @@ package com.schemaplexai.agent.engine.mq;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.entity.ExecutionEvent;
-import com.schemaplexai.agent.engine.mapper.ExecutionEventMapper;
 import com.schemaplexai.agent.engine.mapper.SfAgentExecutionMapper;
 import com.schemaplexai.agent.engine.service.ExecutionConcurrencyService;
+import com.schemaplexai.agent.engine.service.ExecutionEventService;
 import com.schemaplexai.agent.engine.sse.ExecutionEventBus;
 import com.schemaplexai.agent.engine.state.AgentExecutionState;
 import com.schemaplexai.agent.engine.state.AgentStateMachine;
@@ -42,7 +42,7 @@ public class ApprovalDecisionConsumer {
     private final SfAgentExecutionMapper executionMapper;
     private final ExecutionConcurrencyService concurrencyService;
     private final ExecutionEventBus eventBus;
-    private final ExecutionEventMapper executionEventMapper;
+    private final ExecutionEventService executionEventService;
     private final ObjectMapper objectMapper;
 
     /** Tracks last decisionVersion per execution for monotonic check. */
@@ -162,7 +162,7 @@ public class ApprovalDecisionConsumer {
             int nextSeq = (execution.getLastEventSeq() != null ? execution.getLastEventSeq() : 0) + 1;
             execEvent.setSeq(nextSeq);
 
-            executionEventMapper.insert(execEvent);
+            executionEventService.writeEvent(execEvent);
 
             // Broadcast via SSE
             eventBus.publishStateTransition(execution.getId(),
@@ -196,7 +196,7 @@ public class ApprovalDecisionConsumer {
             int nextSeq = (execution.getLastEventSeq() != null ? execution.getLastEventSeq() : 0) + 1;
             execEvent.setSeq(nextSeq);
 
-            executionEventMapper.insert(execEvent);
+            executionEventService.writeEvent(execEvent);
         } catch (Exception e) {
             log.error("Failed to emit version conflict event for execution {}", execution.getId(), e);
         }

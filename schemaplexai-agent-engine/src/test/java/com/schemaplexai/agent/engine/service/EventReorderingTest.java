@@ -27,7 +27,7 @@ class EventReorderingTest {
         ExecutionEvent eventSeq1 = event(1, "TOOL_CALLED");
         ExecutionEvent eventSeq2 = event(2, "THOUGHT");
 
-        List<ExecutionEvent> result = eventBuffer.applyInOrder(List.of(eventSeq3, eventSeq1, eventSeq2));
+        List<ExecutionEvent> result = eventBuffer.applyInOrder(1L, List.of(eventSeq3, eventSeq1, eventSeq2));
 
         assertThat(result).extracting(ExecutionEvent::getSeq).containsExactly(1, 2, 3);
     }
@@ -38,9 +38,10 @@ class EventReorderingTest {
         ExecutionEvent eventSeq1 = event(1, "TOOL_CALLED");
         ExecutionEvent eventSeq3 = event(3, "TOOL_RESULT");
 
-        List<ExecutionEvent> result = eventBuffer.applyInOrder(List.of(eventSeq1, eventSeq3));
+        List<ExecutionEvent> result = eventBuffer.applyInOrder(1L, List.of(eventSeq1, eventSeq3));
 
         assertThat(result).extracting(ExecutionEvent::getSeq).containsExactly(1);
+        assertThat(eventBuffer.hasGap(1L)).isTrue();
     }
 
     @Test
@@ -50,16 +51,36 @@ class EventReorderingTest {
         ExecutionEvent eventSeq3 = event(3, "TOOL_RESULT");
         ExecutionEvent eventSeq2 = event(2, "THOUGHT");
 
-        eventBuffer.applyInOrder(List.of(eventSeq1, eventSeq3));
-        List<ExecutionEvent> result = eventBuffer.applyInOrder(List.of(eventSeq2));
+        eventBuffer.applyInOrder(1L, List.of(eventSeq1, eventSeq3));
+        List<ExecutionEvent> result = eventBuffer.applyInOrder(1L, List.of(eventSeq2));
 
         assertThat(result).extracting(ExecutionEvent::getSeq).containsExactly(2, 3);
+        assertThat(eventBuffer.hasGap(1L)).isFalse();
+    }
+
+    @Test
+    @DisplayName("should isolate buffers per execution")
+    void perExecutionIsolation() {
+        ExecutionEvent exec1Seq1 = event(1, "TOOL_CALLED", 1L);
+        ExecutionEvent exec2Seq1 = event(1, "TOOL_CALLED", 2L);
+
+        List<ExecutionEvent> result1 = eventBuffer.applyInOrder(1L, List.of(exec1Seq1));
+        List<ExecutionEvent> result2 = eventBuffer.applyInOrder(2L, List.of(exec2Seq1));
+
+        assertThat(result1).hasSize(1);
+        assertThat(result2).hasSize(1);
+        assertThat(eventBuffer.getNextExpectedSeq(1L)).isEqualTo(2);
+        assertThat(eventBuffer.getNextExpectedSeq(2L)).isEqualTo(2);
     }
 
     private ExecutionEvent event(int seq, String type) {
+        return event(seq, type, 1L);
+    }
+
+    private ExecutionEvent event(int seq, String type, Long executionId) {
         ExecutionEvent e = new ExecutionEvent();
         e.setEventId(UUID.randomUUID());
-        e.setExecutionId(1L);
+        e.setExecutionId(executionId);
         e.setSeq(seq);
         e.setEventType(type);
         e.setOccurredAt(Instant.now());

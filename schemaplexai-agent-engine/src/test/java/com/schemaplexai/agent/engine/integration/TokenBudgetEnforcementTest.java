@@ -2,6 +2,8 @@ package com.schemaplexai.agent.engine.integration;
 
 import com.schemaplexai.agent.engine.admission.*;
 import com.schemaplexai.agent.engine.tool.ToolCallBudgetService;
+import com.schemaplexai.ops.service.BudgetGuard;
+import com.schemaplexai.ops.service.BudgetStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,7 +16,10 @@ import org.mockito.quality.Strictness;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
+import java.math.BigDecimal;
+
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
@@ -32,6 +37,9 @@ class TokenBudgetEnforcementTest {
     @Mock
     private ToolCallBudgetService toolCallBudgetService;
 
+    @Mock
+    private BudgetGuard budgetGuard;
+
     @InjectMocks
     private ExecutionAdmissionService admissionService;
 
@@ -41,6 +49,7 @@ class TokenBudgetEnforcementTest {
         when(valueOperations.increment(anyString())).thenReturn(1L);
         when(valueOperations.get(anyString())).thenReturn(null);
         when(toolCallBudgetService.hasRemainingBudget(anyString())).thenReturn(true);
+        when(budgetGuard.checkBudget(any(), any())).thenReturn(BudgetStatus.WITHIN_BUDGET);
     }
 
     @Test
@@ -133,12 +142,12 @@ class TokenBudgetEnforcementTest {
     @Test
     @DisplayName("should reject when daily cost budget exceeded")
     void shouldRejectWhenCostBudgetExceeded() {
-        when(valueOperations.get(anyString())).thenReturn("150.0");
+        when(budgetGuard.checkBudget(any(), any())).thenReturn(BudgetStatus.EXCEEDED);
 
         TokenBudget budget = new TokenBudget(1000, 500);
-        AdmissionResult result = admissionService.admit("tenant-1", 1L, budget);
+        AdmissionResult result = admissionService.admit("1", 1L, budget);
 
         assertFalse(result.isAllowed());
-        assertEquals("Daily cost budget exceeded", result.getReason());
+        assertEquals("Budget exceeded", result.getReason());
     }
 }

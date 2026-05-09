@@ -5,6 +5,7 @@ import com.rabbitmq.client.Channel;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
 import com.schemaplexai.ops.service.ClickHouseCostSyncService;
+import com.schemaplexai.quality.service.InboxDeduplicationService;
 import com.schemaplexai.task.mq.dto.CostSyncMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 
 /**
  * Triggers cost data synchronization from PostgreSQL to ClickHouse.
@@ -39,21 +41,24 @@ public class CostSyncConsumer {
     private final MessageFailLogService messageFailLogService;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    private final InboxDeduplicationService dedupService;
 
     @RabbitListener(queues = "sf.cost.queue")
     public void onMessage(Message message, Channel channel) throws IOException {
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
         String body = new String(message.getBody(), StandardCharsets.UTF_8);
         String syncId = null;
+        UUID eventId = null;
 
         try {
             log.info("[CostSyncConsumer] Received cost sync message: {}", body);
 
             CostSyncMessage payload = objectMapper.readValue(body, CostSyncMessage.class);
             syncId = resolveSyncId(payload);
+            eventId = resolveEventId(payload, syncId);
 
-            if (isAlreadySynced(syncId)) {
-                log.warn("[CostSyncConsumer] Duplicate sync detected for key: {}, skipping", syncId);
+            if (dedupService.isProcessed(eventId, "CostSyncConsumer")) {
+                log.warn("[CostSyncConsumer] Duplicate sync detected for eventId={} | key={}, skipping", eventId, syncId);
                 channel.basicAck(deliveryTag, false);
                 return;
             }
@@ -63,7 +68,11 @@ public class CostSyncConsumer {
 
             clickHouseCostSyncService.syncIncrementalData();
 
-            markAsSynced(syncId);
+            try {
+                dedupService.markProcessed(eventId, "CostSyncConsumer");
+            } catch (Exception e) {
+                log.error("[CostSyncConsumer] Failed to mark event as processed: eventId={}", eventId, e);
+            }
 
             log.info("[CostSyncConsumer] Cost sync completed successfully | syncId={} | completedAt={}",
                     syncId, LocalDateTime.now().format(DATE_FMT));
@@ -92,12 +101,10 @@ public class CostSyncConsumer {
         return IDEMPOTENCY_PREFIX + base + ":" + System.currentTimeMillis();
     }
 
-    private boolean isAlreadySynced(String key) {
-        Boolean exists = redisTemplate.hasKey(key);
-        return Boolean.TRUE.equals(exists);
-    }
-
-    private void markAsSynced(String key) {
-        redisTemplate.opsForValue().set(key, LocalDateTime.now().format(DATE_FMT), IDEMPOTENCY_TTL);
+    private UUID resolveEventId(CostSyncMessage payload, String syncId) {
+        if (payload.getIdempotencyKey() != null && !payload.getIdempotencyKey().isBlank()) {
+            return UUID.nameUUIDFromBytes(payload.getIdempotencyKey().getBytes(StandardCharsets.UTF_8));
+        }
+        return UUID.nameUUIDFromBytes(syncId.getBytes(StandardCharsets.UTF_8));
     }
 }

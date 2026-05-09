@@ -3,6 +3,7 @@ package com.schemaplexai.agent.engine.sse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.agent.engine.state.AgentExecutionState;
 import com.schemaplexai.agent.engine.timeline.TimelineClickHouseService;
+import com.schemaplexai.agent.engine.util.SecretMasker;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,7 +31,7 @@ class ExecutionEventBusTest {
 
     @BeforeEach
     void setUp() {
-        eventBus = new ExecutionEventBus(new ObjectMapper(), timelineService);
+        eventBus = new ExecutionEventBus(new ObjectMapper(), timelineService, new SecretMasker(new ObjectMapper()));
     }
 
     @Test

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.regex.Pattern;
@@ -15,6 +16,7 @@ import java.util.regex.Pattern;
  * email addresses and US phone numbers.
  * <p>All JSON operations return new nodes; input nodes are never mutated.
  */
+@Component
 public class SecretMasker {
 
     private static final String MASKED_SECRET = "***MASKED***";

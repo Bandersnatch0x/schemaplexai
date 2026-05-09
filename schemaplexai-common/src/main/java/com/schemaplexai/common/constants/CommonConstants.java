@@ -47,6 +47,7 @@ public final class CommonConstants {
     public static final String RK_QUALITY = "sf.quality";
     public static final String RK_MILVUS_SYNC = "sf.milvus.sync";
     public static final String RK_AGENT_CONFIG_SHADOW = "sf.agent.config.shadow";
+    public static final String RK_TENANT_POLICY_UPDATED = "tenant.policy.updated";
 
     // Default values
     public static final Long DEFAULT_MAX_ROUNDS = 20L;

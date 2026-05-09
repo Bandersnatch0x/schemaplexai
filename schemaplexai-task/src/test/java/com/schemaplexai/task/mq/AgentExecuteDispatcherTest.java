@@ -6,6 +6,7 @@ import com.schemaplexai.agent.engine.AgentExecutionEngine;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.quality.service.InboxDeduplicationService;
 import com.schemaplexai.task.mq.dto.AgentExecuteMessage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,15 +15,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -36,16 +33,13 @@ class AgentExecuteDispatcherTest {
     private MessageFailLogService messageFailLogService;
 
     @Mock
-    private StringRedisTemplate redisTemplate;
-
-    @Mock
     private ObjectMapper objectMapper;
 
     @Mock
     private Channel channel;
 
     @Mock
-    private ValueOperations<String, String> valueOperations;
+    private InboxDeduplicationService dedupService;
 
     @InjectMocks
     private AgentExecuteDispatcher dispatcher;
@@ -68,8 +62,7 @@ class AgentExecuteDispatcherTest {
         Message message = createMessage(body);
 
         when(objectMapper.readValue(body, AgentExecuteMessage.class)).thenReturn(payload);
-        when(redisTemplate.hasKey(anyString())).thenReturn(false);
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(dedupService.isProcessed(any(), eq("AgentExecuteDispatcher"))).thenReturn(false);
 
         SfAgentExecution execution = new SfAgentExecution();
         execution.setId(100L);
@@ -79,7 +72,7 @@ class AgentExecuteDispatcherTest {
 
         verify(channel).basicAck(1L, false);
         verify(executionEngine).startExecution(1L, "t1", "hello");
-        verify(valueOperations).set(eq("sf:idempotency:agent:execute:key1"), eq("1"), any(Duration.class));
+        verify(dedupService).markProcessed(any(), eq("AgentExecuteDispatcher"));
     }
 
     @Test
@@ -94,7 +87,7 @@ class AgentExecuteDispatcherTest {
         Message message = createMessage(body);
 
         when(objectMapper.readValue(body, AgentExecuteMessage.class)).thenReturn(payload);
-        when(redisTemplate.hasKey("sf:idempotency:agent:execute:key1")).thenReturn(true);
+        when(dedupService.isProcessed(any(), eq("AgentExecuteDispatcher"))).thenReturn(true);
 
         dispatcher.onMessage(message, channel);
 
@@ -132,7 +125,7 @@ class AgentExecuteDispatcherTest {
         Message message = createMessage(body);
 
         when(objectMapper.readValue(body, AgentExecuteMessage.class)).thenReturn(payload);
-        when(redisTemplate.hasKey(anyString())).thenReturn(false);
+        when(dedupService.isProcessed(any(), eq("AgentExecuteDispatcher"))).thenReturn(false);
         when(executionEngine.startExecution(any(), any(), any()))
                 .thenThrow(new RuntimeException("Engine failure"));
 
@@ -154,13 +147,12 @@ class AgentExecuteDispatcherTest {
         Message message = createMessage(body);
 
         when(objectMapper.readValue(body, AgentExecuteMessage.class)).thenReturn(payload);
-        when(redisTemplate.hasKey(anyString())).thenReturn(false);
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(dedupService.isProcessed(any(), eq("AgentExecuteDispatcher"))).thenReturn(false);
         when(executionEngine.startExecution(any(), any(), any())).thenReturn(new SfAgentExecution());
 
         dispatcher.onMessage(message, channel);
 
         verify(channel).basicAck(1L, false);
-        verify(valueOperations).set(eq("sf:idempotency:agent:execute:1:t1:hello"), eq("1"), any(Duration.class));
+        verify(dedupService).markProcessed(any(), eq("AgentExecuteDispatcher"));
     }
 }

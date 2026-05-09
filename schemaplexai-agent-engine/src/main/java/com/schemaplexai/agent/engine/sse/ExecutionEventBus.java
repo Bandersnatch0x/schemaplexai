@@ -1,11 +1,13 @@
 package com.schemaplexai.agent.engine.sse;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.agent.engine.state.AgentExecutionState;
 import com.schemaplexai.agent.engine.timeline.AgentTimelineEvent;
 import com.schemaplexai.agent.engine.timeline.TimelineClickHouseService;
 import com.schemaplexai.agent.engine.timeline.TimelineEventType;
+import com.schemaplexai.agent.engine.util.SecretMasker;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +29,7 @@ public class ExecutionEventBus {
 
     private final ObjectMapper objectMapper;
     private final TimelineClickHouseService timelineService;
+    private final SecretMasker secretMasker;
 
     private final Map<String, List<SseEmitter>> emitters = new ConcurrentHashMap<>();
 
@@ -122,7 +125,9 @@ public class ExecutionEventBus {
 
         String data;
         try {
-            data = objectMapper.writeValueAsString(payload);
+            JsonNode payloadNode = objectMapper.valueToTree(payload);
+            JsonNode masked = secretMasker.maskJson(payloadNode);
+            data = objectMapper.writeValueAsString(masked);
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize SSE payload for execution {} event {}", executionId, eventName, e);
             return;

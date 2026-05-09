@@ -46,7 +46,7 @@ public class GapRecoveryJob {
         }
     }
 
-    void recoverGapsForExecution(Long executionId) {
+    public void recoverGapsForExecution(Long executionId) {
         List<ExecutionEvent> events = executionEventMapper.selectByExecutionIdOrdered(executionId);
         if (events.size() < 2) {
             return;

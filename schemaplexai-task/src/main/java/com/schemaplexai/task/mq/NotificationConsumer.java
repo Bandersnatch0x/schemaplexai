@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.Channel;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.quality.service.InboxDeduplicationService;
 import com.schemaplexai.task.mq.dto.NotificationMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 /**
  * Processes notification events from MQ and routes them to the in-app delivery channel.
@@ -30,16 +32,25 @@ public class NotificationConsumer {
 
     private final MessageFailLogService messageFailLogService;
     private final ObjectMapper objectMapper;
+    private final InboxDeduplicationService dedupService;
 
     @RabbitListener(queues = "sf.notification.queue")
     public void onMessage(Message message, Channel channel) throws IOException {
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
         String body = new String(message.getBody(), StandardCharsets.UTF_8);
+        UUID eventId = null;
 
         try {
             log.info("[NotificationConsumer] Received notification message: {}", body);
 
             NotificationMessage payload = objectMapper.readValue(body, NotificationMessage.class);
+            eventId = resolveEventId(payload, body);
+
+            if (dedupService.isProcessed(eventId, "NotificationConsumer")) {
+                log.warn("[NotificationConsumer] Duplicate notification detected for eventId={}, skipping", eventId);
+                channel.basicAck(deliveryTag, false);
+                return;
+            }
 
             if (payload.getChannel() == null || payload.getChannel().isBlank()) {
                 log.error("[NotificationConsumer] Missing channel in message: {}", body);
@@ -49,6 +60,11 @@ public class NotificationConsumer {
             boolean delivered = routeToChannel(payload);
 
             if (delivered) {
+                try {
+                    dedupService.markProcessed(eventId, "NotificationConsumer");
+                } catch (Exception e) {
+                    log.error("[NotificationConsumer] Failed to mark event as processed: eventId={}", eventId, e);
+                }
                 log.info("[NotificationConsumer] Notification delivered via {} for user {}",
                         payload.getChannel(), payload.getUserId());
                 channel.basicAck(deliveryTag, false);
@@ -97,5 +113,12 @@ public class NotificationConsumer {
         // TODO: Persist in-app notification to sf_notification table via NotificationService
         // For now, log the attempt and return success.
         return true;
+    }
+
+    private UUID resolveEventId(NotificationMessage payload, String body) {
+        if (payload.getIdempotencyKey() != null && !payload.getIdempotencyKey().isBlank()) {
+            return UUID.nameUUIDFromBytes(payload.getIdempotencyKey().getBytes(StandardCharsets.UTF_8));
+        }
+        return UUID.nameUUIDFromBytes(body.getBytes(StandardCharsets.UTF_8));
     }
 }

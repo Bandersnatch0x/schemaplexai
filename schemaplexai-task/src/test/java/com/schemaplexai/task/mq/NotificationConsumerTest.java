@@ -3,7 +3,9 @@ package com.schemaplexai.task.mq;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.Channel;
 import com.schemaplexai.common.exception.BaseException;
+import com.schemaplexai.quality.service.InboxDeduplicationService;
 import com.schemaplexai.task.mq.dto.NotificationMessage;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -16,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -27,8 +30,16 @@ class NotificationConsumerTest {
     @Mock
     private ObjectMapper objectMapper;
 
+    @Mock
+    private InboxDeduplicationService dedupService;
+
     @InjectMocks
     private NotificationConsumer consumer;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(dedupService.isProcessed(any(), eq("NotificationConsumer"))).thenReturn(false);
+    }
 
     private Message createMessage(String body) {
         MessageProperties properties = new MessageProperties();

@@ -6,17 +6,17 @@ import com.schemaplexai.agent.engine.AgentExecutionEngine;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.quality.service.InboxDeduplicationService;
 import com.schemaplexai.task.mq.dto.AgentExecuteMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
+import java.util.UUID;
 
 /**
  * Dispatches agent execution requests received from MQ to the agent-engine service.
@@ -30,18 +30,16 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public class AgentExecuteDispatcher {
 
-    private static final String IDEMPOTENCY_PREFIX = "sf:idempotency:agent:execute:";
-    private static final Duration IDEMPOTENCY_TTL = Duration.ofHours(24);
-
     private final AgentExecutionEngine executionEngine;
     private final MessageFailLogService messageFailLogService;
-    private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    private final InboxDeduplicationService dedupService;
 
     @RabbitListener(queues = "sf.agent.execute.queue")
     public void onMessage(Message message, Channel channel) throws IOException {
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
         String body = new String(message.getBody(), StandardCharsets.UTF_8);
+        UUID eventId = null;
 
         try {
             log.info("[AgentExecuteDispatcher] Received agent execute message: {}", body);
@@ -53,9 +51,9 @@ public class AgentExecuteDispatcher {
                 throw new BaseException(ResultCode.PARAM_ERROR, "agentId is required");
             }
 
-            String idempotencyKey = resolveIdempotencyKey(payload);
-            if (isAlreadyExecuted(idempotencyKey)) {
-                log.warn("[AgentExecuteDispatcher] Duplicate execution detected for key: {}, skipping", idempotencyKey);
+            eventId = resolveEventId(payload);
+            if (dedupService.isProcessed(eventId, "AgentExecuteDispatcher")) {
+                log.warn("[AgentExecuteDispatcher] Duplicate execution detected for eventId={}, skipping", eventId);
                 channel.basicAck(deliveryTag, false);
                 return;
             }
@@ -66,7 +64,11 @@ public class AgentExecuteDispatcher {
                     payload.getPrompt()
             );
 
-            markAsExecuted(idempotencyKey);
+            try {
+                dedupService.markProcessed(eventId, "AgentExecuteDispatcher");
+            } catch (Exception e) {
+                log.error("[AgentExecuteDispatcher] Failed to mark event as processed: eventId={}", eventId, e);
+            }
 
             log.info("[AgentExecuteDispatcher] Dispatched execution {} for agent {}, conversationId: {}",
                     execution.getId(), payload.getAgentId(), execution.getConversationId());
@@ -84,19 +86,11 @@ public class AgentExecuteDispatcher {
         }
     }
 
-    private String resolveIdempotencyKey(AgentExecuteMessage payload) {
+    private UUID resolveEventId(AgentExecuteMessage payload) {
         if (payload.getIdempotencyKey() != null && !payload.getIdempotencyKey().isBlank()) {
-            return IDEMPOTENCY_PREFIX + payload.getIdempotencyKey();
+            return UUID.nameUUIDFromBytes(payload.getIdempotencyKey().getBytes(StandardCharsets.UTF_8));
         }
-        return IDEMPOTENCY_PREFIX + payload.getAgentId() + ":" + payload.getTenantId() + ":" + payload.getPrompt();
-    }
-
-    private boolean isAlreadyExecuted(String key) {
-        Boolean exists = redisTemplate.hasKey(key);
-        return Boolean.TRUE.equals(exists);
-    }
-
-    private void markAsExecuted(String key) {
-        redisTemplate.opsForValue().set(key, "1", IDEMPOTENCY_TTL);
+        String base = payload.getAgentId() + ":" + payload.getTenantId() + ":" + payload.getPrompt();
+        return UUID.nameUUIDFromBytes(base.getBytes(StandardCharsets.UTF_8));
     }
 }

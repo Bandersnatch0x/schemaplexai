@@ -1,11 +1,11 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-09T07:12:11Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-09T17:40:34Z -->
 
 ---
 title: Wiki Operation Log
 type: log
 source: auto-generated
-creation_date: 2026-05-09
-update_date: 2026-05-09
+creation_date: 2026-05-10
+update_date: 2026-05-10
 tags: [wiki, log, maintenance]
 confidence: high
 ---
@@ -14,6 +14,22 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
+## 2026-05-09 — test: M4.5 Cost Projection follow-up — BudgetServiceImpl and RabbitMqConfig tests
+2ff1a80
+## 2026-05-09 — feat: M6 Execution Control Plane infrastructure
+d853f49
+## 2026-05-09 — test(web): M4.2 SseController execution-specific subscription tests
+7dc6e2a
+## 2026-05-09 — feat(agent-engine): M4.3 Event Replay + Gap Recovery, M5.1 Compliance Reporting API
+00c981e
+## 2026-05-09 — feat(agent-engine): M4.2/M4.4/M4.5 SSE Streaming, Audit Trail, and Cost Projection
+9405ee9
+## 2026-05-09 — feat(agent-engine): M4.1 Outbox Publisher with retry, backoff, and DEAD letter handling
+9d6a87f
+## 2026-05-09 — feat(workflow): Phase 3 BPMN approval workflow with escalation and SLA policies
+ad3eabc
+## 2026-05-09 — feat(agent-engine): Phase 0-2 execution control plane — event log, approval, state machine
+01f07df
 ## 2026-05-09 — docs: update wiki for MAF Phase 1-3 + Tessera P0-P1 completion
 1871270
 ## 2026-05-09 — test: v1 coverage for model, dao, web, integration, context, gateway
@@ -38,22 +54,6 @@ a2f1d0a
 99cb64c
 ## 2026-05-08 — feat(ui): update Composer component with styles and tests
 e846caf
-## 2026-05-08 — feat(workflow): add concurrent and join node executors
-9847e04
-## 2026-05-08 — feat(docker): add ClickHouse agent timeline init script
-0b128b1
-## 2026-05-08 — feat(agent-engine): add HANDOFF state and HandoffStateHandler
-9ba737a
-## 2026-05-08 — chore: sync development status and wiki timestamp
-278e33d
-## 2026-05-08 — feat: implement MAF Phase 2 architecture (middleware pipeline, approval mode, provider SPI)
-8c24c79
-## 2026-05-08 — feat: implement MAF Phase 1 foundation (OpenTelemetry, skill disclosure, topology hash, tool-call budget)
-cc48fea
-## 2026-05-08 — test(agent-engine): add ToolCallBudgetService mock to TokenBudgetEnforcementTest
-4e758c5
-## 2026-05-08 — feat(task): add tenant-aware MQ message filter for P1-7 isolation
-31e2ffc
 
 ---
 
@@ -85,6 +85,7 @@ cc48fea
 - **sprint-plan** (plan v1.0): 草稿 — 2026-04-30-v1.0-sprint-plan.md
 - **tech-research** (plan v1.0): 已批准 — 2026-04-30-v1.0-tech-research-plan.md
 - **unified-dev-plan** (plan v1.0): 草稿 — 2026-04-30-v1.0-unified-dev-plan.md
+- **agent-execution-control-plane** (approved 1.0.0): active — 2026-05-10-agent-execution-control-plane.md
 - **plan-review** (plan v1.0): 已批准 — PLAN-REVIEW-v1.0.md
 - **plans-index** ( ):  — README.md
 - **system-architecture** (design v1.1): 已批准 — 2026-04-29-v1.0-system-architecture.md

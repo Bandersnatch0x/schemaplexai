@@ -4,11 +4,14 @@ import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.redis.TenantRedisKeyResolver;
 import com.schemaplexai.common.result.ResultCode;
 import com.schemaplexai.agent.engine.tool.ToolCallBudgetService;
+import com.schemaplexai.ops.service.BudgetGuard;
+import com.schemaplexai.ops.service.BudgetStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 
 @Slf4j
@@ -18,6 +21,7 @@ public class ExecutionAdmissionService {
 
     private final StringRedisTemplate redisTemplate;
     private final ToolCallBudgetService toolCallBudgetService;
+    private final BudgetGuard budgetGuard;
 
     public AdmissionResult admit(String tenantId, Long agentId, TokenBudget tokenBudget) {
         // Dimension 1: Rate limit (requests per minute)
@@ -59,15 +63,21 @@ public class ExecutionAdmissionService {
                     .build();
         }
 
-        // Dimension 4: Cost budget check (simplified)
-        String costKey = TenantRedisKeyResolver.admissionCost(tenantId);
-        String costValue = redisTemplate.opsForValue().get(costKey);
-        double currentCost = costValue == null ? 0.0 : Double.parseDouble(costValue);
-        if (currentCost > 100.0) {
-            return AdmissionResult.builder()
-                    .allowed(false)
-                    .reason("Daily cost budget exceeded")
-                    .build();
+        // Dimension 4: Cost budget check via BudgetGuard
+        try {
+            Long tenantIdLong = Long.parseLong(tenantId);
+            BigDecimal projectedCost = new BigDecimal("0.10");
+            BudgetStatus budgetStatus = budgetGuard.checkBudget(tenantIdLong, projectedCost);
+            if (budgetStatus == BudgetStatus.EXCEEDED) {
+                return AdmissionResult.builder()
+                        .allowed(false)
+                        .reason("Budget exceeded")
+                        .build();
+            } else if (budgetStatus == BudgetStatus.WARNING) {
+                log.warn("Budget warning for tenant {}", tenantId);
+            }
+        } catch (NumberFormatException e) {
+            log.warn("Invalid tenantId for budget check: {}", tenantId);
         }
 
         // Dimension 5: Per-tenant daily tool-call budget

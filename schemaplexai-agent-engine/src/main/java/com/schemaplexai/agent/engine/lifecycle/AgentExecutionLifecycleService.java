@@ -7,6 +7,7 @@ import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.entity.SfAgentExecutionSnapshot;
 import com.schemaplexai.agent.engine.mapper.SfAgentExecutionMapper;
 import com.schemaplexai.agent.engine.mapper.SfAgentExecutionSnapshotMapper;
+import com.schemaplexai.agent.engine.service.ExecutionSnapshotService;
 import com.schemaplexai.agent.engine.state.AgentExecutionState;
 import com.schemaplexai.agent.engine.state.AgentStateMachine;
 import com.schemaplexai.common.constants.CommonConstants;
@@ -29,6 +30,7 @@ public class AgentExecutionLifecycleService {
     private final SfAgentExecutionSnapshotMapper snapshotMapper;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    private final ExecutionSnapshotService executionSnapshotService;
 
     public void pauseExecution(Long executionId, PauseReason reason) {
         SfAgentExecution execution = executionMapper.selectById(executionId);
@@ -67,18 +69,35 @@ public class AgentExecutionLifecycleService {
     public void saveSnapshot(ExecutionSnapshot snapshot) {
         try {
             String snapshotJson = objectMapper.writeValueAsString(snapshot);
+
+            // Legacy: save to sf_agent_execution_snapshot with hash verification
             SfAgentExecutionSnapshot entity = new SfAgentExecutionSnapshot();
             entity.setExecutionId(snapshot.getExecutionId());
             entity.setSnapshotJson(snapshotJson);
             entity.setSnapshotHash(HashUtils.sha256(snapshotJson));
             entity.setTenantId(null); // will be filled by interceptor
             snapshotMapper.insert(entity);
+
+            // M6: dual-tier snapshot (Redis L1 + PG L2 via sf_execution_snapshot)
+            executionSnapshotService.saveSnapshot(snapshot.getExecutionId(), snapshotJson, 0);
+
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize execution snapshot for execution {}", snapshot.getExecutionId(), e);
         }
     }
 
     public ExecutionSnapshot getLatestSnapshot(Long executionId) {
+        // Try dual-tier snapshot service (Redis L1 first)
+        String cachedJson = executionSnapshotService.restoreSnapshot(executionId);
+        if (cachedJson != null && !cachedJson.isBlank()) {
+            try {
+                return objectMapper.readValue(cachedJson, ExecutionSnapshot.class);
+            } catch (Exception e) {
+                log.warn("Failed to deserialize cached snapshot for execution {}, falling back to legacy DB", executionId, e);
+            }
+        }
+
+        // Fallback to legacy sf_agent_execution_snapshot table
         SfAgentExecutionSnapshot entity = snapshotMapper.selectOne(
                 new LambdaQueryWrapper<SfAgentExecutionSnapshot>()
                         .eq(SfAgentExecutionSnapshot::getExecutionId, executionId)

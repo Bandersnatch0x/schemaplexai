@@ -2,11 +2,7 @@ package com.schemaplexai.agent.engine.approval;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.agent.engine.entity.ExecutionEvent;
-import com.schemaplexai.agent.engine.entity.ExecutionOutbox;
-import com.schemaplexai.agent.engine.mapper.ExecutionEventMapper;
-import com.schemaplexai.agent.engine.mapper.ExecutionOutboxMapper;
 import com.schemaplexai.agent.engine.service.ExecutionEventService;
-import com.schemaplexai.common.constants.CommonConstants;
 import com.schemaplexai.model.event.ApprovalRequestEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,8 +28,6 @@ import java.util.UUID;
 public class ApprovalRequestProducer {
 
     private final ExecutionEventService executionEventService;
-    private final ExecutionEventMapper executionEventMapper;
-    private final ExecutionOutboxMapper executionOutboxMapper;
     private final ObjectMapper objectMapper;
 
     /** MQ topic for approval requests. */
@@ -78,14 +72,10 @@ public class ApprovalRequestProducer {
                 Instant.now()
         );
 
-        // Write ExecutionEvent to append-only log
+        // Write ExecutionEvent to append-only log + Outbox for MQ delivery
         ExecutionEvent execEvent = buildExecutionEvent(executionId, tenantId, agentId,
                 triggeringSeq, event);
-        executionEventMapper.insert(execEvent);
-
-        // Write Outbox entry for MQ delivery
-        ExecutionOutbox outbox = buildOutbox(execEvent, topic, event);
-        executionOutboxMapper.insert(outbox);
+        executionEventService.appendEventAndOutbox(execEvent, topic);
 
         log.info("Produced approval request {} for execution {} (seq={}, type={}, deferred={})",
                 approvalRequestId, executionId, triggeringSeq, requestType, deferred);
@@ -124,21 +114,4 @@ public class ApprovalRequestProducer {
         return execEvent;
     }
 
-    private ExecutionOutbox buildOutbox(ExecutionEvent execEvent, String topic,
-                                         ApprovalRequestEvent event) {
-        ExecutionOutbox outbox = new ExecutionOutbox();
-        outbox.setEventId(execEvent.getEventId());
-        outbox.setExecutionId(execEvent.getExecutionId());
-        outbox.setSeq(execEvent.getSeq());
-        outbox.setTopic(topic);
-        try {
-            outbox.setPayload(objectMapper.writeValueAsString(event));
-        } catch (Exception e) {
-            log.warn("Failed to serialize outbox payload", e);
-            outbox.setPayload("{}");
-        }
-        outbox.setCreatedAt(Instant.now());
-        outbox.setRetryCount(0);
-        return outbox;
-    }
 }

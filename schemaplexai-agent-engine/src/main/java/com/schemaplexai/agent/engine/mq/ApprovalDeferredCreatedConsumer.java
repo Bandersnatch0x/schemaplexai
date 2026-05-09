@@ -3,8 +3,8 @@ package com.schemaplexai.agent.engine.mq;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.entity.ExecutionEvent;
-import com.schemaplexai.agent.engine.mapper.ExecutionEventMapper;
 import com.schemaplexai.agent.engine.mapper.SfAgentExecutionMapper;
+import com.schemaplexai.agent.engine.service.ExecutionEventService;
 import com.schemaplexai.agent.engine.sse.ExecutionEventBus;
 import com.schemaplexai.agent.engine.state.AgentExecutionState;
 import com.schemaplexai.agent.engine.state.AgentStateMachine;
@@ -39,7 +39,7 @@ public class ApprovalDeferredCreatedConsumer {
     private final AgentStateMachine stateMachine;
     private final SfAgentExecutionMapper executionMapper;
     private final ExecutionEventBus eventBus;
-    private final ExecutionEventMapper executionEventMapper;
+    private final ExecutionEventService executionEventService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -122,7 +122,7 @@ public class ApprovalDeferredCreatedConsumer {
             int nextSeq = (execution.getLastEventSeq() != null ? execution.getLastEventSeq() : 0) + 1;
             execEvent.setSeq(nextSeq);
 
-            executionEventMapper.insert(execEvent);
+            executionEventService.writeEvent(execEvent);
 
             // Update lastEventSeq
             execution.setLastEventSeq(nextSeq);

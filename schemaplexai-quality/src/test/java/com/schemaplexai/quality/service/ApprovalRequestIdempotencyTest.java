@@ -2,6 +2,7 @@ package com.schemaplexai.quality.service;
 
 import com.schemaplexai.model.event.ApprovalRequestEvent;
 import com.schemaplexai.quality.mapper.ApprovalTicketMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,8 +15,11 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Approval request MQ consumer idempotency")
@@ -24,8 +28,16 @@ class ApprovalRequestIdempotencyTest {
     @Mock
     private ApprovalTicketMapper approvalTicketMapper;
 
+    @Mock
+    private InboxDeduplicationService dedupService;
+
     @InjectMocks
     private ApprovalRequestConsumer approvalRequestConsumer;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(dedupService.isProcessed(any(), eq("ApprovalRequestConsumer"))).thenReturn(false);
+    }
 
     @Test
     @DisplayName("should create ApprovalTicket on first request")
@@ -44,6 +56,8 @@ class ApprovalRequestIdempotencyTest {
         UUID approvalRequestId = UUID.randomUUID();
         ApprovalRequestEvent first = requestEvent(approvalRequestId);
         ApprovalRequestEvent duplicate = requestEvent(approvalRequestId);
+
+        when(dedupService.isProcessed(any(), eq("ApprovalRequestConsumer"))).thenReturn(false, true);
 
         approvalRequestConsumer.consume(first);
         approvalRequestConsumer.consume(duplicate);

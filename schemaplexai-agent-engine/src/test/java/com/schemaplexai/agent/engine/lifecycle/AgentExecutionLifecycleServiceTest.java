@@ -7,6 +7,7 @@ import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.entity.SfAgentExecutionSnapshot;
 import com.schemaplexai.agent.engine.mapper.SfAgentExecutionMapper;
 import com.schemaplexai.agent.engine.mapper.SfAgentExecutionSnapshotMapper;
+import com.schemaplexai.agent.engine.service.ExecutionSnapshotService;
 import com.schemaplexai.agent.engine.state.AgentExecutionState;
 import com.schemaplexai.agent.engine.state.AgentStateMachine;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,6 +49,9 @@ class AgentExecutionLifecycleServiceTest {
     @Mock
     private ValueOperations<String, String> valueOps;
 
+    @Mock
+    private ExecutionSnapshotService executionSnapshotService;
+
     private ObjectMapper objectMapper;
 
     private AgentExecutionLifecycleService lifecycleService;
@@ -58,7 +62,7 @@ class AgentExecutionLifecycleServiceTest {
         objectMapper.registerModule(new JavaTimeModule());
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         lifecycleService = new AgentExecutionLifecycleService(
-                stateMachine, executionMapper, snapshotMapper, redisTemplate, objectMapper);
+                stateMachine, executionMapper, snapshotMapper, redisTemplate, objectMapper, executionSnapshotService);
     }
 
     @Test

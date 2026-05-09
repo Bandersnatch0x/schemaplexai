@@ -9,6 +9,7 @@
         <dependency><groupId>com.schemaplexai</groupId><artifactId>schemaplexai-model</artifactId></dependency>
         <dependency><groupId>com.schemaplexai</groupId><artifactId>schemaplexai-dao</artifactId></dependency>
         <dependency><groupId>com.schemaplexai</groupId><artifactId>schemaplexai-integration</artifactId></dependency>
+        <dependency><groupId>com.schemaplexai</groupId><artifactId>schemaplexai-ops</artifactId><version>${project.version}</version></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>
         <dependency><groupId>com.github.xiaoymin</groupId><artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-data-redis</artifactId></dependency>
@@ -76,6 +77,16 @@
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-contract-verifier</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-contract-wiremock</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
     <build>

@@ -174,6 +174,27 @@ All other services → common, model, dao
 | Tracing | Jaeger | Distributed tracing |
 | BPMN | Flowable 7 | Workflow engine |
 
+## Implementation Phases
+
+See full Section 4 in `docs/superpowers/specs/2026-05-09-execution-control-plane-section4.md`.
+
+| Phase | Weeks | Focus |
+|-------|-------|-------|
+| Phase 1: Foundation | 1-2 | Gateway + Core deployable, auth, tenant isolation, MQ infra |
+| Phase 2: Engine Integration | 3-4 | State machine, Outbox/Inbox, SSE, approval FAST path, cost alerts |
+| Phase 3: Workflow & Resilience | 5-6 | BPMN deployer, policy cache, snapshots, gap recovery, secret masking |
+| Phase 4: Hardening | 7-8 | Contract tests, chaos testing, load testing, 24h soak, security audit |
+
+## Milestones
+
+| Milestone | Date | Deliverable |
+|-----------|------|-------------|
+| M0 | Week 0 | Architecture plan approved |
+| M1 | Week 2 | Core services deployed, auth working |
+| M2 | Week 4 | Engine executing, events flowing |
+| M3 | Week 6 | Approvals working, resilience proven |
+| M4 | Week 8 | Production ready, security signed off |
+
 ## Backlinks
 
 - Data model in [[data-model]]

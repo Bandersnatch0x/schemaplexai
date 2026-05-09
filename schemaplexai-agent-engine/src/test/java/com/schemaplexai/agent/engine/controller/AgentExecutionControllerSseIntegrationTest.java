@@ -7,6 +7,7 @@ import com.schemaplexai.agent.engine.security.SseTokenValidator;
 import com.schemaplexai.agent.engine.sse.ExecutionEventBus;
 import com.schemaplexai.agent.engine.timeline.TimelineClickHouseService;
 import com.schemaplexai.agent.engine.tool.ValidationResult;
+import com.schemaplexai.agent.engine.util.SecretMasker;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,7 +47,7 @@ class AgentExecutionControllerSseIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        eventBus = new ExecutionEventBus(new ObjectMapper(), timelineService);
+        eventBus = new ExecutionEventBus(new ObjectMapper(), timelineService, new SecretMasker(new ObjectMapper()));
         controller = new AgentExecutionController(
                 executionEngine,
                 lifecycleService,
