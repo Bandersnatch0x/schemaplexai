@@ -2,6 +2,7 @@ package com.schemaplexai.integration.controller;
 
 import com.schemaplexai.common.result.Result;
 import com.schemaplexai.integration.dto.McpToolSchema;
+import com.schemaplexai.integration.dto.SkillContent;
 import com.schemaplexai.integration.dto.SkillSummary;
 import com.schemaplexai.integration.entity.SfApiGatewayConfig;
 import com.schemaplexai.integration.entity.SfIntegration;
@@ -242,5 +243,21 @@ class IntegrationControllerTest {
         when(skillService.listSummaries()).thenReturn(Collections.emptyList());
         Result<?> result = skillController.list();
         assertThat(result.getCode()).isEqualTo(200);
+    }
+
+    @Test
+    void skill_getContent_found() {
+        SkillContent content = new SkillContent(1L, "my-skill", "---\nname: Test\n---\nBody");
+        when(skillService.getContent(1L)).thenReturn(content);
+        Result<SkillContent> result = skillController.getContent(1L);
+        assertThat(result.getCode()).isEqualTo(200);
+        assertThat(result.getData().id()).isEqualTo(1L);
+    }
+
+    @Test
+    void skill_getContent_notFound() {
+        when(skillService.getContent(1L)).thenReturn(null);
+        Result<SkillContent> result = skillController.getContent(1L);
+        assertThat(result.getCode()).isEqualTo(404);
     }
 }
