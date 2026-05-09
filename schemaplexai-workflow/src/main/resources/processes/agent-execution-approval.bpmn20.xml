@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://schemaplexai.com/workflow/agent-execution-approval">
+
+    <process id="agentExecutionApproval" name="Agent Execution Approval Workflow" isExecutable="true">
+
+        <documentation>
+            Multi-step approval workflow for high-risk agent execution tool calls.
+            Supports FAST single-step approval, BPMN multi-step chains, and SLA-based escalation.
+
+            Flow: Start → Assign Approver → [Decision]
+              ├─ APPROVE → Notify Engine → Approved End
+              ├─ REJECT  → Notify Engine → Rejected End
+              └─ ESCALATE → Assign Senior → [Decision]
+                   ├─ APPROVE → Notify Engine → Approved End
+                   ├─ REJECT  → Notify Engine → Rejected End
+                   └─ (SLA timeout) → Auto-Escalate/Reject
+        </documentation>
+
+        <!-- Process variables:
+             - ticketId (string, UUID — ApprovalTicket.ticketId)
+             - executionId (long)
+             - tenantId (long)
+             - agentId (long)
+             - approverId (string, assigned by first human task)
+             - riskLevel (string: LOW/MEDIUM/HIGH/CRITICAL)
+             - actionDescription (string)
+             - approvalDecision (string: APPROVE/REJECT/ESCALATE, set by human task)
+             - rejectionReason (string, set by human task on REJECT)
+             - escalationLevel (int, 0=initial, 1=escalated, 2=final)
+             - slaTimeoutHours (int, default 4 for L0, 24 for L1)
+        -->
+
+        <!-- ========== START ========== -->
+        <startEvent id="startApproval" name="Approval Requested"
+                    flowable:initiator="system"/>
+
+        <!-- Initialize approval context: set escalationLevel=0, validate inputs -->
+        <serviceTask id="initApproval" name="Initialize Approval"
+                     flowable:class="com.schemaplexai.workflow.delegate.InitApprovalDelegate"/>
+
+        <!-- ========== PRIMARY APPROVAL (Level 0) ========== -->
+        <userTask id="primaryApprovalTask" name="Review and Approve"
+                  flowable:assignee="${approverId != null ? approverId : 'approver-group'}">
+            <documentation>Primary approver reviews the high-risk tool call and decides.</documentation>
+            <extensionElements>
+                <flowable:taskListener event="create"
+                                       class="com.schemaplexai.workflow.delegate.HumanTaskAssignmentDelegate"/>
+            </extensionElements>
+        </userTask>
+
+        <!-- SLA boundary timer: 4h default for primary approval -->
+        <boundaryEvent id="primarySlaTimer" name="SLA Timeout (4h)"
+                       attachedToRef="primaryApprovalTask" cancelActivity="true">
+            <timerEventDefinition>
+                <timeDuration>PT${slaTimeoutHours != null ? slaTimeoutHours : 4}H</timeDuration>
+            </timerEventDefinition>
+        </boundaryEvent>
+
+        <!-- Primary decision gateway -->
+        <exclusiveGateway id="primaryDecisionGw" name="Primary Decision"/>
+
+        <!-- ========== ESCALATED APPROVAL (Level 1) ========== -->
+        <serviceTask id="escalateToLevel1" name="Escalate to Senior"
+                     flowable:class="com.schemaplexai.workflow.delegate.EscalationDelegate"/>
+
+        <userTask id="escalatedApprovalTask" name="Escalated Review"
+                  flowable:candidateGroups="senior-approvers">
+            <documentation>Senior approver / TENANT_ADMIN reviews escalated approval.</documentation>
+            <extensionElements>
+                <flowable:taskListener event="create"
+                                       class="com.schemaplexai.workflow.delegate.HumanTaskAssignmentDelegate"/>
+            </extensionElements>
+        </userTask>
+
+        <!-- SLA boundary timer: 24h for escalated approval -->
+        <boundaryEvent id="escalatedSlaTimer" name="SLA Timeout (24h)"
+                       attachedToRef="escalatedApprovalTask" cancelActivity="true">
+            <timerEventDefinition>
+                <timeDuration>PT24H</timeDuration>
+            </timerEventDefinition>
+        </boundaryEvent>
+
+        <!-- Escalated decision gateway -->
+        <exclusiveGateway id="escalatedDecisionGw" name="Escalated Decision"/>
+
+        <!-- ========== NOTIFICATION SERVICE TASKS ========== -->
+        <!--
+            NotifyEngineDelegate reads "approvalDecision" process variable (set by human task or below).
+            For the approve path: human sets approvalDecision=APPROVE.
+            For the reject path: human sets approvalDecision=REJECT.
+            For the SLA auto-reject path: execution listener sets approvalDecision=REJECT.
+        -->
+        <serviceTask id="notifyApproval" name="Notify Engine: Approved"
+                     flowable:class="com.schemaplexai.workflow.delegate.NotifyEngineDelegate"/>
+
+        <serviceTask id="notifyRejection" name="Notify Engine: Rejected"
+                     flowable:class="com.schemaplexai.workflow.delegate.NotifyEngineDelegate"/>
+
+        <serviceTask id="notifyAutoReject" name="Notify Engine: Auto-Rejected (SLA)"
+                     flowable:class="com.schemaplexai.workflow.delegate.NotifyEngineDelegate">
+            <extensionElements>
+                <!-- Set rejection variables before delegate executes -->
+                <flowable:executionListener class="com.schemaplexai.workflow.delegate.SlaAutoRejectListener"
+                                            event="start"/>
+            </extensionElements>
+        </serviceTask>
+
+        <!-- ========== END EVENTS ========== -->
+        <endEvent id="approvedEnd" name="Approved"/>
+        <endEvent id="rejectedEnd" name="Rejected"/>
+
+        <!-- ========== SEQUENCE FLOWS ========== -->
+
+        <!-- Start → Init → Primary Approval -->
+        <sequenceFlow id="f1" sourceRef="startApproval" targetRef="initApproval"/>
+        <sequenceFlow id="f2" sourceRef="initApproval" targetRef="primaryApprovalTask"/>
+
+        <!-- Primary approval → Decision -->
+        <sequenceFlow id="f3" sourceRef="primaryApprovalTask" targetRef="primaryDecisionGw"/>
+
+        <!-- Primary SLA timeout → Auto-escalate to level 1 -->
+        <sequenceFlow id="f3-sla" sourceRef="primarySlaTimer" targetRef="escalateToLevel1"/>
+
+        <!-- Primary decision branches -->
+        <sequenceFlow id="f4-approve" sourceRef="primaryDecisionGw" targetRef="notifyApproval">
+            <conditionExpression xsi:type="tFormalExpression">${approvalDecision == 'APPROVE'}</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="f4-reject" sourceRef="primaryDecisionGw" targetRef="notifyRejection">
+            <conditionExpression xsi:type="tFormalExpression">${approvalDecision == 'REJECT'}</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="f4-escalate" sourceRef="primaryDecisionGw" targetRef="escalateToLevel1">
+            <conditionExpression xsi:type="tFormalExpression">${approvalDecision == 'ESCALATE'}</conditionExpression>
+        </sequenceFlow>
+
+        <!-- Escalate → Escalated Approval -->
+        <sequenceFlow id="f5" sourceRef="escalateToLevel1" targetRef="escalatedApprovalTask"/>
+
+        <!-- Escalated approval → Decision -->
+        <sequenceFlow id="f6" sourceRef="escalatedApprovalTask" targetRef="escalatedDecisionGw"/>
+
+        <!-- Escalated SLA timeout → Auto-reject (Level 2 = final) -->
+        <sequenceFlow id="f6-sla" sourceRef="escalatedSlaTimer" targetRef="notifyAutoReject"/>
+
+        <!-- Escalated decision branches -->
+        <sequenceFlow id="f7-approve" sourceRef="escalatedDecisionGw" targetRef="notifyApproval">
+            <conditionExpression xsi:type="tFormalExpression">${approvalDecision == 'APPROVE'}</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="f7-reject" sourceRef="escalatedDecisionGw" targetRef="notifyRejection">
+            <conditionExpression xsi:type="tFormalExpression">${approvalDecision == 'REJECT'}</conditionExpression>
+        </sequenceFlow>
+
+        <!-- Notifications → End -->
+        <sequenceFlow id="f8" sourceRef="notifyApproval" targetRef="approvedEnd"/>
+        <sequenceFlow id="f9" sourceRef="notifyRejection" targetRef="rejectedEnd"/>
+        <sequenceFlow id="f10" sourceRef="notifyAutoReject" targetRef="rejectedEnd"/>
+
+    </process>
+</definitions>
