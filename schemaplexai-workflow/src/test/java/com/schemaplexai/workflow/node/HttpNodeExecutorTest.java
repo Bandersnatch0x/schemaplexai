@@ -16,17 +16,19 @@ class HttpNodeExecutorTest {
     }
 
     @Test
-    void execute_nullUrl_returnsPlaceholder() {
+    void execute_nullUrl_returnsFailure() {
         NodeExecutionResult result = executor.execute(Map.of(), "tenant-1");
-        assertThat(result.isSuccess()).isTrue();
-        assertThat(result.getOutput()).containsEntry("statusCode", 200);
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getMessage()).contains("url");
+        assertThat(result.getOutput()).isEmpty();
     }
 
     @Test
-    void execute_blankUrl_returnsPlaceholder() {
+    void execute_blankUrl_returnsFailure() {
         NodeExecutionResult result = executor.execute(Map.of("url", "  "), "tenant-1");
-        assertThat(result.isSuccess()).isTrue();
-        assertThat(result.getOutput()).containsEntry("statusCode", 200);
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getMessage()).contains("url");
+        assertThat(result.getOutput()).isEmpty();
     }
 
     @Test

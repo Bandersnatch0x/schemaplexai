@@ -1,6 +1,7 @@
 package com.schemaplexai.agent.engine.memory;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -40,6 +41,7 @@ public class TenantKeyService {
     private final ConcurrentHashMap<String, SecretKey> keyCache = new ConcurrentHashMap<>();
     private final String masterSecret;
 
+    @Autowired
     public TenantKeyService(@Value("${chat.memory.encryption.master-secret:}") String masterSecret) {
         if (masterSecret == null || masterSecret.isBlank()) {
             log.warn("No master secret configured — using fallback (DEV ONLY). Set chat.memory.encryption.master-secret in production.");

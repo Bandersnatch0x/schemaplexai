@@ -74,6 +74,19 @@ class ShadowConfigServiceTest {
     }
 
     @Test
+    void shouldThrowWhenCreateShadowConfigAffectsNoRows() {
+        SfAgentShadowConfig config = new SfAgentShadowConfig();
+        config.setAgentId(1L);
+        config.setEnabled(true);
+        when(shadowConfigMapper.insert(config)).thenReturn(0);
+
+        assertThatThrownBy(() -> shadowConfigService.createShadowConfig(config))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.INTERNAL_ERROR.getCode());
+    }
+
+    @Test
     void shouldUpdateShadowConfig() {
         SfAgentShadowConfig existing = new SfAgentShadowConfig();
         existing.setId(1L);
@@ -91,6 +104,27 @@ class ShadowConfigServiceTest {
         shadowConfigService.updateShadowConfig(update);
 
         verify(shadowConfigMapper).updateById(update);
+    }
+
+    @Test
+    void shouldThrowWhenUpdateShadowConfigAffectsNoRows() {
+        SfAgentShadowConfig existing = new SfAgentShadowConfig();
+        existing.setId(1L);
+        existing.setAgentId(1L);
+        existing.setEnabled(false);
+
+        SfAgentShadowConfig update = new SfAgentShadowConfig();
+        update.setId(1L);
+        update.setAgentId(1L);
+        update.setEnabled(true);
+
+        when(shadowConfigMapper.selectById(1L)).thenReturn(existing);
+        when(shadowConfigMapper.updateById(update)).thenReturn(0);
+
+        assertThatThrownBy(() -> shadowConfigService.updateShadowConfig(update))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.NOT_FOUND.getCode());
     }
 
     @Test
@@ -112,5 +146,15 @@ class ShadowConfigServiceTest {
         shadowConfigService.deleteShadowConfig(1L);
 
         verify(shadowConfigMapper).deleteById(1L);
+    }
+
+    @Test
+    void shouldThrowWhenDeleteShadowConfigAffectsNoRows() {
+        when(shadowConfigMapper.deleteById(999L)).thenReturn(0);
+
+        assertThatThrownBy(() -> shadowConfigService.deleteShadowConfig(999L))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.NOT_FOUND.getCode());
     }
 }

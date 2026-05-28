@@ -204,12 +204,18 @@ public class AgentsManifestLoader {
             fresh.setType(manifest.type() != null ? manifest.type() : DEFAULT_AGENT_TYPE);
             fresh.setStatus(DEFAULT_STATUS);
             fresh.setDescription(manifest.description());
-            agentMapper.insert(fresh);
+            int inserted = agentMapper.insert(fresh);
+            if (inserted <= 0) {
+                throw new IllegalStateException("agent insert affected 0 rows");
+            }
             return fresh;
         }
         existing.setType(manifest.type() != null ? manifest.type() : DEFAULT_AGENT_TYPE);
         existing.setDescription(manifest.description());
-        agentMapper.updateById(existing);
+        int updated = agentMapper.updateById(existing);
+        if (updated <= 0) {
+            throw new IllegalStateException("agent update affected 0 rows");
+        }
         return existing;
     }
 
@@ -229,9 +235,15 @@ public class AgentsManifestLoader {
         cfg.setTemperature(manifest.temperature());
         cfg.setExecutionMode(manifest.executionMode());
         if (cfg.getId() == null) {
-            agentConfigMapper.insert(cfg);
+            int inserted = agentConfigMapper.insert(cfg);
+            if (inserted <= 0) {
+                throw new IllegalStateException("agent config insert affected 0 rows");
+            }
         } else {
-            agentConfigMapper.updateById(cfg);
+            int updated = agentConfigMapper.updateById(cfg);
+            if (updated <= 0) {
+                throw new IllegalStateException("agent config update affected 0 rows");
+            }
         }
     }
 
@@ -250,7 +262,10 @@ public class AgentsManifestLoader {
             bindings.add(binding);
         }
         for (SfAgentToolBinding binding : bindings) {
-            toolBindingMapper.insert(binding);
+            int inserted = toolBindingMapper.insert(binding);
+            if (inserted <= 0) {
+                throw new IllegalStateException("tool binding insert affected 0 rows");
+            }
         }
     }
 }

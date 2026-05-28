@@ -1,0 +1,49 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"$TOOL_INPUT\" | grep -q \"git commit\" && (bash 'D:\\code_space\\frige\\.codex\\hooks\\pre-commit-wiki-sync.sh' && bash scripts/lint-docs-consistency.sh --staged) || true",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' 2>/dev/null | grep -qE '/schemaplexai-ui/src/.*\\.(tsx?|css|html)$' && mkdir -p .claude/outputs 2>/dev/null && touch .claude/outputs/.frontend-dirty 2>/dev/null || true"
+          },
+          {
+            "type": "command",
+            "command": "echo \"$TOOL_INPUT\" | bash 'D:\\code_space\\frige\\.codex\\hooks\\post-edit-mark-docs-dirty.sh' 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash 'D:\\code_space\\frige\\.codex\\hooks\\stop-gen-status.sh' || true"
+          },
+          {
+            "type": "command",
+            "command": "bash 'D:\\code_space\\frige\\.codex\\hooks\\screenshots-if-dirty.sh' 2>/dev/null || true"
+          },
+          {
+            "type": "command",
+            "command": "bash 'D:\\code_space\\frige\\.codex\\hooks\\stop-prompt-docs-review.sh' 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}

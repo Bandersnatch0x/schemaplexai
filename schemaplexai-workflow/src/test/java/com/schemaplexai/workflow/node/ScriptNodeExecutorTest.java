@@ -16,9 +16,10 @@ class ScriptNodeExecutorTest {
     }
 
     @Test
-    void execute_returnsPlaceholderResult() {
+    void execute_failsExplicitlyUntilRuntimeIsImplemented() {
         NodeExecutionResult result = executor.execute(Map.of("script", "print('hello')"), "tenant-1");
-        assertThat(result.isSuccess()).isTrue();
-        assertThat(result.getOutput()).containsEntry("result", "script executed");
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getMessage()).contains("SCRIPT node execution is not implemented");
+        assertThat(result.getOutput()).isEmpty();
     }
 }

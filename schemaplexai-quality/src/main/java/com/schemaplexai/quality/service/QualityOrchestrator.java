@@ -46,11 +46,24 @@ public class QualityOrchestrator {
         boolean allPassed = true;
 
         for (SfQualityGate gate : gates) {
-            List<String> ruleNames = parseRulesJson(gate.getRulesJson());
+            List<String> ruleNames;
+            try {
+                ruleNames = parseRulesJson(gate.getRulesJson());
+            } catch (Exception e) {
+                log.warn("Failed to parse rules JSON for gate {}: {}", gate.getName(), gate.getRulesJson(), e);
+                results.add(QualityCheckResult.fail("CRITICAL",
+                        "Failed to parse rules JSON for gate: " + gate.getName()));
+                allPassed = false;
+                continue;
+            }
+
             for (String ruleName : ruleNames) {
                 QualityRule rule = rules.get(ruleName);
                 if (rule == null) {
                     log.warn("No rule implementation for: {}", ruleName);
+                    results.add(QualityCheckResult.fail("CRITICAL",
+                            "No rule implementation for: " + ruleName));
+                    allPassed = false;
                     continue;
                 }
 
@@ -96,8 +109,7 @@ public class QualityOrchestrator {
         try {
             return objectMapper.readValue(rulesJson, new TypeReference<List<String>>() {});
         } catch (Exception e) {
-            log.warn("Failed to parse rules JSON: {}", rulesJson, e);
-            return List.of();
+            throw new IllegalArgumentException("Failed to parse rules JSON", e);
         }
     }
 }

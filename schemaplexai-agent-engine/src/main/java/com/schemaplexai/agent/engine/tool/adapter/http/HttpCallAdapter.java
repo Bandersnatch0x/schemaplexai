@@ -1,5 +1,7 @@
 package com.schemaplexai.agent.engine.tool.adapter.http;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.agent.engine.config.SecurityPolicyLoader;
 import com.schemaplexai.agent.engine.tool.ToolCall;
 import com.schemaplexai.agent.engine.tool.ToolErrorCategory;
@@ -18,6 +20,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -25,20 +28,18 @@ import java.util.Set;
  * HTTP call tool adapter with SSRF protection.
  *
  * Security measures:
+ * - Optional tenant URL host allowlist from TenantEnvironmentConfig.extraConfig
  * - Private IP blocklist (10.x, 172.16-31.x, 192.168.x, 127.x, 169.254.x)
  * - Tenant-level HTTP call permission check via {@link SecurityPolicyLoader}
  * - Redirect depth limit (max 3, re-checking target IP each time)
  * - Dangerous protocol blocking (file://, gopher://, etc.)
  * - Connection/read timeouts (5s / 30s)
- *
- * TODO: Add per-tenant URL allowlist filtering before the SSRF private-IP check.
- *       The allowlist should be loaded from TenantEnvironmentConfig.extraConfig
- *       and validated against the requested URL host before DNS resolution.
  */
 @Slf4j
 @Component
 public class HttpCallAdapter implements ToolAdapter {
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Set<String> BLOCKED_SCHEMES = Set.of("file", "gopher", "ftp", "jar");
     private static final Set<String> ALLOWED_METHODS = Set.of("GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS");
     private static final Set<String> BODY_METHODS = Set.of("POST", "PUT", "PATCH");
@@ -78,6 +79,7 @@ public class HttpCallAdapter implements ToolAdapter {
         }
 
         // Tenant-level permission check
+        Set<String> allowedHosts = Set.of();
         if (ctx != null && ctx.tenantId() != null) {
             TenantEnvironmentConfig config = securityPolicyLoader.load(ctx.tenantId());
             if (config.getAllowHttpCalls() == null || Boolean.FALSE.equals(config.getAllowHttpCalls())) {
@@ -85,10 +87,11 @@ public class HttpCallAdapter implements ToolAdapter {
                 throw new ToolExecutionException(ToolErrorCategory.ENVIRONMENT_MISMATCH,
                         "HTTP calls are not enabled for this tenant");
             }
+            allowedHosts = parseTenantHttpUrlAllowlist(config.getExtraConfig());
         }
 
         try {
-            return executeWithRedirectProtection(urlStr, method, call.parameters(), 0);
+            return executeWithRedirectProtection(urlStr, method, call.parameters(), allowedHosts, 0);
         } catch (ToolExecutionException e) {
             throw e;
         } catch (Exception e) {
@@ -99,7 +102,9 @@ public class HttpCallAdapter implements ToolAdapter {
     }
 
     private ToolResult executeWithRedirectProtection(String urlStr, String method,
-                                                      Map<String, Object> parameters, int redirectCount)
+                                                      Map<String, Object> parameters,
+                                                      Set<String> allowedHosts,
+                                                      int redirectCount)
             throws ToolExecutionException {
         if (redirectCount > MAX_REDIRECTS) {
             throw new ToolExecutionException(ToolErrorCategory.ENVIRONMENT_MISMATCH,
@@ -130,6 +135,7 @@ public class HttpCallAdapter implements ToolAdapter {
         if (host == null) {
             throw new ToolExecutionException(ToolErrorCategory.INVALID_ARGUMENT, "URL has no host");
         }
+        validateTenantAllowlist(host, allowedHosts);
 
         InetAddress resolvedAddress;
         try {
@@ -196,7 +202,7 @@ public class HttpCallAdapter implements ToolAdapter {
                                 "Invalid redirect URL: " + location);
                     }
                     log.info("Following redirect ({} of {}): {} -> {}", redirectCount + 1, MAX_REDIRECTS, urlStr, redirectUri);
-                    return executeWithRedirectProtection(redirectUri.toString(), "GET", parameters, redirectCount + 1);
+                    return executeWithRedirectProtection(redirectUri.toString(), "GET", parameters, allowedHosts, redirectCount + 1);
                 }
             }
 
@@ -210,6 +216,58 @@ public class HttpCallAdapter implements ToolAdapter {
             throw new ToolExecutionException(ToolErrorCategory.INTERNAL_ERROR,
                     "HTTP request failed: " + e.getMessage(), e);
         }
+    }
+
+    private static Set<String> parseTenantHttpUrlAllowlist(String extraConfig) throws ToolExecutionException {
+        if (extraConfig == null || extraConfig.isBlank()) {
+            return Set.of();
+        }
+
+        JsonNode allowlistNode;
+        try {
+            allowlistNode = OBJECT_MAPPER.readTree(extraConfig).path("httpUrlAllowlist");
+        } catch (Exception e) {
+            throw new ToolExecutionException(ToolErrorCategory.ENVIRONMENT_MISMATCH,
+                    "Invalid tenant HTTP URL allowlist configuration", e);
+        }
+
+        if (allowlistNode.isMissingNode() || allowlistNode.isNull()) {
+            return Set.of();
+        }
+        if (!allowlistNode.isArray()) {
+            throw new ToolExecutionException(ToolErrorCategory.ENVIRONMENT_MISMATCH,
+                    "Invalid tenant HTTP URL allowlist configuration");
+        }
+
+        Set<String> allowedHosts = new LinkedHashSet<>();
+        for (JsonNode node : allowlistNode) {
+            if (node.isTextual() && !node.asText().isBlank()) {
+                allowedHosts.add(node.asText().trim().toLowerCase());
+            }
+        }
+        return Set.copyOf(allowedHosts);
+    }
+
+    private static void validateTenantAllowlist(String host, Set<String> allowedHosts) throws ToolExecutionException {
+        if (allowedHosts == null || allowedHosts.isEmpty()) {
+            return;
+        }
+        String normalizedHost = host.toLowerCase();
+        if (allowedHosts.stream().noneMatch(pattern -> hostMatchesAllowlistPattern(normalizedHost, pattern))) {
+            throw new ToolExecutionException(ToolErrorCategory.ENVIRONMENT_MISMATCH,
+                    "HTTP call blocked: host is not in tenant URL allowlist");
+        }
+    }
+
+    private static boolean hostMatchesAllowlistPattern(String host, String pattern) {
+        if (host.equals(pattern)) {
+            return true;
+        }
+        if (!pattern.startsWith("*.")) {
+            return false;
+        }
+        String suffix = pattern.substring(1);
+        return host.endsWith(suffix) && host.length() > suffix.length();
     }
 
     /**

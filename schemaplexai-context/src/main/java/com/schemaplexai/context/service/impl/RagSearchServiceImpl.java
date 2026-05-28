@@ -39,6 +39,8 @@ public class RagSearchServiceImpl implements RagSearchService {
             return List.of();
         }
 
+        validateTenantId(tenantId);
+
         // Generate real embedding for query — failure must propagate, never silently fallback.
         List<Float> queryEmbedding;
         try {
@@ -62,9 +64,6 @@ public class RagSearchServiceImpl implements RagSearchService {
                     .consistencyLevel(milvusProperties.getConsistencyLevel());
 
             if (tenantId != null && !tenantId.isBlank()) {
-                if (!TENANT_ID_PATTERN.matcher(tenantId).matches()) {
-                    throw new BaseException(ResultCode.PARAM_ERROR, "Invalid tenantId format");
-                }
                 searchBuilder.filter(String.format("tenant_id == \"%s\"", tenantId.replace("\"", "\\\"")));
             }
 
@@ -94,6 +93,12 @@ public class RagSearchServiceImpl implements RagSearchService {
             log.error("RAG search failed for query '{}': {}", query, e.getMessage(), e);
             throw new BaseException(ResultCode.INTERNAL_ERROR,
                     "RAG search failed: " + e.getMessage(), e);
+        }
+    }
+
+    private void validateTenantId(String tenantId) {
+        if (tenantId != null && !tenantId.isBlank() && !TENANT_ID_PATTERN.matcher(tenantId).matches()) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "Invalid tenantId format");
         }
     }
 

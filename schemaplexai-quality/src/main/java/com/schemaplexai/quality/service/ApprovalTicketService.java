@@ -254,6 +254,10 @@ public class ApprovalTicketService {
             return;
         }
 
+        if (role != null) {
+            throw new BaseException(ResultCode.FORBIDDEN, "Unsupported approver role: " + role);
+        }
+
         // Fallback: if no role prefix, allow if the ticket has a tenant (basic ownership)
         if (ticket.getTenantId() == null) {
             throw new BaseException(ResultCode.FORBIDDEN, "Approver lacks authority for this ticket");

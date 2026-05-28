@@ -30,7 +30,7 @@ import java.util.List;
 @Slf4j
 @Service
 @ConditionalOnProperty(name = "clickhouse.enabled", havingValue = "true")
-public class ClickHouseCostSyncService {
+public class ClickHouseCostSyncService implements CostDataSyncService {
 
     private static final int DEFAULT_BATCH_SIZE = 1000;
     private static final String CURSOR_KEY = "sf_agent_execution";
@@ -56,6 +56,7 @@ public class ClickHouseCostSyncService {
 
     @Scheduled(fixedDelay = 300_000)
     @Transactional(rollbackFor = Exception.class)
+    @Override
     public void syncIncrementalData() {
         if (!enabled) {
             log.debug("ClickHouse sync is disabled. Skipping incremental sync.");

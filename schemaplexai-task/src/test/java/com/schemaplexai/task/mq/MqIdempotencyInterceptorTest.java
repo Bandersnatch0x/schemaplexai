@@ -3,6 +3,7 @@ package com.schemaplexai.task.mq;
 import com.schemaplexai.common.constants.CommonConstants;
 import com.schemaplexai.task.entity.SfIdempotencyKey;
 import com.schemaplexai.task.mapper.SfIdempotencyKeyMapper;
+import com.rabbitmq.client.Channel;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,6 +45,7 @@ class MqIdempotencyInterceptorTest {
     private Message createMessage(String messageId) {
         MessageProperties properties = new MessageProperties();
         properties.setMessageId(messageId);
+        properties.setDeliveryTag(1L);
         return new Message("body".getBytes(StandardCharsets.UTF_8), properties);
     }
 
@@ -69,6 +71,22 @@ class MqIdempotencyInterceptorTest {
 
         assertThat(result).isNull();
         verify(idempotencyKeyMapper, never()).insert(any());
+    }
+
+    @Test
+    void around_messageAlreadyInRedis_acknowledgesDuplicateWhenChannelPresent() throws Throwable {
+        Message message = createMessage("msg-001");
+        Channel channel = mock(Channel.class);
+        when(joinPoint.getArgs()).thenReturn(new Object[]{message, channel});
+        when(joinPoint.getTarget()).thenReturn(new TestConsumer());
+        when(redisTemplate.hasKey(anyString())).thenReturn(true);
+
+        Object result = interceptor.around(joinPoint);
+
+        assertThat(result).isNull();
+        verify(channel).basicAck(1L, false);
+        verify(idempotencyKeyMapper, never()).insert(any());
+        verify(joinPoint, never()).proceed();
     }
 
     @Test
@@ -101,6 +119,24 @@ class MqIdempotencyInterceptorTest {
 
         assertThat(result).isNull();
         verify(valueOperations).set(anyString(), eq("1"), eq(24L), eq(TimeUnit.HOURS));
+        verify(joinPoint, never()).proceed();
+    }
+
+    @Test
+    void around_duplicateKeyInDb_acknowledgesDuplicateWhenChannelPresent() throws Throwable {
+        Message message = createMessage("msg-003");
+        Channel channel = mock(Channel.class);
+        when(joinPoint.getArgs()).thenReturn(new Object[]{message, channel});
+        when(joinPoint.getTarget()).thenReturn(new TestConsumer());
+        when(redisTemplate.hasKey(anyString())).thenReturn(false);
+        doThrow(new DuplicateKeyException("dup")).when(idempotencyKeyMapper).insert(any(SfIdempotencyKey.class));
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+
+        Object result = interceptor.around(joinPoint);
+
+        assertThat(result).isNull();
+        verify(valueOperations).set(anyString(), eq("1"), eq(24L), eq(TimeUnit.HOURS));
+        verify(channel).basicAck(1L, false);
         verify(joinPoint, never()).proceed();
     }
 

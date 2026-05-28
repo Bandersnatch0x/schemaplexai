@@ -77,17 +77,16 @@ class RagSearchServiceImplTest {
     }
 
     @Test
-    void search_invalidTenantIdFormat_throwsBaseException() {
-        when(embeddingService.embed("test")).thenReturn(new float[]{1.0f, 0.0f});
-
+    void search_invalidTenantIdFormat_throwsParamErrorBeforeEmbedding() {
         assertThatThrownBy(() -> ragSearchService.search("test", "tenant;id", 5))
                 .isInstanceOf(BaseException.class)
                 .satisfies(ex -> {
                     BaseException be = (BaseException) ex;
-                    // Validation happens inside the search try-catch, so it gets wrapped as INTERNAL_ERROR
-                    assertThat(be.getCode()).isEqualTo(ResultCode.INTERNAL_ERROR.getCode());
+                    assertThat(be.getCode()).isEqualTo(ResultCode.PARAM_ERROR.getCode());
                     assertThat(be.getMessage()).contains("Invalid tenantId format");
                 });
+
+        verifyNoInteractions(embeddingService, milvusClient);
     }
 
     @Test
@@ -133,8 +132,6 @@ class RagSearchServiceImplTest {
 
     @Test
     void search_withTenantId_escapesQuotes() {
-        when(embeddingService.embed("test")).thenReturn(new float[]{1.0f, 0.0f});
-
         // The quote in tenantId will fail validation (pattern doesn't allow quotes)
         // so it throws before reaching milvusClient.search
         assertThatThrownBy(() -> ragSearchService.search("test", "ten\"ant", 5))
@@ -143,6 +140,8 @@ class RagSearchServiceImplTest {
                     BaseException be = (BaseException) ex;
                     assertThat(be.getMessage()).contains("Invalid tenantId format");
                 });
+
+        verifyNoInteractions(embeddingService, milvusClient);
     }
 
     @Test

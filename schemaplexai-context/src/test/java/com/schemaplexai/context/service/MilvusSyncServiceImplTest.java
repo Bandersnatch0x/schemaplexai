@@ -14,14 +14,22 @@ import io.milvus.v2.service.vector.request.DeleteReq;
 import io.milvus.v2.service.vector.request.InsertReq;
 import io.milvus.v2.service.vector.response.DeleteResp;
 import io.milvus.v2.service.vector.response.InsertResp;
+import io.minio.GetObjectArgs;
+import io.minio.GetObjectResponse;
+import io.minio.MinioClient;
+import okhttp3.Headers;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -56,6 +64,16 @@ class MilvusSyncServiceImplTest {
     // ------------------------------------------------------------------
 
     @Test
+    void syncToMilvus_nullDocId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> milvusSyncService.syncToMilvus(null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(knowledgeDocMapper, never()).selectById(any());
+    }
+
+    @Test
     void syncToMilvus_docNotFound_throwsNotFound() {
         when(knowledgeDocMapper.selectById(1L)).thenReturn(null);
 
@@ -66,12 +84,18 @@ class MilvusSyncServiceImplTest {
     }
 
     @Test
-    void syncToMilvus_success_marksAsSynced() {
+    void syncToMilvus_success_marksAsSynced() throws Exception {
         SfKnowledgeDoc doc = new SfKnowledgeDoc();
         doc.setId(1L);
+        doc.setTenantId("tenant-1");
         doc.setTitle("Test Doc");
+        doc.setFileName("test.txt");
+        doc.setFileUrl("http://localhost:9000/documents/test.txt");
         doc.setStatus("PENDING");
         when(knowledgeDocMapper.selectById(1L)).thenReturn(doc);
+
+        mockMinioObject("documents/test.txt", "real extracted text");
+
         when(documentChunker.chunk(any(), any())).thenReturn(List.of(
                 TextChunk.builder().index(0).content("chunk1").startPosition(0).endPosition(6).build()
         ));
@@ -83,6 +107,54 @@ class MilvusSyncServiceImplTest {
 
         assertThat(doc.getStatus()).isEqualTo("SYNCED");
         verify(knowledgeDocMapper).updateById(doc);
+    }
+
+    @Test
+    void syncToMilvus_minioExtractionFailure_marksFailedWithoutSimulatedSync() throws Exception {
+        SfKnowledgeDoc doc = new SfKnowledgeDoc();
+        doc.setId(1L);
+        doc.setTenantId("tenant-1");
+        doc.setTitle("Real Doc");
+        doc.setFileName("real.pdf");
+        doc.setFileUrl("http://localhost:9000/documents/real.pdf");
+        doc.setStatus("PENDING");
+        when(knowledgeDocMapper.selectById(1L)).thenReturn(doc);
+
+        MinioClient minioClient = mock(MinioClient.class);
+        when(minioClient.getObject(any(GetObjectArgs.class)))
+                .thenThrow(new RuntimeException("download failed"));
+        ReflectionTestUtils.setField(milvusSyncService, "minioEnabled", true);
+        ReflectionTestUtils.setField(milvusSyncService, "minioClient", minioClient);
+
+        Throwable thrown = catchThrowable(() -> milvusSyncService.syncToMilvus(1L));
+
+        assertThat(thrown).isInstanceOf(BaseException.class);
+        verify(failedStatusWriter).markFailed(eq(1L), contains("download failed"));
+        verify(documentChunker, never()).chunk(any(), any());
+        verify(embeddingService, never()).embedBatch(any());
+        verify(milvusClient, never()).insert(any(InsertReq.class));
+        assertThat(doc.getStatus()).isEqualTo("PENDING");
+        assertThat(doc.getSyncStatus()).isNull();
+    }
+
+    @Test
+    void syncToMilvus_missingFileUrl_marksFailedWithoutSimulatedSync() {
+        SfKnowledgeDoc doc = new SfKnowledgeDoc();
+        doc.setId(1L);
+        doc.setTitle("No File Doc");
+        doc.setFileName("missing.txt");
+        doc.setStatus("PENDING");
+        when(knowledgeDocMapper.selectById(1L)).thenReturn(doc);
+
+        Throwable thrown = catchThrowable(() -> milvusSyncService.syncToMilvus(1L));
+
+        assertThat(thrown).isInstanceOf(BaseException.class);
+        verify(failedStatusWriter).markFailed(eq(1L), contains("fileUrl is required"));
+        verify(documentChunker, never()).chunk(any(), any());
+        verify(embeddingService, never()).embedBatch(any());
+        verify(milvusClient, never()).insert(any(InsertReq.class));
+        assertThat(doc.getStatus()).isEqualTo("PENDING");
+        assertThat(doc.getSyncStatus()).isNull();
     }
 
     @Test
@@ -103,6 +175,17 @@ class MilvusSyncServiceImplTest {
     // ------------------------------------------------------------------
 
     @Test
+    void deleteByDocId_nullDocId_throwsParamErrorWithoutMilvusCall() {
+        assertThatThrownBy(() -> milvusSyncService.deleteByDocId(null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(milvusProperties, never()).getCollectionName();
+        verify(milvusClient, never()).delete(any(DeleteReq.class));
+    }
+
+    @Test
     void deleteByDocId_success_callsMilvusDelete() {
         when(milvusProperties.getCollectionName()).thenReturn("test_collection");
         when(milvusClient.delete(any(DeleteReq.class))).thenReturn(DeleteResp.builder().deleteCnt(3L).build());
@@ -120,14 +203,30 @@ class MilvusSyncServiceImplTest {
     // ------------------------------------------------------------------
 
     @Test
-    void reSyncDoc_success_deletesThenReInserts() {
+    void reSyncDoc_nullDocId_throwsParamErrorWithoutLookupOrMilvusCall() {
+        assertThatThrownBy(() -> milvusSyncService.reSyncDoc(null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(knowledgeDocMapper, never()).selectById(any());
+        verify(milvusClient, never()).delete(any(DeleteReq.class));
+        verify(milvusClient, never()).insert(any(InsertReq.class));
+    }
+
+    @Test
+    void reSyncDoc_success_deletesThenReInserts() throws Exception {
         SfKnowledgeDoc doc = new SfKnowledgeDoc();
         doc.setId(1L);
+        doc.setTenantId("tenant-1");
         doc.setTitle("Test Doc");
+        doc.setFileName("test.txt");
+        doc.setFileUrl("http://localhost:9000/documents/test.txt");
         doc.setStatus("SYNCED");
         when(knowledgeDocMapper.selectById(1L)).thenReturn(doc);
         when(milvusProperties.getCollectionName()).thenReturn("test_collection");
         when(milvusClient.delete(any(DeleteReq.class))).thenReturn(DeleteResp.builder().deleteCnt(2L).build());
+        mockMinioObject("documents/test.txt", "real extracted text");
         when(documentChunker.chunk(any(), any())).thenReturn(List.of(
                 TextChunk.builder().index(0).content("chunk1").startPosition(0).endPosition(6).build()
         ));
@@ -151,5 +250,18 @@ class MilvusSyncServiceImplTest {
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.NOT_FOUND.getCode());
+    }
+
+    private void mockMinioObject(String objectName, String content) throws Exception {
+        MinioClient minioClient = mock(MinioClient.class);
+        when(minioClient.getObject(any(GetObjectArgs.class)))
+                .thenReturn(new GetObjectResponse(
+                        Headers.of(),
+                        "sf-files-tenant-1",
+                        null,
+                        objectName,
+                        new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8))));
+        ReflectionTestUtils.setField(milvusSyncService, "minioEnabled", true);
+        ReflectionTestUtils.setField(milvusSyncService, "minioClient", minioClient);
     }
 }

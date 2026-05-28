@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -27,8 +28,19 @@ class AgentLabTest {
     class RunExperimentTests {
 
         @Test
+        @DisplayName("should throw without a real experiment runtime instead of simulating results")
+        void runExperiment_withoutRuntime_throwsInsteadOfSimulatingResults() {
+            UnsupportedOperationException ex = assertThrows(UnsupportedOperationException.class, () ->
+                    agentLab.runExperiment("summarization", List.of("strategy-a", "strategy-b")));
+
+            assertThat(ex).hasMessageContaining("experiment runtime");
+        }
+
+        @Test
         @DisplayName("should return results for each strategy")
         void shouldReturnResultsForEachStrategy() {
+            agentLab = new AgentLab(fakeExperimentRuntime());
+
             List<ExperimentResult> results = agentLab.runExperiment("summarization",
                     List.of("strategy-a", "strategy-b"));
 
@@ -54,6 +66,8 @@ class AgentLabTest {
         @Test
         @DisplayName("should ignore blank strategy names")
         void shouldIgnoreBlankStrategyNames() {
+            agentLab = new AgentLab(fakeExperimentRuntime());
+
             List<ExperimentResult> results = agentLab.runExperiment("task", java.util.Arrays.asList("valid", "", "   ", null));
             assertEquals(1, results.size());
             assertEquals("valid", results.get(0).strategyName());
@@ -76,6 +90,8 @@ class AgentLabTest {
         @Test
         @DisplayName("should produce deterministic results for same inputs")
         void shouldBeDeterministic() {
+            agentLab = new AgentLab(fakeExperimentRuntime());
+
             List<ExperimentResult> first = agentLab.runExperiment("reasoning", List.of("s1", "s2"));
             List<ExperimentResult> second = agentLab.runExperiment("reasoning", List.of("s1", "s2"));
 
@@ -128,11 +144,12 @@ class AgentLabTest {
         @Test
         @DisplayName("should recommend best strategy after experiment")
         void shouldRecommendBestStrategy() {
+            agentLab = new AgentLab(fakeExperimentRuntime());
+
             agentLab.runExperiment("generation", List.of("s1", "s2", "s3"));
             String recommended = agentLab.recommendStrategy("generation");
 
-            assertThat(recommended).isNotBlank();
-            assertThat(List.of("s1", "s2", "s3")).contains(recommended);
+            assertEquals("s3", recommended);
         }
 
         @Test
@@ -152,5 +169,17 @@ class AgentLabTest {
         void shouldReturnEmptyForBlankTaskType() {
             assertEquals("", agentLab.recommendStrategy("   "));
         }
+    }
+
+    private AgentLab.ExperimentRuntime fakeExperimentRuntime() {
+        return (taskType, strategies) -> IntStream.range(0, strategies.size())
+                .mapToObj(i -> {
+                    double successRate = 0.60 + (i * 0.10);
+                    double latencyMs = 1000.0 - (i * 100.0);
+                    double tokenUsage = 700.0 - (i * 50.0);
+                    double score = agentLab.calculateScore(successRate, latencyMs, tokenUsage);
+                    return new ExperimentResult(strategies.get(i), successRate, latencyMs, tokenUsage, score);
+                })
+                .toList();
     }
 }

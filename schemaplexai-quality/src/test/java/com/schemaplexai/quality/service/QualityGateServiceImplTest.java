@@ -93,6 +93,18 @@ class QualityGateServiceImplTest {
         assertThat(gate.getStatus()).isEqualTo(0);
     }
 
+    @Test
+    void save_whenInsertAffectsNoRows_throwsInternalError() {
+        SfQualityGate gate = new SfQualityGate();
+        gate.setName("Security Gate");
+        when(qualityGateMapper.insert(any())).thenReturn(0);
+
+        assertThatThrownBy(() -> qualityGateService.save(gate))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.INTERNAL_ERROR.getCode());
+    }
+
     // ------------------------------------------------------------------
     // updateById
     // ------------------------------------------------------------------
@@ -135,6 +147,23 @@ class QualityGateServiceImplTest {
         boolean result = qualityGateService.updateById(gate);
 
         assertThat(result).isTrue();
+    }
+
+    @Test
+    void updateById_whenUpdateAffectsNoRows_throwsNotFound() {
+        SfQualityGate existing = new SfQualityGate();
+        existing.setId(1L);
+        existing.setName("Old");
+        SfQualityGate gate = new SfQualityGate();
+        gate.setId(1L);
+        gate.setName("Updated");
+        when(qualityGateMapper.selectById(1L)).thenReturn(existing);
+        when(qualityGateMapper.updateById(any())).thenReturn(0);
+
+        assertThatThrownBy(() -> qualityGateService.updateById(gate))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.NOT_FOUND.getCode());
     }
 
     // ------------------------------------------------------------------

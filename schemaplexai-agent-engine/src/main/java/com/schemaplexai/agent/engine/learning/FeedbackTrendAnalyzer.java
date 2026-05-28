@@ -28,6 +28,7 @@ public class FeedbackTrendAnalyzer {
 
     private static final long ANOMALY_FAILURE_THRESHOLD = 5;
     private static final double ANOMALY_RATE_THRESHOLD = 0.5;
+    private static final int RECENT_FAILURE_LIMIT = 200;
 
     /**
      * Analyzes tool failure trends for the given tenant.
@@ -99,7 +100,7 @@ public class FeedbackTrendAnalyzer {
             double rate = totalFailures > 0 ? (double) pattern.failureCount() / totalFailures : 0.0;
             if (pattern.failureCount() >= ANOMALY_FAILURE_THRESHOLD || rate >= ANOMALY_RATE_THRESHOLD) {
                 anomalies.add(pattern);
-                log.warn("Anomaly detected: tool={}, category={}, count={}, rate={:.2f}, tenant={}",
+                log.warn("Anomaly detected: tool={}, category={}, count={}, rate={}, tenant={}",
                         pattern.toolName(), pattern.errorCategory(), pattern.failureCount(), rate, tenantId);
             }
         }
@@ -139,15 +140,8 @@ public class FeedbackTrendAnalyzer {
         return ToolFailurePattern.Trend.STABLE;
     }
 
-    /**
-     * Fetches recent tool execution failures for the tenant.
-     * This is a placeholder integration point; in production this would query
-     * the mapper or a time-series store for historical data.
-     */
     private List<ToolExecutionResult> fetchRecentFailures(String tenantId) {
-        // Placeholder: in a real system this would query the database via the recorder or a dedicated DAO.
-        // Returning empty list here because ToolExecutionRecorder does not expose historical queries.
         log.debug("Fetching recent failures for tenant={}", tenantId);
-        return Collections.emptyList();
+        return toolExecutionRecorder.listRecentFailures(tenantId, RECENT_FAILURE_LIMIT);
     }
 }

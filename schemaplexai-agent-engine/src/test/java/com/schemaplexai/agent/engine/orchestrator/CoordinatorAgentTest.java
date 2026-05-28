@@ -1,6 +1,6 @@
 package com.schemaplexai.agent.engine.orchestrator;
 
-import com.schemaplexai.agent.engine.AgentExecutionEngine;
+import com.schemaplexai.agent.engine.AgentExecutionStarter;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,7 +23,7 @@ import static org.mockito.Mockito.*;
 class CoordinatorAgentTest {
 
     @Mock
-    private AgentExecutionEngine executionEngine;
+    private AgentExecutionStarter executionStarter;
 
     @Spy
     private AgentRouter agentRouter = new AgentRouter();
@@ -141,13 +141,13 @@ class CoordinatorAgentTest {
     void shouldDispatchSubAgentViaExecutionEngine() {
         SfAgentExecution mockExecution = new SfAgentExecution();
         mockExecution.setId(42L);
-        when(executionEngine.startExecution(eq(10L), eq("tenant-1"), eq("test prompt")))
+        when(executionStarter.startExecution(eq(10L), eq("tenant-1"), eq("test prompt")))
                 .thenReturn(mockExecution);
 
         SfAgentExecution result = coordinatorAgent.dispatchSubAgent(10L, "tenant-1", "test prompt");
 
         assertThat(result.getId()).isEqualTo(42L);
-        verify(executionEngine).startExecution(10L, "tenant-1", "test prompt");
+        verify(executionStarter).startExecution(10L, "tenant-1", "test prompt");
     }
 
     @Test

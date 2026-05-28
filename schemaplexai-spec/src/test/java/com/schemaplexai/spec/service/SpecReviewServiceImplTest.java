@@ -42,6 +42,39 @@ class SpecReviewServiceImplTest {
     // ------------------------------------------------------------------
 
     @Test
+    void submitReview_nullSpecId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specReviewService.submitReview(null, 10L, "APPROVED", "LGTM"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specMapper, never()).selectById(any());
+        verify(specReviewMapper, never()).insert(any());
+    }
+
+    @Test
+    void submitReview_nullReviewerId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specReviewService.submitReview(1L, null, "APPROVED", "LGTM"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specMapper, never()).selectById(any());
+        verify(specReviewMapper, never()).insert(any());
+    }
+
+    @Test
+    void submitReview_blankStatus_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specReviewService.submitReview(1L, 10L, " ", "LGTM"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specMapper, never()).selectById(any());
+        verify(specReviewMapper, never()).insert(any());
+    }
+
+    @Test
     void submitReview_specNotFound_throwsSpecNotFound() {
         when(specMapper.selectById(1L)).thenReturn(null);
 

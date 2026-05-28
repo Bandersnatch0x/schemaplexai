@@ -1,6 +1,6 @@
 package com.schemaplexai.agent.engine.reasoning;
 
-import com.schemaplexai.agent.engine.model.LlmProvider;
+import com.schemaplexai.agent.engine.model.AiModelRouter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,13 +17,13 @@ import static org.mockito.Mockito.*;
 class SelfCorrectionEngineTest {
 
     @Mock
-    private LlmProvider llmProvider;
+    private AiModelRouter aiModelRouter;
 
     private SelfCorrectionEngine engine;
 
     @BeforeEach
     void setUp() {
-        engine = new SelfCorrectionEngine(llmProvider);
+        engine = new SelfCorrectionEngine(aiModelRouter);
     }
 
     // --- generateWithCorrection ---
@@ -31,7 +31,7 @@ class SelfCorrectionEngineTest {
     @Test
     @DisplayName("generateWithCorrection returns result with steps")
     void generateWithCorrectionBasic() {
-        when(llmProvider.generate(anyString(), isNull(), anyDouble()))
+        when(aiModelRouter.generateWithFallback(anyString(), isNull(), anyDouble()))
                 .thenReturn("Initial output")
                 .thenReturn("Needs improvement")
                 .thenReturn("Refined output");
@@ -46,7 +46,7 @@ class SelfCorrectionEngineTest {
     @Test
     @DisplayName("generateWithCorrection converges early when critique is SATISFACTORY")
     void convergesEarly() {
-        when(llmProvider.generate(anyString(), isNull(), anyDouble()))
+        when(aiModelRouter.generateWithFallback(anyString(), isNull(), anyDouble()))
                 .thenReturn("Initial output")
                 .thenReturn("SATISFACTORY");
 
@@ -59,7 +59,7 @@ class SelfCorrectionEngineTest {
     @Test
     @DisplayName("generateWithCorrection reaches max iterations without convergence")
     void maxIterationsNoConvergence() {
-        when(llmProvider.generate(anyString(), isNull(), anyDouble()))
+        when(aiModelRouter.generateWithFallback(anyString(), isNull(), anyDouble()))
                 .thenReturn("Initial output")
                 .thenReturn("Critique 1")
                 .thenReturn("Refined 1")
@@ -97,13 +97,13 @@ class SelfCorrectionEngineTest {
     @Test
     @DisplayName("critiqueOutput returns LLM critique")
     void critiqueOutput() {
-        when(llmProvider.generate(anyString(), isNull(), anyDouble()))
+        when(aiModelRouter.generateWithFallback(anyString(), isNull(), anyDouble()))
                 .thenReturn("The output is clear and correct.");
 
         String critique = engine.critiqueOutput("The answer is 42");
 
         assertNotNull(critique);
-        verify(llmProvider, times(1)).generate(anyString(), isNull(), anyDouble());
+        verify(aiModelRouter, times(1)).generateWithFallback(anyString(), isNull(), anyDouble());
     }
 
     @Test
@@ -111,7 +111,7 @@ class SelfCorrectionEngineTest {
     void critiqueOutputBlank() {
         String critique = engine.critiqueOutput("");
         assertTrue(critique.contains("empty"));
-        verifyNoInteractions(llmProvider);
+        verifyNoInteractions(aiModelRouter);
     }
 
     @Test
@@ -119,7 +119,7 @@ class SelfCorrectionEngineTest {
     void critiqueOutputNull() {
         String critique = engine.critiqueOutput(null);
         assertTrue(critique.contains("empty"));
-        verifyNoInteractions(llmProvider);
+        verifyNoInteractions(aiModelRouter);
     }
 
     // --- refineOutput ---
@@ -127,7 +127,7 @@ class SelfCorrectionEngineTest {
     @Test
     @DisplayName("refineOutput returns refined text from LLM")
     void refineOutput() {
-        when(llmProvider.generate(anyString(), isNull(), anyDouble()))
+        when(aiModelRouter.generateWithFallback(anyString(), isNull(), anyDouble()))
                 .thenReturn("Improved answer: 42");
 
         String refined = engine.refineOutput("Answer: 42", "Add more detail");
@@ -140,7 +140,7 @@ class SelfCorrectionEngineTest {
     void refineOutputBlankCritique() {
         String refined = engine.refineOutput("Original", "");
         assertEquals("Original", refined);
-        verifyNoInteractions(llmProvider);
+        verifyNoInteractions(aiModelRouter);
     }
 
     @Test
@@ -148,7 +148,7 @@ class SelfCorrectionEngineTest {
     void refineOutputNullCritique() {
         String refined = engine.refineOutput("Original", null);
         assertEquals("Original", refined);
-        verifyNoInteractions(llmProvider);
+        verifyNoInteractions(aiModelRouter);
     }
 
     @Test

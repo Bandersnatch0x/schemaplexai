@@ -25,6 +25,7 @@ public class TenantEnvironmentConfigServiceImpl
 
     @Override
     public TenantEnvironmentConfig getByTenantId(String tenantId) {
+        validateTenantId(tenantId);
         return baseMapper.selectOne(
                 new LambdaQueryWrapper<TenantEnvironmentConfig>()
                         .eq(TenantEnvironmentConfig::getTenantId, tenantId)
@@ -33,6 +34,7 @@ public class TenantEnvironmentConfigServiceImpl
 
     @Override
     public void refreshCache(String tenantId) {
+        validateTenantId(tenantId);
         securityPolicyLoader.refresh(tenantId);
     }
 
@@ -49,7 +51,11 @@ public class TenantEnvironmentConfigServiceImpl
         if (entity.getTenantId() == null || entity.getTenantId().isBlank()) {
             throw new BaseException(ResultCode.PARAM_ERROR, "tenantId is required");
         }
-        return super.save(entity);
+        boolean saved = super.save(entity);
+        if (!saved) {
+            throw new BaseException(ResultCode.INTERNAL_ERROR);
+        }
+        return true;
     }
 
     @Override
@@ -62,6 +68,16 @@ public class TenantEnvironmentConfigServiceImpl
         if (existing == null) {
             throw new BaseException(ResultCode.NOT_FOUND);
         }
-        return super.updateById(entity);
+        boolean updated = super.updateById(entity);
+        if (!updated) {
+            throw new BaseException(ResultCode.NOT_FOUND);
+        }
+        return true;
+    }
+
+    private void validateTenantId(String tenantId) {
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "tenantId is required");
+        }
     }
 }

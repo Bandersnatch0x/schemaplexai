@@ -1,6 +1,6 @@
 package com.schemaplexai.agent.engine.orchestrator;
 
-import com.schemaplexai.agent.engine.AgentExecutionEngine;
+import com.schemaplexai.agent.engine.AgentExecutionStarter;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -16,16 +16,16 @@ import java.util.List;
 @Component
 public class CoordinatorAgent {
 
-    private final AgentExecutionEngine executionEngine;
+    private final AgentExecutionStarter executionStarter;
     private final AgentRouter agentRouter;
     private final SequentialAgentExecutor sequentialExecutor;
     private final ParallelAgentExecutor parallelExecutor;
 
-    public CoordinatorAgent(AgentExecutionEngine executionEngine,
+    public CoordinatorAgent(AgentExecutionStarter executionStarter,
                             AgentRouter agentRouter,
                             SequentialAgentExecutor sequentialExecutor,
                             ParallelAgentExecutor parallelAgentExecutor) {
-        this.executionEngine = executionEngine;
+        this.executionStarter = executionStarter;
         this.agentRouter = agentRouter;
         this.sequentialExecutor = sequentialExecutor;
         this.parallelExecutor = parallelAgentExecutor;
@@ -120,6 +120,6 @@ public class CoordinatorAgent {
      */
     public SfAgentExecution dispatchSubAgent(Long agentId, String tenantId, String prompt) {
         log.info("Dispatching sub-agent execution: agentId={}, tenantId={}", agentId, tenantId);
-        return executionEngine.startExecution(agentId, tenantId, prompt);
+        return executionStarter.startExecution(agentId, tenantId, prompt);
     }
 }

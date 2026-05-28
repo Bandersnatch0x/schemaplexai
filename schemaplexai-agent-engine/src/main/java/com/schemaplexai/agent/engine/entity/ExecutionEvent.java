@@ -1,5 +1,7 @@
 package com.schemaplexai.agent.engine.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
@@ -10,6 +12,7 @@ import java.util.UUID;
 @TableName("sf_execution_event")
 public class ExecutionEvent {
 
+    @TableId(value = "event_id", type = IdType.INPUT)
     private UUID eventId;
     private Long executionId;
     private Integer seq;

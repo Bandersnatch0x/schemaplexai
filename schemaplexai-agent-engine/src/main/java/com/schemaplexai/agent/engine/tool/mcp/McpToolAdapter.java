@@ -63,9 +63,7 @@ public class McpToolAdapter implements ToolAdapter {
             return ToolResult.error("MCP client disconnected: " + ref.serverId());
         }
 
-        // TODO: Actual MCP protocol call will be implemented in T18
-        // For now, return a placeholder response indicating the tool was validated
-        log.info("MCP tool validated: {}:{}", ref.serverId(), ref.toolName());
-        return ToolResult.success("MCP tool " + ref.toolName() + " validated (execution pending)");
+        log.warn("MCP protocol call is not implemented: {}:{}", ref.serverId(), ref.toolName());
+        return ToolResult.error("MCP protocol call not implemented for tool: " + ref.toolName());
     }
 }

@@ -21,7 +21,7 @@ class ConcurrentNodeExecutorTest {
     }
 
     @Test
-    void singleSubTask_returnsSuccess() {
+    void singleSubTask_withoutRuntime_returnsFailure() {
         Map<String, Object> input = Map.of(
                 "subTasks", List.of(
                         Map.of("name", "task1", "prompt", "Generate unit tests for the UserService class")
@@ -30,18 +30,13 @@ class ConcurrentNodeExecutorTest {
 
         NodeExecutionResult result = executor.execute(input, "tenant-1");
 
-        assertThat(result.isSuccess()).isTrue();
-        @SuppressWarnings("unchecked")
-        Map<String, Object> results = (Map<String, Object>) result.getOutput().get("results");
-        assertThat(results).containsKey("task1");
-        assertThat(result.getOutput()).containsEntry("executedCount", 1);
-        assertThat(result.getOutput()).containsEntry("successCount", 1);
-        assertThat(result.getOutput()).containsEntry("failedCount", 0);
-        assertThat(result.getOutput()).containsEntry("allSucceeded", true);
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getMessage()).contains("CONCURRENT node execution is not implemented");
+        assertThat(result.getOutput()).isEmpty();
     }
 
     @Test
-    void multipleSubTasks_allExecuteConcurrently() {
+    void multipleSubTasks_withoutRuntime_returnsFailure() {
         Map<String, Object> input = Map.of(
                 "subTasks", List.of(
                         Map.of("name", "unitTest", "prompt", "Write unit tests"),
@@ -52,10 +47,9 @@ class ConcurrentNodeExecutorTest {
 
         NodeExecutionResult result = executor.execute(input, "tenant-1");
 
-        assertThat(result.isSuccess()).isTrue();
-        assertThat(result.getOutput()).containsEntry("executedCount", 3);
-        assertThat(result.getOutput()).containsEntry("successCount", 3);
-        assertThat(result.getOutput()).containsEntry("allSucceeded", true);
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getMessage()).contains("CONCURRENT node execution is not implemented");
+        assertThat(result.getOutput()).isEmpty();
     }
 
     @Test
@@ -77,7 +71,7 @@ class ConcurrentNodeExecutorTest {
     }
 
     @Test
-    void subTaskWithoutPrompt_returnsFailureForThatTask() {
+    void subTaskWithoutPrompt_returnsFailureBeforeRuntimeDispatch() {
         Map<String, Object> input = Map.of(
                 "subTasks", List.of(
                         Map.of("name", "badTask", "prompt", ""),
@@ -87,14 +81,13 @@ class ConcurrentNodeExecutorTest {
 
         NodeExecutionResult result = executor.execute(input, "tenant-1");
 
-        assertThat(result.isSuccess()).isTrue();
-        assertThat(result.getOutput()).containsEntry("successCount", 1);
-        assertThat(result.getOutput()).containsEntry("failedCount", 1);
-        assertThat(result.getOutput()).containsEntry("allSucceeded", false);
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getMessage()).contains("Missing prompt in sub-task");
+        assertThat(result.getOutput()).isEmpty();
     }
 
     @Test
-    void customTimeout_isAccepted() {
+    void customTimeout_withoutRuntimeStillFailsExplicitly() {
         Map<String, Object> input = Map.of(
                 "subTasks", List.of(
                         Map.of("name", "task1", "prompt", "Quick test")
@@ -104,11 +97,12 @@ class ConcurrentNodeExecutorTest {
 
         NodeExecutionResult result = executor.execute(input, "tenant-1");
 
-        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getMessage()).contains("CONCURRENT node execution is not implemented");
     }
 
     @Test
-    void subTaskName_defaultsToUnnamed() {
+    void subTaskNameWithoutRuntime_returnsFailure() {
         Map<String, Object> input = Map.of(
                 "subTasks", List.of(
                         Map.of("prompt", "Test unnamed task")
@@ -117,9 +111,8 @@ class ConcurrentNodeExecutorTest {
 
         NodeExecutionResult result = executor.execute(input, "tenant-1");
 
-        assertThat(result.isSuccess()).isTrue();
-        @SuppressWarnings("unchecked")
-        Map<String, Object> results = (Map<String, Object>) result.getOutput().get("results");
-        assertThat(results).containsKey("unnamed");
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getMessage()).contains("CONCURRENT node execution is not implemented");
+        assertThat(result.getOutput()).isEmpty();
     }
 }

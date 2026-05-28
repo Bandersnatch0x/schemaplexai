@@ -1,6 +1,11 @@
 package com.schemaplexai.task.mq;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.Channel;
+import com.schemaplexai.common.exception.BaseException;
+import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.task.mq.dto.WorkflowTriggerMessage;
+import com.schemaplexai.task.service.WorkflowTriggerRequestHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
@@ -35,6 +40,8 @@ import java.nio.charset.StandardCharsets;
 public class WorkflowTriggerConsumer {
 
     private final MessageFailLogService messageFailLogService;
+    private final ObjectMapper objectMapper;
+    private final WorkflowTriggerRequestHandler triggerRequestHandler;
 
     @RabbitListener(queues = "sf.workflow.trigger.queue")
     public void onMessage(Message message, Channel channel) throws IOException {
@@ -42,12 +49,35 @@ public class WorkflowTriggerConsumer {
         String body = new String(message.getBody(), StandardCharsets.UTF_8);
         try {
             log.info("[WorkflowTriggerConsumer] Received workflow trigger message: {}", body);
-            // TODO: Parse payload, check idempotency, resolve workflow definition, start Flowable instance, log result
+            WorkflowTriggerMessage payload = objectMapper.readValue(body, WorkflowTriggerMessage.class);
+            validatePayload(payload);
+            triggerRequestHandler.handle(payload);
             channel.basicAck(deliveryTag, false);
+        } catch (BaseException e) {
+            log.error("[WorkflowTriggerConsumer] Business error processing message: {}", body, e);
+            recordFailLog(message, e.getMessage(), deliveryTag);
+            channel.basicNack(deliveryTag, false, false);
         } catch (Exception e) {
             log.error("[WorkflowTriggerConsumer] Failed to process message: {}", body, e);
-            messageFailLogService.log(message, this.getClass().getSimpleName(), e.getMessage());
+            recordFailLog(message, e.getMessage(), deliveryTag);
             channel.basicNack(deliveryTag, false, false);
+        }
+    }
+
+    private void validatePayload(WorkflowTriggerMessage payload) {
+        if (payload == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "workflow trigger payload must be a JSON object");
+        }
+        if (payload.getWorkflowDefinitionKey() == null || payload.getWorkflowDefinitionKey().isBlank()) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "workflowDefinitionKey is required");
+        }
+    }
+
+    private void recordFailLog(Message message, String errorMessage, long deliveryTag) {
+        boolean persisted = messageFailLogService.log(message, this.getClass().getSimpleName(), errorMessage);
+        if (!persisted) {
+            log.warn("[WorkflowTriggerConsumer] Message fail log persistence returned false for deliveryTag={}",
+                    deliveryTag);
         }
     }
 }

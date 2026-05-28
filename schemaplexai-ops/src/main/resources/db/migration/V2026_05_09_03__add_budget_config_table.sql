@@ -1,3 +1,4 @@
+-- V2026_05_09_03__add_budget_config_table.sql
 -- M7.8: Add sf_budget_config table (ops module)
 
 CREATE TABLE IF NOT EXISTS sf_budget_config (

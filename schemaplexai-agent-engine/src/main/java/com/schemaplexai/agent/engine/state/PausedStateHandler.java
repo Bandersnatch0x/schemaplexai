@@ -1,8 +1,8 @@
 package com.schemaplexai.agent.engine.state;
 
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
-import com.schemaplexai.agent.engine.lifecycle.AgentExecutionLifecycleService;
 import com.schemaplexai.agent.engine.lifecycle.ExecutionSnapshot;
+import com.schemaplexai.agent.engine.lifecycle.ExecutionSnapshotPersistence;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -17,10 +17,10 @@ import java.time.LocalDateTime;
 @Component
 public class PausedStateHandler implements AgentStateHandler {
 
-    private final AgentExecutionLifecycleService lifecycleService;
+    private final ExecutionSnapshotPersistence snapshotPersistence;
 
-    public PausedStateHandler(AgentExecutionLifecycleService lifecycleService) {
-        this.lifecycleService = lifecycleService;
+    public PausedStateHandler(ExecutionSnapshotPersistence snapshotPersistence) {
+        this.snapshotPersistence = snapshotPersistence;
     }
 
     @Override
@@ -38,7 +38,7 @@ public class PausedStateHandler implements AgentStateHandler {
         snapshot.setState(AgentExecutionState.valueOf(execution.getState()));
         snapshot.setCreatedAt(LocalDateTime.now());
 
-        lifecycleService.saveSnapshot(snapshot);
+        snapshotPersistence.saveSnapshot(snapshot);
 
         // Update execution with snapshot reference
         execution.setSnapshotId(snapshot.getExecutionId() != null ? snapshot.getExecutionId() : execution.getId());

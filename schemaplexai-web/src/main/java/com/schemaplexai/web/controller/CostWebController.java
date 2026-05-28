@@ -1,14 +1,16 @@
 package com.schemaplexai.web.controller;
 
 import com.schemaplexai.common.result.Result;
+import com.schemaplexai.web.service.cost.CostQueryPort;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -17,29 +19,24 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/web/costs")
-@Tag(name = "成本分析", description = "成本分析 API")
+@Tag(name = "Cost Analytics", description = "Cost analytics API")
+@RequiredArgsConstructor
 public class CostWebController extends BaseController {
 
-    @Operation(summary = "租户成本汇总")
+    private final CostQueryPort costQueryPort;
+
+    @Operation(summary = "Tenant cost summary")
     @GetMapping("/summary")
-    public Result<Map<String, Object>> getCostSummary() {
-        Map<String, Object> summary = new HashMap<>();
-        summary.put("totalCost", 1250.50);
-        summary.put("currency", "USD");
-        summary.put("executionCount", 42);
-        summary.put("averageCost", 29.77);
-        return success(summary);
+    public Result<Map<String, Object>> getCostSummary(
+            @RequestHeader("X-Tenant-Id") String tenantId) {
+        return success(costQueryPort.getCostSummary(tenantId));
     }
 
-    @Operation(summary = "执行成本明细")
+    @Operation(summary = "Execution cost detail")
     @GetMapping("/executions/{executionId}")
-    public Result<Map<String, Object>> getExecutionCost(@PathVariable Long executionId) {
-        Map<String, Object> cost = new HashMap<>();
-        cost.put("executionId", executionId);
-        cost.put("cost", 15.75);
-        cost.put("currency", "USD");
-        cost.put("tokenCount", 12500);
-        cost.put("model", "gpt-4");
-        return success(cost);
+    public Result<Map<String, Object>> getExecutionCost(
+            @RequestHeader("X-Tenant-Id") String tenantId,
+            @PathVariable Long executionId) {
+        return success(costQueryPort.getExecutionCost(tenantId, executionId));
     }
 }

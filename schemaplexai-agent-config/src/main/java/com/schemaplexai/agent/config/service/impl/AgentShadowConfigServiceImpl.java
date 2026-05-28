@@ -32,7 +32,10 @@ public class AgentShadowConfigServiceImpl
             throw new BaseException(ResultCode.NOT_FOUND);
         }
         config.setEnabled(enabled);
-        updateById(config);
+        boolean updated = updateById(config);
+        if (!updated) {
+            throw new BaseException(ResultCode.NOT_FOUND);
+        }
     }
 
     @Override

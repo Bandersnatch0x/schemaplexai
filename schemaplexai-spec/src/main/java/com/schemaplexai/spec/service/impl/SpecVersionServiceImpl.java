@@ -28,6 +28,12 @@ public class SpecVersionServiceImpl extends ServiceImpl<SfSpecVersionMapper, SfS
 
     @Override
     public SpecDiffResult diff(Long versionAId, Long versionBId) {
+        if (versionAId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "versionAId is required");
+        }
+        if (versionBId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "versionBId is required");
+        }
         SfSpecVersion vA = baseMapper.selectById(versionAId);
         SfSpecVersion vB = baseMapper.selectById(versionBId);
 
@@ -45,6 +51,12 @@ public class SpecVersionServiceImpl extends ServiceImpl<SfSpecVersionMapper, SfS
 
     @Override
     public SfSpecVersion createVersion(Long specId, String version, String content, String changeLog) {
+        if (specId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "specId is required");
+        }
+        if (version == null || version.isBlank()) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "version is required");
+        }
         SfSpec spec = specMapper.selectById(specId);
         if (spec == null) {
             throw new BaseException(ResultCode.SPEC_NOT_FOUND, "Spec not found: " + specId);

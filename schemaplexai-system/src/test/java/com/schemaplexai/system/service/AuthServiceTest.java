@@ -96,6 +96,16 @@ class AuthServiceTest {
     }
 
     @Test
+    void login_blankTenantId_throwsParamErrorWithoutUserLookup() {
+        assertThatThrownBy(() -> authService.login("testuser", "password", " "))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(userService, never()).getByUsernameAndTenantId(anyString(), anyString());
+    }
+
+    @Test
     void login_userNotFound_throwsUserNotFound() {
         when(userService.getByUsernameAndTenantId("nonexistent", "tenant-1")).thenReturn(null);
 

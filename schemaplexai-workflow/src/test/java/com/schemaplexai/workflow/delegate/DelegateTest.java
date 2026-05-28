@@ -1,11 +1,13 @@
 package com.schemaplexai.workflow.delegate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.schemaplexai.common.constants.CommonConstants;
 import com.schemaplexai.common.context.TenantContextHolder;
 import com.schemaplexai.workflow.node.NodeExecutionResult;
 import com.schemaplexai.workflow.service.WorkflowNodeEngine;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.task.service.delegate.DelegateTask;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,8 +16,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,6 +41,9 @@ class DelegateTest {
 
     @Mock
     private ObjectMapper objectMapper;
+
+    @Mock
+    private RabbitTemplate rabbitTemplate;
 
     @InjectMocks
     private SpecReviewInitDelegate specReviewInitDelegate;
@@ -146,6 +153,37 @@ class DelegateTest {
 
         verify(execution).setVariable("finalStatus", "APPROVED");
         verify(execution).setVariable(eq("approvedAt"), any());
+    }
+
+    @Test
+    void specReviewNotify_notifyApprovalTask_publishesInAppNotification() throws Exception {
+        when(execution.getProcessInstanceId()).thenReturn("proc-1");
+        when(execution.getCurrentActivityId()).thenReturn("notifyApprovalTask");
+        when(execution.getVariable("tenantId")).thenReturn("t1");
+        when(execution.getVariable("specId")).thenReturn("spec-1");
+        when(execution.getVariable("specTitle")).thenReturn("My Spec");
+        when(execution.getVariable("submitterId")).thenReturn("42");
+        when(execution.getVariable("approvalDecision")).thenReturn("APPROVED");
+        when(execution.getVariable("rejectionReason")).thenReturn(null);
+        when(objectMapper.writeValueAsString(any())).thenReturn("audit-json", "delivery-json");
+
+        specReviewNotificationDelegate.execute(execution);
+
+        verify(rabbitTemplate).convertAndSend(
+                CommonConstants.EXCHANGE_SCHEMAPLEXAI,
+                CommonConstants.RK_NOTIFICATION,
+                "delivery-json");
+
+        ArgumentCaptor<Map> captor = ArgumentCaptor.forClass(Map.class);
+        verify(objectMapper, times(2)).writeValueAsString(captor.capture());
+        List<Map> payloads = captor.getAllValues();
+        assertThat(payloads.get(1))
+                .containsEntry("channel", "in-app")
+                .containsEntry("tenantId", "t1")
+                .containsEntry("userId", 42L)
+                .containsEntry("title", "Spec review approved")
+                .containsEntry("idempotencyKey", "spec-review:proc-1:notifyApprovalTask");
+        assertThat(payloads.get(1).get("content").toString()).contains("My Spec");
     }
 
     @Test

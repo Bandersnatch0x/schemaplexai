@@ -7,11 +7,13 @@ import com.schemaplexai.model.event.ExecutionEventMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -21,10 +23,12 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Component
+@ConditionalOnProperty(prefix = "agent.execution.gap-recovery", name = "enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 public class GapRecoveryJob {
 
     private static final String EXCHANGE_NAME = "execution_events";
+    private static final String GAP_ALERT_ROUTING_KEY = "execution-gap.detected";
 
     private final ExecutionEventMapper executionEventMapper;
     private final RabbitTemplate rabbitTemplate;
@@ -75,8 +79,7 @@ public class GapRecoveryJob {
             if (!seqMap.containsKey(seq)) {
                 gapsFound++;
                 log.warn("[GapRecoveryJob] Gap detected: execution={}, missing seq={}", executionId, seq);
-                // Re-publish a placeholder gap event to trigger downstream consumers
-                // In production, this would query Engine's primary event log directly
+                // Publish an alert only; this is not a recovered execution event.
                 publishGapAlert(executionId, seq);
             }
         }
@@ -90,14 +93,14 @@ public class GapRecoveryJob {
     private void publishGapAlert(Long executionId, int missingSeq) {
         try {
             ExecutionEventMessage gapEvent = new ExecutionEventMessage(
-                    null, executionId, missingSeq,
+                    UUID.randomUUID(), executionId, missingSeq,
                     "GAP_DETECTED",
-                    "{\"reason\":\"seq gap recovered\",\"missingSeq\":" + missingSeq + "}",
+                    "{\"reason\":\"seq gap detected\",\"missingSeq\":" + missingSeq + "}",
                     java.time.Instant.now(),
                     null, null, "AUDIT"
             );
             String payload = objectMapper.writeValueAsString(gapEvent);
-            rabbitTemplate.convertAndSend(EXCHANGE_NAME, "execution.gap", payload);
+            rabbitTemplate.convertAndSend(EXCHANGE_NAME, GAP_ALERT_ROUTING_KEY, payload);
         } catch (Exception e) {
             log.error("[GapRecoveryJob] Failed to publish gap alert for execution={}, seq={}",
                     executionId, missingSeq, e);

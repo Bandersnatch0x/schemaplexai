@@ -1,2 +1,4 @@
 com.schemaplexai.common.exception.CommonExceptionAutoConfiguration
 com.schemaplexai.common.security.JwtSecretValidatorAutoConfiguration
+com.schemaplexai.common.observability.OpenTelemetryConfig
+com.schemaplexai.common.observability.ObservabilityFallbackConfig

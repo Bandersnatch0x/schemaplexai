@@ -37,6 +37,10 @@ public class MemoryConsolidationJob {
             log.info("[MemoryConsolidationJob] Memory consolidation completed");
         } catch (Exception e) {
             log.error("[MemoryConsolidationJob] Memory consolidation failed", e);
+            if (e instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new IllegalStateException("Memory consolidation job failed", e);
         }
     }
 }

@@ -5,6 +5,7 @@ import com.schemaplexai.agent.engine.mapper.SfAgentExecutionMapper;
 import com.schemaplexai.agent.engine.state.AgentExecutionState;
 import com.schemaplexai.agent.engine.state.AgentStateMachine;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -34,14 +35,14 @@ public class ApprovalService {
     private static final Duration DEFER_EXTENSION = Duration.ofMinutes(30);
 
     private final Map<String, ApprovalRequest> pendingRequests = new ConcurrentHashMap<>();
-    private final AgentStateMachine stateMachine;
+    private final ObjectProvider<AgentStateMachine> stateMachineProvider;
     private final SfAgentExecutionMapper executionMapper;
     private final AuditTrail auditTrail;
 
-    public ApprovalService(AgentStateMachine stateMachine,
+    public ApprovalService(ObjectProvider<AgentStateMachine> stateMachineProvider,
                            SfAgentExecutionMapper executionMapper,
                            AuditTrail auditTrail) {
-        this.stateMachine = stateMachine;
+        this.stateMachineProvider = stateMachineProvider;
         this.executionMapper = executionMapper;
         this.auditTrail = auditTrail;
     }
@@ -153,7 +154,7 @@ public class ApprovalService {
                 decision.reason(),
                 decision.decidedAt()
         ));
-        stateMachine.transition(AgentExecutionState.THINKING, execution);
+        stateMachineProvider.getObject().transition(AgentExecutionState.THINKING, execution);
     }
 
     private void handleReject(SfAgentExecution execution, ApprovalDecision decision) {
@@ -165,7 +166,7 @@ public class ApprovalService {
                 decision.decidedAt()
         ));
         execution.setMetadata("rejectionReason", decision.reason());
-        stateMachine.transition(AgentExecutionState.FAILED, execution);
+        stateMachineProvider.getObject().transition(AgentExecutionState.FAILED, execution);
     }
 
     private void handleDefer(String executionId, ApprovalRequest original, ApprovalDecision decision) {

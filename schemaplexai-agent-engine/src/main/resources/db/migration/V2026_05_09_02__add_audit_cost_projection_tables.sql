@@ -1,3 +1,4 @@
+-- V2026_05_09_02__add_audit_cost_projection_tables.sql
 -- M4.4 + M4.5: Audit Trail and Cost Projection tables
 
 -- 1. Extend sf_audit_event for projection integrity

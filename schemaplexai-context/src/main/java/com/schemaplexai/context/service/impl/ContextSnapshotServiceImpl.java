@@ -31,6 +31,9 @@ public class ContextSnapshotServiceImpl extends ServiceImpl<SfContextSnapshotMap
         if (contextId == null) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Context ID is required");
         }
+        if (snapshotJson == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "Snapshot JSON is required");
+        }
         SfContext context = contextMapper.selectById(contextId);
         if (context == null) {
             throw new BaseException(ResultCode.CONTEXT_NOT_FOUND);
@@ -65,6 +68,7 @@ public class ContextSnapshotServiceImpl extends ServiceImpl<SfContextSnapshotMap
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String restoreFromSnapshot(Long snapshotId) {
+        validateSnapshotId(snapshotId, "snapshotId");
         SfContextSnapshot snapshot = baseMapper.selectById(snapshotId);
         if (snapshot == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Snapshot not found: " + snapshotId);
@@ -90,6 +94,8 @@ public class ContextSnapshotServiceImpl extends ServiceImpl<SfContextSnapshotMap
 
     @Override
     public String compareSnapshots(Long snapshotIdA, Long snapshotIdB) {
+        validateSnapshotId(snapshotIdA, "snapshotIdA");
+        validateSnapshotId(snapshotIdB, "snapshotIdB");
         SfContextSnapshot snapshotA = baseMapper.selectById(snapshotIdA);
         SfContextSnapshot snapshotB = baseMapper.selectById(snapshotIdB);
         if (snapshotA == null || snapshotB == null) {
@@ -117,5 +123,11 @@ public class ContextSnapshotServiceImpl extends ServiceImpl<SfContextSnapshotMap
             diff.append("Length A: ").append(jsonA.length()).append(", Length B: ").append(jsonB.length()).append("\n");
         }
         return diff.toString();
+    }
+
+    private void validateSnapshotId(Long snapshotId, String fieldName) {
+        if (snapshotId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, fieldName + " is required");
+        }
     }
 }

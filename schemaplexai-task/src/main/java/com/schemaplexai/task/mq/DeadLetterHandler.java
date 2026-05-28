@@ -49,10 +49,17 @@ public class DeadLetterHandler {
     public void onMessage(Message message, Channel channel) throws IOException {
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
         String body = new String(message.getBody(), StandardCharsets.UTF_8);
+        ExecutionEventMessage event;
 
         try {
-            ExecutionEventMessage event = objectMapper.readValue(body, ExecutionEventMessage.class);
+            event = objectMapper.readValue(body, ExecutionEventMessage.class);
+        } catch (Exception e) {
+            log.error("[DeadLetterHandler] Failed to parse dead letter payload: {}", body, e);
+            channel.basicAck(deliveryTag, false);
+            return;
+        }
 
+        try {
             log.error("[DEAD_LETTER] Permanently failed outbox entry: eventId={}, executionId={}, seq={}, eventType={}, payload={}",
                     event.eventId(), event.executionId(), event.seq(), event.eventType(), body);
 
@@ -63,38 +70,33 @@ public class DeadLetterHandler {
             channel.basicAck(deliveryTag, false);
 
         } catch (Exception e) {
-            log.error("[DeadLetterHandler] Failed to parse dead letter payload: {}", body, e);
-            channel.basicAck(deliveryTag, false);
+            log.error("[DeadLetterHandler] Failed to publish audit event for dead letter: eventId={}",
+                    event.eventId(), e);
+            channel.basicNack(deliveryTag, false, false);
         }
     }
 
-    private void publishAuditEvent(ExecutionEventMessage originalEvent, String rawPayload) {
-        try {
-            Map<String, Object> auditPayload = Map.of(
-                    "severity", "CRITICAL",
-                    "originalEventType", originalEvent.eventType(),
-                    "rawPayload", rawPayload,
-                    "seq", originalEvent.seq(),
-                    "agentId", originalEvent.agentId()
-            );
+    private void publishAuditEvent(ExecutionEventMessage originalEvent, String rawPayload) throws IOException {
+        Map<String, Object> auditPayload = Map.of(
+                "severity", "CRITICAL",
+                "originalEventType", originalEvent.eventType(),
+                "rawPayload", rawPayload,
+                "seq", originalEvent.seq(),
+                "agentId", originalEvent.agentId()
+        );
 
-            ExecutionEventMessage auditEvent = new ExecutionEventMessage(
-                    UUID.randomUUID(),
-                    originalEvent.executionId(),
-                    originalEvent.seq(),
-                    "DEAD_LETTER",
-                    objectMapper.writeValueAsString(auditPayload),
-                    Instant.now(),
-                    originalEvent.tenantId(),
-                    originalEvent.agentId(),
-                    "AUDIT"
-            );
+        ExecutionEventMessage auditEvent = new ExecutionEventMessage(
+                UUID.randomUUID(),
+                originalEvent.executionId(),
+                originalEvent.seq(),
+                "DEAD_LETTER",
+                objectMapper.writeValueAsString(auditPayload),
+                Instant.now(),
+                originalEvent.tenantId(),
+                originalEvent.agentId(),
+                "AUDIT"
+        );
 
-            rabbitTemplate.convertAndSend(EXCHANGE_NAME, AUDIT_TOPIC, objectMapper.writeValueAsString(auditEvent));
-
-        } catch (Exception e) {
-            log.error("[DeadLetterHandler] Failed to publish audit event for dead letter: eventId={}",
-                    originalEvent.eventId(), e);
-        }
+        rabbitTemplate.convertAndSend(EXCHANGE_NAME, AUDIT_TOPIC, objectMapper.writeValueAsString(auditEvent));
     }
 }

@@ -37,6 +37,7 @@ public class TaskToolAdapter implements ToolAdapter {
     private static final String TOOL_NAME = "task";
     private static final String DEFAULT_ROLE = "subagent";
     private static final int DEFAULT_MAX_DEPTH = 3;
+    private static final String ASYNC_START_PREFIX = "Sub-agent execution started.";
 
     private final SubAgentExecutionService subAgentService;
     private final SubAgentQuotaService quotaService;
@@ -86,6 +87,11 @@ public class TaskToolAdapter implements ToolAdapter {
 
         try {
             SubAgentResult result = subAgentService.execute(request);
+            if (result.output() != null && result.output().startsWith(ASYNC_START_PREFIX)) {
+                quotaService.decrement(parentExecutionId);
+                return ToolResult.error("Sub-agent execution started asynchronously but synchronous task tool completion is not implemented yet: "
+                        + result.output());
+            }
             return ToolResult.success(result.output());
         } catch (Exception ex) {
             log.error("Sub-agent execution failed for parent={}", parentExecutionId, ex);

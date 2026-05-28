@@ -1,12 +1,13 @@
 package com.schemaplexai.agent.engine.tool.subagent;
 
-import com.schemaplexai.agent.engine.AgentExecutionEngine;
+import com.schemaplexai.agent.engine.AgentExecutionRunner;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.memory.CompositeChatMemoryStore;
 import com.schemaplexai.agent.engine.model.LlmMessage;
 import com.schemaplexai.agent.engine.state.AgentExecutionState;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -14,7 +15,7 @@ import java.util.UUID;
 
 /**
  * Service that executes sub-agent tasks by creating a child {@link SfAgentExecution}
- * and delegating to {@link AgentExecutionEngine#runExecutionAsync}.
+ * and delegating to {@link AgentExecutionRunner#runExecutionAsync}.
  *
  * <p>The child execution is created manually (not via {@code startExecution}) so that
  * the parent can control metadata such as conversation linkage and guardrails.</p>
@@ -24,7 +25,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class SubAgentExecutionService {
 
-    private final AgentExecutionEngine executionEngine;
+    private final ObjectProvider<AgentExecutionRunner> executionRunnerProvider;
     private final CompositeChatMemoryStore chatMemoryStore;
 
     /**
@@ -58,7 +59,7 @@ public class SubAgentExecutionService {
         chatMemoryStore.saveMessage(conversationId, userMessage);
 
         // Start async execution — the orchestrator will pick up from memory
-        executionEngine.runExecutionAsync(childExecution, null, request.prompt());
+        executionRunnerProvider.getObject().runExecutionAsync(childExecution, null, request.prompt());
 
         // Return immediately with the child execution ID.
         // The actual output will be streamed / polled by the caller.

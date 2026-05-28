@@ -94,6 +94,9 @@ public class ConditionNodeExecutor implements NodeExecutor {
         if (key.startsWith("\"") && key.endsWith("\"")) {
             return key.substring(1, key.length() - 1);
         }
+        if ("true".equalsIgnoreCase(key) || "false".equalsIgnoreCase(key)) {
+            return Boolean.parseBoolean(key);
+        }
         Object value = variables.get(key);
         if (value != null) {
             return value;

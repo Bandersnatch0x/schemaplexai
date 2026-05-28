@@ -39,6 +39,8 @@ spring:
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
+  flyway:
+    enabled: false
 
 mybatis-plus:
   mapper-locations: classpath:/mapper/**/*.xml

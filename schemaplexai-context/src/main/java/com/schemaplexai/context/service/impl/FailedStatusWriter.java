@@ -1,5 +1,7 @@
 package com.schemaplexai.context.service.impl;
 
+import com.schemaplexai.common.exception.BaseException;
+import com.schemaplexai.common.result.ResultCode;
 import com.schemaplexai.context.entity.SfKnowledgeDoc;
 import com.schemaplexai.context.mapper.SfKnowledgeDocMapper;
 import lombok.RequiredArgsConstructor;
@@ -21,12 +23,16 @@ public class FailedStatusWriter {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
     public void markFailed(Long docId, String reason) {
+        if (docId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "docId is required");
+        }
         SfKnowledgeDoc doc = knowledgeDocMapper.selectById(docId);
         if (doc == null) {
             log.warn("Cannot mark doc {} as FAILED: document not found", docId);
             return;
         }
         doc.setStatus("FAILED");
+        doc.setSyncStatus("FAILED");
         knowledgeDocMapper.updateById(doc);
         log.info("Marked doc {} as FAILED in independent transaction. Reason: {}", docId, reason);
     }

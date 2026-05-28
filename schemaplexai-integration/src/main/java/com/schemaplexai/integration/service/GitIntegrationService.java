@@ -232,6 +232,7 @@ public class GitIntegrationService {
             String repository = extractRepository(root, provider);
             String branch = extractBranch(root, provider);
             String commitSha = extractCommitSha(root, provider);
+            validateWebhookRepository(repository);
 
             String webhookId = UUID.randomUUID().toString();
             Map<String, Object> record = new ConcurrentHashMap<>();
@@ -249,6 +250,8 @@ public class GitIntegrationService {
 
             // Phase 2: Trigger workflow or agent based on event type
             processWebhookEvent(eventType, repository, branch, commitSha);
+        } catch (BaseException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to parse webhook payload", e);
             throw new BaseException(ResultCode.PARAM_ERROR, "Invalid webhook payload: " + e.getMessage());
@@ -256,6 +259,9 @@ public class GitIntegrationService {
     }
 
     public List<Map<String, Object>> listWebhookEvents(String repository, String eventType, int limit) {
+        if (limit <= 0) {
+            return List.of();
+        }
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map<String, Object> event : webhookStore.values()) {
             if (repository != null && !repository.equals(event.get("repository"))) {
@@ -375,6 +381,12 @@ public class GitIntegrationService {
             case "gitlab" -> root.path("after").asText(root.path("checkout_sha").asText("unknown"));
             default -> root.path("after").asText("unknown");
         };
+    }
+
+    private void validateWebhookRepository(String repository) {
+        if (repository == null || repository.isBlank() || "unknown".equals(repository)) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "Webhook repository is required");
+        }
     }
 
     private void processWebhookEvent(String eventType, String repository, String branch, String commitSha) {

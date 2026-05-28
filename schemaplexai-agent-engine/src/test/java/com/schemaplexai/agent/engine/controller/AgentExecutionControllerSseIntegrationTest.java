@@ -1,7 +1,7 @@
 package com.schemaplexai.agent.engine.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.schemaplexai.agent.engine.AgentExecutionEngine;
+import com.schemaplexai.agent.engine.AgentExecutionStarter;
 import com.schemaplexai.agent.engine.lifecycle.AgentExecutionLifecycleService;
 import com.schemaplexai.agent.engine.security.SseTokenValidator;
 import com.schemaplexai.agent.engine.sse.ExecutionEventBus;
@@ -31,7 +31,7 @@ import static org.mockito.Mockito.*;
 class AgentExecutionControllerSseIntegrationTest {
 
     @Mock
-    private AgentExecutionEngine executionEngine;
+    private AgentExecutionStarter executionStarter;
 
     @Mock
     private AgentExecutionLifecycleService lifecycleService;
@@ -49,7 +49,7 @@ class AgentExecutionControllerSseIntegrationTest {
     void setUp() {
         eventBus = new ExecutionEventBus(new ObjectMapper(), timelineService, new SecretMasker(new ObjectMapper()));
         controller = new AgentExecutionController(
-                executionEngine,
+                executionStarter,
                 lifecycleService,
                 sseTokenValidator,
                 eventBus,

@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -22,6 +23,7 @@ import java.nio.charset.StandardCharsets;
  */
 @Slf4j
 @Component
+@ConditionalOnBean(CostService.class)
 @RequiredArgsConstructor
 public class ExecutionEventConsumer {
 
@@ -47,8 +49,16 @@ public class ExecutionEventConsumer {
 
         } catch (Exception e) {
             log.error("[ExecutionEventConsumer] Failed to process execution event: {}", body, e);
-            messageFailLogService.log(message, this.getClass().getSimpleName(), e.getMessage());
+            recordFailLog(message, e.getMessage(), deliveryTag);
             channel.basicNack(deliveryTag, false, false);
+        }
+    }
+
+    private void recordFailLog(Message message, String errorMessage, long deliveryTag) {
+        boolean persisted = messageFailLogService.log(message, this.getClass().getSimpleName(), errorMessage);
+        if (!persisted) {
+            log.warn("[ExecutionEventConsumer] Message fail log persistence returned false for deliveryTag={}",
+                    deliveryTag);
         }
     }
 }

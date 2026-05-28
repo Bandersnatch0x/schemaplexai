@@ -33,6 +33,7 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
 
     @Override
     public SfSpecVersion publishSpec(Long specId) {
+        validateSpecId(specId);
         SfSpec spec = specMapper.selectById(specId);
         if (spec == null) {
             throw new BaseException(ResultCode.SPEC_NOT_FOUND);
@@ -74,6 +75,7 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
 
     @Override
     public boolean archiveSpec(Long specId) {
+        validateSpecId(specId);
         SfSpec spec = specMapper.selectById(specId);
         if (spec == null) {
             throw new BaseException(ResultCode.SPEC_NOT_FOUND);
@@ -87,6 +89,7 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
 
     @Override
     public Optional<SfSpecVersion> getLatestVersion(Long specId) {
+        validateSpecId(specId);
         String tenantId = TenantContextHolder.getTenantId();
         LambdaQueryWrapper<SfSpecVersion> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SfSpecVersion::getSpecId, specId);
@@ -100,6 +103,9 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
 
     @Override
     public List<SfSpecVersion> compareVersions(Long specId, String versionA, String versionB) {
+        validateSpecId(specId);
+        validateVersion(versionA, "versionA");
+        validateVersion(versionB, "versionB");
         String tenantId = TenantContextHolder.getTenantId();
         LambdaQueryWrapper<SfSpecVersion> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SfSpecVersion::getSpecId, specId);
@@ -112,6 +118,9 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
 
     @Override
     public SfSpec createFromTemplate(Long templateId, String title, String type) {
+        validateTemplateId(templateId);
+        validateSpecTitle(title);
+        validateSpecType(type);
         SfSpecTemplate template = specTemplateMapper.selectById(templateId);
         if (template == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Template not found");
@@ -126,5 +135,35 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
 
         log.info("Created spec {} from template {}", spec.getId(), templateId);
         return spec;
+    }
+
+    private void validateSpecId(Long specId) {
+        if (specId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "specId is required");
+        }
+    }
+
+    private void validateTemplateId(Long templateId) {
+        if (templateId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "templateId is required");
+        }
+    }
+
+    private void validateSpecTitle(String title) {
+        if (title == null || title.isBlank()) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "title is required");
+        }
+    }
+
+    private void validateSpecType(String type) {
+        if (type == null || type.isBlank()) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "type is required");
+        }
+    }
+
+    private void validateVersion(String version, String fieldName) {
+        if (version == null || version.isBlank()) {
+            throw new BaseException(ResultCode.PARAM_ERROR, fieldName + " is required");
+        }
     }
 }

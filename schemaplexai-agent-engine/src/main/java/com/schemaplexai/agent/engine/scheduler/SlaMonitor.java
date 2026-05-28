@@ -1,6 +1,7 @@
 package com.schemaplexai.agent.engine.scheduler;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -29,6 +30,7 @@ public class SlaMonitor {
     private final AtomicLong totalQueueTimeMs;
     private final AtomicLong completedCount;
 
+    @Autowired
     public SlaMonitor(ExecutionScheduler scheduler) {
         this(scheduler, Clock.systemUTC());
     }

@@ -40,7 +40,11 @@ public class QualityGateServiceImpl extends ServiceImpl<QualityGateMapper, SfQua
             gate.setStatus(STATUS_INACTIVE);
         }
         log.info("Creating quality gate: name={}", gate.getName());
-        return super.save(gate);
+        boolean saved = super.save(gate);
+        if (!saved) {
+            throw new BaseException(ResultCode.INTERNAL_ERROR);
+        }
+        return true;
     }
 
     /**
@@ -59,7 +63,11 @@ public class QualityGateServiceImpl extends ServiceImpl<QualityGateMapper, SfQua
             validateGate(gate);
         }
         log.info("Updating quality gate: id={}, name={}", gate.getId(), gate.getName());
-        return super.updateById(gate);
+        boolean updated = super.updateById(gate);
+        if (!updated) {
+            throw new BaseException(ResultCode.NOT_FOUND, "Quality gate not found: " + gate.getId());
+        }
+        return true;
     }
 
     /**

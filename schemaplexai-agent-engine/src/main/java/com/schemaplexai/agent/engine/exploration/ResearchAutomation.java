@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 
 /**
  * Service that automates research workflows: search, synthesize, summarize.
- * Simulates finding sources, synthesizing findings, and generating a final summary.
+ * Delegates source discovery to an injected search runtime, then synthesizes and summarizes results.
  */
 @Slf4j
 @Service
@@ -19,9 +19,18 @@ public class ResearchAutomation {
     private static final double MIN_RELEVANCE_THRESHOLD = 0.3;
 
     private final Map<String, List<Source>> researchCache = new HashMap<>();
+    private final SearchRuntime searchRuntime;
+
+    public ResearchAutomation() {
+        this(null);
+    }
+
+    ResearchAutomation(SearchRuntime searchRuntime) {
+        this.searchRuntime = searchRuntime;
+    }
 
     /**
-     * Researches a topic by simulating a search and returning discovered sources.
+     * Researches a topic by invoking a configured search runtime and returning discovered sources.
      *
      * @param topic the research topic
      * @param depth the desired search depth (1-5), higher means more sources
@@ -33,7 +42,13 @@ public class ResearchAutomation {
         }
         int clampedDepth = Math.max(1, Math.min(depth, MAX_DEPTH));
 
-        List<Source> sources = simulateSearch(topic, clampedDepth);
+        if (searchRuntime == null) {
+            throw new IllegalStateException("Research search runtime is not configured.");
+        }
+
+        List<Source> sources = searchRuntime.search(topic.trim(), clampedDepth).stream()
+                .sorted(Comparator.comparingDouble(Source::relevanceScore).reversed())
+                .collect(Collectors.toList());
         researchCache.put(topic.trim().toLowerCase(Locale.ROOT), sources);
         log.info("Researched topic='{}' with depth={}, found {} sources", topic, clampedDepth, sources.size());
         return Collections.unmodifiableList(sources);
@@ -94,26 +109,7 @@ public class ResearchAutomation {
                 topic, sources.size(), topSourceTitles);
     }
 
-    private List<Source> simulateSearch(String topic, int depth) {
-        int sourceCount = depth * 2;
-        List<Source> sources = new ArrayList<>();
-        int seed = Objects.hash(topic, depth);
-        Random random = new Random(seed);
-
-        for (int i = 0; i < sourceCount; i++) {
-            double relevance = clamp(random.nextDouble(0.1, 1.0), 0.0, 1.0);
-            String url = "https://example.com/search/" + topic.replaceAll("\\s+", "-") + "-" + i;
-            String title = topic + " - Source " + (i + 1);
-            String content = "Extracted content for " + title + ".";
-            sources.add(new Source(url, title, content, relevance, Instant.now()));
-        }
-
-        return sources.stream()
-                .sorted(Comparator.comparingDouble(Source::relevanceScore).reversed())
-                .collect(Collectors.toList());
-    }
-
-    private double clamp(double value, double min, double max) {
-        return Math.max(min, Math.min(max, value));
+    interface SearchRuntime {
+        List<Source> search(String topic, int depth);
     }
 }

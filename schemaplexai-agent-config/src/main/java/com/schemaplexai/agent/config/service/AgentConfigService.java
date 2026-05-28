@@ -46,17 +46,26 @@ public class AgentConfigService {
 
     @Transactional(rollbackFor = Exception.class)
     public void createAgent(SfAgent agent) {
-        agentMapper.insert(agent);
+        int inserted = agentMapper.insert(agent);
+        if (inserted <= 0) {
+            throw new BaseException(ResultCode.INTERNAL_ERROR);
+        }
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void updateAgent(SfAgent agent) {
-        agentMapper.updateById(agent);
+        int updated = agentMapper.updateById(agent);
+        if (updated <= 0) {
+            throw new BaseException(ResultCode.AGENT_NOT_FOUND);
+        }
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void deleteAgent(Long id) {
-        agentMapper.deleteById(id);
+        int deleted = agentMapper.deleteById(id);
+        if (deleted <= 0) {
+            throw new BaseException(ResultCode.AGENT_NOT_FOUND);
+        }
     }
 
     public SfAgentConfig getAgentConfig(Long agentId) {
@@ -69,9 +78,15 @@ public class AgentConfigService {
     @Transactional(rollbackFor = Exception.class)
     public void saveAgentConfig(SfAgentConfig config) {
         if (config.getId() == null) {
-            agentConfigMapper.insert(config);
+            int inserted = agentConfigMapper.insert(config);
+            if (inserted <= 0) {
+                throw new BaseException(ResultCode.INTERNAL_ERROR);
+            }
         } else {
-            agentConfigMapper.updateById(config);
+            int updated = agentConfigMapper.updateById(config);
+            if (updated <= 0) {
+                throw new BaseException(ResultCode.AGENT_NOT_FOUND);
+            }
         }
     }
 
@@ -91,7 +106,10 @@ public class AgentConfigService {
         if (bindings != null) {
             for (SfAgentToolBinding binding : bindings) {
                 binding.setAgentId(agentId);
-                toolBindingMapper.insert(binding);
+                int inserted = toolBindingMapper.insert(binding);
+                if (inserted <= 0) {
+                    throw new BaseException(ResultCode.INTERNAL_ERROR);
+                }
             }
         }
     }

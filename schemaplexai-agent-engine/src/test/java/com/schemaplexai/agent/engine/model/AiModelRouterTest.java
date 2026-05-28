@@ -54,6 +54,16 @@ class AiModelRouterTest {
     }
 
     @Test
+    void routeShouldReturnHealthyProviderWhenPreferredModelIsNull() {
+        when(redisTemplate.hasKey(anyString())).thenReturn(false);
+        when(openAiProvider.isHealthy()).thenReturn(true);
+
+        LlmProvider result = aiModelRouter.route(null);
+
+        assertEquals(openAiProvider, result);
+    }
+
+    @Test
     void routeShouldSkipProviderOnCooldown() {
         when(redisTemplate.hasKey(contains("OPENAI"))).thenReturn(true);
         when(redisTemplate.hasKey(contains("AZURE"))).thenReturn(false);

@@ -12,17 +12,20 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, OutputCaptureExtension.class})
 class ExecutionEventConsumerTest {
 
     @Mock
@@ -112,6 +115,30 @@ class ExecutionEventConsumerTest {
 
         verify(channel).basicNack(1L, false, false);
         verify(messageFailLogService).log(eq(message), eq("ExecutionEventConsumer"), anyString());
+    }
+
+    @Test
+    void onMessage_failLogPersistenceFalse_warnsAndNacks(CapturedOutput output) throws Exception {
+        ExecutionEventMessage event = new ExecutionEventMessage(
+                UUID.randomUUID(), 1L, 1, "TOKEN_USED",
+                "{\"modelName\":\"gpt-4\"}",
+                Instant.now(), 1L, 1L, "NORMAL"
+        );
+        String body = toJson(event);
+        Message message = createMessage(body);
+
+        when(objectMapper.readValue(body, ExecutionEventMessage.class)).thenReturn(event);
+        doThrow(new RuntimeException("cost processing failed")).when(costService).processExecutionEvent(event);
+        when(messageFailLogService.log(eq(message), eq("ExecutionEventConsumer"), anyString()))
+                .thenReturn(false);
+
+        Channel channel = mock(Channel.class);
+        consumer.onMessage(message, channel);
+
+        verify(channel).basicNack(1L, false, false);
+        verify(channel, never()).basicAck(anyLong(), anyBoolean());
+        verify(messageFailLogService).log(eq(message), eq("ExecutionEventConsumer"), anyString());
+        assertThat(output).contains("[ExecutionEventConsumer] Message fail log persistence returned false");
     }
 
     @Test

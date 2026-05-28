@@ -16,7 +16,7 @@ public class MessageFailLogService {
 
     private final SfMessageFailLogMapper messageFailLogMapper;
 
-    public void log(Message message, String consumerGroup, String errorMsg) {
+    public boolean log(Message message, String consumerGroup, String errorMsg) {
         try {
             SfMessageFailLog record = new SfMessageFailLog();
             record.setMessageId(message.getMessageProperties().getMessageId());
@@ -27,9 +27,10 @@ public class MessageFailLogService {
             record.setConsumerGroup(consumerGroup);
             record.setStatus("PENDING");
             record.setRetryCount(0);
-            messageFailLogMapper.insert(record);
+            return messageFailLogMapper.insert(record) > 0;
         } catch (Exception ex) {
             log.error("[MessageFailLog] Failed to persist fail log", ex);
+            return false;
         }
     }
 }

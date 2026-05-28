@@ -1,11 +1,13 @@
 package com.schemaplexai.workflow.delegate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.schemaplexai.common.constants.CommonConstants;
 import com.schemaplexai.common.context.TenantContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -23,6 +25,7 @@ import java.util.Map;
 public class SpecReviewNotificationDelegate implements JavaDelegate {
 
     private final ObjectMapper objectMapper;
+    private final RabbitTemplate rabbitTemplate;
 
     @Override
     public void execute(DelegateExecution execution) {
@@ -78,11 +81,12 @@ public class SpecReviewNotificationDelegate implements JavaDelegate {
         try {
             String notificationJson = objectMapper.writeValueAsString(notification);
             execution.setVariable("lastNotification", notificationJson);
-            // TODO: integrate with notification service (e.g., RabbitMQ, WebSocket, email)
             log.debug("[SpecReviewNotify] Notification payload: {}", notificationJson);
         } catch (Exception e) {
             log.warn("[SpecReviewNotify] Failed to serialize notification", e);
         }
+
+        publishInAppNotification(notification, processInstanceId, activityId, tenantId, submitterId);
     }
 
     private String resolveTenantId(DelegateExecution execution) {
@@ -94,5 +98,66 @@ public class SpecReviewNotificationDelegate implements JavaDelegate {
             }
         }
         return tenantId;
+    }
+
+    private void publishInAppNotification(Map<String, Object> notification, String processInstanceId,
+            String activityId, String tenantId, String submitterId) {
+        Long userId = parseUserId(submitterId);
+        if (userId == null) {
+            log.warn("[SpecReviewNotify] Skip MQ notification because submitterId is not numeric: process={} submitter={}",
+                    processInstanceId, submitterId);
+            return;
+        }
+
+        String eventType = (String) notification.get("eventType");
+        if ("UNKNOWN".equals(eventType)) {
+            return;
+        }
+
+        Map<String, Object> delivery = new HashMap<>();
+        delivery.put("channel", "in-app");
+        delivery.put("tenantId", tenantId);
+        delivery.put("userId", userId);
+        delivery.put("title", titleFor(eventType));
+        delivery.put("content", notification.get("message"));
+        delivery.put("templateCode", "spec-review-" + eventType.toLowerCase().replace('_', '-'));
+        delivery.put("templateParams", Map.of(
+                "specId", notification.get("specId"),
+                "specTitle", notification.get("specTitle"),
+                "eventType", eventType));
+        delivery.put("idempotencyKey", "spec-review:" + processInstanceId + ":" + activityId);
+
+        try {
+            String deliveryJson = objectMapper.writeValueAsString(delivery);
+            rabbitTemplate.convertAndSend(
+                    CommonConstants.EXCHANGE_SCHEMAPLEXAI,
+                    CommonConstants.RK_NOTIFICATION,
+                    deliveryJson);
+            log.debug("[SpecReviewNotify] Published notification to MQ: process={} activity={}",
+                    processInstanceId, activityId);
+        } catch (Exception e) {
+            log.warn("[SpecReviewNotify] Failed to publish notification: process={} activity={}",
+                    processInstanceId, activityId, e);
+        }
+    }
+
+    private Long parseUserId(String submitterId) {
+        if (submitterId == null || submitterId.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.valueOf(submitterId);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private String titleFor(String eventType) {
+        return switch (eventType) {
+            case "AUTO_APPROVED" -> "Spec review auto-approved";
+            case "APPROVED" -> "Spec review approved";
+            case "REJECTED" -> "Spec review rejected";
+            default -> "Spec review updated";
+        };
     }
 }

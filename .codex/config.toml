@@ -1,0 +1,9 @@
+[mcp_servers.gitnexus]
+args = [
+    "/c",
+    "npx",
+    "-y",
+    "gitnexus@latest",
+    "mcp",
+]
+command = "cmd"

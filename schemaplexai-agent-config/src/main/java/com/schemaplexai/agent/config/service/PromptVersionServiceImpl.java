@@ -37,7 +37,10 @@ public class PromptVersionServiceImpl
         pv.setContent(content);
         pv.setLabel(label);
         pv.setChangeNote(changeNote);
-        promptVersionMapper.insert(pv);
+        int inserted = promptVersionMapper.insert(pv);
+        if (inserted <= 0) {
+            throw new IllegalStateException("Prompt version insert affected 0 rows");
+        }
         return pv;
     }
 

@@ -71,7 +71,45 @@ class ContextServiceImplTest {
     }
 
     @Test
+    void ingestContext_nullWorkspaceId_throwsParamErrorWithoutInsert() {
+        TenantContextHolder.setTenantId("tenant-1");
+
+        assertThatThrownBy(() -> contextService.ingestContext(null, "Context", "type"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(contextMapper, never()).insert(any(SfContext.class));
+    }
+
+    @Test
+    void ingestContext_nullType_throwsParamErrorWithoutInsert() {
+        TenantContextHolder.setTenantId("tenant-1");
+
+        assertThatThrownBy(() -> contextService.ingestContext(1L, "Context", null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(contextMapper, never()).insert(any(SfContext.class));
+    }
+
+    @Test
+    void ingestContext_blankType_throwsParamErrorWithoutInsert() {
+        TenantContextHolder.setTenantId("tenant-1");
+
+        assertThatThrownBy(() -> contextService.ingestContext(1L, "Context", "   "))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(contextMapper, never()).insert(any(SfContext.class));
+    }
+
+    @Test
     void ingestContext_success_createsContext() {
+        TenantContextHolder.setTenantId("tenant-1");
+
         SfContext result = contextService.ingestContext(1L, "My Context", "document");
 
         assertThat(result.getName()).isEqualTo("My Context");
@@ -82,6 +120,8 @@ class ContextServiceImplTest {
 
     @Test
     void ingestContext_trimsName() {
+        TenantContextHolder.setTenantId("tenant-1");
+
         SfContext result = contextService.ingestContext(1L, "  My Context  ", "type");
 
         assertThat(result.getName()).isEqualTo("My Context");
@@ -97,10 +137,25 @@ class ContextServiceImplTest {
     }
 
     @Test
-    void ingestContext_nullTenantId_tenantIdIsNull() {
-        SfContext result = contextService.ingestContext(1L, "Context", "type");
+    void ingestContext_missingTenantContext_throwsParamErrorWithoutInsert() {
+        assertThatThrownBy(() -> contextService.ingestContext(1L, "Context", "type"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
 
-        assertThat(result.getTenantId()).isNull();
+        verify(contextMapper, never()).insert(any(SfContext.class));
+    }
+
+    @Test
+    void ingestContext_blankTenantContext_throwsParamErrorWithoutInsert() {
+        TenantContextHolder.setTenantId("   ");
+
+        assertThatThrownBy(() -> contextService.ingestContext(1L, "Context", "type"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(contextMapper, never()).insert(any(SfContext.class));
     }
 
     // ------------------------------------------------------------------
@@ -160,6 +215,16 @@ class ContextServiceImplTest {
     // ------------------------------------------------------------------
     // refreshContext
     // ------------------------------------------------------------------
+
+    @Test
+    void refreshContext_nullId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> contextService.refreshContext(null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(contextMapper, never()).selectById(any());
+    }
 
     @Test
     void refreshContext_notFound_throwsContextNotFound() {

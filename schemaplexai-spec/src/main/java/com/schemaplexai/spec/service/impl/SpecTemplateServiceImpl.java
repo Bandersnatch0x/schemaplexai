@@ -30,6 +30,11 @@ public class SpecTemplateServiceImpl extends ServiceImpl<SfSpecTemplateMapper, S
 
     @Override
     public SfSpec applyTemplate(Long templateId, Long specId, String title, String type) {
+        validateTemplateId(templateId);
+        if (specId == null) {
+            validateSpecTitle(title);
+            validateSpecType(type);
+        }
         SfSpecTemplate template = specTemplateMapper.selectById(templateId);
         if (template == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Template not found");
@@ -84,6 +89,10 @@ public class SpecTemplateServiceImpl extends ServiceImpl<SfSpecTemplateMapper, S
 
     @Override
     public SfSpecTemplate cloneTemplate(Long templateId, String newName) {
+        validateTemplateId(templateId);
+        if (newName == null || newName.isBlank()) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "newName is required");
+        }
         SfSpecTemplate source = specTemplateMapper.selectById(templateId);
         if (source == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Template not found");
@@ -97,5 +106,23 @@ public class SpecTemplateServiceImpl extends ServiceImpl<SfSpecTemplateMapper, S
 
         log.info("Cloned template {} to new template {}", templateId, clone.getId());
         return clone;
+    }
+
+    private void validateTemplateId(Long templateId) {
+        if (templateId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "templateId is required");
+        }
+    }
+
+    private void validateSpecTitle(String title) {
+        if (title == null || title.isBlank()) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "title is required");
+        }
+    }
+
+    private void validateSpecType(String type) {
+        if (type == null || type.isBlank()) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "type is required");
+        }
     }
 }

@@ -85,6 +85,20 @@ class AgentShadowConfigServiceImplTest {
     }
 
     @Test
+    void shouldThrowNotFoundWhenToggleEnabledAffectsNoRows() {
+        SfAgentShadowConfig config = new SfAgentShadowConfig();
+        config.setId(1L);
+        config.setEnabled(false);
+        when(shadowConfigMapper.selectById(1L)).thenReturn(config);
+        when(shadowConfigMapper.updateById(any(SfAgentShadowConfig.class))).thenReturn(0);
+
+        assertThatThrownBy(() -> agentShadowConfigService.toggleEnabled(1L, true))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.NOT_FOUND.getCode());
+    }
+
+    @Test
     void shouldCreateConfig() {
         SfAgentShadowConfig config = new SfAgentShadowConfig();
         config.setAgentId(1L);

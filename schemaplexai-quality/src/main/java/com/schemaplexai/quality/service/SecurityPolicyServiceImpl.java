@@ -39,7 +39,11 @@ public class SecurityPolicyServiceImpl extends ServiceImpl<SecurityPolicyMapper,
             policy.setStatus(STATUS_DRAFT);
         }
         log.info("Creating security policy: name={}, type={}", policy.getName(), policy.getPolicyType());
-        return super.save(policy);
+        boolean saved = super.save(policy);
+        if (!saved) {
+            throw new BaseException(ResultCode.INTERNAL_ERROR);
+        }
+        return true;
     }
 
     /**
@@ -61,7 +65,11 @@ public class SecurityPolicyServiceImpl extends ServiceImpl<SecurityPolicyMapper,
             validatePolicy(policy);
         }
         log.info("Updating security policy: id={}", policy.getId());
-        return super.updateById(policy);
+        boolean updated = super.updateById(policy);
+        if (!updated) {
+            throw new BaseException(ResultCode.NOT_FOUND, "Security policy not found: " + policy.getId());
+        }
+        return true;
     }
 
     /**

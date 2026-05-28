@@ -36,10 +36,12 @@ public class AIModelNodeExecutor implements NodeExecutor {
         String modelId = (String) input.get("modelId");
         String modelUsed = modelId != null ? modelId : "default";
 
-        String generatedText = callAgentEngine(prompt, modelUsed, tenantId);
+        NodeExecutionResult agentResult = callAgentEngine(prompt, modelUsed, tenantId);
+        if (!agentResult.isSuccess()) {
+            return agentResult;
+        }
 
-        Map<String, Object> output = new HashMap<>();
-        output.put("generatedText", generatedText);
+        Map<String, Object> output = new HashMap<>(agentResult.getOutput());
         output.put("modelUsed", modelUsed);
 
         log.info("AI model node executed: modelUsed={}, promptLength={}, tenantId={}",
@@ -47,10 +49,10 @@ public class AIModelNodeExecutor implements NodeExecutor {
         return NodeExecutionResult.success(output);
     }
 
-    private String callAgentEngine(String prompt, String modelUsed, String tenantId) {
+    private NodeExecutionResult callAgentEngine(String prompt, String modelUsed, String tenantId) {
         if (agentEngineUrl == null || agentEngineUrl.isBlank()) {
-            log.warn("agent.engine.url not configured, falling back to simulated response");
-            return simulateResponse(prompt);
+            log.warn("agent.engine.url not configured; AI_MODEL node cannot execute");
+            return NodeExecutionResult.failure("agent-engine URL is not configured");
         }
 
         String url = agentEngineUrl + "/agent/execute";
@@ -68,19 +70,14 @@ public class AIModelNodeExecutor implements NodeExecutor {
             Map<String, Object> response = restTemplate.postForObject(url, request, Map.class);
 
             if (response != null && response.get("data") != null) {
-                return response.get("data").toString();
+                return NodeExecutionResult.success(Map.of("generatedText", response.get("data").toString()));
             }
-            log.warn("Agent-engine returned empty response, falling back to simulated");
-            return simulateResponse(prompt);
+            log.warn("agent-engine returned empty response for AI_MODEL node");
+            return NodeExecutionResult.failure("agent-engine returned empty response");
 
         } catch (RestClientException e) {
             log.error("Failed to call agent-engine at {}: {}", url, e.getMessage());
-            return simulateResponse(prompt);
+            return NodeExecutionResult.failure("agent-engine request failed: " + e.getMessage());
         }
-    }
-
-    private String simulateResponse(String prompt) {
-        String preview = prompt.substring(0, Math.min(50, prompt.length()));
-        return "[AI response for: " + preview + "...]";
     }
 }

@@ -1,12 +1,18 @@
 package com.schemaplexai.web.controller;
 
 import com.schemaplexai.common.result.Result;
+import com.schemaplexai.web.service.approval.ApprovalWorkflowPort;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.web.bind.annotation.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -16,42 +22,42 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/web/approvals")
-@Tag(name = "审批管理", description = "审批工作流 API")
+@Tag(name = "Approval Management", description = "Approval workflow API")
+@RequiredArgsConstructor
 public class ApprovalWebController extends BaseController {
 
-    @Operation(summary = "获取待审批列表")
+    private final ApprovalWorkflowPort approvalWorkflowPort;
+
+    @Operation(summary = "List pending approvals")
     @GetMapping
-    public Result<List<Map<String, Object>>> listPendingApprovals() {
-        List<Map<String, Object>> approvals = new ArrayList<>();
-        Map<String, Object> approval = new HashMap<>();
-        approval.put("ticketId", "TICKET-001");
-        approval.put("type", "EXECUTION_APPROVAL");
-        approval.put("requester", "user@example.com");
-        approval.put("createdAt", System.currentTimeMillis());
-        approvals.add(approval);
-        return success(approvals);
+    public Result<List<Map<String, Object>>> listPendingApprovals(
+            @RequestHeader("X-Tenant-Id") String tenantId) {
+        return success(approvalWorkflowPort.listPendingApprovals(tenantId));
     }
 
-    @Operation(summary = "审批通过")
+    @Operation(summary = "Approve ticket")
     @PostMapping("/{ticketId}/approve")
     public Result<Void> approve(@PathVariable String ticketId,
+                                @RequestParam String approverId,
                                 @RequestParam String reason) {
-        // TODO: delegate to approval service
+        approvalWorkflowPort.approve(ticketId, approverId, reason);
         return success();
     }
 
-    @Operation(summary = "审批拒绝")
+    @Operation(summary = "Reject ticket")
     @PostMapping("/{ticketId}/reject")
     public Result<Void> reject(@PathVariable String ticketId,
+                               @RequestParam String approverId,
                                @RequestParam String reason) {
-        // TODO: delegate to approval service
+        approvalWorkflowPort.reject(ticketId, approverId, reason);
         return success();
     }
 
-    @Operation(summary = "审批升级")
+    @Operation(summary = "Escalate ticket")
     @PostMapping("/{ticketId}/escalate")
-    public Result<Void> escalate(@PathVariable String ticketId) {
-        // TODO: delegate to approval service
+    public Result<Void> escalate(@PathVariable String ticketId,
+                                 @RequestParam String escalatorId) {
+        approvalWorkflowPort.escalate(ticketId, escalatorId);
         return success();
     }
 }

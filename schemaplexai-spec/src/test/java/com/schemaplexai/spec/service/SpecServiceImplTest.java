@@ -58,6 +58,16 @@ class SpecServiceImplTest {
     // ------------------------------------------------------------------
 
     @Test
+    void publishSpec_nullSpecId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specService.publishSpec(null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specMapper, never()).selectById(any());
+    }
+
+    @Test
     void publishSpec_specNotFound_throwsSpecNotFound() {
         when(specMapper.selectById(1L)).thenReturn(null);
 
@@ -135,6 +145,16 @@ class SpecServiceImplTest {
     // ------------------------------------------------------------------
 
     @Test
+    void archiveSpec_nullSpecId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specService.archiveSpec(null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specMapper, never()).selectById(any());
+    }
+
+    @Test
     void archiveSpec_specNotFound_throwsSpecNotFound() {
         when(specMapper.selectById(1L)).thenReturn(null);
 
@@ -175,6 +195,16 @@ class SpecServiceImplTest {
     // ------------------------------------------------------------------
 
     @Test
+    void getLatestVersion_nullSpecId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specService.getLatestVersion(null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specVersionMapper, never()).selectOne(any());
+    }
+
+    @Test
     void getLatestVersion_noVersion_returnsEmpty() {
         when(specVersionMapper.selectOne(any())).thenReturn(null);
 
@@ -213,6 +243,36 @@ class SpecServiceImplTest {
     // ------------------------------------------------------------------
 
     @Test
+    void compareVersions_nullSpecId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specService.compareVersions(null, "1", "2"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specVersionMapper, never()).selectList(any());
+    }
+
+    @Test
+    void compareVersions_blankVersionA_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specService.compareVersions(1L, " ", "2"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specVersionMapper, never()).selectList(any());
+    }
+
+    @Test
+    void compareVersions_blankVersionB_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specService.compareVersions(1L, "1", " "))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specVersionMapper, never()).selectList(any());
+    }
+
+    @Test
     void compareVersions_returnsMatchingVersions() {
         SfSpecVersion v1 = new SfSpecVersion();
         v1.setVersion("1");
@@ -238,6 +298,39 @@ class SpecServiceImplTest {
     // ------------------------------------------------------------------
     // createFromTemplate
     // ------------------------------------------------------------------
+
+    @Test
+    void createFromTemplate_nullTemplateId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specService.createFromTemplate(null, "Title", "type"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specTemplateMapper, never()).selectById(any());
+        verify(specMapper, never()).insert(any());
+    }
+
+    @Test
+    void createFromTemplate_blankTitle_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specService.createFromTemplate(1L, " ", "type"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specTemplateMapper, never()).selectById(any());
+        verify(specMapper, never()).insert(any());
+    }
+
+    @Test
+    void createFromTemplate_blankType_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specService.createFromTemplate(1L, "Title", " "))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specTemplateMapper, never()).selectById(any());
+        verify(specMapper, never()).insert(any());
+    }
 
     @Test
     void createFromTemplate_templateNotFound_throwsNotFound() {

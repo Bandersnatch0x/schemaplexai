@@ -62,6 +62,16 @@ class TenantEnvironmentConfigServiceImplTest {
     }
 
     @Test
+    void getByTenantId_blankTenantId_throwsParamErrorWithoutQuery() {
+        assertThatThrownBy(() -> tenantEnvironmentConfigService.getByTenantId(" "))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(tenantEnvironmentConfigMapper, never()).selectOne(any());
+    }
+
+    @Test
     void shouldCreateConfig() {
         TenantEnvironmentConfig config = new TenantEnvironmentConfig();
         config.setTenantId("tenant-1");
@@ -84,6 +94,20 @@ class TenantEnvironmentConfigServiceImplTest {
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+    }
+
+    @Test
+    void shouldThrowInternalErrorWhenCreateAffectsNoRows() {
+        TenantEnvironmentConfig config = new TenantEnvironmentConfig();
+        config.setTenantId("tenant-1");
+        config.setEnvironment("dev");
+        config.setSecurityLevel("LOW");
+        when(tenantEnvironmentConfigMapper.insert(any(TenantEnvironmentConfig.class))).thenReturn(0);
+
+        assertThatThrownBy(() -> tenantEnvironmentConfigService.save(config))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.INTERNAL_ERROR.getCode());
     }
 
     @Test
@@ -120,11 +144,41 @@ class TenantEnvironmentConfigServiceImplTest {
     }
 
     @Test
+    void shouldThrowNotFoundWhenUpdateAffectsNoRows() {
+        TenantEnvironmentConfig existing = new TenantEnvironmentConfig();
+        existing.setId(1L);
+        existing.setTenantId("tenant-1");
+
+        TenantEnvironmentConfig update = new TenantEnvironmentConfig();
+        update.setId(1L);
+        update.setTenantId("tenant-1");
+        update.setEnvironment("prod");
+
+        when(tenantEnvironmentConfigMapper.selectById(1L)).thenReturn(existing);
+        when(tenantEnvironmentConfigMapper.updateById(any(TenantEnvironmentConfig.class))).thenReturn(0);
+
+        assertThatThrownBy(() -> tenantEnvironmentConfigService.updateById(update))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.NOT_FOUND.getCode());
+    }
+
+    @Test
     void shouldRefreshCache() {
         doNothing().when(securityPolicyLoader).refresh("tenant-1");
 
         tenantEnvironmentConfigService.refreshCache("tenant-1");
 
         verify(securityPolicyLoader).refresh("tenant-1");
+    }
+
+    @Test
+    void refreshCache_blankTenantId_throwsParamErrorWithoutRefresh() {
+        assertThatThrownBy(() -> tenantEnvironmentConfigService.refreshCache(""))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(securityPolicyLoader, never()).refresh(any());
     }
 }

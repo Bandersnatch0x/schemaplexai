@@ -124,6 +124,40 @@ class CostServiceTest {
         assertNotSame(result1, result2);
     }
 
+    @Test
+    void queryCostByExecution_returnsAggregatedCostAndTokens() {
+        SfCostRecord tokenRecord = createCostRecord(
+                "tenant-1", 42L, new BigDecimal("10.25"), 1000L, 500L, 1500L, "USD");
+        SfCostRecord toolRecord = createCostRecord(
+                "tenant-1", 42L, new BigDecimal("5.50"), null, null, null, "USD");
+        when(costRecordMapper.selectList(any())).thenReturn(List.of(tokenRecord, toolRecord));
+
+        Map<String, Object> result = costService.queryCostByExecution("tenant-1", 42L);
+
+        assertEquals(42L, result.get("executionId"));
+        assertEquals(0, new BigDecimal("15.75").compareTo((BigDecimal) result.get("totalCost")));
+        assertEquals("USD", result.get("currency"));
+        assertEquals(1000L, result.get("inputTokens"));
+        assertEquals(500L, result.get("outputTokens"));
+        assertEquals(1500L, result.get("totalTokens"));
+        assertEquals(2, result.get("recordCount"));
+    }
+
+    @Test
+    void queryCostByExecution_returnsZeroCostWhenNoRecords() {
+        when(costRecordMapper.selectList(any())).thenReturn(Collections.emptyList());
+
+        Map<String, Object> result = costService.queryCostByExecution("tenant-1", 42L);
+
+        assertEquals(42L, result.get("executionId"));
+        assertEquals(0, BigDecimal.ZERO.compareTo((BigDecimal) result.get("totalCost")));
+        assertEquals("USD", result.get("currency"));
+        assertEquals(0L, result.get("inputTokens"));
+        assertEquals(0L, result.get("outputTokens"));
+        assertEquals(0L, result.get("totalTokens"));
+        assertEquals(0, result.get("recordCount"));
+    }
+
     // ------------------------------------------------------------------
     // checkBudgetAlerts - no budgets
     // ------------------------------------------------------------------
@@ -501,6 +535,55 @@ class CostServiceTest {
         verify(budgetService).addUsedAmount("1", new BigDecimal("0.0600"));
     }
 
+    @Test
+    void processExecutionEvent_tokenUsedInsertFailure_propagatesWithoutBudgetUpdate() {
+        ExecutionEventMessage event = new ExecutionEventMessage(
+                java.util.UUID.randomUUID(), 1L, 1, "TOKEN_USED",
+                "{\"modelName\":\"gpt-4\",\"inputTokens\":1000,\"outputTokens\":500}",
+                java.time.Instant.now(), 1L, 1L, "NORMAL"
+        );
+        doThrow(new RuntimeException("insert failed")).when(costRecordMapper).insert(any());
+
+        RuntimeException error = assertThrows(RuntimeException.class,
+                () -> costService.processExecutionEvent(event));
+
+        assertTrue(error.getMessage().contains("insert failed"));
+        verify(budgetService, never()).addUsedAmount(anyString(), any());
+    }
+
+    @Test
+    void processExecutionEvent_toolCallInsertFailure_propagatesWithoutBudgetUpdate() {
+        ExecutionEventMessage event = new ExecutionEventMessage(
+                java.util.UUID.randomUUID(), 1L, 1, "TOOL_CALL",
+                "{\"toolName\":\"search\",\"durationMs\":100}",
+                java.time.Instant.now(), 1L, 1L, "NORMAL"
+        );
+        doThrow(new RuntimeException("tool insert failed")).when(costRecordMapper).insert(any());
+
+        RuntimeException error = assertThrows(RuntimeException.class,
+                () -> costService.processExecutionEvent(event));
+
+        assertTrue(error.getMessage().contains("tool insert failed"));
+        verify(budgetService, never()).addUsedAmount(anyString(), any());
+    }
+
+    @Test
+    void processExecutionEvent_budgetUpdateFailure_propagatesAfterCostRecordInsert() {
+        ExecutionEventMessage event = new ExecutionEventMessage(
+                java.util.UUID.randomUUID(), 1L, 1, "TOKEN_USED",
+                "{\"modelName\":\"gpt-4\",\"inputTokens\":1000,\"outputTokens\":500}",
+                java.time.Instant.now(), 1L, 1L, "NORMAL"
+        );
+        doThrow(new RuntimeException("budget failed"))
+                .when(budgetService).addUsedAmount("1", new BigDecimal("0.0600"));
+
+        RuntimeException error = assertThrows(RuntimeException.class,
+                () -> costService.processExecutionEvent(event));
+
+        assertTrue(error.getMessage().contains("budget failed"));
+        verify(costRecordMapper).insert(any());
+    }
+
     // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------
@@ -512,6 +595,20 @@ class CostServiceTest {
         budget.setUsedAmount(used);
         budget.setAlertThreshold(threshold);
         return budget;
+    }
+
+    private SfCostRecord createCostRecord(String tenantId, Long executionId, BigDecimal costAmount,
+                                          Long inputTokens, Long outputTokens, Long totalTokens,
+                                          String currency) {
+        SfCostRecord record = new SfCostRecord();
+        record.setTenantId(tenantId);
+        record.setExecutionId(executionId);
+        record.setCostAmount(costAmount);
+        record.setInputTokens(inputTokens);
+        record.setOutputTokens(outputTokens);
+        record.setTotalTokens(totalTokens);
+        record.setCurrency(currency);
+        return record;
     }
 
     private List<ILoggingEvent> getWarnEvents() {

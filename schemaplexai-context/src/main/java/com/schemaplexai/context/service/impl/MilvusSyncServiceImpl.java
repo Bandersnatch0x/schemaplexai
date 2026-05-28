@@ -95,6 +95,9 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
 
     @Override
     public void syncToMilvus(Long docId) {
+        if (docId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "docId is required");
+        }
         log.info("Sync doc {} to Milvus", docId);
 
         SfKnowledgeDoc doc = knowledgeDocMapper.selectById(docId);
@@ -143,6 +146,9 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
 
     @Override
     public void deleteByDocId(Long docId) {
+        if (docId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "docId is required");
+        }
         String collectionName = milvusProperties.getCollectionName();
         String docIdStr = docId.toString();
 
@@ -157,6 +163,9 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
 
     @Override
     public void reSyncDoc(Long docId) {
+        if (docId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "docId is required");
+        }
         log.info("Re-sync doc {} to Milvus", docId);
 
         SfKnowledgeDoc doc = knowledgeDocMapper.selectById(docId);
@@ -169,30 +178,39 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
     }
 
     private String extractText(SfKnowledgeDoc doc) {
-        if (minioEnabled && doc.getFileUrl() != null && !doc.getFileUrl().isBlank()) {
-            try {
-                String tenantId = doc.getTenantId() != null ? doc.getTenantId().toString() : null;
-                String bucket = resolveTenantBucket(tenantId);
-                String objectName = resolveObjectName(doc.getFileUrl());
-
-                log.info("Downloading from MinIO bucket={}, object={}", bucket, objectName);
-
-                try (InputStream is = getMinioClient().getObject(
-                        GetObjectArgs.builder()
-                                .bucket(bucket)
-                                .object(objectName)
-                                .build())) {
-                    String text = extractTextWithTika(is);
-                    log.info("Extracted {} characters from document {} using Tika", text.length(), doc.getId());
-                    return text;
-                }
-            } catch (Exception e) {
-                log.error("Failed to download or extract text from MinIO for doc {}, falling back to simulated text: {}",
-                        doc.getId(), e.getMessage(), e);
-            }
+        if (doc.getFileUrl() == null || doc.getFileUrl().isBlank()) {
+            throw new BaseException(ResultCode.PARAM_ERROR,
+                    "fileUrl is required for Milvus text extraction");
         }
 
-        return simulateExtractText(doc);
+        if (!minioEnabled) {
+            throw new BaseException(ResultCode.INTERNAL_ERROR,
+                    "MinIO is not enabled; cannot extract real document text");
+        }
+
+        try {
+            String tenantId = doc.getTenantId() != null ? doc.getTenantId().toString() : null;
+            String bucket = resolveTenantBucket(tenantId);
+            String objectName = resolveObjectName(doc.getFileUrl());
+
+            log.info("Downloading from MinIO bucket={}, object={}", bucket, objectName);
+
+            try (InputStream is = getMinioClient().getObject(
+                    GetObjectArgs.builder()
+                            .bucket(bucket)
+                            .object(objectName)
+                            .build())) {
+                String text = extractTextWithTika(is);
+                log.info("Extracted {} characters from document {} using Tika", text.length(), doc.getId());
+                return text;
+            }
+        } catch (Exception e) {
+            log.error("Failed to download or extract text from MinIO for doc {}: {}",
+                    doc.getId(), e.getMessage(), e);
+            throw new BaseException(ResultCode.INTERNAL_ERROR,
+                    "Failed to extract text from MinIO for document " + doc.getId()
+                            + ": " + e.getMessage(), e);
+        }
     }
 
     private String resolveObjectName(String fileUrl) {
@@ -222,21 +240,6 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
             return TENANT_BUCKET_PREFIX + tenantId;
         }
         return minioDefaultBucket;
-    }
-
-    private String simulateExtractText(SfKnowledgeDoc doc) {
-        log.info("Simulating text extraction for: {}", doc.getFileName());
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("Document: ").append(doc.getTitle()).append("\n");
-        sb.append("This is simulated content for testing purposes. ");
-        sb.append("In production, this would use Apache Tika or similar to extract text from ")
-          .append(doc.getFileUrl()).append(". ");
-        for (int i = 0; i < 30; i++) {
-            sb.append("Paragraph ").append(i + 1)
-              .append(" contains enough text to test the document chunking pipeline thoroughly. ");
-        }
-        return sb.toString();
     }
 
     private String extractTextWithTika(InputStream is) {

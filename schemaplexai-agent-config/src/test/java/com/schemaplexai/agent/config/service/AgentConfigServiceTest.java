@@ -90,6 +90,18 @@ class AgentConfigServiceTest {
         verify(agentMapper).insert(agent);
     }
 
+    @Test
+    void shouldThrowWhenCreateAgentAffectsNoRows() {
+        SfAgent agent = new SfAgent();
+        agent.setName("New Agent");
+        when(agentMapper.insert(agent)).thenReturn(0);
+
+        assertThatThrownBy(() -> agentConfigService.createAgent(agent))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.INTERNAL_ERROR.getCode());
+    }
+
     // ========== updateAgent ==========
 
     @Test
@@ -104,6 +116,19 @@ class AgentConfigServiceTest {
         verify(agentMapper).updateById(agent);
     }
 
+    @Test
+    void shouldThrowWhenUpdateAgentAffectsNoRows() {
+        SfAgent agent = new SfAgent();
+        agent.setId(99L);
+        agent.setName("Missing Agent");
+        when(agentMapper.updateById(agent)).thenReturn(0);
+
+        assertThatThrownBy(() -> agentConfigService.updateAgent(agent))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.AGENT_NOT_FOUND.getCode());
+    }
+
     // ========== deleteAgent ==========
 
     @Test
@@ -113,6 +138,16 @@ class AgentConfigServiceTest {
         agentConfigService.deleteAgent(1L);
 
         verify(agentMapper).deleteById(1L);
+    }
+
+    @Test
+    void shouldThrowWhenDeleteAgentAffectsNoRows() {
+        when(agentMapper.deleteById(99L)).thenReturn(0);
+
+        assertThatThrownBy(() -> agentConfigService.deleteAgent(99L))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.AGENT_NOT_FOUND.getCode());
     }
 
     // ========== getAgentConfig ==========
@@ -155,6 +190,19 @@ class AgentConfigServiceTest {
     }
 
     @Test
+    void shouldThrowWhenInsertAgentConfigAffectsNoRows() {
+        SfAgentConfig config = new SfAgentConfig();
+        config.setAgentId(1L);
+        config.setSystemPrompt("New prompt");
+        when(agentConfigMapper.insert(config)).thenReturn(0);
+
+        assertThatThrownBy(() -> agentConfigService.saveAgentConfig(config))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.INTERNAL_ERROR.getCode());
+    }
+
+    @Test
     void shouldUpdateAgentConfigWhenIdExists() {
         SfAgentConfig config = new SfAgentConfig();
         config.setId(1L);
@@ -166,6 +214,20 @@ class AgentConfigServiceTest {
 
         verify(agentConfigMapper).updateById(config);
         verify(agentConfigMapper, never()).insert(any());
+    }
+
+    @Test
+    void shouldThrowWhenUpdateAgentConfigAffectsNoRows() {
+        SfAgentConfig config = new SfAgentConfig();
+        config.setId(99L);
+        config.setAgentId(1L);
+        config.setSystemPrompt("Updated prompt");
+        when(agentConfigMapper.updateById(config)).thenReturn(0);
+
+        assertThatThrownBy(() -> agentConfigService.saveAgentConfig(config))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.AGENT_NOT_FOUND.getCode());
     }
 
     // ========== listToolBindings ==========
@@ -198,6 +260,20 @@ class AgentConfigServiceTest {
         verify(toolBindingMapper).delete(any(LambdaQueryWrapper.class));
         verify(toolBindingMapper).insert(binding);
         assertThat(binding.getAgentId()).isEqualTo(1L);
+    }
+
+    @Test
+    void shouldThrowWhenSaveToolBindingInsertAffectsNoRows() {
+        SfAgentToolBinding binding = new SfAgentToolBinding();
+        binding.setToolName("search");
+        List<SfAgentToolBinding> bindings = List.of(binding);
+        when(toolBindingMapper.delete(any(LambdaQueryWrapper.class))).thenReturn(1);
+        when(toolBindingMapper.insert(binding)).thenReturn(0);
+
+        assertThatThrownBy(() -> agentConfigService.saveToolBindings(1L, bindings))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.INTERNAL_ERROR.getCode());
     }
 
     @Test

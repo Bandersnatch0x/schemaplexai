@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -58,6 +59,48 @@ public class CostService {
         // time-series cost records are available in PostgreSQL
         result.put("todayCost", totalCost);
         result.put("monthCost", totalCost);
+        return result;
+    }
+
+    public Map<String, Object> queryCostByExecution(String tenantId, Long executionId) {
+        log.info("Query cost for tenant={}, execution={}", tenantId, executionId);
+
+        LambdaQueryWrapper<SfCostRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SfCostRecord::getTenantId, tenantId)
+                .eq(SfCostRecord::getExecutionId, executionId);
+        List<SfCostRecord> records = costRecordMapper.selectList(wrapper);
+
+        BigDecimal totalCost = records.stream()
+                .map(SfCostRecord::getCostAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        long inputTokens = records.stream()
+                .map(SfCostRecord::getInputTokens)
+                .filter(Objects::nonNull)
+                .reduce(0L, Long::sum);
+        long outputTokens = records.stream()
+                .map(SfCostRecord::getOutputTokens)
+                .filter(Objects::nonNull)
+                .reduce(0L, Long::sum);
+        long totalTokens = records.stream()
+                .map(SfCostRecord::getTotalTokens)
+                .filter(Objects::nonNull)
+                .reduce(0L, Long::sum);
+        String currency = records.stream()
+                .map(SfCostRecord::getCurrency)
+                .filter(value -> value != null && !value.isBlank())
+                .findFirst()
+                .orElse("USD");
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("executionId", executionId);
+        result.put("tenantId", tenantId);
+        result.put("totalCost", totalCost);
+        result.put("currency", currency);
+        result.put("inputTokens", inputTokens);
+        result.put("outputTokens", outputTokens);
+        result.put("totalTokens", totalTokens);
+        result.put("recordCount", records.size());
         return result;
     }
 
@@ -129,15 +172,10 @@ public class CostService {
             return;
         }
 
-        try {
-            switch (event.eventType()) {
-                case "TOKEN_USED" -> processTokenUsedEvent(event);
-                case "TOOL_CALL" -> processToolCallEvent(event);
-                default -> log.debug("Unsupported event type for cost projection: {}", event.eventType());
-            }
-        } catch (Exception e) {
-            log.error("Failed to process execution event for cost: eventId={}, eventType={}",
-                    event.eventId(), event.eventType(), e);
+        switch (event.eventType()) {
+            case "TOKEN_USED" -> processTokenUsedEvent(event);
+            case "TOOL_CALL" -> processToolCallEvent(event);
+            default -> log.debug("Unsupported event type for cost projection: {}", event.eventType());
         }
     }
 
@@ -176,6 +214,7 @@ public class CostService {
                     event.executionId(), event.eventType(), cost);
         } catch (Exception e) {
             log.error("Failed to process TOKEN_USED event: eventId={}", event.eventId(), e);
+            throw propagateCostProjectionFailure(e);
         }
     }
 
@@ -200,6 +239,14 @@ public class CostService {
                     event.executionId(), event.eventType(), TOOL_CALL_BASE_FEE);
         } catch (Exception e) {
             log.error("Failed to process TOOL_CALL event: eventId={}", event.eventId(), e);
+            throw propagateCostProjectionFailure(e);
         }
+    }
+
+    private RuntimeException propagateCostProjectionFailure(Exception e) {
+        if (e instanceof RuntimeException runtimeException) {
+            return runtimeException;
+        }
+        return new IllegalStateException("Failed to process execution event for cost projection", e);
     }
 }

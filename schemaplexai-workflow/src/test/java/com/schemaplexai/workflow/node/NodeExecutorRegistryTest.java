@@ -85,23 +85,24 @@ class NodeExecutorRegistryTest {
     }
 
     @Test
-    void aiModelNodeExecutor_validInput_returnsSimulatedResponse() {
+    void aiModelNodeExecutor_agentEngineUnavailable_returnsFailure() {
         NodeExecutor executor = findByType("AI_MODEL");
         NodeExecutionResult result = executor.execute(
                 Map.of("prompt", "Hello world, this is a test prompt", "modelId", "gpt-4"), "tenant-1");
 
-        assertThat(result.isSuccess()).isTrue();
-        assertThat(result.getOutput()).containsKey("generatedText");
-        assertThat(result.getOutput()).containsEntry("modelUsed", "gpt-4");
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getMessage()).contains("agent-engine");
+        assertThat(result.getOutput()).isEmpty();
     }
 
     @Test
-    void aiModelNodeExecutor_withoutModelId_usesDefault() {
+    void aiModelNodeExecutor_withoutModelIdAndUnavailableEngine_returnsFailure() {
         NodeExecutor executor = findByType("AI_MODEL");
         NodeExecutionResult result = executor.execute(Map.of("prompt", "Hello"), "tenant-1");
 
-        assertThat(result.isSuccess()).isTrue();
-        assertThat(result.getOutput()).containsEntry("modelUsed", "default");
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getMessage()).contains("agent-engine");
+        assertThat(result.getOutput()).isEmpty();
     }
 
     @Test
@@ -120,17 +121,15 @@ class NodeExecutorRegistryTest {
     }
 
     @Test
-    void toolCallNodeExecutor_validInput_returnsSimulatedResult() {
+    void toolCallNodeExecutor_withoutRuntime_returnsFailure() {
         NodeExecutor executor = findByType("TOOL_CALL");
         NodeExecutionResult result = executor.execute(
                 Map.of("toolName", "sendEmail", "toolParameters", Map.of("to", "user@example.com")),
                 "tenant-1");
 
-        assertThat(result.isSuccess()).isTrue();
-        @SuppressWarnings("unchecked")
-        Map<String, Object> toolResult = (Map<String, Object>) result.getOutput().get("toolResult");
-        assertThat(toolResult).containsEntry("tool", "sendEmail");
-        assertThat(toolResult).containsEntry("status", "executed");
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getMessage()).contains("TOOL_CALL node execution is not implemented");
+        assertThat(result.getOutput()).isEmpty();
     }
 
     @Test

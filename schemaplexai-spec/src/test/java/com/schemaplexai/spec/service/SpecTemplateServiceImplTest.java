@@ -53,6 +53,18 @@ class SpecTemplateServiceImplTest {
     // ------------------------------------------------------------------
 
     @Test
+    void applyTemplate_nullTemplateId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specTemplateService.applyTemplate(null, null, "Title", "type"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specTemplateMapper, never()).selectById(any());
+        verify(specMapper, never()).insert(any());
+        verify(specMapper, never()).updateById(any());
+    }
+
+    @Test
     void applyTemplate_templateNotFound_throwsNotFound() {
         when(specTemplateMapper.selectById(1L)).thenReturn(null);
 
@@ -110,6 +122,30 @@ class SpecTemplateServiceImplTest {
         assertThat(result.getContent()).isEqualTo("template content");
         verify(specMapper).insert(any(SfSpec.class));
         verify(specMapper, never()).updateById(any(SfSpec.class));
+    }
+
+    @Test
+    void applyTemplate_withoutSpecId_blankTitle_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specTemplateService.applyTemplate(1L, null, " ", "requirement"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specTemplateMapper, never()).selectById(any());
+        verify(specMapper, never()).insert(any());
+        verify(specMapper, never()).updateById(any());
+    }
+
+    @Test
+    void applyTemplate_withoutSpecId_blankType_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specTemplateService.applyTemplate(1L, null, "New Spec", " "))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specTemplateMapper, never()).selectById(any());
+        verify(specMapper, never()).insert(any());
+        verify(specMapper, never()).updateById(any());
     }
 
     // ------------------------------------------------------------------
@@ -178,6 +214,28 @@ class SpecTemplateServiceImplTest {
     // ------------------------------------------------------------------
     // cloneTemplate
     // ------------------------------------------------------------------
+
+    @Test
+    void cloneTemplate_nullTemplateId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specTemplateService.cloneTemplate(null, "Clone"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specTemplateMapper, never()).selectById(any());
+        verify(specTemplateMapper, never()).insert(any());
+    }
+
+    @Test
+    void cloneTemplate_blankNewName_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specTemplateService.cloneTemplate(1L, " "))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specTemplateMapper, never()).selectById(any());
+        verify(specTemplateMapper, never()).insert(any());
+    }
 
     @Test
     void cloneTemplate_sourceNotFound_throwsNotFound() {

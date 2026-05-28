@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -22,6 +23,14 @@ class ResearchAutomationTest {
         researchAutomation = new ResearchAutomation();
     }
 
+    @Test
+    @DisplayName("should throw without a search runtime instead of returning example sources")
+    void researchTopic_withoutSearchRuntime_throwsInsteadOfReturningExampleSources() {
+        assertThatThrownBy(() -> researchAutomation.researchTopic("machine learning", 3))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("search runtime");
+    }
+
     @Nested
     @DisplayName("researchTopic")
     class ResearchTopicTests {
@@ -29,15 +38,20 @@ class ResearchAutomationTest {
         @Test
         @DisplayName("should return sources for a valid topic and depth")
         void shouldReturnSources() {
+            researchAutomation = new ResearchAutomation(fakeSearchRuntime());
+
             List<Source> sources = researchAutomation.researchTopic("machine learning", 3);
 
             assertEquals(6, sources.size());
             assertThat(sources).allMatch(s -> s.relevanceScore() >= 0.0 && s.relevanceScore() <= 1.0);
+            assertThat(sources).noneMatch(s -> s.url().contains("example.com"));
         }
 
         @Test
         @DisplayName("should clamp depth to minimum 1")
         void shouldClampDepthToMinimum() {
+            researchAutomation = new ResearchAutomation(fakeSearchRuntime());
+
             List<Source> sources = researchAutomation.researchTopic("ai", 0);
             assertEquals(2, sources.size());
         }
@@ -45,6 +59,8 @@ class ResearchAutomationTest {
         @Test
         @DisplayName("should clamp depth to maximum 5")
         void shouldClampDepthToMaximum() {
+            researchAutomation = new ResearchAutomation(fakeSearchRuntime());
+
             List<Source> sources = researchAutomation.researchTopic("ai", 10);
             assertEquals(10, sources.size());
         }
@@ -64,6 +80,8 @@ class ResearchAutomationTest {
         @Test
         @DisplayName("should sort sources by relevance descending")
         void shouldSortByRelevanceDescending() {
+            researchAutomation = new ResearchAutomation(fakeSearchRuntime());
+
             List<Source> sources = researchAutomation.researchTopic("sorting", 2);
 
             for (int i = 0; i < sources.size() - 1; i++) {
@@ -124,6 +142,8 @@ class ResearchAutomationTest {
         @Test
         @DisplayName("should generate summary for researched topic")
         void shouldGenerateSummary() {
+            researchAutomation = new ResearchAutomation(fakeSearchRuntime());
+
             researchAutomation.researchTopic("neural networks", 2);
             String summary = researchAutomation.generateSummary("neural networks");
 
@@ -149,5 +169,16 @@ class ResearchAutomationTest {
         void shouldReturnErrorForBlankTopic() {
             assertEquals("No topic provided for summary.", researchAutomation.generateSummary("   "));
         }
+    }
+
+    private ResearchAutomation.SearchRuntime fakeSearchRuntime() {
+        return (topic, depth) -> java.util.stream.IntStream.range(0, depth * 2)
+                .mapToObj(i -> new Source(
+                        "https://research.test/search/" + topic.replaceAll("\\s+", "-") + "-" + i,
+                        topic + " - Source " + (i + 1),
+                        "Extracted content for " + topic + " source " + (i + 1) + ".",
+                        1.0 - (i * 0.05),
+                        java.time.Instant.now()))
+                .toList();
     }
 }

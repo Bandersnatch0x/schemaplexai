@@ -12,6 +12,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -37,6 +38,13 @@ public class TenantPolicyService extends ServiceImpl<TenantPolicyMapper, TenantP
     }
 
     public void saveOrUpdatePolicy(String tenantId, String policyType, String configJson) {
+        if (!StringUtils.hasText(tenantId)) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "tenant id is empty");
+        }
+        if (!StringUtils.hasText(policyType)) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "policy type is empty");
+        }
+
         TenantPolicy existing = getPolicy(tenantId, policyType);
         if (existing != null) {
             existing.setConfigJson(configJson);

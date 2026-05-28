@@ -1,7 +1,7 @@
 package com.schemaplexai.agent.engine.state;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.schemaplexai.agent.engine.AgentExecutionEngine;
+import com.schemaplexai.agent.engine.AgentExecutionStarter;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.entity.SfAgentExecutionSnapshot;
 import com.schemaplexai.agent.engine.lifecycle.ExecutionSnapshot;
@@ -11,6 +11,7 @@ import com.schemaplexai.agent.engine.mapper.SfAgentExecutionSnapshotMapper;
 import com.schemaplexai.agent.engine.orchestrator.AgentRouter;
 import com.schemaplexai.agent.engine.sse.ExecutionEventBus;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -44,20 +45,20 @@ public class HandoffStateHandler implements AgentStateHandler {
     private final SfAgentExecutionMapper executionMapper;
     private final SfAgentExecutionSnapshotMapper snapshotMapper;
     private final AgentRouter agentRouter;
-    private final AgentExecutionEngine executionEngine;
+    private final ObjectProvider<AgentExecutionStarter> executionStarterProvider;
     private final ExecutionEventBus eventBus;
     private final ObjectMapper objectMapper;
 
     public HandoffStateHandler(SfAgentExecutionMapper executionMapper,
                                SfAgentExecutionSnapshotMapper snapshotMapper,
                                AgentRouter agentRouter,
-                               AgentExecutionEngine executionEngine,
+                               ObjectProvider<AgentExecutionStarter> executionStarterProvider,
                                ExecutionEventBus eventBus,
                                ObjectMapper objectMapper) {
         this.executionMapper = executionMapper;
         this.snapshotMapper = snapshotMapper;
         this.agentRouter = agentRouter;
-        this.executionEngine = executionEngine;
+        this.executionStarterProvider = executionStarterProvider;
         this.eventBus = eventBus;
         this.objectMapper = objectMapper;
     }
@@ -150,7 +151,7 @@ public class HandoffStateHandler implements AgentStateHandler {
         try {
             // Agent IDs from the router are strings; use hash-based conversion to numeric
             Long targetAgentIdLong = parseAgentId(targetAgentId);
-            SfAgentExecution newExecution = executionEngine.startExecution(
+            SfAgentExecution newExecution = executionStarterProvider.getObject().startExecution(
                     targetAgentIdLong,
                     execution.getTenantId(),
                     effectivePrompt

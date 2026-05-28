@@ -101,6 +101,19 @@ class SecurityPolicyServiceImplTest {
         assertThat(policy.getStatus()).isEqualTo(0);
     }
 
+    @Test
+    void save_whenInsertAffectsNoRows_throwsInternalError() {
+        SfSecurityPolicy policy = new SfSecurityPolicy();
+        policy.setName("Policy");
+        policy.setPolicyType("ACCESS");
+        when(securityPolicyMapper.insert(any())).thenReturn(0);
+
+        assertThatThrownBy(() -> securityPolicyService.save(policy))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.INTERNAL_ERROR.getCode());
+    }
+
     // ------------------------------------------------------------------
     // updateById
     // ------------------------------------------------------------------
@@ -159,6 +172,24 @@ class SecurityPolicyServiceImplTest {
         boolean result = securityPolicyService.updateById(policy);
 
         assertThat(result).isTrue();
+    }
+
+    @Test
+    void updateById_whenUpdateAffectsNoRows_throwsNotFound() {
+        SfSecurityPolicy existing = new SfSecurityPolicy();
+        existing.setId(1L);
+        existing.setPolicyType("ACCESS");
+        SfSecurityPolicy policy = new SfSecurityPolicy();
+        policy.setId(1L);
+        policy.setName("Updated");
+        policy.setPolicyType("ACCESS");
+        when(securityPolicyMapper.selectById(1L)).thenReturn(existing);
+        when(securityPolicyMapper.updateById(any())).thenReturn(0);
+
+        assertThatThrownBy(() -> securityPolicyService.updateById(policy))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.NOT_FOUND.getCode());
     }
 
     // ------------------------------------------------------------------

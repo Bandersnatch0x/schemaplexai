@@ -215,6 +215,23 @@ class UserServiceTest {
     }
 
     @Test
+    void register_whenSaveAffectsNoRows_throwsInternalError() {
+        SfUser newUser = new SfUser();
+        newUser.setUsername("newuser");
+        newUser.setPassword("rawPassword");
+        newUser.setEmail("new@example.com");
+
+        when(userMapper.selectByUsername("newuser")).thenReturn(null);
+        when(passwordEncoder.encode("rawPassword")).thenReturn("$2a$10$encodedNew");
+        when(userMapper.insert(any(SfUser.class))).thenReturn(0);
+
+        assertThatThrownBy(() -> userService.register(newUser))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.INTERNAL_ERROR.getCode());
+    }
+
+    @Test
     void register_preservesExplicitStatus() {
         SfUser newUser = new SfUser();
         newUser.setUsername("statususer");

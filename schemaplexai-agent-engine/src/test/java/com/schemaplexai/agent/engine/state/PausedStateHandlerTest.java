@@ -1,8 +1,8 @@
 package com.schemaplexai.agent.engine.state;
 
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
-import com.schemaplexai.agent.engine.lifecycle.AgentExecutionLifecycleService;
 import com.schemaplexai.agent.engine.lifecycle.ExecutionSnapshot;
+import com.schemaplexai.agent.engine.lifecycle.ExecutionSnapshotPersistence;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,7 +19,7 @@ import static org.mockito.Mockito.*;
 class PausedStateHandlerTest {
 
     @Mock
-    private AgentExecutionLifecycleService lifecycleService;
+    private ExecutionSnapshotPersistence snapshotPersistence;
 
     @Mock
     private AgentStateMachine stateMachine;
@@ -47,7 +47,7 @@ class PausedStateHandlerTest {
         handler.handle(stateMachine, execution);
 
         ArgumentCaptor<ExecutionSnapshot> snapshotCaptor = ArgumentCaptor.forClass(ExecutionSnapshot.class);
-        verify(lifecycleService).saveSnapshot(snapshotCaptor.capture());
+        verify(snapshotPersistence).saveSnapshot(snapshotCaptor.capture());
 
         ExecutionSnapshot snapshot = snapshotCaptor.getValue();
         assertEquals(1L, snapshot.getExecutionId());
@@ -63,7 +63,7 @@ class PausedStateHandlerTest {
         // When snapshot's executionId is null, snapshotId should fallback to execution.getId()
         handler.handle(stateMachine, execution);
 
-        verify(lifecycleService).saveSnapshot(any(ExecutionSnapshot.class));
+        verify(snapshotPersistence).saveSnapshot(any(ExecutionSnapshot.class));
         verify(stateMachine).saveExecution(execution);
         assertEquals(1L, execution.getSnapshotId());
     }

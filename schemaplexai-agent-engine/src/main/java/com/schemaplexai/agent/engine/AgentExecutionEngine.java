@@ -15,16 +15,18 @@ import java.util.UUID;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class AgentExecutionEngine {
+public class AgentExecutionEngine implements AgentExecutionStarter, AgentExecutionRunner {
 
     private final SfAgentExecutionMapper executionMapper;
     private final AgentRuntimeOrchestrator orchestrator;
 
     @Async(AgentExecutionAsyncConfig.EXECUTOR_NAME)
+    @Override
     public void runExecutionAsync(SfAgentExecution execution, String tenantId, String prompt) {
         orchestrator.run(execution, tenantId, prompt);
     }
 
+    @Override
     public SfAgentExecution startExecution(Long agentId, String tenantId, String prompt) {
         SfAgentExecution execution = new SfAgentExecution();
         execution.setAgentId(agentId);

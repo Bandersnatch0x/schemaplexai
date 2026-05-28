@@ -39,7 +39,10 @@ public class EscalationPolicyService {
      * Checks for overdue approval tickets and triggers escalation.
      * Runs every 5 minutes.
      */
-    @Scheduled(fixedDelayString = "${approval.escalation.check.interval-ms:300000}")
+    @Scheduled(
+            fixedDelayString = "${approval.escalation.check.interval-ms:300000}",
+            initialDelayString = "${approval.escalation.check.initial-delay-ms:300000}"
+    )
     public void checkEscalations() {
         Instant now = Instant.now();
 

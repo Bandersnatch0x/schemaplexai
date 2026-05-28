@@ -1,6 +1,7 @@
 package com.schemaplexai.system.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.schemaplexai.common.constants.CommonConstants;
 import com.schemaplexai.common.page.PageParam;
 import com.schemaplexai.common.result.Result;
 import com.schemaplexai.system.entity.*;
@@ -67,6 +68,18 @@ class SystemControllerTest {
         when(req.getHeader("X-User-Id")).thenReturn("1");
         Result<Void> result = authController.logout(req);
         assertThat(result.getCode()).isEqualTo(200);
+    }
+
+    @Test
+    void auth_logout_passesBearerTokenToService() {
+        HttpServletRequest req = mock(HttpServletRequest.class);
+        when(req.getHeader(CommonConstants.HEADER_USER_ID)).thenReturn("1");
+        when(req.getHeader(CommonConstants.HEADER_AUTHORIZATION)).thenReturn("Bearer raw-token");
+
+        Result<Void> result = authController.logout(req);
+
+        assertThat(result.getCode()).isEqualTo(200);
+        verify(authService).logout("1", "raw-token");
     }
 
     // TenantController

@@ -38,8 +38,16 @@ public class AuthController {
     @Operation(summary = "用户登出")
     @PostMapping("/logout")
     public Result<Void> logout(HttpServletRequest request) {
-        String userId = request.getHeader("X-User-Id");
-        authService.logout(userId);
+        String userId = request.getHeader(CommonConstants.HEADER_USER_ID);
+        String token = resolveBearerToken(request.getHeader(CommonConstants.HEADER_AUTHORIZATION));
+        authService.logout(userId, token);
         return Result.success();
+    }
+
+    private String resolveBearerToken(String authorization) {
+        if (authorization == null || !authorization.startsWith(CommonConstants.TOKEN_PREFIX)) {
+            return null;
+        }
+        return authorization.substring(CommonConstants.TOKEN_PREFIX.length());
     }
 }

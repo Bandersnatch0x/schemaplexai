@@ -4,12 +4,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.Channel;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.dao.mapper.notification.NotificationMapper;
+import com.schemaplexai.model.entity.notification.Notification;
 import com.schemaplexai.quality.service.InboxDeduplicationService;
 import com.schemaplexai.task.mq.dto.NotificationMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -25,6 +28,7 @@ import java.util.UUID;
  */
 @Slf4j
 @Component
+@ConditionalOnBean(InboxDeduplicationService.class)
 @RequiredArgsConstructor
 public class NotificationConsumer {
 
@@ -33,6 +37,7 @@ public class NotificationConsumer {
     private final MessageFailLogService messageFailLogService;
     private final ObjectMapper objectMapper;
     private final InboxDeduplicationService dedupService;
+    private final NotificationMapper notificationMapper;
 
     @RabbitListener(queues = "sf.notification.queue")
     public void onMessage(Message message, Channel channel) throws IOException {
@@ -60,28 +65,23 @@ public class NotificationConsumer {
             boolean delivered = routeToChannel(payload);
 
             if (delivered) {
-                try {
-                    dedupService.markProcessed(eventId, "NotificationConsumer");
-                } catch (Exception e) {
-                    log.error("[NotificationConsumer] Failed to mark event as processed: eventId={}", eventId, e);
-                }
+                dedupService.markProcessed(eventId, "NotificationConsumer");
                 log.info("[NotificationConsumer] Notification delivered via {} for user {}",
                         payload.getChannel(), payload.getUserId());
                 channel.basicAck(deliveryTag, false);
             } else {
                 log.warn("[NotificationConsumer] Delivery returned false for channel: {}", payload.getChannel());
-                messageFailLogService.log(message, this.getClass().getSimpleName(),
-                        "Delivery returned false for channel: " + payload.getChannel());
+                recordFailLog(message, "Delivery returned false for channel: " + payload.getChannel(), deliveryTag);
                 channel.basicNack(deliveryTag, false, false);
             }
 
         } catch (BaseException e) {
             log.error("[NotificationConsumer] Business error processing message: {}", body, e);
-            messageFailLogService.log(message, this.getClass().getSimpleName(), e.getMessage());
+            recordFailLog(message, e.getMessage(), deliveryTag);
             channel.basicNack(deliveryTag, false, false);
         } catch (Exception e) {
             log.error("[NotificationConsumer] Failed to process message: {}", body, e);
-            messageFailLogService.log(message, this.getClass().getSimpleName(), e.getMessage());
+            recordFailLog(message, e.getMessage(), deliveryTag);
             channel.basicNack(deliveryTag, false, false);
         }
     }
@@ -108,11 +108,26 @@ public class NotificationConsumer {
     }
 
     private boolean handleInApp(NotificationMessage payload) {
-        log.info("[NotificationConsumer] [IN-APP] toUser={} title={}",
-                payload.getUserId(), payload.getTitle());
-        // TODO: Persist in-app notification to sf_notification table via NotificationService
-        // For now, log the attempt and return success.
-        return true;
+        Notification notification = new Notification();
+        notification.setTenantId(payload.getTenantId());
+        notification.setUserId(payload.getUserId());
+        notification.setTitle(payload.getTitle());
+        notification.setContent(payload.getContent());
+        notification.setType("IN_APP");
+        notification.setRead(false);
+
+        int inserted = notificationMapper.insert(notification);
+        log.info("[NotificationConsumer] [IN-APP] persisted notificationId={} toUser={} title={}",
+                notification.getId(), payload.getUserId(), payload.getTitle());
+        return inserted > 0;
+    }
+
+    private void recordFailLog(Message message, String errorMessage, long deliveryTag) {
+        boolean persisted = messageFailLogService.log(message, this.getClass().getSimpleName(), errorMessage);
+        if (!persisted) {
+            log.warn("[NotificationConsumer] Message fail log persistence returned false for deliveryTag={}",
+                    deliveryTag);
+        }
     }
 
     private UUID resolveEventId(NotificationMessage payload, String body) {

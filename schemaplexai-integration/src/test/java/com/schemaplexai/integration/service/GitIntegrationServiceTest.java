@@ -254,6 +254,18 @@ class GitIntegrationServiceTest {
                 .isEqualTo(ResultCode.PARAM_ERROR.getCode());
     }
 
+    @Test
+    void handleWebhook_missingRepository_throwsParamErrorWithoutStoringEvent() {
+        String payload = "{\"action\":\"opened\",\"ref\":\"refs/heads/main\",\"after\":\"abc123\"}";
+
+        assertThatThrownBy(() -> gitService.handleWebhook("github", payload))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        assertThat(gitService.listWebhookEvents(null, null, 10)).isEmpty();
+    }
+
     // --- listWebhookEvents ---
 
     @Test
@@ -270,6 +282,14 @@ class GitIntegrationServiceTest {
 
     @Test
     void listWebhookEvents_respectsLimit() {
+        assertThat(gitService.listWebhookEvents(null, null, 0)).isEmpty();
+    }
+
+    @Test
+    void listWebhookEvents_zeroLimitWithStoredEvents_returnsEmpty() {
+        gitService.registerRepository("github", "o", "r", "url", "main", "t");
+        gitService.handleWebhook("github", "{\"action\":\"opened\",\"repository\":{\"full_name\":\"o/r\"},\"ref\":\"refs/heads/main\",\"after\":\"abc123\"}");
+
         assertThat(gitService.listWebhookEvents(null, null, 0)).isEmpty();
     }
 

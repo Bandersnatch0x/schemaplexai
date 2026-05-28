@@ -48,6 +48,16 @@ class SpecSteeringServiceImplTest {
     // ------------------------------------------------------------------
 
     @Test
+    void evaluateSteeringRules_nullSpecId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specSteeringService.evaluateSteeringRules(null, "content"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verifyNoInteractions(specSteeringMapper);
+    }
+
+    @Test
     void evaluateSteeringRules_nullContent_throwsParamError() {
         assertThatThrownBy(() -> specSteeringService.evaluateSteeringRules(1L, null))
                 .isInstanceOf(BaseException.class)
@@ -127,6 +137,16 @@ class SpecSteeringServiceImplTest {
     // ------------------------------------------------------------------
 
     @Test
+    void applySteering_nullSpecId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specSteeringService.applySteering(null, "content"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verifyNoInteractions(specSteeringMapper);
+    }
+
+    @Test
     void applySteering_nullContent_throwsParamError() {
         assertThatThrownBy(() -> specSteeringService.applySteering(1L, null))
                 .isInstanceOf(BaseException.class)
@@ -179,6 +199,16 @@ class SpecSteeringServiceImplTest {
     // ------------------------------------------------------------------
 
     @Test
+    void listActiveSteerings_nullSpecId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specSteeringService.listActiveSteerings(null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verifyNoInteractions(specSteeringMapper);
+    }
+
+    @Test
     void listActiveSteerings_returnsSteeringsWithAnyFieldSet() {
         SfSpecSteering steering = new SfSpecSteering();
         steering.setDirection("dir");
@@ -202,6 +232,16 @@ class SpecSteeringServiceImplTest {
     // ------------------------------------------------------------------
     // validateSteeringConfig
     // ------------------------------------------------------------------
+
+    @Test
+    void validateSteeringConfig_nullSteeringId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specSteeringService.validateSteeringConfig(null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verifyNoInteractions(specSteeringMapper);
+    }
 
     @Test
     void validateSteeringConfig_notFound_throwsNotFound() {

@@ -12,8 +12,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -60,9 +60,23 @@ class MemoryConsolidationJobTest {
     }
 
     @Test
-    void run_redisThrowsException_doesNotThrow() {
+    void run_redisKeysThrowsException_propagates() {
         when(redisTemplate.keys("chat:memory:*")).thenThrow(new RuntimeException("Redis error"));
 
-        assertThatNoException().isThrownBy(() -> job.run());
+        assertThatThrownBy(() -> job.run())
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("Redis error");
+    }
+
+    @Test
+    void run_expireThrowsException_propagates() {
+        Set<String> keys = new HashSet<>();
+        keys.add("chat:memory:user1");
+        when(redisTemplate.keys("chat:memory:*")).thenReturn(keys);
+        when(redisTemplate.expire(anyString(), any())).thenThrow(new RuntimeException("expire failed"));
+
+        assertThatThrownBy(() -> job.run())
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("expire failed");
     }
 }

@@ -1,6 +1,7 @@
 package com.schemaplexai.agent.engine.groupchat;
 
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
+import com.schemaplexai.agent.engine.model.AiModelRouter;
 import com.schemaplexai.agent.engine.model.LlmProvider;
 import com.schemaplexai.agent.engine.state.AgentExecutionState;
 import com.schemaplexai.agent.engine.state.AgentStateHandler;
@@ -32,11 +33,11 @@ import org.springframework.stereotype.Component;
 public class GroupChatStateHandler implements AgentStateHandler {
 
     private final GroupChatOrchestrator orchestrator;
-    private final LlmProvider llmProvider;
+    private final AiModelRouter aiModelRouter;
 
-    public GroupChatStateHandler(GroupChatOrchestrator orchestrator, LlmProvider llmProvider) {
+    public GroupChatStateHandler(GroupChatOrchestrator orchestrator, AiModelRouter aiModelRouter) {
         this.orchestrator = orchestrator;
-        this.llmProvider = llmProvider;
+        this.aiModelRouter = aiModelRouter;
     }
 
     @Override
@@ -54,6 +55,7 @@ public class GroupChatStateHandler implements AgentStateHandler {
             modelId = "gpt-4o";
         }
 
+        LlmProvider llmProvider = aiModelRouter.route(modelId);
         orchestrator.runGroupChat(stateMachine, execution, llmProvider, modelId);
     }
 }

@@ -14,6 +14,7 @@ import org.springframework.amqp.rabbit.annotation.Exchange;
 import org.springframework.amqp.rabbit.annotation.Queue;
 import org.springframework.amqp.rabbit.annotation.QueueBinding;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Component;
 
@@ -26,7 +27,7 @@ import java.util.List;
  * <p>
  * Each execution maintains its own buffer and confirmed-seq watermark.
  * Events arriving out of order are held until the missing seq arrives.
- * Gap detection triggers {@link GapRecoveryJob} for automatic repair.
+ * Gap detection triggers {@link GapRecoveryJob} for automatic repair when enabled.
  * <p>
  * Idempotent: duplicate eventIds are silently ignored (UUID PK on sf_execution_event).
  */
@@ -40,7 +41,7 @@ public class EventReorderingConsumer {
 
     private final ExecutionEventBuffer eventBuffer;
     private final ExecutionEventService executionEventService;
-    private final GapRecoveryJob gapRecoveryJob;
+    private final ObjectProvider<GapRecoveryJob> gapRecoveryJobProvider;
     private final ObjectMapper objectMapper;
 
     @RabbitListener(
@@ -76,7 +77,7 @@ public class EventReorderingConsumer {
                         msg.executionId(),
                         eventBuffer.getNextExpectedSeq(msg.executionId()),
                         eventBuffer.getBufferedCount(msg.executionId()));
-                gapRecoveryJob.recoverGapsForExecution(msg.executionId());
+                triggerGapRecovery(msg.executionId());
             }
 
             channel.basicAck(deliveryTag, false);
@@ -87,7 +88,7 @@ public class EventReorderingConsumer {
         }
     }
 
-    private void applyEvent(ExecutionEvent event) {
+    private void applyEvent(ExecutionEvent event) throws Exception {
         try {
             executionEventService.writeEvent(event);
             log.debug("[EventReorderingConsumer] Applied ordered event: execution={}, seq={}, type={}",
@@ -98,7 +99,18 @@ public class EventReorderingConsumer {
         } catch (Exception e) {
             log.error("[EventReorderingConsumer] Failed to apply event: execution={}, seq={}",
                     event.getExecutionId(), event.getSeq(), e);
+            throw e;
         }
+    }
+
+    private void triggerGapRecovery(Long executionId) {
+        GapRecoveryJob gapRecoveryJob = gapRecoveryJobProvider.getIfAvailable();
+        if (gapRecoveryJob == null) {
+            log.warn("[EventReorderingConsumer] Gap recovery is disabled; skipping recovery for execution={}",
+                    executionId);
+            return;
+        }
+        gapRecoveryJob.recoverGapsForExecution(executionId);
     }
 
     private ExecutionEvent convert(ExecutionEventMessage msg) {

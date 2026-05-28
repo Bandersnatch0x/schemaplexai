@@ -8,16 +8,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
- * Service that simulates multiple agent strategies in a sandbox to find optimal approaches.
+ * Service that delegates agent strategy experiments to a configured runtime.
  * Runs experiments, compares results, and recommends the best strategy per task type.
  */
 @Slf4j
 @Service
 public class AgentLab {
 
-    private static final double DEFAULT_SUCCESS_RATE = 0.75;
-    private static final double DEFAULT_LATENCY_MS = 1200.0;
-    private static final double DEFAULT_TOKEN_USAGE = 800.0;
     private static final double LATENCY_WEIGHT = 0.25;
     private static final double SUCCESS_WEIGHT = 0.50;
     private static final double TOKEN_WEIGHT = 0.25;
@@ -25,9 +22,18 @@ public class AgentLab {
     private static final double TOKEN_NORMALIZATION = 4000.0;
 
     private final Map<String, List<ExperimentResult>> experimentHistory = new ConcurrentHashMap<>();
+    private final ExperimentRuntime experimentRuntime;
+
+    public AgentLab() {
+        this(null);
+    }
+
+    AgentLab(ExperimentRuntime experimentRuntime) {
+        this.experimentRuntime = experimentRuntime;
+    }
 
     /**
-     * Simulates running an experiment for the given task type with a list of candidate strategies.
+     * Runs an experiment for the given task type with a list of candidate strategies.
      *
      * @param taskType   the type of task being evaluated (e.g., "summarization", "code-generation")
      * @param strategies list of strategy names to test
@@ -41,20 +47,24 @@ public class AgentLab {
             return Collections.emptyList();
         }
 
-        String normalizedTask = taskType.toLowerCase(Locale.ROOT);
-        List<ExperimentResult> results = new ArrayList<>();
-
-        for (String strategy : strategies) {
-            if (strategy == null || strategy.isBlank()) {
-                continue;
-            }
-            ExperimentResult result = simulateStrategy(normalizedTask, strategy);
-            results.add(result);
+        String normalizedTask = taskType.trim().toLowerCase(Locale.ROOT);
+        List<String> runnableStrategies = strategies.stream()
+                .filter(strategy -> strategy != null && !strategy.isBlank())
+                .toList();
+        if (runnableStrategies.isEmpty()) {
+            return Collections.emptyList();
         }
 
+        if (experimentRuntime == null) {
+            throw new UnsupportedOperationException("AgentLab experiment runtime is not configured.");
+        }
+
+        List<ExperimentResult> results = Optional.ofNullable(experimentRuntime.run(normalizedTask, runnableStrategies))
+                .map(List::copyOf)
+                .orElseGet(Collections::emptyList);
         experimentHistory.put(normalizedTask, results);
         log.info("Completed experiment for taskType={} with {} strategies", normalizedTask, results.size());
-        return Collections.unmodifiableList(results);
+        return results;
     }
 
     /**
@@ -93,19 +103,6 @@ public class AgentLab {
                 .orElse("");
     }
 
-    private ExperimentResult simulateStrategy(String taskType, String strategy) {
-        // Deterministic pseudo-random values based on hash codes for stable tests
-        int seed = Objects.hash(taskType, strategy);
-        Random random = new Random(seed);
-
-        double successRate = clamp(random.nextDouble(0.4, 1.0), 0.0, 1.0);
-        double latencyMs = random.nextDouble(200.0, 4000.0);
-        double tokenUsage = random.nextDouble(200.0, 3000.0);
-
-        double score = calculateScore(successRate, latencyMs, tokenUsage);
-        return new ExperimentResult(strategy, successRate, latencyMs, tokenUsage, score);
-    }
-
     double calculateScore(double successRate, double latencyMs, double tokenUsage) {
         double normalizedLatency = Math.max(0.0, 1.0 - (latencyMs / LATENCY_NORMALIZATION_MS));
         double normalizedTokens = Math.max(0.0, 1.0 - (tokenUsage / TOKEN_NORMALIZATION));
@@ -114,7 +111,7 @@ public class AgentLab {
                 + (normalizedTokens * TOKEN_WEIGHT);
     }
 
-    private double clamp(double value, double min, double max) {
-        return Math.max(min, Math.min(max, value));
+    interface ExperimentRuntime {
+        List<ExperimentResult> run(String taskType, List<String> strategies);
     }
 }

@@ -122,7 +122,16 @@
       "Bash(python *)",
       "Bash(grep \"^\\\\\\\\.claude/changes/\")",
       "Bash(grep -E \"\\\\.java$\")",
-      "Skill(run-tasks)"
+      "Skill(run-tasks)",
+      "Bash(claude mcp *)",
+      "Bash(cmd *)",
+      "Bash(npx -y gitnexus@latest mcp --version)",
+      "Bash(npx -y gitnexus@latest --help)",
+      "Bash(sshpass *)",
+      "Bash(pacman -S --noconfirm sshpass)",
+      "Bash(pip show *)",
+      "Bash(ssh -o StrictHostKeyChecking=no -o PreferredAuthentications=password ubuntu@43.133.225.71 'echo connected')",
+      "Bash(pip install *)"
     ]
   },
   "hooks": {

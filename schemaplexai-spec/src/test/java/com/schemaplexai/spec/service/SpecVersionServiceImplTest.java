@@ -43,6 +43,26 @@ class SpecVersionServiceImplTest {
     // ------------------------------------------------------------------
 
     @Test
+    void diff_nullVersionAId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specVersionService.diff(null, 2L))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specVersionMapper, never()).selectById(any());
+    }
+
+    @Test
+    void diff_nullVersionBId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specVersionService.diff(1L, null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specVersionMapper, never()).selectById(any());
+    }
+
+    @Test
     void diff_versionANull_throwsSpecNotFound() {
         when(specVersionMapper.selectById(1L)).thenReturn(null);
         when(specVersionMapper.selectById(2L)).thenReturn(new SfSpecVersion());
@@ -103,6 +123,39 @@ class SpecVersionServiceImplTest {
     // ------------------------------------------------------------------
     // createVersion
     // ------------------------------------------------------------------
+
+    @Test
+    void createVersion_nullSpecId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specVersionService.createVersion(null, "v1", "content", "initial"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specMapper, never()).selectById(any());
+        verify(specVersionMapper, never()).insert(any());
+    }
+
+    @Test
+    void createVersion_nullVersion_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specVersionService.createVersion(1L, null, "content", "initial"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specMapper, never()).selectById(any());
+        verify(specVersionMapper, never()).insert(any());
+    }
+
+    @Test
+    void createVersion_blankVersion_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specVersionService.createVersion(1L, " ", "content", "initial"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specMapper, never()).selectById(any());
+        verify(specVersionMapper, never()).insert(any());
+    }
 
     @Test
     void createVersion_specNotFound_throwsSpecNotFound() {

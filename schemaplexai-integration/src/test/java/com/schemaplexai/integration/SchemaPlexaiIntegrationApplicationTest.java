@@ -1,15 +1,25 @@
 package com.schemaplexai.integration;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.ConfigurableApplicationContext;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SchemaPlexaiIntegrationApplicationTest {
 
     @Test
-    void mainMethod_doesNotThrow() {
-        // Coverage for the main method: verify it can be invoked without error.
-        // We don't actually call SpringApplication.run to avoid starting the context.
-        assertThat(SchemaPlexaiIntegrationApplication.class).isNotNull();
+    void applicationStartsWithTestConfiguration() {
+        try (ConfigurableApplicationContext context = new SpringApplicationBuilder(SchemaPlexaiIntegrationApplication.class)
+                .run(
+                        "--server.port=0",
+                        "--spring.datasource.url=jdbc:h2:mem:integration_smoke;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
+                        "--spring.datasource.driver-class-name=org.h2.Driver",
+                        "--spring.datasource.username=sa",
+                        "--spring.datasource.password=",
+                        "--jwt.secret=this-is-a-very-long-test-secret-for-integration"
+                )) {
+            assertTrue(context.isRunning());
+        }
     }
 }

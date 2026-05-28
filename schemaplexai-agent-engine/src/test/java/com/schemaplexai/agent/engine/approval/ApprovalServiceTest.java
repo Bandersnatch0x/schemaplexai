@@ -8,9 +8,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -28,12 +28,14 @@ class ApprovalServiceTest {
     private AgentStateMachine stateMachine;
 
     @Mock
+    private ObjectProvider<AgentStateMachine> stateMachineProvider;
+
+    @Mock
     private SfAgentExecutionMapper executionMapper;
 
     @Mock
     private AuditTrail auditTrail;
 
-    @InjectMocks
     private ApprovalService approvalService;
 
     private ApprovalRequest sampleRequest;
@@ -56,6 +58,8 @@ class ApprovalServiceTest {
         sampleExecution.setId(100L);
         sampleExecution.setAgentId(1L);
         sampleExecution.setState(AgentExecutionState.PAUSED.name());
+        lenient().when(stateMachineProvider.getObject()).thenReturn(stateMachine);
+        approvalService = new ApprovalService(stateMachineProvider, executionMapper, auditTrail);
     }
 
     // ---- requestApproval ----
@@ -71,6 +75,7 @@ class ApprovalServiceTest {
         assertThat(stored.get().riskLevel()).isEqualTo("HIGH");
 
         verify(auditTrail).record(any(AuditEntry.class));
+        verify(stateMachineProvider, never()).getObject();
     }
 
     @Test
@@ -97,6 +102,7 @@ class ApprovalServiceTest {
         ArgumentCaptor<AgentExecutionState> stateCaptor = ArgumentCaptor.forClass(AgentExecutionState.class);
         verify(stateMachine).transition(stateCaptor.capture(), eq(sampleExecution));
         assertThat(stateCaptor.getValue()).isEqualTo(AgentExecutionState.THINKING);
+        verify(stateMachineProvider).getObject();
 
         assertThat(approvalService.hasPendingRequest(EXEC_ID)).isFalse();
     }
@@ -130,6 +136,7 @@ class ApprovalServiceTest {
         ArgumentCaptor<AgentExecutionState> stateCaptor = ArgumentCaptor.forClass(AgentExecutionState.class);
         verify(stateMachine).transition(stateCaptor.capture(), eq(sampleExecution));
         assertThat(stateCaptor.getValue()).isEqualTo(AgentExecutionState.FAILED);
+        verify(stateMachineProvider).getObject();
     }
 
     @Test
@@ -168,6 +175,7 @@ class ApprovalServiceTest {
 
         // No state transition should occur
         verify(stateMachine, never()).transition(any(), any());
+        verify(stateMachineProvider, never()).getObject();
     }
 
     @Test

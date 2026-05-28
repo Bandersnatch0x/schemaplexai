@@ -16,6 +16,8 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -49,7 +51,9 @@ public class JenkinsIntegrationService {
         if (parameters != null) {
             parameters.forEach((key, value) -> {
                 if (!body.isEmpty()) body.append("&");
-                body.append(key).append("=").append(value);
+                body.append(urlEncode(String.valueOf(key)))
+                        .append("=")
+                        .append(urlEncode(String.valueOf(value)));
             });
         }
 
@@ -179,6 +183,10 @@ public class JenkinsIntegrationService {
             headers.set("Authorization", "Basic " + auth);
         }
         return headers;
+    }
+
+    private String urlEncode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
     private void processBuildResult(String jobName, String buildResult) {

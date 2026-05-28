@@ -1,6 +1,5 @@
 package com.schemaplexai.agent.engine.groupchat;
 
-import com.schemaplexai.agent.engine.AgentExecutionEngine;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.model.LlmMessage;
 import com.schemaplexai.agent.engine.model.LlmProvider;
@@ -33,9 +32,6 @@ class GroupChatOrchestratorTest {
     private ConsensusDetector consensusDetector;
 
     @Mock
-    private AgentExecutionEngine executionEngine;
-
-    @Mock
     private ExecutionEventBus eventBus;
 
     @Mock
@@ -50,7 +46,7 @@ class GroupChatOrchestratorTest {
 
     @BeforeEach
     void setUp() {
-        orchestrator = new GroupChatOrchestrator(speakerSelector, consensusDetector, executionEngine, eventBus);
+        orchestrator = new GroupChatOrchestrator(speakerSelector, consensusDetector, eventBus);
         agents = List.of(
                 new AgentRouter.AgentCapability("coder", "Writes code", Set.of("code", "java"), 2),
                 new AgentRouter.AgentCapability("reviewer", "Reviews code", Set.of("review", "security"), 2)

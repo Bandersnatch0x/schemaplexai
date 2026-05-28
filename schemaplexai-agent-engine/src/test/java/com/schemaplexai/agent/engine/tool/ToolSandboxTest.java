@@ -33,12 +33,14 @@ class ToolSandboxTest {
     }
 
     @Test
-    void shouldAllowWhitelistedTool() throws ToolExecutionException {
+    void shouldFailExplicitlyWhenContainerExecutionIsNotImplemented() {
         ToolCall toolCall = new ToolCall("calculator", Map.of("expression", "2+2"));
-        ToolResult result = sandbox.execute(toolCall, SandboxConfig.defaultConfig());
 
-        assertTrue(result.success());
-        assertNotNull(result.output());
+        ToolExecutionException ex = assertThrows(ToolExecutionException.class, () ->
+                sandbox.execute(toolCall, SandboxConfig.defaultConfig()));
+
+        assertEquals(ToolErrorCategory.INTERNAL_ERROR, ex.getErrorCategory());
+        assertTrue(ex.getMessage().contains("not implemented"));
     }
 
     @Test

@@ -1,3 +1,4 @@
+-- V2026_05_09_04__add_processed_event_table.sql
 -- M7.8: Add sf_processed_event table (quality module)
 -- Note: This table also exists in agent-engine migration V2026_05_09__execution_control_plane_tables.sql
 -- as part of the inbox deduplication pattern. This migration ensures the table is present

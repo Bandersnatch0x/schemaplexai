@@ -100,7 +100,7 @@ class McpToolAdapterTest {
     }
 
     @Test
-    void shouldReturnSuccessWhenAllChecksPass() throws Exception {
+    void shouldReturnErrorWhenProtocolCallIsNotImplemented() throws Exception {
         when(serverRegistry.isAllowed("github", 1L)).thenReturn(true);
         when(serverRegistry.isToolAllowed("github", "read_file", 1L)).thenReturn(true);
         when(clientManager.create("github")).thenReturn(mcpClient);
@@ -111,7 +111,7 @@ class McpToolAdapterTest {
 
         ToolResult result = adapter.execute(call, ctx);
 
-        assertThat(result.success()).isTrue();
-        assertThat(result.output()).contains("validated");
+        assertThat(result.isError()).isTrue();
+        assertThat(result.errorMessage()).contains("not implemented");
     }
 }

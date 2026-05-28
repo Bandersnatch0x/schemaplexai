@@ -1,6 +1,6 @@
 package com.schemaplexai.agent.engine.reasoning;
 
-import com.schemaplexai.agent.engine.model.LlmProvider;
+import com.schemaplexai.agent.engine.model.AiModelRouter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,7 +34,7 @@ public class SelfCorrectionEngine {
     private static final String CONVERGENCE_MARKER = "SATISFACTORY";
     private static final int DEFAULT_MAX_ITERATIONS = 5;
 
-    private final LlmProvider llmProvider;
+    private final AiModelRouter aiModelRouter;
 
     /**
      * Generates output with iterative self-correction.
@@ -97,7 +97,7 @@ public class SelfCorrectionEngine {
             return "Output is empty — provide substantive content.";
         }
         String prompt = DEFAULT_CRITIQUE_PROMPT + "\n\nOutput to critique:\n" + output;
-        return llmProvider.generate(prompt, null, 0.3);
+        return aiModelRouter.generateWithFallback(prompt, null, 0.3);
     }
 
     /**
@@ -117,11 +117,11 @@ public class SelfCorrectionEngine {
         String prompt = DEFAULT_REFINE_PROMPT
                 + "\n\nOriginal Output:\n" + output
                 + "\n\nCritique:\n" + critique;
-        return llmProvider.generate(prompt, null, 0.5);
+        return aiModelRouter.generateWithFallback(prompt, null, 0.5);
     }
 
     private String generateInitial(String prompt) {
-        return llmProvider.generate(prompt, null, 0.7);
+        return aiModelRouter.generateWithFallback(prompt, null, 0.7);
     }
 
     private boolean isConverged(String critique) {

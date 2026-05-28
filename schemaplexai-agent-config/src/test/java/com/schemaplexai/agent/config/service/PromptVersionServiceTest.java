@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -30,6 +31,7 @@ class PromptVersionServiceTest {
         SfPromptVersion latest = new SfPromptVersion();
         latest.setVersion(2);
         when(promptVersionMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(latest);
+        when(promptVersionMapper.insert(any(SfPromptVersion.class))).thenReturn(1);
 
         SfPromptVersion result = promptVersionService.createVersion(
                 1L, 10L, "Content v3", "review", "Ready for review");
@@ -42,6 +44,19 @@ class PromptVersionServiceTest {
         assertThat(result.getChangeNote()).isEqualTo("Ready for review");
 
         verify(promptVersionMapper).insert(result);
+    }
+
+    @Test
+    void shouldThrowWhenCreateVersionInsertAffectsNoRows() {
+        SfPromptVersion latest = new SfPromptVersion();
+        latest.setVersion(2);
+        when(promptVersionMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(latest);
+        when(promptVersionMapper.insert(any(SfPromptVersion.class))).thenReturn(0);
+
+        assertThatThrownBy(() -> promptVersionService.createVersion(
+                1L, 10L, "Content v3", "review", "Ready for review"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Prompt version insert affected 0 rows");
     }
 
     @Test

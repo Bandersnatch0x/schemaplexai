@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: schemaplexai-web
+  flyway:
+    enabled: false
   websocket:
     message-buffer-size: 8192
 
@@ -11,6 +13,9 @@ knife4j:
   enable: true
   setting:
     language: zh_cn
+
+jwt:
+  secret: ${JWT_SECRET}
 
 logging:
   level:

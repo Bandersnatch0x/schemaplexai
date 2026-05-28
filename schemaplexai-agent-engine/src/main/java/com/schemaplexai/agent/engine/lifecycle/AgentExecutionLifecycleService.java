@@ -1,13 +1,7 @@
 package com.schemaplexai.agent.engine.lifecycle;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
-import com.schemaplexai.agent.engine.entity.SfAgentExecutionSnapshot;
 import com.schemaplexai.agent.engine.mapper.SfAgentExecutionMapper;
-import com.schemaplexai.agent.engine.mapper.SfAgentExecutionSnapshotMapper;
-import com.schemaplexai.agent.engine.service.ExecutionSnapshotService;
 import com.schemaplexai.agent.engine.state.AgentExecutionState;
 import com.schemaplexai.agent.engine.state.AgentStateMachine;
 import com.schemaplexai.common.constants.CommonConstants;
@@ -16,9 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
-import com.schemaplexai.agent.engine.util.HashUtils;
 import java.time.Duration;
-import java.time.LocalDateTime;
 
 @Slf4j
 @Service
@@ -27,10 +19,8 @@ public class AgentExecutionLifecycleService {
 
     private final AgentStateMachine stateMachine;
     private final SfAgentExecutionMapper executionMapper;
-    private final SfAgentExecutionSnapshotMapper snapshotMapper;
     private final StringRedisTemplate redisTemplate;
-    private final ObjectMapper objectMapper;
-    private final ExecutionSnapshotService executionSnapshotService;
+    private final ExecutionSnapshotPersistence snapshotPersistence;
 
     public void pauseExecution(Long executionId, PauseReason reason) {
         SfAgentExecution execution = executionMapper.selectById(executionId);
@@ -67,65 +57,11 @@ public class AgentExecutionLifecycleService {
     }
 
     public void saveSnapshot(ExecutionSnapshot snapshot) {
-        try {
-            String snapshotJson = objectMapper.writeValueAsString(snapshot);
-
-            // Legacy: save to sf_agent_execution_snapshot with hash verification
-            SfAgentExecutionSnapshot entity = new SfAgentExecutionSnapshot();
-            entity.setExecutionId(snapshot.getExecutionId());
-            entity.setSnapshotJson(snapshotJson);
-            entity.setSnapshotHash(HashUtils.sha256(snapshotJson));
-            entity.setTenantId(null); // will be filled by interceptor
-            snapshotMapper.insert(entity);
-
-            // M6: dual-tier snapshot (Redis L1 + PG L2 via sf_execution_snapshot)
-            executionSnapshotService.saveSnapshot(snapshot.getExecutionId(), snapshotJson, 0);
-
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize execution snapshot for execution {}", snapshot.getExecutionId(), e);
-        }
+        snapshotPersistence.saveSnapshot(snapshot);
     }
 
     public ExecutionSnapshot getLatestSnapshot(Long executionId) {
-        // Try dual-tier snapshot service (Redis L1 first)
-        String cachedJson = executionSnapshotService.restoreSnapshot(executionId);
-        if (cachedJson != null && !cachedJson.isBlank()) {
-            try {
-                return objectMapper.readValue(cachedJson, ExecutionSnapshot.class);
-            } catch (Exception e) {
-                log.warn("Failed to deserialize cached snapshot for execution {}, falling back to legacy DB", executionId, e);
-            }
-        }
-
-        // Fallback to legacy sf_agent_execution_snapshot table
-        SfAgentExecutionSnapshot entity = snapshotMapper.selectOne(
-                new LambdaQueryWrapper<SfAgentExecutionSnapshot>()
-                        .eq(SfAgentExecutionSnapshot::getExecutionId, executionId)
-                        .orderByDesc(SfAgentExecutionSnapshot::getCreatedAt)
-                        .last("LIMIT 1")
-        );
-        if (entity == null || entity.getSnapshotJson() == null) {
-            return null;
-        }
-
-        String snapshotJson = entity.getSnapshotJson();
-        String storedHash = entity.getSnapshotHash();
-        if (storedHash != null && !storedHash.isBlank()) {
-            String computedHash = HashUtils.sha256(snapshotJson);
-            if (!HashUtils.constantTimeEquals(storedHash, computedHash)) {
-                log.error("Snapshot hash mismatch for execution {}. Data may have been tampered.", executionId);
-                return null;
-            }
-        } else {
-            log.warn("Snapshot hash missing for execution {} (legacy data). Allowing through without integrity check.", executionId);
-        }
-
-        try {
-            return objectMapper.readValue(snapshotJson, ExecutionSnapshot.class);
-        } catch (Exception e) {
-            log.error("Failed to deserialize snapshot for execution {}", executionId, e);
-            return null;
-        }
+        return snapshotPersistence.getLatestSnapshot(executionId);
     }
 
 }

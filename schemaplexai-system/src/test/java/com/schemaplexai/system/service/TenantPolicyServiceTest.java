@@ -85,6 +85,30 @@ class TenantPolicyServiceTest {
     }
 
     @Test
+    void saveOrUpdatePolicy_blankTenantId_throwsParamErrorWithoutWriting() {
+        assertThatThrownBy(() -> tenantPolicyService.saveOrUpdatePolicy(" ", "RATE_LIMIT", "{\"rpm\":60}"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(tenantPolicyMapper, never()).insert(any(TenantPolicy.class));
+        verify(tenantPolicyMapper, never()).updateById(any(TenantPolicy.class));
+        verify(rabbitTemplate, never()).convertAndSend(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void saveOrUpdatePolicy_blankPolicyType_throwsParamErrorWithoutWriting() {
+        assertThatThrownBy(() -> tenantPolicyService.saveOrUpdatePolicy("T1", " ", "{\"rpm\":60}"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(tenantPolicyMapper, never()).insert(any(TenantPolicy.class));
+        verify(tenantPolicyMapper, never()).updateById(any(TenantPolicy.class));
+        verify(rabbitTemplate, never()).convertAndSend(anyString(), anyString(), anyString());
+    }
+
+    @Test
     void saveOrUpdatePolicy_newPolicy_insertsAndPublishesEvent() {
         when(tenantPolicyMapper.selectOne(any())).thenReturn(null);
         when(tenantPolicyMapper.insert(any(TenantPolicy.class))).thenReturn(1);

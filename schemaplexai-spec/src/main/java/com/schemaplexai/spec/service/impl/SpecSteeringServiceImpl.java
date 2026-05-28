@@ -28,6 +28,7 @@ public class SpecSteeringServiceImpl extends ServiceImpl<SfSpecSteeringMapper, S
 
     @Override
     public Map<String, Boolean> evaluateSteeringRules(Long specId, String content) {
+        validateSpecId(specId);
         if (!StringUtils.hasText(content)) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Content must not be empty");
         }
@@ -56,6 +57,7 @@ public class SpecSteeringServiceImpl extends ServiceImpl<SfSpecSteeringMapper, S
 
     @Override
     public String applySteering(Long specId, String content) {
+        validateSpecId(specId);
         if (!StringUtils.hasText(content)) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Content must not be empty");
         }
@@ -87,6 +89,7 @@ public class SpecSteeringServiceImpl extends ServiceImpl<SfSpecSteeringMapper, S
 
     @Override
     public List<SfSpecSteering> listActiveSteerings(Long specId) {
+        validateSpecId(specId);
         String tenantId = TenantContextHolder.getTenantId();
         LambdaQueryWrapper<SfSpecSteering> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SfSpecSteering::getSpecId, specId);
@@ -102,6 +105,7 @@ public class SpecSteeringServiceImpl extends ServiceImpl<SfSpecSteeringMapper, S
 
     @Override
     public boolean validateSteeringConfig(Long steeringId) {
+        validateSteeringId(steeringId);
         SfSpecSteering steering = specSteeringMapper.selectById(steeringId);
         if (steering == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Steering not found");
@@ -112,5 +116,17 @@ public class SpecSteeringServiceImpl extends ServiceImpl<SfSpecSteeringMapper, S
         boolean valid = hasDirection || hasConstraints || hasCriteria;
         log.info("Validated steering {}: valid={}", steeringId, valid);
         return valid;
+    }
+
+    private void validateSpecId(Long specId) {
+        if (specId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "specId is required");
+        }
+    }
+
+    private void validateSteeringId(Long steeringId) {
+        if (steeringId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "steeringId is required");
+        }
     }
 }

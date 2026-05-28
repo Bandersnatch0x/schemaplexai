@@ -27,6 +27,7 @@ import com.schemaplexai.agent.engine.tool.ToolDefinition;
 import com.schemaplexai.agent.engine.tool.ToolRegistry;
 import com.schemaplexai.agent.engine.util.TokenEstimator;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 
@@ -59,6 +60,7 @@ public class ThinkingStateHandler implements AgentStateHandler {
     private final FinalAnswerExtractor finalAnswerExtractor;
     private final List<ReasoningStrategy> reasoningStrategies;
 
+    @Autowired
     public ThinkingStateHandler(ContextInjector contextInjector,
                                  CompositeChatMemoryStore chatMemoryStore,
                                  AiModelRouter modelRouter,

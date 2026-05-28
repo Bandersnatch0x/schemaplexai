@@ -1,6 +1,6 @@
 package com.schemaplexai.agent.engine.controller;
 
-import com.schemaplexai.agent.engine.AgentExecutionEngine;
+import com.schemaplexai.agent.engine.AgentExecutionStarter;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.lifecycle.AgentExecutionLifecycleService;
 import com.schemaplexai.agent.engine.lifecycle.ExecutionSnapshot;
@@ -25,7 +25,7 @@ import java.util.Map;
 @Tag(name = "Agent Execution", description = "Agent execution lifecycle and SSE event streaming")
 public class AgentExecutionController {
 
-    private final AgentExecutionEngine executionEngine;
+    private final AgentExecutionStarter executionStarter;
     private final AgentExecutionLifecycleService lifecycleService;
     private final SseTokenValidator sseTokenValidator;
     private final ExecutionEventBus eventBus;
@@ -36,7 +36,7 @@ public class AgentExecutionController {
     public Result<SfAgentExecution> execute(@PathVariable Long id, @RequestBody Map<String, String> body) {
         String tenantId = body.get("tenantId");
         String prompt = body.get("prompt");
-        SfAgentExecution execution = executionEngine.startExecution(id, tenantId, prompt);
+        SfAgentExecution execution = executionStarter.startExecution(id, tenantId, prompt);
         return Result.success(execution);
     }
 

@@ -28,14 +28,21 @@ public class ContextServiceImpl extends ServiceImpl<SfContextMapper, SfContext> 
         if (name == null || name.isBlank()) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Context name is required");
         }
+        if (workspaceId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "Workspace ID is required");
+        }
+        if (type == null || type.isBlank()) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "Context type is required");
+        }
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "Tenant ID is required");
+        }
         SfContext context = new SfContext();
         context.setWorkspaceId(workspaceId);
         context.setName(name.trim());
         context.setType(type);
-        String tenantId = TenantContextHolder.getTenantId();
-        if (tenantId != null) {
-            context.setTenantId(tenantId);
-        }
+        context.setTenantId(tenantId);
         baseMapper.insert(context);
         log.info("Ingested context: id={}, name={}, workspaceId={}", context.getId(), name, workspaceId);
         return context;
@@ -63,6 +70,9 @@ public class ContextServiceImpl extends ServiceImpl<SfContextMapper, SfContext> 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void refreshContext(Long contextId) {
+        if (contextId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "Context ID is required");
+        }
         SfContext context = baseMapper.selectById(contextId);
         if (context == null) {
             throw new BaseException(ResultCode.CONTEXT_NOT_FOUND);

@@ -118,8 +118,8 @@ class DeadLetterHandlerTest {
     }
 
     @Test
-    @DisplayName("Audit publish failure does not prevent message ack")
-    void auditPublishFailureDoesNotPreventAck() throws Exception {
+    @DisplayName("Audit publish failure nacks without ack")
+    void auditPublishFailureNacksWithoutAck() throws Exception {
         Message message = createMessage(samplePayload);
 
         when(objectMapper.readValue(samplePayload, ExecutionEventMessage.class)).thenReturn(sampleEvent);
@@ -129,7 +129,8 @@ class DeadLetterHandlerTest {
 
         deadLetterHandler.onMessage(message, channel);
 
-        verify(channel).basicAck(1L, false);
+        verify(channel).basicNack(1L, false, false);
+        verify(channel, never()).basicAck(anyLong(), anyBoolean());
     }
 
     private Message createMessage(String body) {

@@ -3,6 +3,7 @@ package com.schemaplexai.task.mq;
 import com.schemaplexai.common.constants.CommonConstants;
 import com.schemaplexai.task.entity.SfIdempotencyKey;
 import com.schemaplexai.task.mapper.SfIdempotencyKeyMapper;
+import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -14,6 +15,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
@@ -32,10 +34,12 @@ public class MqIdempotencyInterceptor {
     public Object around(ProceedingJoinPoint joinPoint) throws Throwable {
         Object[] args = joinPoint.getArgs();
         Message message = null;
+        Channel channel = null;
         for (Object arg : args) {
             if (arg instanceof Message) {
                 message = (Message) arg;
-                break;
+            } else if (arg instanceof Channel) {
+                channel = (Channel) arg;
             }
         }
 
@@ -55,6 +59,7 @@ public class MqIdempotencyInterceptor {
         Boolean existsInRedis = redisTemplate.hasKey(redisKey);
         if (Boolean.TRUE.equals(existsInRedis)) {
             log.warn("[MQ Idempotency] Message already consumed, skip. messageId={}, consumerGroup={}", messageId, consumerGroup);
+            ackIfManualChannelPresent(message, channel);
             return null;
         }
 
@@ -69,6 +74,7 @@ public class MqIdempotencyInterceptor {
         } catch (DuplicateKeyException e) {
             log.warn("[MQ Idempotency] Message already consumed in DB, skip. messageId={}, consumerGroup={}", messageId, consumerGroup);
             redisTemplate.opsForValue().set(redisKey, "1", 24, TimeUnit.HOURS);
+            ackIfManualChannelPresent(message, channel);
             return null;
         }
 
@@ -91,5 +97,11 @@ public class MqIdempotencyInterceptor {
 
         log.info("[MQ Idempotency] Message consumed successfully. messageId={}, consumerGroup={}", messageId, consumerGroup);
         return result;
+    }
+
+    private void ackIfManualChannelPresent(Message message, Channel channel) throws IOException {
+        if (channel != null) {
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+        }
     }
 }

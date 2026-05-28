@@ -6,6 +6,7 @@ import com.schemaplexai.quality.mapper.ApprovalTicketMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -23,6 +24,7 @@ public class ApprovalRequestConsumer {
     private final ApprovalTicketMapper approvalTicketMapper;
     private final InboxDeduplicationService dedupService;
 
+    @Transactional
     public void consume(ApprovalRequestEvent event) {
         if (event == null || event.approvalRequestId() == null) {
             return;
@@ -52,10 +54,6 @@ public class ApprovalRequestConsumer {
 
         approvalTicketMapper.insert(ticket);
 
-        try {
-            dedupService.markProcessed(eventId, CONSUMER_NAME);
-        } catch (Exception e) {
-            log.error("[ApprovalRequestConsumer] Failed to mark event as processed: eventId={}", eventId, e);
-        }
+        dedupService.markProcessed(eventId, CONSUMER_NAME);
     }
 }

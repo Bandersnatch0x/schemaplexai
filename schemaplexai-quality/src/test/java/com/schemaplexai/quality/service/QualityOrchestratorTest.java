@@ -129,7 +129,7 @@ class QualityOrchestratorTest {
     }
 
     @Test
-    void evaluate_unknownRule_warnsAndSkips() throws JsonProcessingException {
+    void evaluate_unknownRule_returnsFailedReport() throws JsonProcessingException {
         SfQualityGate gate = new SfQualityGate();
         gate.setName("Test Gate");
         gate.setRulesJson("[\"UNKNOWN_RULE\"]");
@@ -140,9 +140,11 @@ class QualityOrchestratorTest {
         QualityContext context = new QualityContext(4L, null, Map.of());
         QualityReport report = orchestrator.evaluate(4L, context);
 
-        assertThat(report.isAllPassed()).isTrue();
-        assertThat(report.getResults()).isEmpty();
-        verify(issueMapper, never()).insert(any());
+        assertThat(report.isAllPassed()).isFalse();
+        assertThat(report.getResults()).hasSize(1);
+        assertThat(report.getResults().get(0).isPassed()).isFalse();
+        assertThat(report.getResults().get(0).getSeverity()).isEqualTo("CRITICAL");
+        assertThat(report.getResults().get(0).getMessage()).contains("UNKNOWN_RULE");
     }
 
     @Test
@@ -175,7 +177,7 @@ class QualityOrchestratorTest {
     }
 
     @Test
-    void evaluate_parseError_handlesGracefully() throws JsonProcessingException {
+    void evaluate_parseError_returnsFailedReport() throws JsonProcessingException {
         SfQualityGate gate = new SfQualityGate();
         gate.setName("Bad Gate");
         gate.setRulesJson("invalid-json");
@@ -186,8 +188,11 @@ class QualityOrchestratorTest {
         QualityContext context = new QualityContext(7L, null, Map.of());
         QualityReport report = orchestrator.evaluate(7L, context);
 
-        assertThat(report.isAllPassed()).isTrue();
-        assertThat(report.getResults()).isEmpty();
+        assertThat(report.isAllPassed()).isFalse();
+        assertThat(report.getResults()).hasSize(1);
+        assertThat(report.getResults().get(0).isPassed()).isFalse();
+        assertThat(report.getResults().get(0).getSeverity()).isEqualTo("CRITICAL");
+        assertThat(report.getResults().get(0).getMessage()).contains("Bad Gate");
     }
 
     @Test

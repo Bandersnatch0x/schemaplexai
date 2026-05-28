@@ -2,7 +2,7 @@ package com.schemaplexai.agent.engine.state;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.schemaplexai.agent.engine.AgentExecutionEngine;
+import com.schemaplexai.agent.engine.AgentExecutionStarter;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.entity.SfAgentExecutionSnapshot;
 import com.schemaplexai.agent.engine.mapper.SfAgentExecutionMapper;
@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.List;
 import java.util.Set;
@@ -33,7 +34,10 @@ class HandoffStateHandlerTest {
     private SfAgentExecutionSnapshotMapper snapshotMapper;
 
     @Mock
-    private AgentExecutionEngine executionEngine;
+    private AgentExecutionStarter executionStarter;
+
+    @Mock
+    private ObjectProvider<AgentExecutionStarter> executionStarterProvider;
 
     @Mock
     private ExecutionEventBus eventBus;
@@ -49,7 +53,7 @@ class HandoffStateHandlerTest {
         objectMapper.registerModule(new JavaTimeModule());
         handler = new HandoffStateHandler(
                 executionMapper, snapshotMapper, agentRouter,
-                executionEngine, eventBus, objectMapper
+                executionStarterProvider, eventBus, objectMapper
         );
     }
 
@@ -71,7 +75,8 @@ class HandoffStateHandlerTest {
         AgentStateMachine stateMachine = mock(AgentStateMachine.class);
         SfAgentExecution newExecution = new SfAgentExecution();
         newExecution.setId(999L);
-        when(executionEngine.startExecution(anyLong(), anyString(), anyString()))
+        when(executionStarterProvider.getObject()).thenReturn(executionStarter);
+        when(executionStarter.startExecution(anyLong(), anyString(), anyString()))
                 .thenReturn(newExecution);
         when(snapshotMapper.insert(any())).thenReturn(1);
 
@@ -84,7 +89,7 @@ class HandoffStateHandlerTest {
 
         // Verify specialist agent was dispatched
         ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
-        verify(executionEngine).startExecution(anyLong(), eq("tenant-1"), promptCaptor.capture());
+        verify(executionStarter).startExecution(anyLong(), eq("tenant-1"), promptCaptor.capture());
         assertThat(promptCaptor.getValue()).contains("Optimize this SQL query");
 
         // Verify original execution completed
@@ -105,7 +110,7 @@ class HandoffStateHandlerTest {
 
         verify(stateMachine).transition(AgentExecutionState.FAILED, execution);
         verifyNoInteractions(snapshotMapper);
-        verifyNoInteractions(executionEngine);
+        verify(executionStarterProvider, never()).getObject();
     }
 
     @Test
@@ -120,7 +125,7 @@ class HandoffStateHandlerTest {
         handler.handle(stateMachine, execution);
 
         verify(snapshotMapper).insert(any());
-        verifyNoInteractions(executionEngine);
+        verify(executionStarterProvider, never()).getObject();
         verify(stateMachine).transition(AgentExecutionState.COMPLETED, execution);
     }
 
@@ -136,14 +141,15 @@ class HandoffStateHandlerTest {
         ));
 
         AgentStateMachine stateMachine = mock(AgentStateMachine.class);
-        when(executionEngine.startExecution(anyLong(), anyString(), anyString()))
+        when(executionStarterProvider.getObject()).thenReturn(executionStarter);
+        when(executionStarter.startExecution(anyLong(), anyString(), anyString()))
                 .thenReturn(new SfAgentExecution());
         when(snapshotMapper.insert(any())).thenReturn(1);
 
         handler.handle(stateMachine, execution);
 
         ArgumentCaptor<String> promptCaptor = ArgumentCaptor.forClass(String.class);
-        verify(executionEngine).startExecution(anyLong(), eq("tenant-1"), promptCaptor.capture());
+        verify(executionStarter).startExecution(anyLong(), eq("tenant-1"), promptCaptor.capture());
         assertThat(promptCaptor.getValue()).contains("Main task");
         assertThat(promptCaptor.getValue()).contains("Previous context data");
     }
@@ -159,7 +165,8 @@ class HandoffStateHandlerTest {
         ));
 
         AgentStateMachine stateMachine = mock(AgentStateMachine.class);
-        when(executionEngine.startExecution(anyLong(), anyString(), anyString()))
+        when(executionStarterProvider.getObject()).thenReturn(executionStarter);
+        when(executionStarter.startExecution(anyLong(), anyString(), anyString()))
                 .thenThrow(new RuntimeException("Dispatch failed"));
         when(snapshotMapper.insert(any())).thenReturn(1);
 
@@ -181,7 +188,8 @@ class HandoffStateHandlerTest {
         ));
 
         AgentStateMachine stateMachine = mock(AgentStateMachine.class);
-        when(executionEngine.startExecution(anyLong(), anyString(), anyString()))
+        when(executionStarterProvider.getObject()).thenReturn(executionStarter);
+        when(executionStarter.startExecution(anyLong(), anyString(), anyString()))
                 .thenReturn(new SfAgentExecution());
         when(snapshotMapper.insert(any())).thenReturn(1);
 

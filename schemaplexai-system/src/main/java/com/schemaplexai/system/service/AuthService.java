@@ -56,6 +56,9 @@ public class AuthService {
         if (!StringUtils.hasText(username) || !StringUtils.hasText(password)) {
             throw new BaseException(ResultCode.PARAM_ERROR, "username or password is empty");
         }
+        if (!StringUtils.hasText(tenantId)) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "tenant id is empty");
+        }
 
         SfUser user = userService.getByUsernameAndTenantId(username, tenantId);
         if (user == null) {

@@ -2,12 +2,14 @@ package com.schemaplexai.agent.engine.tool;
 
 import com.schemaplexai.agent.engine.entity.SfAgentExecutionLog;
 import com.schemaplexai.agent.engine.mapper.SfAgentExecutionLogMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -19,8 +21,12 @@ class ToolExecutionRecorderTest {
     @Mock
     private SfAgentExecutionLogMapper logMapper;
 
-    @InjectMocks
     private ToolExecutionRecorder recorder;
+
+    @BeforeEach
+    void setUp() {
+        recorder = new ToolExecutionRecorder(logMapper);
+    }
 
     @Test
     void recordSuccessShouldPersistToolSuccessState() {
@@ -105,5 +111,33 @@ class ToolExecutionRecorderTest {
 
         assertTrue(exception.getMessage().contains("Security-related tool execution audit log failed"));
         verify(logMapper, times(1)).insert(any(SfAgentExecutionLog.class));
+    }
+
+    @Test
+    void listRecentFailuresShouldParsePersistedFailureLogs() {
+        SfAgentExecutionLog failure = new SfAgentExecutionLog();
+        failure.setState("TOOL_FAILURE");
+        failure.setMessage("tool=apiCall, status=FAILURE, category=RATE_LIMITED, "
+                + "error=\"Rate limit exceeded\", latencyMs=2000, tokens=0");
+
+        SfAgentExecutionLog blocked = new SfAgentExecutionLog();
+        blocked.setState("TOOL_BLOCKED");
+        blocked.setMessage("tool=volumeDelete, status=BLOCKED, category=IRREVERSIBLE_OPERATION, "
+                + "error=\"Blocked\", latencyMs=0, tokens=0");
+
+        when(logMapper.selectList(any())).thenReturn(List.of(failure, blocked));
+
+        List<ToolExecutionResult> results = recorder.listRecentFailures("tenant-1", 20);
+
+        assertEquals(2, results.size());
+        assertEquals("apiCall", results.get(0).toolName());
+        assertEquals(ToolErrorCategory.RATE_LIMITED, results.get(0).errorCategory());
+        assertEquals("Rate limit exceeded", results.get(0).errorMessage());
+        assertEquals(2000L, results.get(0).latencyMs());
+        assertFalse(results.get(0).blocked());
+
+        assertEquals("volumeDelete", results.get(1).toolName());
+        assertEquals(ToolErrorCategory.IRREVERSIBLE_OPERATION, results.get(1).errorCategory());
+        assertTrue(results.get(1).blocked());
     }
 }

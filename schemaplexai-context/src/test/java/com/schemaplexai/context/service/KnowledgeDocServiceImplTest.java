@@ -3,10 +3,14 @@ package com.schemaplexai.context.service;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.core.toolkit.GlobalConfigUtils;
+import com.schemaplexai.common.context.TenantContextHolder;
+import com.schemaplexai.common.exception.BaseException;
+import com.schemaplexai.common.result.ResultCode;
 import com.schemaplexai.context.entity.SfKnowledgeDoc;
 import com.schemaplexai.context.mapper.SfKnowledgeDocMapper;
 import com.schemaplexai.context.service.impl.KnowledgeDocServiceImpl;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -37,12 +42,89 @@ class KnowledgeDocServiceImplTest {
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), SfKnowledgeDoc.class);
     }
 
+    @AfterEach
+    void tearDown() {
+        TenantContextHolder.clear();
+    }
+
     // ------------------------------------------------------------------
     // uploadAndVectorize
     // ------------------------------------------------------------------
 
     @Test
+    void uploadAndVectorize_nullDoc_throwsParamErrorWithoutSaveOrSync() {
+        assertThatThrownBy(() -> knowledgeDocService.uploadAndVectorize(null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(knowledgeDocMapper, never()).insert(any());
+        verify(milvusSyncService, never()).syncToMilvus(any());
+    }
+
+    @Test
+    void uploadAndVectorize_nullTitle_throwsParamErrorWithoutSaveOrSync() {
+        TenantContextHolder.setTenantId("tenant-1");
+        SfKnowledgeDoc doc = new SfKnowledgeDoc();
+
+        assertThatThrownBy(() -> knowledgeDocService.uploadAndVectorize(doc))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(knowledgeDocMapper, never()).insert(any());
+        verify(milvusSyncService, never()).syncToMilvus(any());
+    }
+
+    @Test
+    void uploadAndVectorize_blankTitle_throwsParamErrorWithoutSaveOrSync() {
+        TenantContextHolder.setTenantId("tenant-1");
+        SfKnowledgeDoc doc = new SfKnowledgeDoc();
+        doc.setTitle("  ");
+
+        assertThatThrownBy(() -> knowledgeDocService.uploadAndVectorize(doc))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(knowledgeDocMapper, never()).insert(any());
+        verify(milvusSyncService, never()).syncToMilvus(any());
+    }
+
+    @Test
+    void uploadAndVectorize_missingTenantContext_throwsParamErrorWithoutSaveOrSync() {
+        SfKnowledgeDoc doc = new SfKnowledgeDoc();
+        doc.setTitle("Test Doc");
+        doc.setTenantId("tenant-from-body");
+
+        assertThatThrownBy(() -> knowledgeDocService.uploadAndVectorize(doc))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(knowledgeDocMapper, never()).insert(any());
+        verify(milvusSyncService, never()).syncToMilvus(any());
+    }
+
+    @Test
+    void uploadAndVectorize_blankTenantContext_throwsParamErrorWithoutSaveOrSync() {
+        TenantContextHolder.setTenantId("  ");
+        SfKnowledgeDoc doc = new SfKnowledgeDoc();
+        doc.setTitle("Test Doc");
+        doc.setTenantId("tenant-from-body");
+
+        assertThatThrownBy(() -> knowledgeDocService.uploadAndVectorize(doc))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(knowledgeDocMapper, never()).insert(any());
+        verify(milvusSyncService, never()).syncToMilvus(any());
+    }
+
+    @Test
     void uploadAndVectorize_success_savesDoc() {
+        TenantContextHolder.setTenantId("tenant-1");
         SfKnowledgeDoc doc = new SfKnowledgeDoc();
         doc.setTitle("Test Doc");
         doc.setFileName("test.pdf");
@@ -51,10 +133,12 @@ class KnowledgeDocServiceImplTest {
         knowledgeDocService.uploadAndVectorize(doc);
 
         verify(knowledgeDocMapper).insert(any());
+        assertThat(doc.getTenantId()).isEqualTo("tenant-1");
     }
 
     @Test
     void uploadAndVectorize_setsFieldsCorrectly() {
+        TenantContextHolder.setTenantId("tenant-1");
         SfKnowledgeDoc doc = new SfKnowledgeDoc();
         doc.setTitle("Architecture Guide");
         doc.setFileName("arch.pdf");
@@ -66,6 +150,9 @@ class KnowledgeDocServiceImplTest {
         knowledgeDocService.uploadAndVectorize(doc);
 
         verify(knowledgeDocMapper).insert(doc);
+        assertThat(doc.getStatus()).isEqualTo("UPLOADED");
+        assertThat(doc.getSyncStatus()).isEqualTo("PENDING");
+        assertThat(doc.getTenantId()).isEqualTo("tenant-1");
     }
 
     // ------------------------------------------------------------------
@@ -73,31 +160,64 @@ class KnowledgeDocServiceImplTest {
     // ------------------------------------------------------------------
 
     @Test
+    void removeById_nullId_throwsParamErrorWithoutMilvusOrDbRemoval() {
+        assertThatThrownBy(() -> knowledgeDocService.removeById(null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verifyNoInteractions(milvusSyncService, knowledgeDocMapper);
+    }
+
+    @Test
     void removeById_deletesMilvusVectorsBeforeDbRemoval() {
-        when(knowledgeDocMapper.deleteById(any(SfKnowledgeDoc.class))).thenReturn(1);
+        when(knowledgeDocMapper.deleteById(1L)).thenReturn(1);
 
         boolean result = knowledgeDocService.removeById(1L);
 
         assertThat(result).isTrue();
         verify(milvusSyncService).deleteByDocId(1L);
-        verify(knowledgeDocMapper).deleteById(any(SfKnowledgeDoc.class));
+        verify(knowledgeDocMapper).deleteById(1L);
     }
 
     @Test
     void removeById_milvusDeleteFailure_stillRemovesDbRecord() {
         doThrow(new RuntimeException("Milvus connection failed")).when(milvusSyncService).deleteByDocId(1L);
-        when(knowledgeDocMapper.deleteById(any(SfKnowledgeDoc.class))).thenReturn(1);
+        when(knowledgeDocMapper.deleteById(1L)).thenReturn(1);
 
         boolean result = knowledgeDocService.removeById(1L);
 
         assertThat(result).isTrue();
         verify(milvusSyncService).deleteByDocId(1L);
-        verify(knowledgeDocMapper).deleteById(any(SfKnowledgeDoc.class));
+        verify(knowledgeDocMapper).deleteById(1L);
     }
 
     // ------------------------------------------------------------------
     // updateById
     // ------------------------------------------------------------------
+
+    @Test
+    void updateById_nullEntity_throwsParamErrorWithoutUpdateOrReSync() {
+        assertThatThrownBy(() -> knowledgeDocService.updateById(null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verifyNoInteractions(knowledgeDocMapper, milvusSyncService);
+    }
+
+    @Test
+    void updateById_nullId_throwsParamErrorWithoutUpdateOrReSync() {
+        SfKnowledgeDoc doc = new SfKnowledgeDoc();
+        doc.setTitle("Updated Title");
+
+        assertThatThrownBy(() -> knowledgeDocService.updateById(doc))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verifyNoInteractions(knowledgeDocMapper, milvusSyncService);
+    }
 
     @Test
     void updateById_triggersReSyncOnSuccess() {

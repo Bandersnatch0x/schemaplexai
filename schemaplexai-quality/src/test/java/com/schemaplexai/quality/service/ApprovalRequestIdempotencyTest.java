@@ -9,13 +9,18 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -77,6 +82,31 @@ class ApprovalRequestIdempotencyTest {
                 .isThrownBy(() -> approvalRequestConsumer.consume(event2));
 
         verify(approvalTicketMapper, times(2)).insert(any());
+    }
+
+    @Test
+    @DisplayName("should propagate dedup mark failure after creating ticket")
+    void markProcessedFailureAfterTicketInsert_propagates() {
+        UUID approvalRequestId = UUID.randomUUID();
+        ApprovalRequestEvent event = requestEvent(approvalRequestId);
+
+        doThrow(new RuntimeException("dedup mark failed"))
+                .when(dedupService).markProcessed(approvalRequestId, "ApprovalRequestConsumer");
+
+        assertThatThrownBy(() -> approvalRequestConsumer.consume(event))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("dedup mark failed");
+
+        verify(approvalTicketMapper).insert(any());
+        verify(dedupService).markProcessed(approvalRequestId, "ApprovalRequestConsumer");
+    }
+
+    @Test
+    @DisplayName("should process ticket insert and dedup mark in one transaction")
+    void consume_hasTransactionalBoundary() throws Exception {
+        Method consume = ApprovalRequestConsumer.class.getMethod("consume", ApprovalRequestEvent.class);
+
+        assertThat(consume.getAnnotation(Transactional.class)).isNotNull();
     }
 
     private ApprovalRequestEvent requestEvent(UUID approvalRequestId) {

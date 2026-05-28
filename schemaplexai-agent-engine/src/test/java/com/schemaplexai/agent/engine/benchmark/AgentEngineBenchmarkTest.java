@@ -169,18 +169,15 @@ class AgentEngineBenchmarkTest {
     @DisplayName("Benchmark: Loop detection throughput for repeated tool calls")
     void loopDetectionThroughput() {
         Long execId = 123L;
-        String hash = "hash-abc";
-        List<String> toolSequence = List.of("search", "read", "summarize");
-
-        // Warmup
+        // Warm up the hot path without repeatedly tripping loop warnings.
         for (int i = 0; i < WARMUP_ITERATIONS; i++) {
-            loopDetectionService.detectLoop(execId, hash, toolSequence);
+            loopDetectionService.detectLoop(execId, "warmup-hash-" + i, benchmarkToolSequence(i));
         }
         loopDetectionService.clearRecords(execId);
 
         long start = System.nanoTime();
         for (int i = 0; i < BENCHMARK_ITERATIONS; i++) {
-            loopDetectionService.detectLoop(execId, hash + i, toolSequence);
+            loopDetectionService.detectLoop(execId, "hash-" + i, benchmarkToolSequence(i));
         }
         long elapsedNs = System.nanoTime() - start;
         double opsPerSec = BENCHMARK_ITERATIONS / (elapsedNs / 1_000_000_000.0);
@@ -220,7 +217,9 @@ class AgentEngineBenchmarkTest {
 
         // LoopDetection
         long t4 = System.nanoTime();
-        for (int i = 0; i < 100_000; i++) loopDetectionService.detectLoop(1L, "h" + i, List.of("a", "b"));
+        for (int i = 0; i < 100_000; i++) {
+            loopDetectionService.detectLoop(1L, "h" + i, benchmarkToolSequence(i));
+        }
         long ldOps = (long) (100_000 / ((System.nanoTime() - t4) / 1_000_000_000.0));
         System.out.printf("LoopDetection.detect:     %,d ops/sec%n", ldOps);
 
@@ -230,5 +229,9 @@ class AgentEngineBenchmarkTest {
         assertThat(teOps).isGreaterThan(2_000_000);
         assertThat(trOps).isGreaterThan(1_000_000);
         assertThat(ldOps).isGreaterThan(50_000);
+    }
+
+    private List<String> benchmarkToolSequence(int iteration) {
+        return List.of("search-" + iteration, "read-" + iteration, "summarize-" + iteration);
     }
 }

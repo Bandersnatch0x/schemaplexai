@@ -23,6 +23,15 @@ public class SpecReviewServiceImpl extends ServiceImpl<SfSpecReviewMapper, SfSpe
 
     @Override
     public SfSpecReview submitReview(Long specId, Long reviewerId, String status, String comment) {
+        if (specId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "specId is required");
+        }
+        if (reviewerId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "reviewerId is required");
+        }
+        if (status == null || status.isBlank()) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "status is required");
+        }
         SfSpec spec = specMapper.selectById(specId);
         if (spec == null) {
             throw new BaseException(ResultCode.SPEC_NOT_FOUND, "Spec not found: " + specId);

@@ -69,8 +69,11 @@ class AgentsManifestLoaderTest {
         doAnswer(inv -> {
             SfAgent created = inv.getArgument(0, SfAgent.class);
             created.setId(42L);
-            return null;
+            return 1;
         }).when(agentMapper).insert(any(SfAgent.class));
+        when(agentConfigMapper.selectOne(any())).thenReturn(null);
+        when(agentConfigMapper.insert(any(SfAgentConfig.class))).thenReturn(1);
+        when(toolBindingMapper.insert(any(SfAgentToolBinding.class))).thenReturn(1);
 
         Long resultId = loader.loadFromManifest(fullManifest, "tenant-x");
 
@@ -91,6 +94,10 @@ class AgentsManifestLoaderTest {
         existing.setName("code-reviewer");
         existing.setType("oldtype");
         when(agentMapper.findByNameAndTenant("code-reviewer", "tenant-x")).thenReturn(existing);
+        when(agentMapper.updateById(any(SfAgent.class))).thenReturn(1);
+        when(agentConfigMapper.selectOne(any())).thenReturn(null);
+        when(agentConfigMapper.insert(any(SfAgentConfig.class))).thenReturn(1);
+        when(toolBindingMapper.insert(any(SfAgentToolBinding.class))).thenReturn(1);
 
         Long resultId = loader.loadFromManifest(fullManifest, "tenant-x");
 
@@ -113,8 +120,10 @@ class AgentsManifestLoaderTest {
         when(agentMapper.findByNameAndTenant("minimal", "tenant-x")).thenReturn(null);
         doAnswer(inv -> {
             inv.getArgument(0, SfAgent.class).setId(1L);
-            return null;
+            return 1;
         }).when(agentMapper).insert(any(SfAgent.class));
+        when(agentConfigMapper.selectOne(any())).thenReturn(null);
+        when(agentConfigMapper.insert(any(SfAgentConfig.class))).thenReturn(1);
 
         loader.loadFromManifest(noType, "tenant-x");
 
@@ -128,9 +137,11 @@ class AgentsManifestLoaderTest {
         when(agentMapper.findByNameAndTenant("code-reviewer", "tenant-x")).thenReturn(null);
         doAnswer(inv -> {
             inv.getArgument(0, SfAgent.class).setId(99L);
-            return null;
+            return 1;
         }).when(agentMapper).insert(any(SfAgent.class));
         when(agentConfigMapper.selectOne(any())).thenReturn(null);
+        when(agentConfigMapper.insert(any(SfAgentConfig.class))).thenReturn(1);
+        when(toolBindingMapper.insert(any(SfAgentToolBinding.class))).thenReturn(1);
 
         loader.loadFromManifest(fullManifest, "tenant-x");
 
@@ -153,10 +164,13 @@ class AgentsManifestLoaderTest {
         SfAgent existing = new SfAgent();
         existing.setId(5L);
         when(agentMapper.findByNameAndTenant("code-reviewer", "tenant-x")).thenReturn(existing);
+        when(agentMapper.updateById(any(SfAgent.class))).thenReturn(1);
         SfAgentConfig prev = new SfAgentConfig();
         prev.setId(50L);
         prev.setAgentId(5L);
         when(agentConfigMapper.selectOne(any())).thenReturn(prev);
+        when(agentConfigMapper.updateById(any(SfAgentConfig.class))).thenReturn(1);
+        when(toolBindingMapper.insert(any(SfAgentToolBinding.class))).thenReturn(1);
 
         loader.loadFromManifest(fullManifest, "tenant-x");
 
@@ -166,12 +180,45 @@ class AgentsManifestLoaderTest {
     }
 
     @Test
+    void shouldThrowWhenUpdatingExistingAgentAffectsNoRows() {
+        SfAgent existing = new SfAgent();
+        existing.setId(7L);
+        existing.setName("code-reviewer");
+        when(agentMapper.findByNameAndTenant("code-reviewer", "tenant-x")).thenReturn(existing);
+        when(agentMapper.updateById(any(SfAgent.class))).thenReturn(0);
+
+        assertThatThrownBy(() -> loader.loadFromManifest(fullManifest, "tenant-x"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("agent update affected 0 rows");
+    }
+
+    @Test
+    void shouldThrowWhenUpdatingExistingConfigAffectsNoRows() {
+        SfAgent existing = new SfAgent();
+        existing.setId(5L);
+        when(agentMapper.findByNameAndTenant("code-reviewer", "tenant-x")).thenReturn(existing);
+        when(agentMapper.updateById(any(SfAgent.class))).thenReturn(1);
+        SfAgentConfig prev = new SfAgentConfig();
+        prev.setId(50L);
+        prev.setAgentId(5L);
+        when(agentConfigMapper.selectOne(any())).thenReturn(prev);
+        when(agentConfigMapper.updateById(any(SfAgentConfig.class))).thenReturn(0);
+
+        assertThatThrownBy(() -> loader.loadFromManifest(fullManifest, "tenant-x"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("agent config update affected 0 rows");
+    }
+
+    @Test
     void shouldReplaceToolBindings() {
         when(agentMapper.findByNameAndTenant("code-reviewer", "tenant-x")).thenReturn(null);
         doAnswer(inv -> {
             inv.getArgument(0, SfAgent.class).setId(11L);
-            return null;
+            return 1;
         }).when(agentMapper).insert(any(SfAgent.class));
+        when(agentConfigMapper.selectOne(any())).thenReturn(null);
+        when(agentConfigMapper.insert(any(SfAgentConfig.class))).thenReturn(1);
+        when(toolBindingMapper.insert(any(SfAgentToolBinding.class))).thenReturn(1);
 
         loader.loadFromManifest(fullManifest, "tenant-x");
 
@@ -196,8 +243,10 @@ class AgentsManifestLoaderTest {
         when(agentMapper.findByNameAndTenant("no-tools", "tenant-x")).thenReturn(null);
         doAnswer(inv -> {
             inv.getArgument(0, SfAgent.class).setId(1L);
-            return null;
+            return 1;
         }).when(agentMapper).insert(any(SfAgent.class));
+        when(agentConfigMapper.selectOne(any())).thenReturn(null);
+        when(agentConfigMapper.insert(any(SfAgentConfig.class))).thenReturn(1);
 
         loader.loadFromManifest(empty, "tenant-x");
 
@@ -246,8 +295,10 @@ class AgentsManifestLoaderTest {
         when(agentMapper.findByNameAndTenant("root-agent", "tenant-x")).thenReturn(null);
         doAnswer(inv -> {
             inv.getArgument(0, SfAgent.class).setId(100L);
-            return null;
+            return 1;
         }).when(agentMapper).insert(any(SfAgent.class));
+        when(agentConfigMapper.selectOne(any())).thenReturn(null);
+        when(agentConfigMapper.insert(any(SfAgentConfig.class))).thenReturn(1);
 
         LoadReport report = loader.load(repoRoot, "tenant-x");
 
@@ -269,8 +320,10 @@ class AgentsManifestLoaderTest {
         when(agentMapper.findByNameAndTenant("reviewer", "tenant-x")).thenReturn(null);
         doAnswer(inv -> {
             inv.getArgument(0, SfAgent.class).setId(200L);
-            return null;
+            return 1;
         }).when(agentMapper).insert(any(SfAgent.class));
+        when(agentConfigMapper.selectOne(any())).thenReturn(null);
+        when(agentConfigMapper.insert(any(SfAgentConfig.class))).thenReturn(1);
 
         LoadReport report = loader.load(repoRoot, "tenant-x");
 
@@ -297,8 +350,10 @@ class AgentsManifestLoaderTest {
         when(agentMapper.findByNameAndTenant(any(), eq("tenant-x"))).thenReturn(null);
         doAnswer(inv -> {
             inv.getArgument(0, SfAgent.class).setId(300L);
-            return null;
+            return 1;
         }).when(agentMapper).insert(any(SfAgent.class));
+        when(agentConfigMapper.selectOne(any())).thenReturn(null);
+        when(agentConfigMapper.insert(any(SfAgentConfig.class))).thenReturn(1);
 
         LoadReport report = loader.load(repoRoot, "tenant-x");
 
@@ -322,8 +377,10 @@ class AgentsManifestLoaderTest {
         when(agentMapper.findByNameAndTenant("good", "tenant-x")).thenReturn(null);
         doAnswer(inv -> {
             inv.getArgument(0, SfAgent.class).setId(1L);
-            return null;
+            return 1;
         }).when(agentMapper).insert(any(SfAgent.class));
+        when(agentConfigMapper.selectOne(any())).thenReturn(null);
+        when(agentConfigMapper.insert(any(SfAgentConfig.class))).thenReturn(1);
 
         LoadReport report = loader.load(repoRoot, "tenant-x");
 
@@ -341,5 +398,46 @@ class AgentsManifestLoaderTest {
     void shouldRejectBlankTenantForLoad() {
         assertThatThrownBy(() -> loader.load(Path.of("."), "   "))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void shouldThrowWhenCreatingAgentAffectsNoRows() {
+        when(agentMapper.findByNameAndTenant("code-reviewer", "tenant-x")).thenReturn(null);
+        when(agentMapper.insert(any(SfAgent.class))).thenReturn(0);
+
+        assertThatThrownBy(() -> loader.loadFromManifest(fullManifest, "tenant-x"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("agent insert affected 0 rows");
+    }
+
+    @Test
+    void shouldThrowWhenCreatingAgentConfigAffectsNoRows() {
+        when(agentMapper.findByNameAndTenant("code-reviewer", "tenant-x")).thenReturn(null);
+        doAnswer(inv -> {
+            inv.getArgument(0, SfAgent.class).setId(77L);
+            return 1;
+        }).when(agentMapper).insert(any(SfAgent.class));
+        when(agentConfigMapper.selectOne(any())).thenReturn(null);
+        when(agentConfigMapper.insert(any(SfAgentConfig.class))).thenReturn(0);
+
+        assertThatThrownBy(() -> loader.loadFromManifest(fullManifest, "tenant-x"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("agent config insert affected 0 rows");
+    }
+
+    @Test
+    void shouldThrowWhenCreatingToolBindingAffectsNoRows() {
+        when(agentMapper.findByNameAndTenant("code-reviewer", "tenant-x")).thenReturn(null);
+        doAnswer(inv -> {
+            inv.getArgument(0, SfAgent.class).setId(88L);
+            return 1;
+        }).when(agentMapper).insert(any(SfAgent.class));
+        when(agentConfigMapper.selectOne(any())).thenReturn(null);
+        when(agentConfigMapper.insert(any(SfAgentConfig.class))).thenReturn(1);
+        when(toolBindingMapper.insert(any(SfAgentToolBinding.class))).thenReturn(0);
+
+        assertThatThrownBy(() -> loader.loadFromManifest(fullManifest, "tenant-x"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("tool binding insert affected 0 rows");
     }
 }

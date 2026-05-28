@@ -27,6 +27,9 @@ public class WorkspaceServiceImpl extends ServiceImpl<SfWorkspaceMapper, SfWorks
     @Override
     @Transactional(rollbackFor = Exception.class)
     public SfWorkspace createDefaultWorkspace(String tenantId) {
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "tenantId is required");
+        }
         SfWorkspace workspace = new SfWorkspace();
         workspace.setTenantId(tenantId);
         workspace.setName(DEFAULT_WORKSPACE_NAME);
@@ -39,6 +42,9 @@ public class WorkspaceServiceImpl extends ServiceImpl<SfWorkspaceMapper, SfWorks
 
     @Override
     public void validateWorkspaceAccess(Long workspaceId) {
+        if (workspaceId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "workspaceId is required");
+        }
         SfWorkspace workspace = baseMapper.selectById(workspaceId);
         if (workspace == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Workspace not found: " + workspaceId);
@@ -52,6 +58,9 @@ public class WorkspaceServiceImpl extends ServiceImpl<SfWorkspaceMapper, SfWorks
 
     @Override
     public List<SfWorkspace> listWorkspacesByTenant(String tenantId) {
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "tenantId is required");
+        }
         return baseMapper.selectList(
                 new LambdaQueryWrapper<SfWorkspace>()
                         .eq(SfWorkspace::getTenantId, tenantId)
@@ -61,6 +70,9 @@ public class WorkspaceServiceImpl extends ServiceImpl<SfWorkspaceMapper, SfWorks
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void archiveWorkspace(Long workspaceId) {
+        if (workspaceId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "workspaceId is required");
+        }
         SfWorkspace workspace = baseMapper.selectById(workspaceId);
         if (workspace == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Workspace not found: " + workspaceId);

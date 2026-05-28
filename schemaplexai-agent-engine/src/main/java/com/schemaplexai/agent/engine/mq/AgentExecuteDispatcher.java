@@ -1,7 +1,7 @@
 package com.schemaplexai.agent.engine.mq;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.schemaplexai.agent.engine.AgentExecutionEngine;
+import com.schemaplexai.agent.engine.AgentExecutionStarter;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.common.constants.CommonConstants;
 import lombok.RequiredArgsConstructor;
@@ -14,14 +14,14 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class AgentExecuteDispatcher {
 
-    private final AgentExecutionEngine executionEngine;
+    private final AgentExecutionStarter executionStarter;
     private final ObjectMapper objectMapper;
 
     @RabbitListener(queues = CommonConstants.RK_AGENT_EXECUTE)
     public void onMessage(String message) {
         try {
             AgentExecuteMessage payload = objectMapper.readValue(message, AgentExecuteMessage.class);
-            SfAgentExecution execution = executionEngine.startExecution(
+            SfAgentExecution execution = executionStarter.startExecution(
                 payload.getAgentId(), payload.getTenantId(), payload.getPrompt());
             log.info("Dispatched execution {} for agent {}", execution.getId(), payload.getAgentId());
         } catch (Exception e) {

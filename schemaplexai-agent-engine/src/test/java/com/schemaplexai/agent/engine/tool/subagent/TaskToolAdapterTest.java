@@ -90,6 +90,21 @@ class TaskToolAdapterTest {
     }
 
     @Test
+    void shouldReturnErrorWhenSubAgentOnlyStartsAsyncExecution() throws Exception {
+        SubAgentResult subResult = new SubAgentResult("Sub-agent execution started. ConversationId: conv-123", 42L);
+        when(subAgentService.execute(any(SubAgentRequest.class))).thenReturn(subResult);
+
+        ToolCall call = new ToolCall("task", Map.of("prompt", "do something"));
+        ExecutionContext ctx = new ExecutionContext("tenant1", 1L, "/workspace");
+
+        ToolResult result = adapter.execute(call, ctx);
+
+        assertThat(result.isError()).isTrue();
+        assertThat(result.errorMessage()).contains("Sub-agent execution started");
+        assertThat(result.errorMessage()).contains("not implemented");
+    }
+
+    @Test
     void shouldPassInheritedGuardrailsToSubAgent() throws Exception {
         SubAgentResult subResult = new SubAgentResult("done", 99L);
         when(subAgentService.execute(any(SubAgentRequest.class))).thenReturn(subResult);

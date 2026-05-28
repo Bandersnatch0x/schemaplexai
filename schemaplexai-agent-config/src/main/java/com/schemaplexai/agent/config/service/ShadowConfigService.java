@@ -30,7 +30,10 @@ public class ShadowConfigService {
 
     @Transactional(rollbackFor = Exception.class)
     public void createShadowConfig(SfAgentShadowConfig config) {
-        shadowConfigMapper.insert(config);
+        int inserted = shadowConfigMapper.insert(config);
+        if (inserted <= 0) {
+            throw new BaseException(ResultCode.INTERNAL_ERROR);
+        }
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -38,11 +41,17 @@ public class ShadowConfigService {
         if (shadowConfigMapper.selectById(config.getId()) == null) {
             throw new BaseException(ResultCode.NOT_FOUND);
         }
-        shadowConfigMapper.updateById(config);
+        int updated = shadowConfigMapper.updateById(config);
+        if (updated <= 0) {
+            throw new BaseException(ResultCode.NOT_FOUND);
+        }
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void deleteShadowConfig(Long id) {
-        shadowConfigMapper.deleteById(id);
+        int deleted = shadowConfigMapper.deleteById(id);
+        if (deleted <= 0) {
+            throw new BaseException(ResultCode.NOT_FOUND);
+        }
     }
 }

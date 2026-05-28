@@ -11,6 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,13 +56,36 @@ class MessageFailLogServiceTest {
     }
 
     @Test
-    void log_databaseException_isSwallowed() {
+    void log_success_returnsTrue() throws Exception {
+        Message message = createMessage("msg-002", "sf.exchange", "sf.notification", "payload");
+        when(messageFailLogMapper.insert(any())).thenReturn(1);
+
+        Object result = invokeLog(message, "TestConsumer", "Some error");
+
+        assertThat(result).isEqualTo(true);
+        verify(messageFailLogMapper).insert(any());
+    }
+
+    @Test
+    void log_databaseException_returnsFalse() throws Exception {
         Message message = createMessage("msg-002", "sf.exchange", "sf.notification", "payload");
         doThrow(new RuntimeException("DB connection failed"))
                 .when(messageFailLogMapper).insert(any());
 
-        messageFailLogService.log(message, "TestConsumer", "Some error");
+        Object result = invokeLog(message, "TestConsumer", "Some error");
 
+        assertThat(result).isEqualTo(false);
+        verify(messageFailLogMapper).insert(any());
+    }
+
+    @Test
+    void log_zeroRowsInserted_returnsFalse() throws Exception {
+        Message message = createMessage("msg-004", "sf.exchange", "sf.notification", "payload");
+        when(messageFailLogMapper.insert(any())).thenReturn(0);
+
+        Object result = invokeLog(message, "TestConsumer", "Some error");
+
+        assertThat(result).isEqualTo(false);
         verify(messageFailLogMapper).insert(any());
     }
 
@@ -75,5 +99,10 @@ class MessageFailLogServiceTest {
         ArgumentCaptor<SfMessageFailLog> captor = ArgumentCaptor.forClass(SfMessageFailLog.class);
         verify(messageFailLogMapper).insert(captor.capture());
         assertThat(captor.getValue().getPayload()).isEqualTo("{\"message\": \"你好世界\"}");
+    }
+
+    private Object invokeLog(Message message, String consumerGroup, String errorMsg) throws Exception {
+        Method method = MessageFailLogService.class.getMethod("log", Message.class, String.class, String.class);
+        return method.invoke(messageFailLogService, message, consumerGroup, errorMsg);
     }
 }

@@ -1,6 +1,11 @@
 package com.schemaplexai.task.mq;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.Channel;
+import com.schemaplexai.common.exception.BaseException;
+import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.task.mq.dto.QualityEventMessage;
+import com.schemaplexai.task.service.QualityEventRequestHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
@@ -35,6 +40,8 @@ import java.nio.charset.StandardCharsets;
 public class QualityEventConsumer {
 
     private final MessageFailLogService messageFailLogService;
+    private final ObjectMapper objectMapper;
+    private final QualityEventRequestHandler qualityEventRequestHandler;
 
     @RabbitListener(queues = "sf.quality.queue")
     public void onMessage(Message message, Channel channel) throws IOException {
@@ -42,12 +49,35 @@ public class QualityEventConsumer {
         String body = new String(message.getBody(), StandardCharsets.UTF_8);
         try {
             log.info("[QualityEventConsumer] Received quality event message: {}", body);
-            // TODO: Parse payload, route by event type, delegate to QualityGateService, persist audit event
+            QualityEventMessage payload = objectMapper.readValue(body, QualityEventMessage.class);
+            validatePayload(payload);
+            qualityEventRequestHandler.handle(payload);
             channel.basicAck(deliveryTag, false);
+        } catch (BaseException e) {
+            log.error("[QualityEventConsumer] Business error processing message: {}", body, e);
+            recordFailLog(message, e.getMessage(), deliveryTag);
+            channel.basicNack(deliveryTag, false, false);
         } catch (Exception e) {
             log.error("[QualityEventConsumer] Failed to process message: {}", body, e);
-            messageFailLogService.log(message, this.getClass().getSimpleName(), e.getMessage());
+            recordFailLog(message, e.getMessage(), deliveryTag);
             channel.basicNack(deliveryTag, false, false);
+        }
+    }
+
+    private void validatePayload(QualityEventMessage payload) {
+        if (payload == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "quality event payload must be a JSON object");
+        }
+        if (payload.getEventType() == null || payload.getEventType().isBlank()) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "quality eventType is required");
+        }
+    }
+
+    private void recordFailLog(Message message, String errorMessage, long deliveryTag) {
+        boolean persisted = messageFailLogService.log(message, this.getClass().getSimpleName(), errorMessage);
+        if (!persisted) {
+            log.warn("[QualityEventConsumer] Message fail log persistence returned false for deliveryTag={}",
+                    deliveryTag);
         }
     }
 }

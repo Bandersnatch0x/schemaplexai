@@ -382,6 +382,22 @@ class ApprovalTicketServiceTest {
                 .isEqualTo(ResultCode.FORBIDDEN.getCode());
     }
 
+    @Test
+    @DisplayName("should deny approver with unsupported role prefix")
+    void rbac_unknownRolePrefix_forbidden() {
+        ApprovalTicket ticket = pendingFastTicket();
+        ticket.setTenantId(10L);
+        when(approvalTicketMapper.selectOne(any())).thenReturn(ticket);
+
+        assertThatThrownBy(() -> approvalTicketService.approve(ticket.getTicketId(), "AUDITOR:user-1", "ok"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.FORBIDDEN.getCode());
+
+        verify(approvalTicketMapper, never()).updateById(any());
+        verifyNoInteractions(rabbitTemplate);
+    }
+
     // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------

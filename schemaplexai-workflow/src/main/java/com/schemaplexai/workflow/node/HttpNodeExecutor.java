@@ -35,8 +35,8 @@ public class HttpNodeExecutor implements NodeExecutor {
         log.info("Executing HTTP node: {} {}", method, url);
 
         if (url == null || url.isBlank()) {
-            log.warn("HTTP node url is null or empty, returning placeholder");
-            return NodeExecutionResult.success(Map.of("statusCode", 200, "body", "placeholder"));
+            log.warn("HTTP node url is null or empty");
+            return NodeExecutionResult.failure("Missing or empty required field: url");
         }
 
         HttpMethod httpMethod = parseMethod(method);

@@ -1,6 +1,5 @@
 package com.schemaplexai.agent.engine.groupchat;
 
-import com.schemaplexai.agent.engine.AgentExecutionEngine;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.model.LlmMessage;
 import com.schemaplexai.agent.engine.model.LlmProvider;
@@ -33,7 +32,6 @@ import java.util.concurrent.TimeoutException;
  *   <li>Consensus detection via {@link ConsensusDetector}</li>
  *   <li>Round limits and timeouts</li>
  *   <li>SSE event broadcasting for real-time UI updates</li>
- *   <li>Execution lifecycle via {@link AgentExecutionEngine}</li>
  * </ul>
  *
  * <p>Configuration (via execution metadata):
@@ -56,7 +54,6 @@ public class GroupChatOrchestrator {
 
     private final SpeakerSelector speakerSelector;
     private final ConsensusDetector consensusDetector;
-    private final AgentExecutionEngine executionEngine;
     private final ExecutionEventBus eventBus;
 
     // In-memory conversation state keyed by execution ID
@@ -64,11 +61,9 @@ public class GroupChatOrchestrator {
 
     public GroupChatOrchestrator(SpeakerSelector speakerSelector,
                                  ConsensusDetector consensusDetector,
-                                 AgentExecutionEngine executionEngine,
                                  ExecutionEventBus eventBus) {
         this.speakerSelector = speakerSelector;
         this.consensusDetector = consensusDetector;
-        this.executionEngine = executionEngine;
         this.eventBus = eventBus;
     }
 

@@ -60,6 +60,17 @@ class ContextSnapshotServiceImplTest {
     }
 
     @Test
+    void createSnapshot_nullSnapshotJson_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> contextSnapshotService.createSnapshot(1L, null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(contextMapper, never()).selectById(any());
+        verify(snapshotMapper, never()).insert(any());
+    }
+
+    @Test
     void createSnapshot_contextNotFound_throwsContextNotFound() {
         when(contextMapper.selectById(1L)).thenReturn(null);
 
@@ -132,6 +143,16 @@ class ContextSnapshotServiceImplTest {
     // ------------------------------------------------------------------
 
     @Test
+    void restoreFromSnapshot_nullSnapshotId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> contextSnapshotService.restoreFromSnapshot(null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(snapshotMapper, never()).selectById(any());
+    }
+
+    @Test
     void restoreFromSnapshot_notFound_throwsNotFound() {
         when(snapshotMapper.selectById(1L)).thenReturn(null);
 
@@ -198,6 +219,26 @@ class ContextSnapshotServiceImplTest {
     // ------------------------------------------------------------------
     // compareSnapshots
     // ------------------------------------------------------------------
+
+    @Test
+    void compareSnapshots_nullSnapshotIdA_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> contextSnapshotService.compareSnapshots(null, 2L))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(snapshotMapper, never()).selectById(any());
+    }
+
+    @Test
+    void compareSnapshots_nullSnapshotIdB_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> contextSnapshotService.compareSnapshots(1L, null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(snapshotMapper, never()).selectById(any());
+    }
 
     @Test
     void compareSnapshots_snapshotANotFound_throwsNotFound() {

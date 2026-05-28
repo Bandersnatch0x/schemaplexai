@@ -66,7 +66,10 @@ public class UserService extends ServiceImpl<SfUserMapper, SfUser> {
         if (user.getStatus() == null) {
             user.setStatus(1);
         }
-        save(user);
+        boolean saved = save(user);
+        if (!saved) {
+            throw new BaseException(ResultCode.INTERNAL_ERROR);
+        }
         return user.getId();
     }
 

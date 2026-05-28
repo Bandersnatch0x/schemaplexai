@@ -58,17 +58,38 @@ class WorkspaceServiceImplTest {
     }
 
     @Test
-    void createDefaultWorkspace_nullTenantId_createsWorkspace() {
-        SfWorkspace result = workspaceService.createDefaultWorkspace(null);
+    void createDefaultWorkspace_nullTenantId_throwsParamErrorWithoutInsert() {
+        assertThatThrownBy(() -> workspaceService.createDefaultWorkspace(null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
 
-        assertThat(result.getTenantId()).isNull();
-        assertThat(result.getName()).isEqualTo("Default Workspace");
-        verify(workspaceMapper).insert(any(SfWorkspace.class));
+        verify(workspaceMapper, never()).insert(any(SfWorkspace.class));
+    }
+
+    @Test
+    void createDefaultWorkspace_blankTenantId_throwsParamErrorWithoutInsert() {
+        assertThatThrownBy(() -> workspaceService.createDefaultWorkspace("   "))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(workspaceMapper, never()).insert(any(SfWorkspace.class));
     }
 
     // ------------------------------------------------------------------
     // validateWorkspaceAccess
     // ------------------------------------------------------------------
+
+    @Test
+    void validateWorkspaceAccess_nullWorkspaceId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> workspaceService.validateWorkspaceAccess(null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(workspaceMapper, never()).selectById(any());
+    }
 
     @Test
     void validateWorkspaceAccess_workspaceNotFound_throwsNotFound() {
@@ -138,6 +159,26 @@ class WorkspaceServiceImplTest {
     // ------------------------------------------------------------------
 
     @Test
+    void listWorkspacesByTenant_nullTenantId_throwsParamErrorWithoutQuery() {
+        assertThatThrownBy(() -> workspaceService.listWorkspacesByTenant(null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(workspaceMapper, never()).selectList(any());
+    }
+
+    @Test
+    void listWorkspacesByTenant_blankTenantId_throwsParamErrorWithoutQuery() {
+        assertThatThrownBy(() -> workspaceService.listWorkspacesByTenant("   "))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(workspaceMapper, never()).selectList(any());
+    }
+
+    @Test
     void listWorkspacesByTenant_returnsWorkspacesOrderedByCreatedAt() {
         SfWorkspace w1 = new SfWorkspace();
         w1.setName("W1");
@@ -162,6 +203,17 @@ class WorkspaceServiceImplTest {
     // ------------------------------------------------------------------
     // archiveWorkspace
     // ------------------------------------------------------------------
+
+    @Test
+    void archiveWorkspace_nullWorkspaceId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> workspaceService.archiveWorkspace(null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(workspaceMapper, never()).selectById(any());
+        verify(workspaceMapper, never()).deleteById(any());
+    }
 
     @Test
     void archiveWorkspace_notFound_throwsNotFound() {

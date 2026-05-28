@@ -85,6 +85,7 @@ public class ContainerToolSandbox implements ToolSandbox {
         // 3. Execute tool call
         // 4. Collect output
         // 5. Clean up container
-        return ToolResult.success("Tool '" + toolCall.toolName() + "' executed in sandbox");
+        throw new UnsupportedOperationException(
+                "container tool execution is not implemented for tool: " + toolCall.toolName());
     }
 }

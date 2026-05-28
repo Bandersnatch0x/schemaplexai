@@ -1,6 +1,7 @@
 package com.schemaplexai.agent.engine.groupchat;
 
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
+import com.schemaplexai.agent.engine.model.AiModelRouter;
 import com.schemaplexai.agent.engine.model.LlmProvider;
 import com.schemaplexai.agent.engine.state.AgentExecutionState;
 import com.schemaplexai.agent.engine.state.AgentStateMachine;
@@ -25,13 +26,16 @@ class GroupChatStateHandlerTest {
     private LlmProvider llmProvider;
 
     @Mock
+    private AiModelRouter aiModelRouter;
+
+    @Mock
     private AgentStateMachine stateMachine;
 
     private GroupChatStateHandler handler;
 
     @BeforeEach
     void setUp() {
-        handler = new GroupChatStateHandler(orchestrator, llmProvider);
+        handler = new GroupChatStateHandler(orchestrator, aiModelRouter);
     }
 
     @Test
@@ -43,6 +47,7 @@ class GroupChatStateHandlerTest {
     void handle_delegatesToOrchestratorWithDefaultModel() {
         SfAgentExecution execution = createExecution();
         // no modelId metadata
+        org.mockito.Mockito.when(aiModelRouter.route("gpt-4o")).thenReturn(llmProvider);
 
         handler.handle(stateMachine, execution);
 
@@ -53,6 +58,7 @@ class GroupChatStateHandlerTest {
     void handle_usesMetadataModelId() {
         SfAgentExecution execution = createExecution();
         execution.setMetadata("modelId", "gpt-4o-mini");
+        org.mockito.Mockito.when(aiModelRouter.route("gpt-4o-mini")).thenReturn(llmProvider);
 
         handler.handle(stateMachine, execution);
 

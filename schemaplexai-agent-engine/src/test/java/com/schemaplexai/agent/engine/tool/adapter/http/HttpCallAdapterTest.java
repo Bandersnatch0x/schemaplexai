@@ -165,6 +165,49 @@ class HttpCallAdapterTest {
     }
 
     @Test
+    void shouldBlockHostOutsideTenantHttpUrlAllowlist() {
+        TenantEnvironmentConfig config = new TenantEnvironmentConfig();
+        config.setAllowHttpCalls(true);
+        config.setExtraConfig("{\"httpUrlAllowlist\":[\"api.example.com\"]}");
+        when(securityPolicyLoader.load("tenant1")).thenReturn(config);
+
+        ToolCall call = new ToolCall("http_call", Map.of("url", "https://blocked.example.invalid/resource"));
+        ExecutionContext ctx = new ExecutionContext("tenant1", 1L, "/workspace");
+
+        ToolExecutionException ex = assertThrows(ToolExecutionException.class,
+                () -> adapter.execute(call, ctx));
+
+        assertEquals(ToolErrorCategory.ENVIRONMENT_MISMATCH, ex.getErrorCategory());
+        assertTrue(ex.getMessage().contains("not in tenant URL allowlist"));
+    }
+
+    @Test
+    void shouldAllowHostMatchingTenantHttpUrlAllowlistWildcard() throws Exception {
+        inetAddressMock.when(() -> InetAddress.getByName("api.trusted.example"))
+                .thenReturn(publicIp);
+        TenantEnvironmentConfig config = new TenantEnvironmentConfig();
+        config.setAllowHttpCalls(true);
+        config.setExtraConfig("{\"httpUrlAllowlist\":[\"*.trusted.example\"]}");
+        when(securityPolicyLoader.load("tenant1")).thenReturn(config);
+
+        java.lang.reflect.Field field = HttpCallAdapter.class.getDeclaredField("httpClient");
+        field.setAccessible(true);
+        field.set(adapter, httpClient);
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(httpResponse);
+        when(httpResponse.statusCode()).thenReturn(200);
+        when(httpResponse.body()).thenReturn("OK");
+
+        ToolCall call = new ToolCall("http_call", Map.of("url", "https://api.trusted.example/resource"));
+        ExecutionContext ctx = new ExecutionContext("tenant1", 1L, "/workspace");
+
+        ToolResult result = adapter.execute(call, ctx);
+
+        assertTrue(result.success());
+        assertEquals("OK", result.output());
+    }
+
+    @Test
     void shouldBlockPrivateIp() {
         TenantEnvironmentConfig config = new TenantEnvironmentConfig();
         config.setAllowHttpCalls(true);

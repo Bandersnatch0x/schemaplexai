@@ -30,7 +30,9 @@ public class AiModelRouter {
                 continue;
             }
             if (provider.isHealthy()) {
-                providerCache.put(preferredModelId, provider);
+                if (preferredModelId != null && !preferredModelId.isBlank()) {
+                    providerCache.put(preferredModelId, provider);
+                }
                 return provider;
             }
         }

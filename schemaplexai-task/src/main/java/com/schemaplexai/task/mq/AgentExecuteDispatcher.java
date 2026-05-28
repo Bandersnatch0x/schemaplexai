@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -27,6 +28,7 @@ import java.util.UUID;
  */
 @Slf4j
 @Component
+@ConditionalOnBean({AgentExecutionEngine.class, InboxDeduplicationService.class})
 @RequiredArgsConstructor
 public class AgentExecuteDispatcher {
 
@@ -64,11 +66,7 @@ public class AgentExecuteDispatcher {
                     payload.getPrompt()
             );
 
-            try {
-                dedupService.markProcessed(eventId, "AgentExecuteDispatcher");
-            } catch (Exception e) {
-                log.error("[AgentExecuteDispatcher] Failed to mark event as processed: eventId={}", eventId, e);
-            }
+            dedupService.markProcessed(eventId, "AgentExecuteDispatcher");
 
             log.info("[AgentExecuteDispatcher] Dispatched execution {} for agent {}, conversationId: {}",
                     execution.getId(), payload.getAgentId(), execution.getConversationId());
@@ -77,12 +75,20 @@ public class AgentExecuteDispatcher {
 
         } catch (BaseException e) {
             log.error("[AgentExecuteDispatcher] Business error processing message: {}", body, e);
-            messageFailLogService.log(message, this.getClass().getSimpleName(), e.getMessage());
+            recordFailLog(message, e.getMessage(), deliveryTag);
             channel.basicNack(deliveryTag, false, false);
         } catch (Exception e) {
             log.error("[AgentExecuteDispatcher] Failed to process message: {}", body, e);
-            messageFailLogService.log(message, this.getClass().getSimpleName(), e.getMessage());
+            recordFailLog(message, e.getMessage(), deliveryTag);
             channel.basicNack(deliveryTag, false, false);
+        }
+    }
+
+    private void recordFailLog(Message message, String errorMessage, long deliveryTag) {
+        boolean persisted = messageFailLogService.log(message, this.getClass().getSimpleName(), errorMessage);
+        if (!persisted) {
+            log.warn("[AgentExecuteDispatcher] Message fail log persistence returned false for deliveryTag={}",
+                    deliveryTag);
         }
     }
 

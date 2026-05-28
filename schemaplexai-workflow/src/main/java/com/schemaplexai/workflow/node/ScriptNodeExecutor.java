@@ -18,7 +18,6 @@ public class ScriptNodeExecutor implements NodeExecutor {
     public NodeExecutionResult execute(Map<String, Object> input, String tenantId) {
         String script = (String) input.get("script");
         log.info("Executing SCRIPT node with script: {}", script);
-        // Phase 1: Placeholder — actual script execution (e.g., Groovy/JS) to be added
-        return NodeExecutionResult.success(Map.of("result", "script executed"));
+        return NodeExecutionResult.failure("SCRIPT node execution is not implemented. Configure a script runtime before enabling SCRIPT nodes.");
     }
 }
