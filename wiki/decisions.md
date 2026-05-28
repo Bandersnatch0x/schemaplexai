@@ -1,11 +1,11 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-09T17:42:00Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-28T16:37:43Z -->
 
 ---
 title: Architecture Decision Records Index
 type: index
 source: auto-generated
-creation_date: 2026-05-10
-update_date: 2026-05-10
+creation_date: 2026-05-29
+update_date: 2026-05-29
 tags: [decisions, adr]
 confidence: high
 ---
