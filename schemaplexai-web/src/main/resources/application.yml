@@ -19,7 +19,8 @@ jwt:
 
 logging:
   level:
-    com.schemaplexai.web: DEBUG
+    com.schemaplexai.web: info
+    root: INFO
 
 management:
   otlp:

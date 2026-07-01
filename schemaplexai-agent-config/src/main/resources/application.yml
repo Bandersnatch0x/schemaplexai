@@ -11,8 +11,8 @@ spring:
     driver-class-name: org.postgresql.Driver
   jackson:
     default-property-inclusion: non_null
-    date-format: yyyy-MM-dd HH:mm:ss
-    time-zone: GMT+8
+    date-format: yyyy-MM-dd'T'HH:mm:ss
+    time-zone: Asia/Shanghai
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
@@ -30,6 +30,7 @@ mybatis-plus:
 logging:
   level:
     com.schemaplexai.agent.config: info
+    root: INFO
 
 management:
   otlp:

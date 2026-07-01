@@ -4,7 +4,7 @@ import com.schemaplexai.agent.engine.admission.TokenBudget;
 import com.schemaplexai.agent.engine.memory.ConversationFileTracker;
 import com.schemaplexai.agent.engine.model.AiModelRouter;
 import com.schemaplexai.agent.engine.model.LlmMessage;
-import com.schemaplexai.agent.engine.observability.PiiRedactor;
+import com.schemaplexai.common.observability.PiiRedactor;
 import com.schemaplexai.agent.engine.skill.SkillRegistry;
 import org.springframework.stereotype.Component;
 

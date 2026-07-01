@@ -17,11 +17,11 @@ spring:
       max-lifetime: 1800000
   jackson:
     default-property-inclusion: non_null
-    date-format: yyyy-MM-dd HH:mm:ss
-    time-zone: GMT+8
+    date-format: yyyy-MM-dd'T'HH:mm:ss
+    time-zone: Asia/Shanghai
 
 mybatis-plus:
-  mapper-locations: classpath*:/mapper/**/*.xml
+  mapper-locations: classpath*:mapper/**/*.xml
   type-aliases-package: com.schemaplexai.ops.entity
   global-config:
     db-config:
@@ -46,7 +46,8 @@ clickhouse:
 
 logging:
   level:
-    com.schemaplexai.ops: debug
+    com.schemaplexai.ops: info
+    root: INFO
 
 management:
   otlp:
