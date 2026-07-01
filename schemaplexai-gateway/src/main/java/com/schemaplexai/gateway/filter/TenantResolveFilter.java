@@ -21,13 +21,20 @@ public class TenantResolveFilter implements GlobalFilter, Ordered {
         String tenantId = request.getHeaders().getFirst(CommonConstants.HEADER_TENANT_ID);
 
         if (!StringUtils.hasText(tenantId)) {
-            String tokenTenantId = exchange.getAttribute("tenantId");
+            // Try JWT attribute set by JwtAuthFilter (which ran earlier at order -100)
+            String tokenTenantId = exchange.getAttribute(CommonConstants.CONTEXT_TENANT_ID);
             if (StringUtils.hasText(tokenTenantId)) {
                 tenantId = tokenTenantId;
+            } else {
+                // No tenant ID anywhere — downstream services will validate/block as needed
+                log.debug("No tenant ID found in header or JWT for request: {} {}", request.getMethod(), request.getURI().getPath());
             }
         }
 
         if (StringUtils.hasText(tenantId)) {
+            if (tenantId.isBlank() || tenantId.length() > 128) {
+                log.warn("Suspicious tenant ID format resolved: '{}' for {} {}", tenantId, request.getMethod(), request.getURI().getPath());
+            }
             ServerHttpRequest mutatedRequest = request.mutate()
                     .header(CommonConstants.HEADER_TENANT_ID, tenantId)
                     .build();

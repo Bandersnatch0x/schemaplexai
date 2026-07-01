@@ -1,6 +1,6 @@
-<!-- AUTO-GENERATED: gen-dev-status.sh at 2026-05-09T17:44:24Z -->
+<!-- AUTO-GENERATED: gen-dev-status.sh at 2026-07-01T13:32:20Z -->
 
-# Development Status — 2026-05-10
+# Development Status — 2026-07-01
 
 ## This Week (Completed)
 
@@ -21,15 +21,7 @@
 
 ## Recent Decisions
 
-- **cursor-sdk-to-opensandbox** (已批准) — ADR-002-cursor-sdk-to-opensandbox.md
-- **tool-call-parsing-strategy** (accepted) — ADR-004-tool-call-parsing-strategy.md
-- **jwt-key-rotation-sla** (已批准) — ADR-011-jwt-key-rotation-sla.md
-- **cost-analytics-v1-short-path** (已批准) — ADR-012-cost-analytics-v1-short-path.md
-- **notification-v1-channel-reduction** (已批准) — ADR-013-notification-v1-channel-reduction.md
-- **agent-engine-flyway-schema-owner** (已批准) — ADR-014-agent-engine-flyway-schema-owner.md
-- **approval-domain-module-ownership** (已批准) — ADR-015-approval-domain-module-ownership.md
-- **event-driven-architecture-outbox-inbox** (已批准) — ADR-016-event-driven-architecture-outbox-inbox.md
-- **mybatis-plus-optimistic-locking-execution-concurrency** (已批准) — ADR-017-mybatis-plus-optimistic-locking-execution-concurrency.md
+- (none this week)
 
 ## Links
 

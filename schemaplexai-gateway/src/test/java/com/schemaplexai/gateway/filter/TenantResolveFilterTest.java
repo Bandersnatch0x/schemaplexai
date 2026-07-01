@@ -37,6 +37,7 @@ class TenantResolveFilterTest {
         when(exchange.getRequest()).thenReturn(request);
         when(exchange.getResponse()).thenReturn(response);
         when(chain.filter(any(ServerWebExchange.class))).thenReturn(Mono.empty());
+        when(request.getURI()).thenReturn(java.net.URI.create("http://localhost/test"));
     }
 
     @Test
@@ -115,6 +116,40 @@ class TenantResolveFilterTest {
         // Should pass the original exchange (no mutation)
         verify(chain).filter(exchange);
         verify(request, never()).mutate();
+    }
+
+    @Test
+    void filter_overlyLongTenantId_logsWarning() {
+        String longTenantId = "a".repeat(200);
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(CommonConstants.HEADER_TENANT_ID, longTenantId);
+        when(request.getHeaders()).thenReturn(headers);
+
+        // The tenant ID has text but is over 128 chars — the validation path is reached.
+        when(request.getURI()).thenReturn(java.net.URI.create("http://localhost/test"));
+
+        // Mock the mutated request builder
+        ServerHttpRequest.Builder requestBuilder = mock(ServerHttpRequest.Builder.class);
+        when(request.mutate()).thenReturn(requestBuilder);
+        when(requestBuilder.header(anyString(), anyString())).thenReturn(requestBuilder);
+        ServerHttpRequest mutatedRequest = mock(ServerHttpRequest.class);
+        when(requestBuilder.build()).thenReturn(mutatedRequest);
+
+        Map<String, Object> attributes = new HashMap<>();
+        when(exchange.getAttributes()).thenReturn(attributes);
+
+        ServerWebExchange.Builder exchangeBuilder = mock(ServerWebExchange.Builder.class);
+        when(exchange.mutate()).thenReturn(exchangeBuilder);
+        when(exchangeBuilder.request(any(ServerHttpRequest.class))).thenReturn(exchangeBuilder);
+        ServerWebExchange mutatedExchange = mock(ServerWebExchange.class);
+        when(exchangeBuilder.build()).thenReturn(mutatedExchange);
+        when(chain.filter(mutatedExchange)).thenReturn(Mono.empty());
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        // Should still pass through (does not block, only warns)
+        verify(chain).filter(mutatedExchange);
     }
 
     @Test

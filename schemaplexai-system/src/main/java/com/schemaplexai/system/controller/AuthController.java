@@ -2,11 +2,14 @@ package com.schemaplexai.system.controller;
 
 import com.schemaplexai.common.constants.CommonConstants;
 import com.schemaplexai.common.result.Result;
+import com.schemaplexai.system.dto.ChangePasswordRequest;
 import com.schemaplexai.system.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -41,6 +44,19 @@ public class AuthController {
         String userId = request.getHeader(CommonConstants.HEADER_USER_ID);
         String token = resolveBearerToken(request.getHeader(CommonConstants.HEADER_AUTHORIZATION));
         authService.logout(userId, token);
+        return Result.success();
+    }
+
+    @Operation(summary = "修改密码")
+    @PostMapping("/change-password")
+    public Result<Void> changePassword(@Valid @RequestBody ChangePasswordRequest body,
+                                       HttpServletRequest request) {
+        String userIdStr = request.getHeader(CommonConstants.HEADER_USER_ID);
+        if (!StringUtils.hasText(userIdStr)) {
+            return Result.error(com.schemaplexai.common.result.ResultCode.UNAUTHORIZED);
+        }
+        Long userId = Long.parseLong(userIdStr);
+        authService.changePassword(userId, body.getOldPassword(), body.getNewPassword());
         return Result.success();
     }
 

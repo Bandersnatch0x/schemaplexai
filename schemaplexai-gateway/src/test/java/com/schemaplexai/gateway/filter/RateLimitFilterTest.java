@@ -1,6 +1,8 @@
 package com.schemaplexai.gateway.filter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.common.constants.CommonConstants;
+import com.schemaplexai.gateway.config.RateLimitProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -30,6 +32,8 @@ class RateLimitFilterTest {
     private ServerHttpRequest request;
     private ServerHttpResponse response;
     private GatewayFilterChain chain;
+    private RateLimitProperties properties;
+    private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
@@ -37,7 +41,15 @@ class RateLimitFilterTest {
         valueOps = mock(ReactiveValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOps);
 
-        filter = new RateLimitFilter(redisTemplate);
+        properties = new RateLimitProperties();
+        properties.setEnabled(true);
+        properties.setDefaultLimit(100);
+        properties.setWindowSize(60);
+        properties.setWhitelistPaths(java.util.Collections.emptyList());
+
+        objectMapper = new ObjectMapper();
+
+        filter = new RateLimitFilter(redisTemplate, properties, objectMapper);
 
         exchange = mock(ServerWebExchange.class);
         request = mock(ServerHttpRequest.class);
@@ -55,6 +67,7 @@ class RateLimitFilterTest {
         HttpHeaders headers = new HttpHeaders();
         when(request.getHeaders()).thenReturn(headers);
         when(request.getRemoteAddress()).thenReturn(new InetSocketAddress("127.0.0.1", 8080));
+        when(request.getURI()).thenReturn(java.net.URI.create("http://localhost/agent/execute"));
     }
 
     @Test
@@ -89,6 +102,18 @@ class RateLimitFilterTest {
 
         verify(response).setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
         verify(chain, never()).filter(exchange);
+    }
+
+    @Test
+    void filter_rateLimitExceeded_returnsJsonWithObjectMapper() {
+        when(valueOps.increment(anyString())).thenReturn(Mono.just(200L));
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        // Verify ObjectMapper-serialized JSON contains expected fields
+        verify(response).setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+        verify(response).writeWith(any());
     }
 
     @Test
@@ -136,6 +161,56 @@ class RateLimitFilterTest {
                 .verifyComplete();
 
         verify(valueOps).increment(contains("ip:unknown"));
+    }
+
+    @Test
+    void filter_disabled_skipsRateLimit() {
+        properties.setEnabled(false);
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        verify(chain).filter(exchange);
+        verifyNoInteractions(redisTemplate);
+    }
+
+    @Test
+    void filter_whitelistedPath_skipsRateLimit() {
+        properties.setWhitelistPaths(java.util.List.of("/auth/**"));
+        when(request.getURI()).thenReturn(java.net.URI.create("http://localhost/auth/login"));
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        verify(chain).filter(exchange);
+        verifyNoInteractions(redisTemplate);
+    }
+
+    @Test
+    void filter_usesConfigurableLimitFromProperties() {
+        properties.setDefaultLimit(50);
+
+        when(valueOps.increment(anyString())).thenReturn(Mono.just(51L));
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        verify(response).setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+        verify(chain, never()).filter(exchange);
+    }
+
+    @Test
+    void filter_usesConfigurableWindowFromProperties() {
+        properties.setWindowSize(30);
+
+        when(valueOps.increment(anyString())).thenReturn(Mono.just(1L));
+        when(redisTemplate.expire(anyString(), any())).thenReturn(Mono.just(true));
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        // Window should be 30 seconds = Duration.ofSeconds(30)
+        verify(redisTemplate).expire(anyString(), argThat(d -> ((java.time.Duration) d).toSeconds() == 30));
     }
 
     @Test

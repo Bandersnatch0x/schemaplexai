@@ -1,14 +1,16 @@
 package com.schemaplexai.web.controller;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.schemaplexai.common.result.Result;
+import com.schemaplexai.web.service.execution.EngineExecutionQueryPort;
 import com.schemaplexai.web.service.execution.ExecutionLifecyclePort;
 import com.schemaplexai.web.service.execution.ExecutionStatusPort;
+import com.schemaplexai.web.vo.ExecutionStatusVO;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 /**
  * M6.4: Execution Web Controller.
@@ -22,11 +24,22 @@ public class ExecutionWebController extends BaseController {
 
     private final ExecutionLifecyclePort lifecyclePort;
     private final ExecutionStatusPort statusPort;
+    private final EngineExecutionQueryPort queryPort;
 
     @Operation(summary = "获取执行状态")
     @GetMapping("/{id}")
-    public Result<Map<String, Object>> getExecutionStatus(@PathVariable Long id) {
+    public Result<ExecutionStatusVO> getExecutionStatus(@PathVariable Long id) {
         return success(statusPort.getExecutionStatus(id));
+    }
+
+    @Operation(summary = "分页查询执行列表")
+    @GetMapping
+    public Result<IPage<ExecutionStatusVO>> listExecutions(
+            @Parameter(description = "页码，默认1") @RequestParam(defaultValue = "1") long page,
+            @Parameter(description = "每页大小，默认20") @RequestParam(defaultValue = "20") long size,
+            @Parameter(description = "按状态筛选") @RequestParam(required = false) String state,
+            @Parameter(description = "按Agent ID筛选") @RequestParam(required = false) Long agentId) {
+        return success(queryPort.listExecutions(page, size, state, agentId));
     }
 
     @Operation(summary = "暂停执行")

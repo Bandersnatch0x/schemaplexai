@@ -1,7 +1,9 @@
 package com.schemaplexai.gateway.filter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.common.constants.CommonConstants;
 import com.schemaplexai.common.redis.TenantRedisKeyResolver;
+import com.schemaplexai.gateway.config.RateLimitProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -14,12 +16,14 @@ import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -27,27 +31,43 @@ import java.time.Duration;
 public class RateLimitFilter implements GlobalFilter, Ordered {
 
     private final ReactiveStringRedisTemplate reactiveStringRedisTemplate;
+    private final RateLimitProperties rateLimitProperties;
+    private final ObjectMapper objectMapper;
 
-    private static final int MAX_REQUESTS = 100;
-    private static final Duration WINDOW = Duration.ofMinutes(1);
+    private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        // Skip when rate limiting is disabled
+        if (!rateLimitProperties.isEnabled()) {
+            return chain.filter(exchange);
+        }
+
+        // Skip whitelisted paths
+        String path = exchange.getRequest().getURI().getPath();
+        for (String pattern : rateLimitProperties.getWhitelistPaths()) {
+            if (pathMatcher.match(pattern, path)) {
+                return chain.filter(exchange);
+            }
+        }
+
         ServerHttpRequest request = exchange.getRequest();
-        String windowKey = String.valueOf(System.currentTimeMillis() / 1000 / 60);
+        long windowSeconds = rateLimitProperties.getWindowSize();
+        // Use window-aligned time slot: epoch seconds / windowSize
+        String windowKey = String.valueOf(System.currentTimeMillis() / 1000 / windowSeconds);
         String key = resolveRateLimitKey(request, windowKey);
 
         return reactiveStringRedisTemplate.opsForValue()
                 .increment(key)
                 .flatMap(count -> {
                     if (count == 1) {
-                        return reactiveStringRedisTemplate.expire(key, WINDOW)
+                        return reactiveStringRedisTemplate.expire(key, Duration.ofSeconds(windowSeconds))
                                 .thenReturn(count);
                     }
                     return Mono.just(count);
                 })
                 .flatMap(count -> {
-                    if (count > MAX_REQUESTS) {
+                    if (count > rateLimitProperties.getDefaultLimit()) {
                         return rateLimitExceeded(exchange.getResponse());
                     }
                     return chain.filter(exchange);
@@ -77,9 +97,21 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
     private Mono<Void> rateLimitExceeded(ServerHttpResponse response) {
         response.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
-        String body = String.format("{\"code\":429,\"message\":\"rate limit exceeded\",\"timestamp\":%d}", System.currentTimeMillis());
-        DataBuffer buffer = response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8));
-        return response.writeWith(Mono.just(buffer));
+        Map<String, Object> body = Map.of(
+                "code", 429,
+                "message", "rate limit exceeded",
+                "timestamp", System.currentTimeMillis()
+        );
+        try {
+            byte[] bytes = objectMapper.writeValueAsBytes(body);
+            DataBuffer buffer = response.bufferFactory().wrap(bytes);
+            return response.writeWith(Mono.just(buffer));
+        } catch (Exception e) {
+            log.error("Failed to serialize rate limit response", e);
+            String fallback = "{\"code\":429,\"message\":\"rate limit exceeded\"}";
+            DataBuffer buffer = response.bufferFactory().wrap(fallback.getBytes(StandardCharsets.UTF_8));
+            return response.writeWith(Mono.just(buffer));
+        }
     }
 
     @Override

@@ -2,6 +2,7 @@ package com.schemaplexai.agent.engine.state;
 
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.mapper.SfAgentExecutionMapper;
+import com.schemaplexai.agent.engine.service.ExecutionConcurrencyService;
 import com.schemaplexai.agent.engine.sse.ExecutionEventBus;
 import com.schemaplexai.agent.engine.state.middleware.MiddlewarePipeline;
 import lombok.extern.slf4j.Slf4j;
@@ -22,17 +23,20 @@ public class AgentStateMachine {
     private final ExecutionEventBus eventBus;
     private final Map<AgentExecutionState, AgentStateHandler> handlers;
     private final MiddlewarePipeline middlewarePipeline;
+    private final ExecutionConcurrencyService concurrencyService;
     private final Map<Long, AgentExecutionState> executionStates = new ConcurrentHashMap<>();
 
     @Autowired
     public AgentStateMachine(SfAgentExecutionMapper executionMapper, ExecutionEventBus eventBus,
                              List<AgentStateHandler> handlerList,
-                             MiddlewarePipeline middlewarePipeline) {
+                             MiddlewarePipeline middlewarePipeline,
+                             ExecutionConcurrencyService concurrencyService) {
         this.executionMapper = executionMapper;
         this.eventBus = eventBus;
         this.handlers = handlerList.stream()
                 .collect(Collectors.toMap(AgentStateHandler::getState, Function.identity()));
         this.middlewarePipeline = middlewarePipeline;
+        this.concurrencyService = concurrencyService;
     }
 
     public void start(SfAgentExecution execution) {
@@ -48,7 +52,25 @@ public class AgentStateMachine {
         }
         log.info("Execution {} transitioning from {} to {}", execution.getId(), current, newState);
         execution.setState(newState.name());
-        saveExecution(execution);
+
+        // Use optimistic locking when updating execution state in DB
+        if (execution.getVersion() != null) {
+            try {
+                concurrencyService.updateState(execution.getId(), newState.name(), execution.getVersion());
+                // Refresh version from DB after successful update
+                SfAgentExecution refreshed = executionMapper.selectById(execution.getId());
+                if (refreshed != null) {
+                    execution.setVersion(refreshed.getVersion());
+                }
+            } catch (Exception e) {
+                log.error("Optimistic lock conflict for execution {}: {}", execution.getId(), e.getMessage());
+                // Fall back to direct update if optimistic locking fails
+                saveExecution(execution);
+            }
+        } else {
+            saveExecution(execution);
+        }
+
         executionStates.put(execution.getId(), newState);
 
         eventBus.publishStateTransition(execution.getId(), current, newState);

@@ -1,7 +1,10 @@
 package com.schemaplexai.agent.engine.lifecycle;
 
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
+import com.schemaplexai.agent.engine.mapper.ExecutionOutboxMapper;
 import com.schemaplexai.agent.engine.mapper.SfAgentExecutionMapper;
+import com.schemaplexai.agent.engine.orchestrator.AgentRuntimeOrchestrator;
+import com.schemaplexai.agent.engine.service.ExecutionEventService;
 import com.schemaplexai.agent.engine.state.AgentExecutionState;
 import com.schemaplexai.agent.engine.state.AgentStateMachine;
 import org.junit.jupiter.api.Test;
@@ -17,6 +20,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@org.mockito.junit.jupiter.MockitoSettings(strictness = org.mockito.quality.Strictness.LENIENT)
 class AgentExecutionLifecycleServiceTest {
 
     @Mock
@@ -33,6 +37,15 @@ class AgentExecutionLifecycleServiceTest {
 
     @Mock
     private ExecutionSnapshotPersistence snapshotPersistence;
+
+    @Mock
+    private ExecutionEventService executionEventService;
+
+    @Mock
+    private ExecutionOutboxMapper executionOutboxMapper;
+
+    @Mock
+    private AgentRuntimeOrchestrator orchestrator;
 
     @InjectMocks
     private AgentExecutionLifecycleService lifecycleService;
@@ -75,7 +88,7 @@ class AgentExecutionLifecycleServiceTest {
     }
 
     @Test
-    void resumeExecutionClearsRedisAndTransitionsToReady() {
+    void resumeExecutionClearsRedisAndTransitionsToResuming() {
         SfAgentExecution execution = new SfAgentExecution();
         execution.setId(1L);
         when(executionMapper.selectById(1L)).thenReturn(execution);
@@ -83,7 +96,7 @@ class AgentExecutionLifecycleServiceTest {
         lifecycleService.resumeExecution(1L);
 
         verify(redisTemplate).delete(anyString());
-        verify(stateMachine).transition(AgentExecutionState.READY, execution);
+        verify(stateMachine).transition(AgentExecutionState.RESUMING, execution);
     }
 
     @Test
@@ -95,6 +108,7 @@ class AgentExecutionLifecycleServiceTest {
         lifecycleService.cancelExecution(1L);
 
         verify(redisTemplate).delete(anyString());
+        verify(orchestrator).cancel();
         verify(stateMachine).transition(AgentExecutionState.CANCELLED, execution);
         verify(stateMachine).removeExecution(1L);
     }
