@@ -53,10 +53,8 @@ instance.interceptors.response.use(
       if (!isRefreshing) {
         isRefreshing = true
         try {
-          const res = await axios.post('/auth/refresh', {}, {
-            headers: { 'X-Refresh-Token': getRefreshToken() || '' },
-          })
-          const newToken = res.data.data.token
+          const res = await axios.post('/auth/refresh', { refreshToken: getRefreshToken() || '' })
+          const newToken = res.data.data.accessToken
           setToken(newToken)
           refreshSubscribers.forEach((cb) => cb(newToken))
           refreshSubscribers = []

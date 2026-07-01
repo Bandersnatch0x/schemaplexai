@@ -10,33 +10,12 @@ export interface SystemConfig {
   updatedAt: string
 }
 
-export interface SystemLog {
-  id: string
-  level: string
-  module: string
-  message: string
-  createdAt: string
-}
-
 export function getSystemConfigs(params?: { category?: string }) {
   return request.get<{ list: SystemConfig[]; total: number }>('/system/configs', { params })
 }
 
 export function updateSystemConfig(id: string, value: string) {
   return request.put<void>(`/system/configs/${id}`, { configValue: value })
-}
-
-export function getSystemLogs(params?: { page?: number; pageSize?: number; level?: string }) {
-  return request.get<{ list: SystemLog[]; total: number }>('/system/logs', { params })
-}
-
-export function getSystemMetrics() {
-  return request.get<{
-    cpuUsage: number
-    memoryUsage: number
-    diskUsage: number
-    activeConnections: number
-  }>('/system/metrics')
 }
 
 export interface User {
@@ -49,8 +28,9 @@ export interface User {
   createdAt: string
 }
 
-export function getUserList(params?: { page?: number; pageSize?: number; keyword?: string }) {
-  return request.get<{ list: User[]; total: number }>('/system/users', { params })
+export async function getUserList(params?: { page?: number; pageSize?: number; keyword?: string }) {
+  const res = await request.get<{ records: User[]; total: number }>('/system/users', { params })
+  return { list: res.records, total: res.total }
 }
 
 export function createUser(data: Omit<User, 'id' | 'createdAt'>) {
@@ -73,8 +53,9 @@ export interface Role {
   createdAt: string
 }
 
-export function getRoleList() {
-  return request.get<Role[]>('/system/roles')
+export async function getRoleList() {
+  const res = await request.get<{ records: Role[]; total: number }>('/system/roles')
+  return res.records
 }
 
 export interface Tenant {
@@ -85,8 +66,9 @@ export interface Tenant {
   createdAt: string
 }
 
-export function getTenantList() {
-  return request.get<Tenant[]>('/system/tenants')
+export async function getTenantList() {
+  const res = await request.get<{ records: Tenant[]; total: number }>('/system/tenants')
+  return res.records
 }
 
 export interface ModelConfigItem {

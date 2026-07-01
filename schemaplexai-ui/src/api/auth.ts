@@ -25,12 +25,17 @@ export function logout() {
   return request.post<void>('/auth/logout')
 }
 
-export function getCurrentUser(): Promise<UserInfo> {
-  return request.get<UserInfo>('/system/users/current')
+export function getCurrentUser(userId: string): Promise<UserInfo> {
+  return request.get<UserInfo>(`/system/users/${userId}`)
 }
 
-export function getTenantList(): Promise<Tenant[]> {
-  return request.get<Tenant[]>('/system/tenants')
+export async function getTenantList(): Promise<Tenant[]> {
+  const res = await request.get<{ records: Tenant[]; total: number }>('/system/tenants')
+  return res.records
+}
+
+export function changePassword(oldPassword: string, newPassword: string) {
+  return request.post<void>('/auth/change-password', { oldPassword, newPassword })
 }
 
 export function saveAuth(result: LoginResult, tenantId: string) {

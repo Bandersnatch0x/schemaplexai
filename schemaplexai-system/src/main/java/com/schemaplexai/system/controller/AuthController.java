@@ -27,7 +27,12 @@ public class AuthController {
     public Result<Map<String, String>> login(@RequestBody Map<String, String> params, HttpServletRequest request) {
         String username = params.get("username");
         String password = params.get("password");
+        // Gateway strips X-Tenant-Id on whitelisted paths (/auth/**),
+        // so accept tenantId from body as fallback
         String tenantId = request.getHeader(CommonConstants.HEADER_TENANT_ID);
+        if (!StringUtils.hasText(tenantId)) {
+            tenantId = params.get("tenantId");
+        }
         return Result.success(authService.login(username, password, tenantId));
     }
 

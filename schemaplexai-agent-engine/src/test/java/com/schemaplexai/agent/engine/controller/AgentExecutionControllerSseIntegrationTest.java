@@ -103,7 +103,7 @@ class AgentExecutionControllerSseIntegrationTest {
         when(sseTokenValidator.validate(any(), any()))
                 .thenReturn(ValidationResult.invalid("expired token"));
 
-        assertThrows(SecurityException.class, () ->
+        assertThrows(com.schemaplexai.common.exception.BaseException.class, () ->
                 controller.subscribeExecutionEvents(1L, 1L, "invalid-token"));
     }
 }
