@@ -1,5 +1,7 @@
 package com.schemaplexai.admin.controller;
 
+import com.schemaplexai.common.controller.BaseController;
+
 import com.schemaplexai.admin.dto.UserAdminDTO;
 import com.schemaplexai.admin.dto.UserAdminQuery;
 import com.schemaplexai.admin.dto.UserRoleUpdateDTO;
@@ -20,7 +22,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/admin/users")
 @RequiredArgsConstructor
-public class UserAdminController extends BaseAdminController {
+public class UserAdminController extends BaseController {
 
     private final UserAdminService userAdminService;
 

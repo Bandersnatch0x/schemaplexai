@@ -1,5 +1,7 @@
 package com.schemaplexai.web.controller;
 
+import com.schemaplexai.common.controller.BaseController;
+
 import com.schemaplexai.common.result.Result;
 import com.schemaplexai.web.dto.ApprovalRequest;
 import com.schemaplexai.web.dto.EscalationRequest;

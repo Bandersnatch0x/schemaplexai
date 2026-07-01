@@ -1,5 +1,7 @@
 package com.schemaplexai.admin.controller;
 
+import com.schemaplexai.common.controller.BaseController;
+
 import com.schemaplexai.admin.dto.TenantAdminDTO;
 import com.schemaplexai.admin.dto.TenantConfigUpdateDTO;
 import com.schemaplexai.admin.service.TenantAdminService;
@@ -17,7 +19,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/admin/tenants")
 @RequiredArgsConstructor
-public class TenantAdminController extends BaseAdminController {
+public class TenantAdminController extends BaseController {
 
     private final TenantAdminService tenantAdminService;
 

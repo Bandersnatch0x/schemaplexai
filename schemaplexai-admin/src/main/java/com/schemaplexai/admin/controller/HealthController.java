@@ -1,5 +1,7 @@
 package com.schemaplexai.admin.controller;
 
+import com.schemaplexai.common.controller.BaseController;
+
 import com.schemaplexai.admin.dto.PlatformHealthDTO;
 import com.schemaplexai.admin.service.PlatformHealthService;
 import com.schemaplexai.common.result.Result;
@@ -18,7 +20,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/admin/health")
 @RequiredArgsConstructor
-public class HealthController extends BaseAdminController {
+public class HealthController extends BaseController {
 
     private final PlatformHealthService platformHealthService;
 

@@ -1,5 +1,7 @@
 package com.schemaplexai.admin.controller;
 
+import com.schemaplexai.common.controller.BaseController;
+
 import com.schemaplexai.admin.dto.SystemConfigDTO;
 import com.schemaplexai.admin.dto.SystemConfigQuery;
 import com.schemaplexai.admin.service.SystemConfigService;
@@ -18,7 +20,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/admin/configs")
 @RequiredArgsConstructor
-public class SystemConfigController extends BaseAdminController {
+public class SystemConfigController extends BaseController {
 
     private final SystemConfigService systemConfigService;
 

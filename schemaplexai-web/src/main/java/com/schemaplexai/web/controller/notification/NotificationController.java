@@ -1,7 +1,7 @@
 package com.schemaplexai.web.controller.notification;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.schemaplexai.web.controller.BaseController;
+import com.schemaplexai.common.controller.BaseController;
 import com.schemaplexai.common.result.Result;
 import com.schemaplexai.web.service.notification.NotificationService;
 import com.schemaplexai.web.vo.notification.NotificationVO;

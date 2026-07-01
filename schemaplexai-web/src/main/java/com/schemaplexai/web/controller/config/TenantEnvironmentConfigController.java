@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.schemaplexai.agent.config.service.TenantEnvironmentConfigService;
 import com.schemaplexai.common.result.Result;
 import com.schemaplexai.model.entity.config.TenantEnvironmentConfig;
-import com.schemaplexai.web.controller.BaseController;
+import com.schemaplexai.common.controller.BaseController;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
