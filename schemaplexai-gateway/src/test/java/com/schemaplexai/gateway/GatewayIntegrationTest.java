@@ -102,6 +102,36 @@ class GatewayIntegrationTest {
     }
 
     @Test
+    void logout_withoutToken_returns401() {
+        // Issue 912: /auth/logout was previously exempted via the /auth/** wildcard;
+        // it now requires a valid token (which also fixes the null-userId break).
+        webTestClient.post()
+                .uri("/auth/logout")
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void changePassword_withoutToken_returns401() {
+        // Issue 912: /auth/change-password was previously exempted via the /auth/**
+        // wildcard; it now requires a valid token (fixing the constant-401 break).
+        webTestClient.post()
+                .uri("/auth/change-password")
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void systemTenants_withoutToken_returns401() {
+        // Issue 912: /system/tenants/** was removed from the whitelist — it is a
+        // business data path the spec never exempted.
+        webTestClient.get()
+                .uri("/system/tenants")
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
     void protectedPath_withoutToken_returns401() {
         webTestClient.get()
                 .uri("/agent/execute")

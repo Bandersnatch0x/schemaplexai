@@ -30,6 +30,7 @@ class JwtAuthFilterTest {
     private JwtAuthFilter filter;
     private ServerWebExchange exchange;
     private ServerHttpRequest request;
+    private ServerHttpRequest.Builder requestBuilder;
     private ServerHttpResponse response;
     private GatewayFilterChain chain;
 
@@ -54,7 +55,7 @@ class JwtAuthFilterTest {
         when(chain.filter(any(ServerWebExchange.class))).thenReturn(Mono.empty());
 
         // Stub request mutation chain (used by both whitelist and auth paths)
-        ServerHttpRequest.Builder requestBuilder = mock(ServerHttpRequest.Builder.class);
+        requestBuilder = mock(ServerHttpRequest.Builder.class);
         when(request.mutate()).thenReturn(requestBuilder);
         when(requestBuilder.header(anyString(), anyString())).thenReturn(requestBuilder);
         when(requestBuilder.headers(any())).thenReturn(requestBuilder);
@@ -101,6 +102,75 @@ class JwtAuthFilterTest {
                 .verifyComplete();
 
         verify(chain).filter(any(ServerWebExchange.class));
+    }
+
+    @Test
+    void filter_whitelistedRefreshPath_passesThrough() {
+        // /auth/refresh carries the refresh token in the body; the expired access
+        // token cannot authenticate the call, so the path stays whitelisted.
+        when(request.getURI()).thenReturn(java.net.URI.create("http://localhost/auth/refresh"));
+        when(request.getHeaders()).thenReturn(new HttpHeaders());
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        verify(chain).filter(any(ServerWebExchange.class));
+    }
+
+    @Test
+    void filter_registerPath_noLongerWhitelisted_returnsUnauthorized() {
+        // The /auth/** wildcard was removed and no register endpoint exists
+        // downstream, so /auth/register must not bypass auth (issue 912).
+        when(request.getURI()).thenReturn(java.net.URI.create("http://localhost/auth/register"));
+        when(request.getHeaders()).thenReturn(new HttpHeaders());
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        verify(response).setStatusCode(HttpStatus.UNAUTHORIZED);
+        verify(chain, never()).filter(any());
+    }
+
+    @Test
+    void filter_systemTenantsPath_noLongerWhitelisted_returnsUnauthorized() {
+        // /system/tenants/** was a business data path never listed in the spec;
+        // anonymous access past the gateway trust boundary must be rejected.
+        when(request.getURI()).thenReturn(java.net.URI.create("http://localhost/system/tenants/1"));
+        when(request.getHeaders()).thenReturn(new HttpHeaders());
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        verify(response).setStatusCode(HttpStatus.UNAUTHORIZED);
+        verify(chain, never()).filter(any());
+    }
+
+    @Test
+    void filter_logout_withoutToken_returnsUnauthorized() {
+        // Previously exempted via /auth/** — which also stripped identity headers,
+        // leaving the downstream logout handler with a null userId.
+        when(request.getURI()).thenReturn(java.net.URI.create("http://localhost/auth/logout"));
+        when(request.getHeaders()).thenReturn(new HttpHeaders());
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        verify(response).setStatusCode(HttpStatus.UNAUTHORIZED);
+        verify(chain, never()).filter(any());
+    }
+
+    @Test
+    void filter_changePassword_withoutToken_returnsUnauthorized() {
+        // Previously exempted via /auth/** — which also stripped identity headers,
+        // so change-password always returned 401 downstream.
+        when(request.getURI()).thenReturn(java.net.URI.create("http://localhost/auth/change-password"));
+        when(request.getHeaders()).thenReturn(new HttpHeaders());
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        verify(response).setStatusCode(HttpStatus.UNAUTHORIZED);
+        verify(chain, never()).filter(any());
     }
 
     @Test
@@ -175,6 +245,59 @@ class JwtAuthFilterTest {
                 .verifyComplete();
 
         verify(chain).filter(any(ServerWebExchange.class));
+    }
+
+    @Test
+    void filter_changePassword_withValidToken_injectsUserIdHeader() {
+        // Issue 912: change-password is no longer whitelisted, so the validated
+        // token's identity must be injected for the downstream handler.
+        when(request.getURI()).thenReturn(java.net.URI.create("http://localhost/auth/change-password"));
+
+        SecretKey key = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
+        String validToken = Jwts.builder()
+                .subject("user-123")
+                .claim("tenantId", "tenant-456")
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + 3600_000))
+                .signWith(key)
+                .compact();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(CommonConstants.HEADER_AUTHORIZATION, CommonConstants.TOKEN_PREFIX + validToken);
+        when(request.getHeaders()).thenReturn(headers);
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        verify(chain).filter(any(ServerWebExchange.class));
+        verify(requestBuilder).header(CommonConstants.HEADER_USER_ID, "user-123");
+        verify(requestBuilder).header(CommonConstants.HEADER_TENANT_ID, "tenant-456");
+    }
+
+    @Test
+    void filter_logout_withValidToken_injectsUserIdHeader() {
+        // Issue 912: logout is no longer whitelisted, so the downstream handler
+        // receives the userId from the validated token instead of null.
+        when(request.getURI()).thenReturn(java.net.URI.create("http://localhost/auth/logout"));
+
+        SecretKey key = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
+        String validToken = Jwts.builder()
+                .subject("user-789")
+                .claim("tenantId", "tenant-456")
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + 3600_000))
+                .signWith(key)
+                .compact();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(CommonConstants.HEADER_AUTHORIZATION, CommonConstants.TOKEN_PREFIX + validToken);
+        when(request.getHeaders()).thenReturn(headers);
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        verify(chain).filter(any(ServerWebExchange.class));
+        verify(requestBuilder).header(CommonConstants.HEADER_USER_ID, "user-789");
     }
 
     @Test
