@@ -198,6 +198,58 @@ class SpecServiceImplTest {
         verify(specMapper, never()).updateById(any());
     }
 
+    @Test
+    void updateSpec_staleClientVersion_throwsConflict() {
+        SfSpec existing = new SfSpec();
+        existing.setId(1L);
+        existing.setStatus("draft");
+        existing.setVersion(5);
+        when(specMapper.selectById(1L)).thenReturn(existing);
+
+        SfSpec update = new SfSpec();
+        update.setTitle("new title");
+        update.setVersion(3); // client edited from an older revision
+
+        assertThatThrownBy(() -> specService.updateSpec(1L, update))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.CONFLICT.getCode());
+
+        verify(specMapper, never()).updateById(any());
+    }
+
+    @Test
+    void updateSpec_matchingClientVersion_proceeds() {
+        SfSpec existing = new SfSpec();
+        existing.setId(1L);
+        existing.setStatus("draft");
+        existing.setVersion(5);
+        when(specMapper.selectById(1L)).thenReturn(existing);
+        when(specMapper.updateById(existing)).thenReturn(1);
+
+        SfSpec update = new SfSpec();
+        update.setTitle("new title");
+        update.setVersion(5);
+
+        assertThat(specService.updateSpec(1L, update)).isTrue();
+        verify(specMapper).updateById(existing);
+    }
+
+    @Test
+    void updateSpec_zeroRowGuardedUpdate_throwsConflict() {
+        SfSpec existing = new SfSpec();
+        existing.setId(1L);
+        existing.setStatus("draft");
+        existing.setVersion(5);
+        when(specMapper.selectById(1L)).thenReturn(existing);
+        when(specMapper.updateById(existing)).thenReturn(0); // a concurrent writer won the race
+
+        assertThatThrownBy(() -> specService.updateSpec(1L, new SfSpec()))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.CONFLICT.getCode());
+    }
+
     // ------------------------------------------------------------------
     // publishSpec
     // ------------------------------------------------------------------
@@ -228,6 +280,7 @@ class SpecServiceImplTest {
         spec.setId(1L);
         spec.setContent("spec content");
         when(specMapper.selectById(1L)).thenReturn(spec);
+        when(specMapper.updateById(spec)).thenReturn(1);
         when(specVersionMapper.selectOne(any())).thenReturn(null);
 
         SfSpecVersion result = specService.publishSpec(1L);
@@ -245,6 +298,7 @@ class SpecServiceImplTest {
         spec.setId(1L);
         spec.setContent("spec content");
         when(specMapper.selectById(1L)).thenReturn(spec);
+        when(specMapper.updateById(spec)).thenReturn(1);
 
         SfSpecVersion latest = new SfSpecVersion();
         latest.setVersion("5");
@@ -261,6 +315,7 @@ class SpecServiceImplTest {
         spec.setId(1L);
         spec.setContent("spec content");
         when(specMapper.selectById(1L)).thenReturn(spec);
+        when(specMapper.updateById(spec)).thenReturn(1);
 
         SfSpecVersion latest = new SfSpecVersion();
         latest.setVersion("v1.0");
@@ -277,12 +332,29 @@ class SpecServiceImplTest {
         spec.setId(1L);
         spec.setContent("content");
         when(specMapper.selectById(1L)).thenReturn(spec);
+        when(specMapper.updateById(spec)).thenReturn(1);
         when(specVersionMapper.selectOne(any())).thenReturn(null);
 
         specService.publishSpec(1L);
 
         assertThat(spec.getStatus()).isEqualTo("published");
         assertThat(spec.getUpdatedAt()).isNotNull();
+    }
+
+    @Test
+    void publishSpec_concurrentModification_throwsConflict() {
+        SfSpec spec = new SfSpec();
+        spec.setId(1L);
+        spec.setContent("content");
+        when(specMapper.selectById(1L)).thenReturn(spec);
+        when(specMapper.updateById(spec)).thenReturn(0);
+
+        assertThatThrownBy(() -> specService.publishSpec(1L))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.CONFLICT.getCode());
+
+        verify(specVersionMapper, never()).insert(any());
     }
 
     // ------------------------------------------------------------------
@@ -324,15 +396,16 @@ class SpecServiceImplTest {
     }
 
     @Test
-    void archiveSpec_updateReturnsZero_returnsFalse() {
+    void archiveSpec_concurrentModification_throwsConflict() {
         SfSpec spec = new SfSpec();
         spec.setId(1L);
         when(specMapper.selectById(1L)).thenReturn(spec);
         when(specMapper.updateById(spec)).thenReturn(0);
 
-        boolean result = specService.archiveSpec(1L);
-
-        assertThat(result).isFalse();
+        assertThatThrownBy(() -> specService.archiveSpec(1L))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.CONFLICT.getCode());
     }
 
     // ------------------------------------------------------------------

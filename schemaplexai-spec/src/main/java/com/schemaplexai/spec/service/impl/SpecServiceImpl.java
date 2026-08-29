@@ -62,6 +62,13 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
             throw new BaseException(ResultCode.FORBIDDEN,
                     "Spec " + id + " is not editable in status " + existing.getStatus());
         }
+        // Optimistic lock (spec-management §7): a client editing from an older
+        // revision must not silently overwrite newer content.
+        if (update.getVersion() != null && !update.getVersion().equals(existing.getVersion())) {
+            throw new BaseException(ResultCode.CONFLICT,
+                    "Spec " + id + " was modified concurrently; expected version "
+                            + update.getVersion() + " but found " + existing.getVersion());
+        }
         if (update.getTitle() != null) {
             existing.setTitle(update.getTitle());
         }
@@ -74,7 +81,12 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
         // status is a lifecycle field: never rewritten by a plain update.
         existing.setUpdatedAt(LocalDateTime.now());
         int rows = specMapper.updateById(existing);
-        return rows > 0;
+        if (rows == 0) {
+            // @Version WHERE-clause matched nothing: a concurrent writer won.
+            throw new BaseException(ResultCode.CONFLICT,
+                    "Spec " + id + " was modified concurrently; reload and retry");
+        }
+        return true;
     }
 
     @Override
@@ -87,7 +99,11 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
 
         spec.setStatus(SpecStatus.PUBLISHED);
         spec.setUpdatedAt(LocalDateTime.now());
-        specMapper.updateById(spec);
+        int rows = specMapper.updateById(spec);
+        if (rows == 0) {
+            throw new BaseException(ResultCode.CONFLICT,
+                    "Spec " + specId + " was modified concurrently; reload and retry");
+        }
 
         String tenantId = TenantContextHolder.getTenantId();
         LambdaQueryWrapper<SfSpecVersion> wrapper = new LambdaQueryWrapper<>();
@@ -129,8 +145,12 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
         spec.setStatus(SpecStatus.ARCHIVED);
         spec.setUpdatedAt(LocalDateTime.now());
         int rows = specMapper.updateById(spec);
+        if (rows == 0) {
+            throw new BaseException(ResultCode.CONFLICT,
+                    "Spec " + specId + " was modified concurrently; reload and retry");
+        }
         log.info("Archived spec {}", specId);
-        return rows > 0;
+        return true;
     }
 
     @Override

@@ -174,6 +174,7 @@ class SpecVersionServiceImplTest {
         spec.setStatus("draft");
         when(specMapper.selectById(1L)).thenReturn(spec);
         when(specVersionMapper.insert(any())).thenReturn(1);
+        when(specMapper.updateById(spec)).thenReturn(1);
 
         SfSpecVersion result = specVersionService.createVersion(1L, "v1", "new content", "first version");
 
@@ -185,6 +186,21 @@ class SpecVersionServiceImplTest {
         assertThat(spec.getStatus()).isEqualTo("draft");
         verify(specMapper).updateById(spec);
         verify(specVersionMapper).insert(any());
+    }
+
+    @Test
+    void createVersion_concurrentModification_throwsConflict() {
+        SfSpec spec = new SfSpec();
+        spec.setId(1L);
+        spec.setStatus("draft");
+        when(specMapper.selectById(1L)).thenReturn(spec);
+        when(specVersionMapper.insert(any())).thenReturn(1);
+        when(specMapper.updateById(spec)).thenReturn(0);
+
+        assertThatThrownBy(() -> specVersionService.createVersion(1L, "v1", "new content", "first version"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.CONFLICT.getCode());
     }
 
     // ------------------------------------------------------------------
