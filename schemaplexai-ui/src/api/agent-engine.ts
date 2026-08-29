@@ -11,12 +11,23 @@ export function getExecutionRecords(agentId?: string) {
   return request.get<{ records: ExecutionRecord[]; total: number }>('/web/executions', { params: { agentId } })
 }
 
-/** Stub — no backend endpoint exists yet. Returns zeroed stats. */
+/**
+ * Tenant-scoped agent statistics for the Cockpit page.
+ * Backend: GET /agent-config/agents/stats (schemaplexai-agent-config service,
+ * routed via the gateway's /agent-config/** route). Tenant isolation is
+ * enforced server-side from the X-Tenant-Id header the request interceptor
+ * attaches.
+ */
+export interface AgentStats {
+  totalAgents: number
+  activeAgents: number
+  runningExecutions: number
+  totalExecutions: number
+  todayExecutions: number
+  totalTokens: number
+  pendingApprovals: number
+}
+
 export function getAgentStats() {
-  return Promise.resolve({
-    totalAgents: 0,
-    totalExecutions: 0,
-    totalTokens: 0,
-    pendingApprovals: 0,
-  })
+  return request.get<AgentStats>('/agent-config/agents/stats')
 }

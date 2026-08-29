@@ -144,8 +144,11 @@ describe('request.ts - axios instance and interceptors', () => {
       onFulfilled: (response: unknown) => unknown
       onRejected: (error: unknown) => unknown
     }> = []
+    // Current backend contract (schemaplexai-system AuthController#refresh):
+    // POST /auth/refresh with JSON body { refreshToken } responds with
+    // Result { data: { accessToken, refreshToken, tokenType } }.
     const mockPost = vi.fn().mockResolvedValue({
-      data: { data: { token: 'new-token-xyz' } },
+      data: { data: { accessToken: 'new-token-xyz' } },
     })
     const { default: axiosMock } = await import('axios')
     vi.mocked(axiosMock.create).mockReturnValue({
@@ -175,13 +178,7 @@ describe('request.ts - axios instance and interceptors', () => {
     // Assert
     const rejectionPromise = responseInterceptors[0].onRejected(error)
     await expect(rejectionPromise).resolves.toBeUndefined()
-    expect(mockPost).toHaveBeenCalledWith(
-      '/auth/refresh',
-      {},
-      expect.objectContaining({
-        headers: expect.objectContaining({ 'X-Refresh-Token': 'refresh-abc' }),
-      })
-    )
+    expect(mockPost).toHaveBeenCalledWith('/auth/refresh', { refreshToken: 'refresh-abc' })
     expect(setToken).toHaveBeenCalledWith('new-token-xyz')
   })
 
