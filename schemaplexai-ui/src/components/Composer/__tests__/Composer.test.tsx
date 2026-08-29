@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import Composer from '../index'
 import * as uploadApi from '@/api/upload'
-import type { ComposerValue } from '../types'
 
 vi.mock('@/api/upload', async () => {
   const actual = await vi.importActual<typeof import('@/api/upload')>('@/api/upload')
