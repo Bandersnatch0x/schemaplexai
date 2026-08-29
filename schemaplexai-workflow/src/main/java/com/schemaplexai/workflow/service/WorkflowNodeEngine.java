@@ -29,6 +29,16 @@ public class WorkflowNodeEngine {
 
     private Map<String, NodeExecutor> executors;
 
+    // Optional wiring (ticket 924 trigger point 3): published after COMPLETED
+    // nodes. Setter-injected so existing tests constructing the engine with
+    // three dependencies keep working; null = trigger disabled.
+    private WorkflowQualityCheckPublisher qualityCheckPublisher;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setQualityCheckPublisher(WorkflowQualityCheckPublisher qualityCheckPublisher) {
+        this.qualityCheckPublisher = qualityCheckPublisher;
+    }
+
     // Retry policy (spec §8: 3 retries with exponential backoff). Only transient
     // (retryable) failures and thrown exceptions are retried; deterministic failures and
     // terminal TIMEOUT results are not. Injectable so tests run without real sleeping.
@@ -125,6 +135,21 @@ public class WorkflowNodeEngine {
             nodeExecutionMapper.updateById(nodeExecution);
         } catch (Exception e) {
             log.warn("Failed to persist node execution result for nodeId={}", nodeExecution.getNodeId(), e);
+        }
+
+        // Ticket 924 trigger point 3: post-node quality check for COMPLETED
+        // nodes. Best-effort — gate publication must never fail the flow.
+        if (result.isSuccess() && qualityCheckPublisher != null) {
+            String outputSnippet;
+            try {
+                String full = objectMapper.writeValueAsString(result.getOutput());
+                outputSnippet = full.length() > 500 ? full.substring(0, 500) : full;
+            } catch (Exception e) {
+                outputSnippet = String.valueOf(result.getOutput());
+            }
+            qualityCheckPublisher.publishPostNodeCheck(
+                    nodeExecution.getId(), nodeExecution.getInstanceId(),
+                    nodeExecution.getNodeId(), nodeExecution.getTenantId(), outputSnippet);
         }
         return result;
     }

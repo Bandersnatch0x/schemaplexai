@@ -90,6 +90,50 @@ class WorkflowNodeEngineTest {
     }
 
     @Test
+    void executeNode_successPublishesQualityCheck() throws Exception {
+        WorkflowQualityCheckPublisher qualityPublisher = mock(WorkflowQualityCheckPublisher.class);
+        workflowNodeEngine.setQualityCheckPublisher(qualityPublisher);
+
+        SfWorkflowNodeExecution node = new SfWorkflowNodeExecution();
+        node.setId(55L);
+        node.setInstanceId(7L);
+        node.setNodeId("n1");
+        node.setNodeType("SCRIPT");
+        node.setInputJson(null);
+        node.setTenantId("t1");
+
+        when(nodeExecutor.execute(any(), eq("t1")))
+                .thenReturn(NodeExecutionResult.success(Map.of("result", "ok")));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"result\":\"ok\"}");
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        workflowNodeEngine.executeNode(node);
+
+        verify(qualityPublisher).publishPostNodeCheck(eq(55L), eq(7L), eq("n1"), eq("t1"), any());
+    }
+
+    @Test
+    void executeNode_failureDoesNotPublishQualityCheck() throws Exception {
+        WorkflowQualityCheckPublisher qualityPublisher = mock(WorkflowQualityCheckPublisher.class);
+        workflowNodeEngine.setQualityCheckPublisher(qualityPublisher);
+
+        SfWorkflowNodeExecution node = new SfWorkflowNodeExecution();
+        node.setNodeId("n1");
+        node.setNodeType("SCRIPT");
+        node.setInputJson(null);
+        node.setTenantId("t1");
+
+        when(nodeExecutor.execute(any(), eq("t1")))
+                .thenReturn(NodeExecutionResult.failure("Error"));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"error\":\"Error\"}");
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        workflowNodeEngine.executeNode(node);
+
+        verifyNoInteractions(qualityPublisher);
+    }
+
+    @Test
     void executeNode_unknownType_throwsException() {
         SfWorkflowNodeExecution node = new SfWorkflowNodeExecution();
         node.setNodeId("n1");
