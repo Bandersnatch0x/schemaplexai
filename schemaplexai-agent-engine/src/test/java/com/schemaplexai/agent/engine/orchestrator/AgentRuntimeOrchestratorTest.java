@@ -216,8 +216,9 @@ class AgentRuntimeOrchestratorTest {
         when(admissionService.admit(eq(TENANT_ID), eq(10L), any(TokenBudget.class)))
             .thenReturn(AdmissionResult.builder().allowed(true).build());
 
-        // Simulate Redis pause key existing (non-null return)
-        when(valueOps.get(contains("sf:execution:paused:"))).thenReturn("USER_REQUEST");
+        // Simulate Redis pause key existing (non-null return).
+        // Key is tenant-scoped per TenantRedisKeyResolver: sf:{tenantId}:execution:paused:{executionId}
+        when(valueOps.get(contains("sf:" + TENANT_ID + ":execution:paused:"))).thenReturn("USER_REQUEST");
 
         orchestrator.run(execution, TENANT_ID, PROMPT);
 
@@ -258,8 +259,9 @@ class AgentRuntimeOrchestratorTest {
             .thenReturn(AgentExecutionState.THINKING);
 
         // Simulate pause key set after some iterations
-        // Return null (not paused) for first 25 iterations, then return a value (paused)
-        when(valueOps.get(contains("sf:execution:paused:")))
+        // Return null (not paused) for first 25 iterations, then return a value (paused).
+        // Key is tenant-scoped per TenantRedisKeyResolver: sf:{tenantId}:execution:paused:{executionId}
+        when(valueOps.get(contains("sf:" + TENANT_ID + ":execution:paused:")))
             .thenReturn(null, null, null, null, null, null, null, null, null, null,
                       null, null, null, null, null, null, null, null, null, null,
                       null, null, null, null, null,
