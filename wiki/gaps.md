@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-28T16:38:29Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-08-29T15:21:29Z -->
 
 ## Auto-Generated Gap Scan
 
@@ -15,7 +15,6 @@
 ### Undocumented Controllers
 
 - Missing wiki page for controller: `ApprovalWebController` (source: D:/code_space/frige/schemaplexai-web/src/main/java/com/schemaplexai/web/controller/ApprovalWebController.java)
-- Missing wiki page for controller: `BaseController` (source: D:/code_space/frige/schemaplexai-web/src/main/java/com/schemaplexai/web/controller/BaseController.java)
 - Missing wiki page for controller: `CostWebController` (source: D:/code_space/frige/schemaplexai-web/src/main/java/com/schemaplexai/web/controller/CostWebController.java)
 - Missing wiki page for controller: `ExecutionWebController` (source: D:/code_space/frige/schemaplexai-web/src/main/java/com/schemaplexai/web/controller/ExecutionWebController.java)
 
@@ -56,6 +55,7 @@
 - Missing wiki page for service: `ComplianceReportService` (source: D:/code_space/frige/schemaplexai-quality/src/main/java/com/schemaplexai/quality/service/ComplianceReportService.java)
 - Missing wiki page for service: `EscalationPolicyService` (source: D:/code_space/frige/schemaplexai-quality/src/main/java/com/schemaplexai/quality/service/EscalationPolicyService.java)
 - Missing wiki page for service: `InboxDeduplicationService` (source: D:/code_space/frige/schemaplexai-quality/src/main/java/com/schemaplexai/quality/service/InboxDeduplicationService.java)
+- Missing wiki page for service: `RbacService` (source: D:/code_space/frige/schemaplexai-system/src/main/java/com/schemaplexai/system/security/RbacService.java)
 - Missing wiki page for service: `TenantPolicyService` (source: D:/code_space/frige/schemaplexai-system/src/main/java/com/schemaplexai/system/service/TenantPolicyService.java)
 - Missing wiki page for service: `ChatMessageArchiveService` (source: D:/code_space/frige/schemaplexai-task/src/main/java/com/schemaplexai/task/service/ChatMessageArchiveService.java)
 - Missing wiki page for service: `DeadLetterRetryService` (source: D:/code_space/frige/schemaplexai-task/src/main/java/com/schemaplexai/task/service/DeadLetterRetryService.java)
