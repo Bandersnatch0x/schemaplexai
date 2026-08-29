@@ -38,7 +38,7 @@ class McpWhitelistTest {
         activeServer = new SfMcpServer();
         activeServer.setId(100L);
         activeServer.setEndpoint(SERVER_ENDPOINT);
-        activeServer.setStatus(1);
+        activeServer.setStatus("ACTIVE");
         activeServer.setTenantId(String.valueOf(TENANT_ID));
     }
 
@@ -49,7 +49,7 @@ class McpWhitelistTest {
     class IsAllowedTests {
 
         @Test
-        @DisplayName("should return true when server has status=1 in DB")
+        @DisplayName("should return true when server has status 'ACTIVE' in DB")
         void shouldAllowActiveServer() {
             when(mcpServerMapper.selectOne(any(LambdaQueryWrapper.class)))
                     .thenReturn(activeServer);
@@ -71,9 +71,9 @@ class McpWhitelistTest {
         }
 
         @Test
-        @DisplayName("should return false when server status is 0 (disabled)")
+        @DisplayName("should return false when server status is INACTIVE (disabled)")
         void shouldRejectDisabledServer() {
-            activeServer.setStatus(0);
+            activeServer.setStatus("INACTIVE");
             when(mcpServerMapper.selectOne(any(LambdaQueryWrapper.class)))
                     .thenReturn(activeServer);
 
@@ -83,9 +83,9 @@ class McpWhitelistTest {
         }
 
         @Test
-        @DisplayName("should return false when server status is 2 (suspended)")
+        @DisplayName("should return false when server status is SUSPENDED (not ACTIVE)")
         void shouldRejectSuspendedServer() {
-            activeServer.setStatus(2);
+            activeServer.setStatus("SUSPENDED");
             when(mcpServerMapper.selectOne(any(LambdaQueryWrapper.class)))
                     .thenReturn(activeServer);
 
@@ -180,7 +180,7 @@ class McpWhitelistTest {
         @Test
         @DisplayName("should return false when server is not active")
         void shouldRejectToolOnInactiveServer() {
-            activeServer.setStatus(0);
+            activeServer.setStatus("INACTIVE");
             when(mcpServerMapper.selectOne(any(LambdaQueryWrapper.class)))
                     .thenReturn(activeServer);
 
@@ -234,7 +234,7 @@ class McpWhitelistTest {
         @Test
         @DisplayName("should return null when server is inactive")
         void shouldReturnNullWhenInactive() {
-            activeServer.setStatus(0);
+            activeServer.setStatus("INACTIVE");
             when(mcpServerMapper.selectOne(any(LambdaQueryWrapper.class)))
                     .thenReturn(activeServer);
 

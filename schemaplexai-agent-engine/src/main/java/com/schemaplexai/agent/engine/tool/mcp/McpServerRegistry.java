@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * Registry that validates MCP server access via whitelist checks against the database.
  *
- * Allowed servers have status=1 (active) and match the tenant.
+ * Allowed servers have status 'ACTIVE' (sf_mcp_server.status is VARCHAR) and match the tenant.
  * Tools are further restricted by the server's {@code toolWhitelist} field.
  */
 @Slf4j
@@ -20,18 +20,21 @@ import java.util.List;
 @RequiredArgsConstructor
 public class McpServerRegistry {
 
+    /** sf_mcp_server.status value that marks a server as allowed. */
+    private static final String STATUS_ACTIVE = "ACTIVE";
+
     private final McpServerMapper mcpServerMapper;
 
     /**
      * Check whether an MCP server endpoint is allowed for the given tenant.
-     * A server is allowed when it exists in the DB with status=1.
+     * A server is allowed when it exists in the DB with status 'ACTIVE'.
      */
     public boolean isAllowed(String endpoint, Long tenantId) {
         if (endpoint == null || endpoint.isBlank()) {
             return false;
         }
         SfMcpServer server = queryServer(endpoint, tenantId);
-        return server != null && Integer.valueOf(1).equals(server.getStatus());
+        return server != null && STATUS_ACTIVE.equals(server.getStatus());
     }
 
     /**
@@ -41,7 +44,7 @@ public class McpServerRegistry {
      */
     public boolean isToolAllowed(String endpoint, String toolName, Long tenantId) {
         SfMcpServer server = queryServer(endpoint, tenantId);
-        if (server == null || !Integer.valueOf(1).equals(server.getStatus())) {
+        if (server == null || !STATUS_ACTIVE.equals(server.getStatus())) {
             return false;
         }
         List<String> whitelist = server.getToolWhitelist();
@@ -57,7 +60,7 @@ public class McpServerRegistry {
      */
     public SfMcpServer getServer(String endpoint, Long tenantId) {
         SfMcpServer server = queryServer(endpoint, tenantId);
-        if (server != null && Integer.valueOf(1).equals(server.getStatus())) {
+        if (server != null && STATUS_ACTIVE.equals(server.getStatus())) {
             return server;
         }
         return null;

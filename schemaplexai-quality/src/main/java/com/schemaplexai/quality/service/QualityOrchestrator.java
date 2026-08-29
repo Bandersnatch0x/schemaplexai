@@ -1,5 +1,6 @@
 package com.schemaplexai.quality.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.quality.entity.SfQualityGate;
@@ -26,6 +27,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class QualityOrchestrator {
 
+    /** sf_quality_gate.status value that marks gates eligible for evaluation. */
+    private static final String GATE_STATUS_ACTIVE = "ACTIVE";
+    /** sf_quality_issue.status value written for newly recorded issues. */
+    private static final String ISSUE_STATUS_OPEN = "OPEN";
+
     private final List<QualityRule> ruleList;
     private final QualityGateMapper gateMapper;
     private final QualityIssueMapper issueMapper;
@@ -41,7 +47,9 @@ public class QualityOrchestrator {
 
     @Transactional(rollbackFor = Exception.class)
     public QualityReport evaluate(Long executionId, QualityContext context) {
-        List<SfQualityGate> gates = gateMapper.selectList(null);
+        List<SfQualityGate> gates = gateMapper.selectList(
+                new LambdaQueryWrapper<SfQualityGate>()
+                        .eq(SfQualityGate::getStatus, GATE_STATUS_ACTIVE));
         List<QualityCheckResult> results = new ArrayList<>();
         boolean allPassed = true;
 
@@ -77,7 +85,7 @@ public class QualityOrchestrator {
                     issue.setIssueType(ruleName);
                     issue.setSeverity(result.getSeverity());
                     issue.setDescription(result.getMessage());
-                    issue.setStatus(0); // open
+                    issue.setStatus(ISSUE_STATUS_OPEN);
                     issueMapper.insert(issue);
                 }
             }

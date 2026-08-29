@@ -18,7 +18,13 @@ public class SfMcpServer extends BaseEntity {
     private String name;
     private String endpoint;
     private String transport;
-    private Integer status;
+
+    /**
+     * Server approval status, stored as VARCHAR(32) in sf_mcp_server
+     * (DDL default 'ACTIVE'). Allowed values: ACTIVE / INACTIVE.
+     * Only ACTIVE servers are eligible for tool discovery and invocation.
+     */
+    private String status;
 
     /** Command for stdio transport (e.g., "npx", "node"). */
     private String command;

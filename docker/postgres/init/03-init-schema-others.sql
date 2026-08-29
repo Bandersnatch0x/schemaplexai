@@ -136,7 +136,7 @@ CREATE TABLE sf_quality_gate (
     tenant_id       BIGINT NOT NULL,
     name            VARCHAR(128) NOT NULL,
     rules_json      TEXT,
-    status          VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
+    status          VARCHAR(32) NOT NULL DEFAULT 'ACTIVE', -- ACTIVE / INACTIVE / DEPRECATED; only ACTIVE gates are evaluated
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted         INT NOT NULL DEFAULT 0
@@ -149,7 +149,7 @@ CREATE TABLE sf_quality_issue (
     issue_type      VARCHAR(32) NOT NULL, -- HALLUCINATION / TOOL_MISUSE / SPEC_DEVIATION
     severity        VARCHAR(32) NOT NULL, -- LOW / MEDIUM / HIGH / CRITICAL
     description     TEXT,
-    status          VARCHAR(32) NOT NULL DEFAULT 'OPEN',
+    status          VARCHAR(32) NOT NULL DEFAULT 'OPEN', -- OPEN / IN_PROGRESS / RESOLVED / CLOSED / WONT_FIX
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted         INT NOT NULL DEFAULT 0
@@ -241,7 +241,7 @@ CREATE TABLE sf_mcp_server (
     name            VARCHAR(128) NOT NULL,
     endpoint        VARCHAR(512) NOT NULL,
     transport       VARCHAR(32) NOT NULL DEFAULT 'HTTP',
-    status          VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
+    status          VARCHAR(32) NOT NULL DEFAULT 'ACTIVE', -- ACTIVE / INACTIVE; only ACTIVE servers are discovered/invoked
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted         INT NOT NULL DEFAULT 0

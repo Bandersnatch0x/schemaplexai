@@ -50,7 +50,7 @@ class McpEndToEndTest {
         activeServer.setId(1L);
         activeServer.setName("Test MCP Server");
         activeServer.setEndpoint("http://localhost:3000/mcp");
-        activeServer.setStatus(1);
+        activeServer.setStatus("ACTIVE");
     }
 
     @Test
@@ -84,7 +84,7 @@ class McpEndToEndTest {
     void invokeInactiveServer() {
         SfMcpServer inactive = new SfMcpServer();
         inactive.setId(2L);
-        inactive.setStatus(0);
+        inactive.setStatus("INACTIVE");
         when(mcpServerService.getById(2L)).thenReturn(inactive);
 
         org.junit.jupiter.api.Assertions.assertThrows(

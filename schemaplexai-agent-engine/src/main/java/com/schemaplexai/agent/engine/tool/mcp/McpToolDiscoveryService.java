@@ -39,6 +39,9 @@ public class McpToolDiscoveryService {
     /** Fixed thread pool size for parallel server discovery. */
     private static final int DISCOVERY_POOL_SIZE = 4;
 
+    /** sf_mcp_server.status value that marks a server as approved for discovery. */
+    private static final String STATUS_ACTIVE = "ACTIVE";
+
     private final McpServerMapper mcpServerMapper;
     private final McpClientManager clientManager;
     private final ToolRegistry toolRegistry;
@@ -55,7 +58,7 @@ public class McpToolDiscoveryService {
     /**
      * Synchronously discover tools from all approved MCP servers and register them.
      * <p>
-     * Approved servers are those with {@code status = 1} in the database.
+     * Approved servers are those with {@code status = 'ACTIVE'} in the database.
      * Discovery runs in parallel with per-server error isolation.
      */
     @Scheduled(fixedDelayString = "${mcp.discovery.interval:60000}")
@@ -153,7 +156,7 @@ public class McpToolDiscoveryService {
     private List<SfMcpServer> fetchApprovedServers() {
         return mcpServerMapper.selectList(
                 new LambdaQueryWrapper<SfMcpServer>()
-                        .eq(SfMcpServer::getStatus, 1)
+                        .eq(SfMcpServer::getStatus, STATUS_ACTIVE)
         );
     }
 

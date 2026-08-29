@@ -1,5 +1,8 @@
 package com.schemaplexai.quality.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.quality.entity.SfQualityGate;
@@ -10,6 +13,8 @@ import com.schemaplexai.quality.gate.QualityReport;
 import com.schemaplexai.quality.gate.QualityRule;
 import com.schemaplexai.quality.mapper.QualityGateMapper;
 import com.schemaplexai.quality.mapper.QualityIssueMapper;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +47,13 @@ class QualityOrchestratorTest {
 
     @InjectMocks
     private QualityOrchestrator orchestrator;
+
+    @BeforeAll
+    static void initTableInfo() {
+        // Enables LambdaQueryWrapper column resolution in pure unit tests
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(new MybatisConfiguration(), ""), SfQualityGate.class);
+    }
 
     @BeforeEach
     void setUp() {
@@ -125,7 +137,24 @@ class QualityOrchestratorTest {
         assertThat(issue.getExecutionId()).isEqualTo(3L);
         assertThat(issue.getIssueType()).isEqualTo("FAIL_RULE");
         assertThat(issue.getSeverity()).isEqualTo("CRITICAL");
-        assertThat(issue.getStatus()).isEqualTo(0);
+        assertThat(issue.getStatus()).isEqualTo("OPEN");
+    }
+
+    @Test
+    void evaluate_loadsOnlyActiveGates() {
+        when(gateMapper.selectList(any())).thenReturn(List.of());
+
+        QualityContext context = new QualityContext(9L, null, Map.of());
+        orchestrator.evaluate(9L, context);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<LambdaQueryWrapper<SfQualityGate>> captor =
+                ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        verify(gateMapper).selectList(captor.capture());
+        LambdaQueryWrapper<SfQualityGate> wrapper = captor.getValue();
+        assertThat(wrapper.getSqlSegment()).contains("status");
+        assertThat(wrapper.getParamNameValuePairs().values())
+                .containsExactly("ACTIVE");
     }
 
     @Test

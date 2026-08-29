@@ -1,11 +1,16 @@
 package com.schemaplexai.agent.engine.tool.mcp;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.schemaplexai.agent.engine.evaluation.ValidationResult;
 import com.schemaplexai.agent.engine.guardrails.GuardrailsEngine;
 import com.schemaplexai.agent.engine.tool.ToolDefinition;
 import com.schemaplexai.agent.engine.tool.ToolRegistry;
 import com.schemaplexai.integration.entity.SfMcpServer;
 import com.schemaplexai.integration.mapper.McpServerMapper;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -43,6 +48,13 @@ class McpToolDiscoveryTest {
     private McpClient mcpClient;
 
     private McpToolDiscoveryService discoveryService;
+
+    @BeforeAll
+    static void initTableInfo() {
+        // Enables LambdaQueryWrapper column resolution in pure unit tests
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(new MybatisConfiguration(), ""), SfMcpServer.class);
+    }
 
     @BeforeEach
     void setUp() {
@@ -172,6 +184,23 @@ class McpToolDiscoveryTest {
         }
 
         @Test
+        @DisplayName("should query servers filtered by status 'ACTIVE'")
+        void shouldQueryOnlyActiveServers() {
+            when(mcpServerMapper.selectList(any())).thenReturn(List.of());
+
+            discoveryService.syncAll();
+
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<LambdaQueryWrapper<SfMcpServer>> captor =
+                    ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+            verify(mcpServerMapper).selectList(captor.capture());
+            LambdaQueryWrapper<SfMcpServer> wrapper = captor.getValue();
+            assertThat(wrapper.getSqlSegment()).contains("status");
+            assertThat(wrapper.getParamNameValuePairs().values())
+                    .containsExactly("ACTIVE");
+        }
+
+        @Test
         @DisplayName("should not re-register existing tools")
         void shouldNotReregisterExistingTools() {
             SfMcpServer server = createServer(1L, "http://server-1:8080", 1L);
@@ -236,7 +265,7 @@ class McpToolDiscoveryTest {
         server.setId(id);
         server.setEndpoint(endpoint);
         server.setTenantId(String.valueOf(tenantId));
-        server.setStatus(1);
+        server.setStatus("ACTIVE");
         return server;
     }
 }

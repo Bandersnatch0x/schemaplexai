@@ -26,9 +26,9 @@ public class QualityGateServiceImpl extends ServiceImpl<QualityGateMapper, SfQua
     private final QualityIssueMapper qualityIssueMapper;
     private final QualityOrchestrator qualityOrchestrator;
 
-    private static final int STATUS_ACTIVE = 1;
-    private static final int STATUS_INACTIVE = 0;
-    private static final int STATUS_DEPRECATED = 2;
+    private static final String STATUS_ACTIVE = "ACTIVE";
+    private static final String STATUS_INACTIVE = "INACTIVE";
+    private static final String STATUS_DEPRECATED = "DEPRECATED";
 
     /**
      * Create a new quality gate with validation.
@@ -78,7 +78,7 @@ public class QualityGateServiceImpl extends ServiceImpl<QualityGateMapper, SfQua
         if (gate == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Quality gate not found: " + gateId);
         }
-        if (gate.getStatus() != null && gate.getStatus() == STATUS_DEPRECATED) {
+        if (STATUS_DEPRECATED.equals(gate.getStatus())) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Cannot activate a deprecated gate");
         }
         gate.setStatus(STATUS_ACTIVE);
@@ -148,7 +148,7 @@ public class QualityGateServiceImpl extends ServiceImpl<QualityGateMapper, SfQua
         long highCount = issues.stream().filter(i -> "HIGH".equals(i.getSeverity())).count();
         long mediumCount = issues.stream().filter(i -> "MEDIUM".equals(i.getSeverity())).count();
         long lowCount = issues.stream().filter(i -> "LOW".equals(i.getSeverity())).count();
-        long openCount = issues.stream().filter(i -> i.getStatus() != null && i.getStatus() == 0).count();
+        long openCount = issues.stream().filter(i -> "OPEN".equals(i.getStatus())).count();
 
         return new GateSummary(executionId, issues.size(), openCount, criticalCount, highCount, mediumCount, lowCount);
     }

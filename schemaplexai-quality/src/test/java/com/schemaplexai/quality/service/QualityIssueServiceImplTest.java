@@ -1,12 +1,18 @@
 package com.schemaplexai.quality.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
 import com.schemaplexai.quality.entity.SfQualityIssue;
 import com.schemaplexai.quality.mapper.QualityIssueMapper;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -28,6 +34,13 @@ class QualityIssueServiceImplTest {
 
     @InjectMocks
     private QualityIssueServiceImpl qualityIssueService;
+
+    @BeforeAll
+    static void initTableInfo() {
+        // Enables LambdaQueryWrapper column resolution in pure unit tests
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(new MybatisConfiguration(), ""), SfQualityIssue.class);
+    }
 
     @BeforeEach
     void setUp() {
@@ -96,7 +109,7 @@ class QualityIssueServiceImplTest {
         boolean result = qualityIssueService.save(issue);
 
         assertThat(result).isTrue();
-        assertThat(issue.getStatus()).isEqualTo(0);
+        assertThat(issue.getStatus()).isEqualTo("OPEN");
     }
 
     // ------------------------------------------------------------------
@@ -106,12 +119,28 @@ class QualityIssueServiceImplTest {
     @Test
     void listOpenIssuesByExecution_returnsOpenIssues() {
         SfQualityIssue issue = new SfQualityIssue();
-        issue.setStatus(0);
+        issue.setStatus("OPEN");
         when(qualityIssueMapper.selectList(any())).thenReturn(List.of(issue));
 
         List<SfQualityIssue> result = qualityIssueService.listOpenIssuesByExecution(1L);
 
         assertThat(result).hasSize(1);
+    }
+
+    @Test
+    void listOpenIssuesByExecution_filtersByOpenStatus() {
+        when(qualityIssueMapper.selectList(any())).thenReturn(Collections.emptyList());
+
+        qualityIssueService.listOpenIssuesByExecution(1L);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<LambdaQueryWrapper<SfQualityIssue>> captor =
+                ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        verify(qualityIssueMapper).selectList(captor.capture());
+        LambdaQueryWrapper<SfQualityIssue> wrapper = captor.getValue();
+        assertThat(wrapper.getSqlSegment()).contains("status");
+        assertThat(wrapper.getParamNameValuePairs().values())
+                .contains(1L, "OPEN");
     }
 
     // ------------------------------------------------------------------
@@ -145,7 +174,7 @@ class QualityIssueServiceImplTest {
     void resolveIssue_alreadyResolved_throwsParamError() {
         SfQualityIssue issue = new SfQualityIssue();
         issue.setId(1L);
-        issue.setStatus(2);
+        issue.setStatus("RESOLVED");
         when(qualityIssueMapper.selectById(1L)).thenReturn(issue);
 
         assertThatThrownBy(() -> qualityIssueService.resolveIssue(1L, "Fixed"))
@@ -158,13 +187,13 @@ class QualityIssueServiceImplTest {
     void resolveIssue_success_setsResolvedAndAppendsNotes() {
         SfQualityIssue issue = new SfQualityIssue();
         issue.setId(1L);
-        issue.setStatus(0);
+        issue.setStatus("OPEN");
         issue.setDescription("Original desc");
         when(qualityIssueMapper.selectById(1L)).thenReturn(issue);
 
         qualityIssueService.resolveIssue(1L, "Fixed in v2");
 
-        assertThat(issue.getStatus()).isEqualTo(2);
+        assertThat(issue.getStatus()).isEqualTo("RESOLVED");
         assertThat(issue.getDescription()).contains("[Resolution: Fixed in v2]");
         verify(qualityIssueMapper).updateById(issue);
     }
@@ -173,7 +202,7 @@ class QualityIssueServiceImplTest {
     void resolveIssue_nullNotes_doesNotAppend() {
         SfQualityIssue issue = new SfQualityIssue();
         issue.setId(1L);
-        issue.setStatus(1);
+        issue.setStatus("IN_PROGRESS");
         issue.setDescription("Original");
         when(qualityIssueMapper.selectById(1L)).thenReturn(issue);
 
@@ -200,7 +229,7 @@ class QualityIssueServiceImplTest {
     void markAsWontFix_alreadyResolved_throwsParamError() {
         SfQualityIssue issue = new SfQualityIssue();
         issue.setId(1L);
-        issue.setStatus(2);
+        issue.setStatus("RESOLVED");
         when(qualityIssueMapper.selectById(1L)).thenReturn(issue);
 
         assertThatThrownBy(() -> qualityIssueService.markAsWontFix(1L, "Not applicable"))
@@ -213,13 +242,13 @@ class QualityIssueServiceImplTest {
     void markAsWontFix_success_setsStatusAndAppendsReason() {
         SfQualityIssue issue = new SfQualityIssue();
         issue.setId(1L);
-        issue.setStatus(0);
+        issue.setStatus("OPEN");
         issue.setDescription("Desc");
         when(qualityIssueMapper.selectById(1L)).thenReturn(issue);
 
         qualityIssueService.markAsWontFix(1L, "Out of scope");
 
-        assertThat(issue.getStatus()).isEqualTo(4);
+        assertThat(issue.getStatus()).isEqualTo("WONT_FIX");
         assertThat(issue.getDescription()).contains("[Won't Fix: Out of scope]");
     }
 
@@ -241,7 +270,7 @@ class QualityIssueServiceImplTest {
     void reopenIssue_alreadyOpen_throwsParamError() {
         SfQualityIssue issue = new SfQualityIssue();
         issue.setId(1L);
-        issue.setStatus(0);
+        issue.setStatus("OPEN");
         when(qualityIssueMapper.selectById(1L)).thenReturn(issue);
 
         assertThatThrownBy(() -> qualityIssueService.reopenIssue(1L))
@@ -254,12 +283,12 @@ class QualityIssueServiceImplTest {
     void reopenIssue_success_setsOpen() {
         SfQualityIssue issue = new SfQualityIssue();
         issue.setId(1L);
-        issue.setStatus(2);
+        issue.setStatus("RESOLVED");
         when(qualityIssueMapper.selectById(1L)).thenReturn(issue);
 
         qualityIssueService.reopenIssue(1L);
 
-        assertThat(issue.getStatus()).isEqualTo(0);
+        assertThat(issue.getStatus()).isEqualTo("OPEN");
         verify(qualityIssueMapper).updateById(issue);
     }
 
@@ -304,18 +333,18 @@ class QualityIssueServiceImplTest {
         SfQualityIssue i1 = new SfQualityIssue();
         i1.setId(1L);
         i1.setSeverity("HIGH");
-        i1.setStatus(0);
+        i1.setStatus("OPEN");
         SfQualityIssue i2 = new SfQualityIssue();
         i2.setId(2L);
         i2.setSeverity("HIGH");
-        i2.setStatus(0);
+        i2.setStatus("OPEN");
         when(qualityIssueMapper.selectList(any())).thenReturn(List.of(i1, i2));
 
-        int result = qualityIssueService.bulkUpdateStatusBySeverity(1L, "HIGH", 2);
+        int result = qualityIssueService.bulkUpdateStatusBySeverity(1L, "HIGH", "RESOLVED");
 
         assertThat(result).isEqualTo(2);
-        assertThat(i1.getStatus()).isEqualTo(2);
-        assertThat(i2.getStatus()).isEqualTo(2);
+        assertThat(i1.getStatus()).isEqualTo("RESOLVED");
+        assertThat(i2.getStatus()).isEqualTo("RESOLVED");
         verify(qualityIssueMapper, times(2)).updateById(any());
     }
 
@@ -323,7 +352,7 @@ class QualityIssueServiceImplTest {
     void bulkUpdateStatusBySeverity_noMatches_returnsZero() {
         when(qualityIssueMapper.selectList(any())).thenReturn(Collections.emptyList());
 
-        int result = qualityIssueService.bulkUpdateStatusBySeverity(1L, "HIGH", 2);
+        int result = qualityIssueService.bulkUpdateStatusBySeverity(1L, "HIGH", "RESOLVED");
 
         assertThat(result).isEqualTo(0);
     }

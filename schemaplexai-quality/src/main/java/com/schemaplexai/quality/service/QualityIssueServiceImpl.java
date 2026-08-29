@@ -22,11 +22,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class QualityIssueServiceImpl extends ServiceImpl<QualityIssueMapper, SfQualityIssue> implements QualityIssueService {
 
-    private static final int STATUS_OPEN = 0;
-    private static final int STATUS_IN_PROGRESS = 1;
-    private static final int STATUS_RESOLVED = 2;
-    private static final int STATUS_CLOSED = 3;
-    private static final int STATUS_WONT_FIX = 4;
+    private static final String STATUS_OPEN = "OPEN";
+    private static final String STATUS_IN_PROGRESS = "IN_PROGRESS";
+    private static final String STATUS_RESOLVED = "RESOLVED";
+    private static final String STATUS_CLOSED = "CLOSED";
+    private static final String STATUS_WONT_FIX = "WONT_FIX";
 
     private static final String SEVERITY_CRITICAL = "CRITICAL";
     private static final String SEVERITY_HIGH = "HIGH";
@@ -77,7 +77,7 @@ public class QualityIssueServiceImpl extends ServiceImpl<QualityIssueMapper, SfQ
         if (issue == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Quality issue not found: " + issueId);
         }
-        if (issue.getStatus() == STATUS_RESOLVED || issue.getStatus() == STATUS_CLOSED) {
+        if (STATUS_RESOLVED.equals(issue.getStatus()) || STATUS_CLOSED.equals(issue.getStatus())) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Issue is already resolved or closed");
         }
         issue.setStatus(STATUS_RESOLVED);
@@ -97,7 +97,7 @@ public class QualityIssueServiceImpl extends ServiceImpl<QualityIssueMapper, SfQ
         if (issue == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Quality issue not found: " + issueId);
         }
-        if (issue.getStatus() == STATUS_RESOLVED || issue.getStatus() == STATUS_CLOSED) {
+        if (STATUS_RESOLVED.equals(issue.getStatus()) || STATUS_CLOSED.equals(issue.getStatus())) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Cannot mark resolved/closed issue as won't fix");
         }
         issue.setStatus(STATUS_WONT_FIX);
@@ -117,7 +117,7 @@ public class QualityIssueServiceImpl extends ServiceImpl<QualityIssueMapper, SfQ
         if (issue == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Quality issue not found: " + issueId);
         }
-        if (issue.getStatus() == STATUS_OPEN || issue.getStatus() == STATUS_IN_PROGRESS) {
+        if (STATUS_OPEN.equals(issue.getStatus()) || STATUS_IN_PROGRESS.equals(issue.getStatus())) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Issue is already open or in progress");
         }
         issue.setStatus(STATUS_OPEN);
@@ -151,7 +151,7 @@ public class QualityIssueServiceImpl extends ServiceImpl<QualityIssueMapper, SfQ
     /**
      * Bulk update status for issues matching a severity in an execution.
      */
-    public int bulkUpdateStatusBySeverity(Long executionId, String severity, Integer newStatus) {
+    public int bulkUpdateStatusBySeverity(Long executionId, String severity, String newStatus) {
         List<SfQualityIssue> issues = baseMapper.selectList(
             new LambdaQueryWrapper<SfQualityIssue>()
                 .eq(SfQualityIssue::getExecutionId, executionId)
