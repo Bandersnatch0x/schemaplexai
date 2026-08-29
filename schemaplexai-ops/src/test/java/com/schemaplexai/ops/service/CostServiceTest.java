@@ -4,6 +4,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.schemaplexai.model.event.CostRecordedEvent;
 import com.schemaplexai.model.event.ExecutionEventMessage;
 import com.schemaplexai.ops.entity.AiModelPrice;
 import com.schemaplexai.ops.entity.SfBudget;
@@ -24,6 +25,7 @@ import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -838,6 +840,120 @@ class CostServiceTest {
 
         assertTrue(error.getMessage().contains("budget failed"));
         verify(costRecordMapper).insert(any());
+    }
+
+    // ------------------------------------------------------------------
+    // processCostRecordedEvent (ticket 919: engine cost collection chain)
+    // ------------------------------------------------------------------
+
+    @Test
+    void processCostRecordedEvent_persistsRecordWithPricingAndBudget() {
+        CostRecordedEvent event = new CostRecordedEvent(
+                UUID.randomUUID(), 1001L, 10L, 42L,
+                "gpt-4o", "OPENAI", "chat",
+                1000L, 500L, 1500L,
+                null, "USD", java.time.Instant.now());
+
+        costService.processCostRecordedEvent(event);
+
+        verify(costRecordMapper).insert(argThat(record ->
+                record.getExecutionId().equals(1001L) &&
+                "10".equals(record.getTenantId()) &&
+                record.getAgentId().equals(42L) &&
+                "gpt-4o".equals(record.getModelName()) &&
+                "OPENAI".equals(record.getProvider()) &&
+                "chat".equals(record.getRequestType()) &&
+                record.getInputTokens().equals(1000L) &&
+                record.getOutputTokens().equals(500L) &&
+                record.getTotalTokens().equals(1500L) &&
+                record.getRecordId() != null &&
+                "agent-engine".equals(record.getServiceName()) &&
+                record.getOccurredAt() != null &&
+                "USD".equals(record.getCurrency()) &&
+                new BigDecimal("0.060000").compareTo(record.getCostAmount()) == 0
+        ));
+        verify(budgetService).addUsedAmount(eq("10"), any(BigDecimal.class));
+    }
+
+    @Test
+    void processCostRecordedEvent_configuredPriceAndCurrency_propagate() {
+        AiModelPrice configured = new AiModelPrice();
+        configured.setModelCode("claude-3-sonnet-20240229");
+        configured.setInputPricePer1k(new BigDecimal("0.003"));
+        configured.setOutputPricePer1k(new BigDecimal("0.015"));
+        configured.setCurrency("EUR");
+        when(aiModelPriceMapper.selectOne(any())).thenReturn(configured);
+
+        CostRecordedEvent event = new CostRecordedEvent(
+                UUID.randomUUID(), 7L, 1L, 1L,
+                "claude-3-sonnet-20240229", "ANTHROPIC", "chat",
+                1000L, 1000L, 2000L,
+                null, null, java.time.Instant.now());
+
+        costService.processCostRecordedEvent(event);
+
+        // configured rates: 0.003 + 0.015 = 0.018, currency EUR from sf_ai_model
+        verify(costRecordMapper).insert(argThat(record ->
+                "EUR".equals(record.getCurrency()) &&
+                new BigDecimal("0.018000").compareTo(record.getCostAmount()) == 0
+        ));
+        verify(budgetService).addUsedAmount("1", new BigDecimal("0.018000"));
+    }
+
+    @Test
+    void processCostRecordedEvent_nullTokens_defaultToZero() {
+        CostRecordedEvent event = new CostRecordedEvent(
+                UUID.randomUUID(), 1L, 1L, null,
+                "gpt-4", "OPENAI", "chat",
+                null, null, null,
+                null, null, java.time.Instant.now());
+
+        costService.processCostRecordedEvent(event);
+
+        verify(costRecordMapper).insert(argThat(record ->
+                record.getInputTokens().equals(0L) &&
+                record.getOutputTokens().equals(0L) &&
+                record.getTotalTokens().equals(0L) &&
+                BigDecimal.ZERO.compareTo(record.getCostAmount()) == 0
+        ));
+    }
+
+    @Test
+    void processCostRecordedEvent_nullEvent_isNoOp() {
+        costService.processCostRecordedEvent(null);
+
+        verifyNoInteractions(costRecordMapper);
+        verifyNoInteractions(budgetService);
+    }
+
+    @Test
+    void processCostRecordedEvent_missingTenantId_persistsWithoutBudget() {
+        CostRecordedEvent event = new CostRecordedEvent(
+                UUID.randomUUID(), 1L, null, null,
+                "gpt-4", "OPENAI", "chat",
+                100L, 50L, 150L,
+                null, null, java.time.Instant.now());
+
+        costService.processCostRecordedEvent(event);
+
+        verify(costRecordMapper).insert(argThat(record -> record.getTenantId() == null));
+        verifyNoInteractions(budgetService);
+    }
+
+    @Test
+    void processCostRecordedEvent_insertFails_propagatesRuntime() {
+        doThrow(new RuntimeException("insert failed")).when(costRecordMapper).insert(any());
+
+        CostRecordedEvent event = new CostRecordedEvent(
+                UUID.randomUUID(), 1L, 1L, 1L,
+                "gpt-4", "OPENAI", "chat",
+                100L, 50L, 150L,
+                null, null, java.time.Instant.now());
+
+        RuntimeException error = assertThrows(RuntimeException.class,
+                () -> costService.processCostRecordedEvent(event));
+
+        assertTrue(error.getMessage().contains("insert failed"));
     }
 
     // ------------------------------------------------------------------

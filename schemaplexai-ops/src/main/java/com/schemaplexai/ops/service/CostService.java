@@ -3,6 +3,7 @@ package com.schemaplexai.ops.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.schemaplexai.model.event.CostRecordedEvent;
 import com.schemaplexai.model.event.ExecutionEventMessage;
 import com.schemaplexai.ops.entity.AiModelPrice;
 import com.schemaplexai.ops.entity.SfBudget;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -332,6 +334,69 @@ public class CostService {
             case "TOKEN_USED" -> processTokenUsedEvent(event);
             case "TOOL_CALL" -> processToolCallEvent(event);
             default -> log.debug("Unsupported event type for cost projection: {}", event.eventType());
+        }
+    }
+
+    /**
+     * Process a cost-recorded event published by the Agent engine on
+     * {@code sf.exchange} / {@code sf.cost} after an LLM call, and persist the
+     * cost record to PG {@code sf_cost_record}.
+     *
+     * <p>The engine reports raw token usage; pricing and cost calculation
+     * happen here (spec §3.1) so the configured model prices remain the single
+     * source of truth. Mirrors {@link #processTokenUsedEvent} semantics plus
+     * the record metadata carried by {@link CostRecordedEvent}.
+     *
+     * @param event the cost-recorded event (token usage + execution identity)
+     */
+    public void processCostRecordedEvent(CostRecordedEvent event) {
+        if (event == null) {
+            return;
+        }
+        try {
+            String tenantId = event.tenantId() != null ? String.valueOf(event.tenantId()) : null;
+            long inputTokens = event.inputTokens() != null ? event.inputTokens() : 0L;
+            long outputTokens = event.outputTokens() != null ? event.outputTokens() : 0L;
+            long totalTokens = event.totalTokens() != null ? event.totalTokens() : inputTokens + outputTokens;
+
+            ModelPricing pricing = event.modelName() != null
+                    ? resolvePricing(tenantId, event.modelName()) : null;
+            BigDecimal cost = computeCost(pricing, inputTokens, outputTokens);
+            if (cost.compareTo(BigDecimal.ZERO) <= 0) {
+                log.warn("Zero cost calculated for cost-recorded event: eventId={}, model={}",
+                        event.eventId(), event.modelName());
+            }
+
+            SfCostRecord record = new SfCostRecord();
+            record.setExecutionId(event.executionId());
+            record.setTenantId(tenantId);
+            record.setAgentId(event.agentId());
+            record.setRecordId(event.eventId() != null ? event.eventId().toString() : null);
+            record.setServiceName("agent-engine");
+            record.setModelName(event.modelName());
+            record.setProvider(event.provider());
+            record.setRequestType(event.requestType() != null ? event.requestType() : "TOKEN_USED");
+            record.setInputTokens(inputTokens);
+            record.setOutputTokens(outputTokens);
+            record.setTotalTokens(totalTokens);
+            record.setCostAmount(cost);
+            record.setCurrency(pricing != null ? pricing.currency()
+                    : (event.currency() != null ? event.currency() : DEFAULT_CURRENCY));
+            record.setOccurredAt(event.occurredAt() != null
+                    ? LocalDateTime.ofInstant(event.occurredAt(), ZoneId.systemDefault())
+                    : LocalDateTime.now());
+
+            costRecordMapper.insert(record);
+
+            if (tenantId != null) {
+                budgetService.addUsedAmount(tenantId, cost);
+            }
+
+            log.info("Cost record saved from CostRecordedEvent: executionId={}, model={}, cost={}",
+                    event.executionId(), event.modelName(), cost);
+        } catch (Exception e) {
+            log.error("Failed to process CostRecordedEvent: eventId={}", event.eventId(), e);
+            throw propagateCostProjectionFailure(e);
         }
     }
 
