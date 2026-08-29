@@ -85,13 +85,24 @@ public class PausedStateHandler implements AgentStateHandler {
         snapshot.setCurrentRound(currentRound);
         snapshot.setCreatedAt(LocalDateTime.now());
 
-        snapshotPersistence.saveSnapshot(snapshot);
+        // Persist and capture the REAL snapshot-row primary key (issue 907 / REQ-07).
+        // The old code stored the executionId here, but the snapshot row lives under
+        // its own generated key — resume's selectById(snapshotId) could never find it.
+        Long snapshotRowId = snapshotPersistence.saveSnapshot(snapshot);
+        if (snapshotRowId == null) {
+            log.error("Snapshot persistence returned no row id for execution {}; resume would be impossible",
+                    execution.getId());
+            execution.setMetadata("failureReason", "snapshot_primary_key_unavailable");
+            stateMachine.transition(AgentExecutionState.FAILED, execution);
+            return;
+        }
 
-        // Update execution with snapshot reference
-        execution.setSnapshotId(snapshot.getExecutionId() != null ? snapshot.getExecutionId() : execution.getId());
+        // Update execution with the actual snapshot row reference
+        execution.setSnapshotId(snapshotRowId);
         stateMachine.saveExecution(execution);
 
-        log.info("Snapshot persisted for paused execution {} (chatHistory={}msgs, currentRound={})",
+        log.info("Snapshot {} persisted for paused execution {} (chatHistory={} msgs, currentRound={})",
+                snapshotRowId,
                 execution.getId(),
                 chatHistory != null ? chatHistory.size() : 0,
                 currentRound);

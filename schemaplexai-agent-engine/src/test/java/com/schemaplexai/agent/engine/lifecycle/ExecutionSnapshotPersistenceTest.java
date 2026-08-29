@@ -64,6 +64,46 @@ class ExecutionSnapshotPersistenceTest {
     }
 
     @Test
+    void saveSnapshotReturnsGeneratedRowPrimaryKeyForResume() {
+        // Simulate MyBatis-Plus ASSIGN_ID back-fill: insert assigns the row primary key.
+        org.mockito.Mockito.doAnswer(invocation -> {
+            SfAgentExecutionSnapshot entity = invocation.getArgument(0);
+            entity.setId(555000111L);
+            return 1;
+        }).when(snapshotMapper).insert(any(SfAgentExecutionSnapshot.class));
+
+        ExecutionSnapshot snapshot = ExecutionSnapshot.builder()
+                .executionId(1L)
+                .state(AgentExecutionState.PAUSED)
+                .build();
+
+        Long rowId = persistence.saveSnapshot(snapshot);
+
+        // The pause path stores THIS id on the execution; resume loads by it.
+        assertEquals(555000111L, rowId);
+    }
+
+    @Test
+    void saveSnapshotFailsExplicitlyWhenSerializationFails() throws Exception {
+        com.fasterxml.jackson.databind.ObjectMapper failingMapper =
+                org.mockito.Mockito.mock(com.fasterxml.jackson.databind.ObjectMapper.class);
+        org.mockito.Mockito.when(failingMapper.writeValueAsString(any()))
+                .thenThrow(new com.fasterxml.jackson.core.JsonProcessingException("boom") {});
+        ExecutionSnapshotPersistence failingPersistence =
+                new ExecutionSnapshotPersistence(snapshotMapper, failingMapper, executionSnapshotService);
+
+        ExecutionSnapshot snapshot = ExecutionSnapshot.builder()
+                .executionId(1L)
+                .state(AgentExecutionState.PAUSED)
+                .build();
+
+        IllegalStateException ex = org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalStateException.class, () -> failingPersistence.saveSnapshot(snapshot));
+        org.junit.jupiter.api.Assertions.assertTrue(ex.getMessage().contains("Failed to serialize"));
+        verify(snapshotMapper, org.mockito.Mockito.never()).insert(any(SfAgentExecutionSnapshot.class));
+    }
+
+    @Test
     void getLatestSnapshotReturnsCachedSnapshotBeforeLegacyFallback() {
         when(executionSnapshotService.restoreSnapshot(1L))
                 .thenReturn("{\"executionId\":1,\"state\":\"PAUSED\",\"chatHistory\":[{\"role\":\"user\",\"content\":\"hello\"}]}");

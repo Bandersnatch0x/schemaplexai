@@ -52,7 +52,11 @@ class PausedStateHandlerTest {
     }
 
     @Test
-    void handleShouldSaveSnapshotAndUpdateExecution() {
+    void handleShouldSaveSnapshotAndStoreGeneratedRowId() {
+        // Issue 907: persistence returns the generated snapshot-row primary key and
+        // the execution must reference THAT id (not the execution id).
+        when(snapshotPersistence.saveSnapshot(any(ExecutionSnapshot.class))).thenReturn(987654321L);
+
         handler.handle(stateMachine, execution);
 
         ArgumentCaptor<ExecutionSnapshot> snapshotCaptor = ArgumentCaptor.forClass(ExecutionSnapshot.class);
@@ -64,16 +68,21 @@ class PausedStateHandlerTest {
         assertNotNull(snapshot.getCreatedAt());
 
         verify(stateMachine).saveExecution(execution);
-        assertNotNull(execution.getSnapshotId());
+        assertEquals(987654321L, execution.getSnapshotId());
     }
 
     @Test
-    void handleShouldUseExecutionIdWhenSnapshotExecutionIdIsNull() {
-        // When snapshot's executionId is null, snapshotId should fallback to execution.getId()
+    void handleShouldFailExplicitlyWhenPersistenceYieldsNoRowId() {
+        // No generated key -> resume would be impossible; fail loudly instead of
+        // storing a dangling reference.
+        when(snapshotPersistence.saveSnapshot(any(ExecutionSnapshot.class))).thenReturn(null);
+
         handler.handle(stateMachine, execution);
 
         verify(snapshotPersistence).saveSnapshot(any(ExecutionSnapshot.class));
-        verify(stateMachine).saveExecution(execution);
-        assertEquals(1L, execution.getSnapshotId());
+        verify(stateMachine).transition(AgentExecutionState.FAILED, execution);
+        verify(stateMachine, never()).saveExecution(execution);
+        assertEquals("snapshot_primary_key_unavailable", execution.getMetadata("failureReason"));
+        assertNull(execution.getSnapshotId());
     }
 }

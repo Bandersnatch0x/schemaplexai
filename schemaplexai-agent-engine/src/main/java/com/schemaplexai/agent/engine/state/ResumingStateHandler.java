@@ -36,14 +36,19 @@ public class ResumingStateHandler implements AgentStateHandler {
         Long snapshotId = execution.getSnapshotId();
         if (snapshotId == null) {
             log.error("No snapshot ID found for paused execution {}", execution.getId());
+            execution.setMetadata("failureReason",
+                    "Resume failed: no snapshot reference stored on execution " + execution.getId());
             stateMachine.transition(AgentExecutionState.FAILED, execution);
             return;
         }
 
-        // Load persisted snapshot
+        // Load persisted snapshot by the corrected identifier (issue 907): snapshotId
+        // is the snapshot ROW primary key written during PAUSED, not the execution id.
         SfAgentExecutionSnapshot snapshot = snapshotMapper.selectById(snapshotId);
         if (snapshot == null) {
             log.error("Snapshot {} not found for execution {}", snapshotId, execution.getId());
+            execution.setMetadata("failureReason",
+                    "Resume failed: snapshot " + snapshotId + " not found for execution " + execution.getId());
             stateMachine.transition(AgentExecutionState.FAILED, execution);
             return;
         }

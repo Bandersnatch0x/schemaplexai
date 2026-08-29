@@ -138,8 +138,8 @@ public class AgentExecutionLifecycleService {
         }
     }
 
-    public void saveSnapshot(ExecutionSnapshot snapshot) {
-        snapshotPersistence.saveSnapshot(snapshot);
+    public Long saveSnapshot(ExecutionSnapshot snapshot) {
+        return snapshotPersistence.saveSnapshot(snapshot);
     }
 
     public ExecutionSnapshot getLatestSnapshot(Long executionId) {
