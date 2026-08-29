@@ -29,11 +29,11 @@ public class NotificationController extends BaseController {
     @GetMapping("/page")
     public Result<IPage<NotificationVO>> page(
             @RequestHeader(value = "X-User-Id", required = false) String userId,
-            @Parameter(description = "页码，默认1") @Min(1) @RequestParam(defaultValue = "1") Integer page,
-            @Parameter(description = "每页大小，默认20") @Min(1) @Max(100) @RequestParam(defaultValue = "20") Integer size,
+            @Parameter(description = "页码，默认1") @Min(1) @RequestParam(defaultValue = "1") Integer current,
+            @Parameter(description = "每页大小，默认10") @Min(1) @Max(100) @RequestParam(defaultValue = "10") Integer size,
             @Parameter(description = "已读状态筛选") @RequestParam(required = false) Boolean read) {
         Long uid = parseUserId(userId);
-        return success(notificationService.pageQuery(uid, page, size, read));
+        return success(notificationService.pageQuery(uid, current, size, read));
     }
 
     @Operation(summary = "标记已读", description = "将单条通知标记为已读")

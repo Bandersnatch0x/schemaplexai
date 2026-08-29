@@ -18,7 +18,7 @@ export interface PageResult<T> {
   size: number
 }
 
-export function getExecutionList(params: { page?: number; size?: number; state?: string; agentId?: number }) {
+export function getExecutionList(params: { current?: number; size?: number; state?: string; agentId?: number }) {
   return request.get<PageResult<ExecutionStatusVO>>('/web/executions', { params })
 }
 

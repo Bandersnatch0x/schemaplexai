@@ -100,7 +100,7 @@ class ExecutionWebControllerMvcTest {
     @DisplayName("GET /web/executions with pagination params returns page")
     void listExecutions_withPagination_returnsOk() throws Exception {
         mockMvc.perform(get("/web/executions")
-                        .param("page", "1")
+                        .param("current", "1")
                         .param("size", "20")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -110,10 +110,21 @@ class ExecutionWebControllerMvcTest {
     }
 
     @Test
+    @DisplayName("GET /web/executions omitted params default to current=1, size=10 (review ST-02)")
+    void listExecutions_defaultParams_currentOneSizeTen() throws Exception {
+        mockMvc.perform(get("/web/executions")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        verify(queryPort).listExecutions(1, 10, null, null);
+    }
+
+    @Test
     @DisplayName("GET /web/executions with state filter delegates correctly")
     void listExecutions_withStateFilter() throws Exception {
         mockMvc.perform(get("/web/executions")
-                        .param("page", "1")
+                        .param("current", "1")
                         .param("size", "10")
                         .param("state", "RUNNING")
                         .accept(MediaType.APPLICATION_JSON))
@@ -127,7 +138,7 @@ class ExecutionWebControllerMvcTest {
     @DisplayName("926: GET /web/executions with size above 100 returns param error 400")
     void listExecutions_sizeAboveCap_returns400() throws Exception {
         mockMvc.perform(get("/web/executions")
-                        .param("page", "1")
+                        .param("current", "1")
                         .param("size", "101")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -137,10 +148,10 @@ class ExecutionWebControllerMvcTest {
     }
 
     @Test
-    @DisplayName("926: GET /web/executions with page below 1 returns param error 400")
-    void listExecutions_pageBelowOne_returns400() throws Exception {
+    @DisplayName("926: GET /web/executions with current below 1 returns param error 400")
+    void listExecutions_currentBelowOne_returns400() throws Exception {
         mockMvc.perform(get("/web/executions")
-                        .param("page", "0")
+                        .param("current", "0")
                         .param("size", "20")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())

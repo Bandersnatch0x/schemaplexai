@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -20,10 +21,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Issue 926 / REQ-12: page/size of the notification page endpoint are
- * constraint-validated (page >= 1, 1 <= size <= 100). Out-of-range values
+ * Issue 926 / REQ-12: current/size of the notification page endpoint are
+ * constraint-validated (current >= 1, 1 <= size <= 100). Out-of-range values
  * must be rejected with the param-error envelope (code 400) before any
- * service call happens.
+ * service call happens. Review ST-02: the page number param is named
+ * {@code current} and size defaults to 10, per the repository API spec.
  */
 @WebMvcTest(excludeAutoConfiguration = SecurityAutoConfiguration.class)
 @ContextConfiguration(classes = {NotificationController.class, GlobalExceptionHandler.class})
@@ -43,7 +45,7 @@ class NotificationControllerMvcValidationTest {
 
         mockMvc.perform(get("/web/notification/page")
                         .header("X-User-Id", "100")
-                        .param("page", "1")
+                        .param("current", "1")
                         .param("size", "20")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -51,11 +53,25 @@ class NotificationControllerMvcValidationTest {
     }
 
     @Test
+    @DisplayName("omitted params default to current=1, size=10 per API spec (review ST-02)")
+    void page_defaultParams_currentOneSizeTen() throws Exception {
+        when(notificationService.pageQuery(100L, 1, 10, null)).thenReturn(new Page<>());
+
+        mockMvc.perform(get("/web/notification/page")
+                        .header("X-User-Id", "100")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        verify(notificationService).pageQuery(100L, 1, 10, null);
+    }
+
+    @Test
     @DisplayName("size above the 100 cap is rejected with code 400")
     void page_sizeAboveMax_returns400() throws Exception {
         mockMvc.perform(get("/web/notification/page")
                         .header("X-User-Id", "100")
-                        .param("page", "1")
+                        .param("current", "1")
                         .param("size", "101")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -91,11 +107,11 @@ class NotificationControllerMvcValidationTest {
     }
 
     @Test
-    @DisplayName("page=0 is rejected with code 400")
-    void page_pageZero_returns400() throws Exception {
+    @DisplayName("current=0 is rejected with code 400")
+    void page_currentZero_returns400() throws Exception {
         mockMvc.perform(get("/web/notification/page")
                         .header("X-User-Id", "100")
-                        .param("page", "0")
+                        .param("current", "0")
                         .param("size", "20")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())

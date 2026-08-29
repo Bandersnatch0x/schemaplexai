@@ -21,7 +21,7 @@ public class EngineExecutionQueryPort {
     private final ObjectProvider<SfAgentExecutionMapper> executionMapperProvider;
     private final ExecutionMapper executionMapper;
 
-    public IPage<ExecutionStatusVO> listExecutions(long page, long size, String state, Long agentId) {
+    public IPage<ExecutionStatusVO> listExecutions(long current, long size, String state, Long agentId) {
         SfAgentExecutionMapper mapper = executionMapper();
         com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SfAgentExecution> wrapper =
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
@@ -35,7 +35,7 @@ public class EngineExecutionQueryPort {
         wrapper.orderByDesc(SfAgentExecution::getId);
 
         com.baomidou.mybatisplus.extension.plugins.pagination.Page<SfAgentExecution> mpPage =
-                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size);
+                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(current, size);
 
         IPage<SfAgentExecution> entityPage = mapper.selectPage(mpPage, wrapper);
         return entityPage.convert(executionMapper::toStatusVO);
