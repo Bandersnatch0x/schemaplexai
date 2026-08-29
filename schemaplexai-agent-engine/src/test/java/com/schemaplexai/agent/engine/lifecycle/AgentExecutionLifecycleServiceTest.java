@@ -111,7 +111,9 @@ class AgentExecutionLifecycleServiceTest {
         lifecycleService.cancelExecution(1L);
 
         verify(redisTemplate).delete(anyString());
-        verify(orchestrator).cancel();
+        // Issue 906: the cancel signal must be scoped to this tenant + execution,
+        // never a global flag shared with concurrent executions.
+        verify(orchestrator).cancel("test-tenant", 1L);
         verify(stateMachine).transition(AgentExecutionState.CANCELLED, execution);
         verify(stateMachine).removeExecution(1L);
     }

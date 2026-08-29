@@ -10,13 +10,12 @@ import com.schemaplexai.agent.engine.observability.ObservabilityRecorder;
 import com.schemaplexai.agent.engine.state.AgentExecutionState;
 import com.schemaplexai.agent.engine.state.AgentStateMachine;
 import com.schemaplexai.common.constants.CommonConstants;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
+import java.time.Duration;
 
 @Slf4j
 @Component
@@ -49,11 +48,32 @@ public class AgentRuntimeOrchestrator {
 
     private static final int MAX_ITERATIONS = 50;
 
-    /** Volatile flag to signal cancellation from another thread. */
-    private volatile boolean cancelled;
+    /** TTL for the per-execution cancellation signal (mirrors the pause key). */
+    private static final Duration CANCEL_KEY_TTL = Duration.ofHours(24);
+
+    /** Sub-category of the per-execution cancellation key. */
+    private static final String CANCEL_SUBKEY = "cancelled";
 
     /**
-     * Check whether this execution has been externally paused or cancelled.
+     * Build the cancellation key for ONE execution
+     * ({@code sf:{tenantId}:execution:cancelled:{executionId}}, TenantRedisKeyResolver
+     * style). Executions without a tenant (e.g. dynamic sub-agents) fall back to the
+     * global namespace — the key is still scoped to the single executionId.
+     */
+    static String cancelKey(String tenantId, Long executionId) {
+        if (tenantId == null || tenantId.isBlank()) {
+            return com.schemaplexai.common.redis.TenantRedisKeyResolver.globalKey(
+                    com.schemaplexai.common.redis.TenantRedisKeyResolver.CAT_EXECUTION,
+                    CANCEL_SUBKEY, String.valueOf(executionId));
+        }
+        return com.schemaplexai.common.redis.TenantRedisKeyResolver.tenantKey(
+                tenantId,
+                com.schemaplexai.common.redis.TenantRedisKeyResolver.CAT_EXECUTION,
+                CANCEL_SUBKEY, String.valueOf(executionId));
+    }
+
+    /**
+     * Check whether this execution has been externally paused.
      *
      * @param executionId the execution ID to check
      * @return true if paused, false otherwise
@@ -66,17 +86,32 @@ public class AgentRuntimeOrchestrator {
     }
 
     /**
-     * Signal cancellation. Used by cancelExecution() via lifecycle service.
+     * Check whether THIS execution has been externally cancelled.
+     *
+     * <p>Per-execution isolation (issue 906 / REQ-27): the signal is a Redis key
+     * scoped to {@code executionId}, so cancelling one execution never affects any
+     * other concurrent execution on this instance.</p>
      */
-    public void cancel() {
-        this.cancelled = true;
+    private boolean isCancelled(Long executionId, String tenantId) {
+        String value = redisTemplate.opsForValue().get(cancelKey(tenantId, executionId));
+        return value != null;
     }
 
     /**
-     * Reset the cancellation flag for a new execution run.
+     * Signal cancellation for ONE specific execution (issue 906 / REQ-27).
+     *
+     * <p>Replaces the former global {@code volatile boolean cancelled} flag on this
+     * singleton: only the targeted execution's Redis key is set, so concurrently
+     * running executions are unaffected, and a signal raised before the target's run
+     * loop starts is still honored (there is no global reset that could wipe it).</p>
+     *
+     * @param tenantId    the tenant of the execution (nullable for tenantless sub-agents)
+     * @param executionId the execution to cancel
      */
-    private void resetCancelled() {
-        this.cancelled = false;
+    public void cancel(String tenantId, Long executionId) {
+        String key = cancelKey(tenantId, executionId);
+        redisTemplate.opsForValue().set(key, "CANCELLED", CANCEL_KEY_TTL);
+        log.info("Cancellation signal set for execution {} (key={})", executionId, key);
     }
 
     public void run(SfAgentExecution execution, String tenantId, String prompt) {
@@ -90,8 +125,9 @@ public class AgentRuntimeOrchestrator {
 
         int roundCount = 0;
         try {
-            // Reset cancellation flag for this run
-            resetCancelled();
+            // NOTE: there is deliberately NO global cancellation reset here (issue 906).
+            // The per-execution cancel key is authoritative: a signal raised before
+            // this run started must still cancel this execution.
 
             // Initialize token budget (with tool-call limit)
             TokenBudget tokenBudget = new TokenBudget(
@@ -125,9 +161,12 @@ public class AgentRuntimeOrchestrator {
                     break;
                 }
 
-                // Check for cancellation signal (volatile flag set by cancelExecution)
-                if (cancelled || Thread.currentThread().isInterrupted()) {
+                // Check THIS execution's cancellation signal (per-execution Redis key,
+                // issue 906 — never a shared/global flag)
+                if (isCancelled(execution.getId(), tenantId) || Thread.currentThread().isInterrupted()) {
                     log.info("Execution {} cancellation signal detected, transitioning to CANCELLED", execution.getId());
+                    // Consume the one-shot signal once observed
+                    redisTemplate.delete(cancelKey(tenantId, execution.getId()));
                     stateMachine.transition(AgentExecutionState.CANCELLED, execution);
                     break;
                 }
@@ -141,7 +180,8 @@ public class AgentRuntimeOrchestrator {
             }
             roundCount = iteration;
 
-            if (iteration >= MAX_ITERATIONS && !cancelled && !isPaused(execution.getId(), tenantId)) {
+            if (iteration >= MAX_ITERATIONS && !isCancelled(execution.getId(), tenantId)
+                    && !isPaused(execution.getId(), tenantId)) {
                 log.warn("Execution {} hit max iterations, forcing completion", execution.getId());
                 stateMachine.transition(AgentExecutionState.COMPLETED, execution);
             }

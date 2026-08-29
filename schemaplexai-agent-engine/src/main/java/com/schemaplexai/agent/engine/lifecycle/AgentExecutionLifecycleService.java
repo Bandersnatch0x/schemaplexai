@@ -88,8 +88,9 @@ public class AgentExecutionLifecycleService {
                 execution.getTenantId(), String.valueOf(executionId));
         redisTemplate.delete(key);
 
-        // Signal the orchestrator to stop its loop
-        orchestrator.cancel();
+        // Signal the orchestrator to stop THIS execution's loop only (issue 906:
+        // per-execution cancel key — concurrent executions are unaffected).
+        orchestrator.cancel(execution.getTenantId(), executionId);
 
         // Clean up sandbox session if present
         SandboxSession session = activeSandboxSessions.remove(executionId);

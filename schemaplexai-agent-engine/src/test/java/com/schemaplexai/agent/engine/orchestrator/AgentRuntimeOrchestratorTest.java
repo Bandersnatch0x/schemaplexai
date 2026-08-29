@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -229,25 +230,85 @@ class AgentRuntimeOrchestratorTest {
     }
 
     @Test
-    void shouldCancelWhenVolatileFlagIsSetDuringLoop() throws Exception {
+    void shouldCancelExecutionViaScopedKeyAndConsumeIt() {
         when(admissionService.admit(eq(TENANT_ID), eq(10L), any(TokenBudget.class)))
             .thenReturn(AdmissionResult.builder().allowed(true).build());
 
-        // Use a mock that causes a long-running state machine loop
-        when(stateMachine.getCurrentState(1L))
-            .thenReturn(AgentExecutionState.THINKING)  // iteration 1: enters loop
-            .thenReturn(AgentExecutionState.THINKING)  // iteration 2: enters loop
-            .thenReturn(AgentExecutionState.THINKING); // iteration 3: enters loop
+        // Fake Redis: cancel() writes the scoped key, isCancelled reads it back.
+        java.util.Map<String, String> redis = new java.util.concurrent.ConcurrentHashMap<>();
+        doAnswer(inv -> { redis.put(inv.getArgument(0), inv.getArgument(1)); return null; })
+            .when(valueOps).set(anyString(), anyString(), any(java.time.Duration.class));
+        when(valueOps.get(anyString())).thenAnswer(inv -> redis.get(inv.getArgument(0)));
 
-        // Simulate concurrent thread setting cancelled flag during execution
-        // The orchestrator's run() is synchronous, so we schedule cancel to trigger
-        // after the first few iterations
-        java.util.concurrent.Executors.newSingleThreadScheduledExecutor()
-            .schedule(() -> orchestrator.cancel(), 100, java.util.concurrent.TimeUnit.MILLISECONDS);
+        // Cancel BEFORE the run starts: the signal must survive into the run
+        // (the legacy global resetCancelled() could wipe such a pre-run signal).
+        orchestrator.cancel(TENANT_ID, 1L);
+
+        // The key must be tenant- and execution-scoped (TenantRedisKeyResolver style).
+        String expectedKey = com.schemaplexai.common.redis.TenantRedisKeyResolver.tenantKey(
+                TENANT_ID,
+                com.schemaplexai.common.redis.TenantRedisKeyResolver.CAT_EXECUTION,
+                "cancelled", "1");
+        assertEquals("CANCELLED", redis.get(expectedKey));
 
         orchestrator.run(execution, TENANT_ID, PROMPT);
 
-        verify(stateMachine, atLeastOnce()).getCurrentState(1L);
+        // The loop observes the per-execution signal on its first check and cancels
+        // before any state is dispatched.
+        verify(stateMachine).start(execution);
+        verify(stateMachine).transition(AgentExecutionState.CANCELLED, execution);
+        verify(stateMachine, never()).getCurrentState(1L);
+        verify(stateMachine, never()).transition(AgentExecutionState.COMPLETED, execution);
+        // Signal is consumed once observed.
+        verify(redisTemplate).delete(expectedKey);
+    }
+
+    @Test
+    void cancelOfOneExecutionShouldNotAffectConcurrentExecution() throws Exception {
+        when(admissionService.admit(anyString(), anyLong(), any(TokenBudget.class)))
+            .thenReturn(AdmissionResult.builder().allowed(true).build());
+
+        // Shared fake Redis across both executions — keys are scoped per executionId.
+        java.util.Map<String, String> redis = new java.util.concurrent.ConcurrentHashMap<>();
+        doAnswer(inv -> { redis.put(inv.getArgument(0), inv.getArgument(1)); return null; })
+            .when(valueOps).set(anyString(), anyString(), any(java.time.Duration.class));
+        when(valueOps.get(anyString())).thenAnswer(inv -> redis.get(inv.getArgument(0)));
+        when(redisTemplate.delete(anyString()))
+            .thenAnswer(inv -> redis.remove(inv.getArgument(0)) != null);
+
+        // Each loop iteration takes ~20ms so the cancellation lands mid-flight.
+        when(stateMachine.getCurrentState(anyLong())).thenAnswer(inv -> {
+            Thread.sleep(20);
+            return AgentExecutionState.THINKING;
+        });
+
+        SfAgentExecution execA = newExecution(101L, 11L, "conv-A");
+        SfAgentExecution execB = newExecution(102L, 12L, "conv-B");
+
+        java.util.concurrent.ExecutorService pool =
+                java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            java.util.concurrent.Future<?> runA =
+                    pool.submit(() -> orchestrator.run(execA, "tenant-A", "prompt A"));
+            java.util.concurrent.Future<?> runB =
+                    pool.submit(() -> orchestrator.run(execB, "tenant-B", "prompt B"));
+
+            // Wait until both executions are inside their loops, then cancel ONLY A.
+            Thread.sleep(80);
+            orchestrator.cancel("tenant-A", 101L);
+
+            runA.get(10, java.util.concurrent.TimeUnit.SECONDS);
+            runB.get(10, java.util.concurrent.TimeUnit.SECONDS);
+        } finally {
+            pool.shutdownNow();
+        }
+
+        // The cancelled execution enters the CANCELLED semantic state...
+        verify(stateMachine).transition(AgentExecutionState.CANCELLED, execA);
+        // ...while the concurrent execution is untouched: it kept running THINKING
+        // rounds and was never cancelled.
+        verify(stateMachine, never()).transition(AgentExecutionState.CANCELLED, execB);
+        verify(stateMachine, atLeastOnce()).transition(AgentExecutionState.THINKING, execB);
     }
 
     @Test
@@ -274,21 +335,13 @@ class AgentRuntimeOrchestratorTest {
         verify(stateMachine, never()).transition(AgentExecutionState.COMPLETED, execution);
     }
 
-    @Test
-    void shouldCancelResetForNewRun() {
-        // Set cancelled then run a short execution that completes normally
-        orchestrator.cancel();  // This sets cancelled=true
-
-        when(admissionService.admit(eq(TENANT_ID), eq(10L), any(TokenBudget.class)))
-            .thenReturn(AdmissionResult.builder().allowed(true).build());
-
-        when(stateMachine.getCurrentState(1L)).thenReturn(AgentExecutionState.COMPLETED);
-
-        orchestrator.run(execution, TENANT_ID, PROMPT);
-
-        // Should NOT transition to CANCELLED because the flag was reset in run()
-        // Should complete normally because the loop sees COMPLETED and breaks
-        verify(stateMachine, never()).transition(AgentExecutionState.CANCELLED, execution);
-        verify(stateMachine).start(execution);
+    private SfAgentExecution newExecution(Long id, Long agentId, String conversationId) {
+        SfAgentExecution e = new SfAgentExecution();
+        e.setId(id);
+        e.setAgentId(agentId);
+        e.setConversationId(conversationId);
+        e.setCreatedBy(100L);
+        e.setState("IDLE");
+        return e;
     }
 }
