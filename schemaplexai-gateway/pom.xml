@@ -20,6 +20,16 @@
             <artifactId>spring-cloud-starter-gateway</artifactId>
             <version>4.1.2</version>
         </dependency>
+        <!-- Explicitly required: spring-cloud-starter-gateway declares the loadbalancer
+             starter as <optional>, so it is NOT pulled in transitively. Without it the
+             gateway has no LoadBalancerClient and every lb:// route is rejected by
+             GatewayNoLoadBalancerClientAutoConfiguration (503). Instance resolution is
+             backed by the static SimpleDiscoveryClient list in application.yml. -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+            <version>4.1.2</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis-reactive</artifactId>

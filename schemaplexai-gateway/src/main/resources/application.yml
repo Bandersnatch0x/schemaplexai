@@ -7,6 +7,41 @@ spring:
   application:
     name: schemaplexai-gateway
   cloud:
+    # Static service-instance source for the LoadBalancer used by the lb:// routes
+    # in GatewayConfig.java. Without an instance source (no Eureka/Nacos/Consul in
+    # this repo) every routed request would fail with 503 (empty instance list).
+    # SimpleDiscoveryClient (spring-cloud-commons) reads these properties; override
+    # per environment via spring.cloud.discovery.client.simple.instances.* or
+    # replace with a real discovery backend when deploying to K8s etc.
+    # Ports must match each service's server.port (spec §3).
+    discovery:
+      client:
+        simple:
+          instances:
+            schemaplexai-system:
+              - uri: http://localhost:8081
+            schemaplexai-web:
+              - uri: http://localhost:8082
+            schemaplexai-agent-config:
+              - uri: http://localhost:8083
+            schemaplexai-agent-engine:
+              - uri: http://localhost:8084
+            schemaplexai-context:
+              - uri: http://localhost:8085
+            schemaplexai-spec:
+              - uri: http://localhost:8086
+            schemaplexai-workflow:
+              - uri: http://localhost:8087
+            schemaplexai-integration:
+              - uri: http://localhost:8088
+            schemaplexai-ops:
+              - uri: http://localhost:8089
+            schemaplexai-quality:
+              - uri: http://localhost:8090
+            schemaplexai-task:
+              - uri: http://localhost:8091
+            schemaplexai-admin:
+              - uri: http://localhost:8092
     gateway:
       # Routes are defined in GatewayConfig.java (Java DSL with lb:// scheme).
       # YAML route definitions are intentionally omitted to avoid duplicate/conflicting
