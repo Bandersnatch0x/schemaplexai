@@ -5,7 +5,7 @@ import com.schemaplexai.agent.config.dto.AgentStatsVO;
 import com.schemaplexai.agent.config.entity.SfAgent;
 import com.schemaplexai.agent.config.entity.SfAgentExecution;
 import com.schemaplexai.agent.config.mapper.ChatMessageTokenMapper;
-import com.schemaplexai.agent.config.mapper.SfAgentExecutionMapper;
+import com.schemaplexai.agent.config.mapper.AgentExecutionStatsMapper;
 import com.schemaplexai.agent.config.mapper.SfAgentMapper;
 import com.schemaplexai.common.context.TenantContextHolder;
 import lombok.RequiredArgsConstructor;
@@ -41,7 +41,7 @@ public class AgentStatsService {
     static final String AGENT_STATUS_ACTIVE = "ACTIVE";
 
     private final SfAgentMapper agentMapper;
-    private final SfAgentExecutionMapper executionMapper;
+    private final AgentExecutionStatsMapper executionMapper;
     private final ChatMessageTokenMapper tokenMapper;
 
     public AgentStatsVO getStats() {

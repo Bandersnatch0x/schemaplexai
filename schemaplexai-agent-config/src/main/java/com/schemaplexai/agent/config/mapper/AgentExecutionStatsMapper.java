@@ -10,5 +10,5 @@ import org.apache.ibatis.annotations.Mapper;
  * {@code TenantLineInnerInterceptor} registered in {@code MyBatisPlusConfig}.
  */
 @Mapper
-public interface SfAgentExecutionMapper extends BaseMapperX<SfAgentExecution> {
+public interface AgentExecutionStatsMapper extends BaseMapperX<SfAgentExecution> {
 }

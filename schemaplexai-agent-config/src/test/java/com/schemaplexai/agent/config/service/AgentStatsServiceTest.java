@@ -7,7 +7,7 @@ import com.schemaplexai.agent.config.dto.AgentStatsVO;
 import com.schemaplexai.agent.config.entity.SfAgent;
 import com.schemaplexai.agent.config.entity.SfAgentExecution;
 import com.schemaplexai.agent.config.mapper.ChatMessageTokenMapper;
-import com.schemaplexai.agent.config.mapper.SfAgentExecutionMapper;
+import com.schemaplexai.agent.config.mapper.AgentExecutionStatsMapper;
 import com.schemaplexai.agent.config.mapper.SfAgentMapper;
 import com.schemaplexai.common.context.TenantContextHolder;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
@@ -31,7 +31,7 @@ class AgentStatsServiceTest {
     private SfAgentMapper agentMapper;
 
     @Mock
-    private SfAgentExecutionMapper executionMapper;
+    private AgentExecutionStatsMapper executionMapper;
 
     @Mock
     private ChatMessageTokenMapper tokenMapper;
