@@ -104,6 +104,15 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
             throw new BaseException(ResultCode.SPEC_NOT_FOUND);
         }
 
+        // Review NEW-06: publishing requires an approved review decision —
+        // draft/in_review/rejected/archived specs must not go straight to
+        // published, which would bypass the review workflow.
+        if (!SpecStatus.APPROVED.equals(spec.getStatus())) {
+            throw new BaseException(ResultCode.FORBIDDEN,
+                    "Spec " + specId + " cannot be published from status '"
+                            + spec.getStatus() + "'; it must be approved first");
+        }
+
         SfSpec before = SpecChangeTracker.snapshot(spec);
         spec.setStatus(SpecStatus.PUBLISHED);
         spec.setUpdatedAt(LocalDateTime.now());

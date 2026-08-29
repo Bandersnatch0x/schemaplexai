@@ -287,6 +287,7 @@ class SpecServiceImplTest {
         SfSpec spec = new SfSpec();
         spec.setId(1L);
         spec.setContent("spec content");
+        spec.setStatus(com.schemaplexai.spec.domain.SpecStatus.APPROVED);
         when(specMapper.selectById(1L)).thenReturn(spec);
         when(specMapper.updateById(spec)).thenReturn(1);
         when(specVersionMapper.selectOne(any())).thenReturn(null);
@@ -305,6 +306,7 @@ class SpecServiceImplTest {
         SfSpec spec = new SfSpec();
         spec.setId(1L);
         spec.setContent("spec content");
+        spec.setStatus(com.schemaplexai.spec.domain.SpecStatus.APPROVED);
         when(specMapper.selectById(1L)).thenReturn(spec);
         when(specMapper.updateById(spec)).thenReturn(1);
 
@@ -322,6 +324,7 @@ class SpecServiceImplTest {
         SfSpec spec = new SfSpec();
         spec.setId(1L);
         spec.setContent("spec content");
+        spec.setStatus(com.schemaplexai.spec.domain.SpecStatus.APPROVED);
         when(specMapper.selectById(1L)).thenReturn(spec);
         when(specMapper.updateById(spec)).thenReturn(1);
 
@@ -339,6 +342,7 @@ class SpecServiceImplTest {
         SfSpec spec = new SfSpec();
         spec.setId(1L);
         spec.setContent("content");
+        spec.setStatus(com.schemaplexai.spec.domain.SpecStatus.APPROVED);
         when(specMapper.selectById(1L)).thenReturn(spec);
         when(specMapper.updateById(spec)).thenReturn(1);
         when(specVersionMapper.selectOne(any())).thenReturn(null);
@@ -354,6 +358,7 @@ class SpecServiceImplTest {
         SfSpec spec = new SfSpec();
         spec.setId(1L);
         spec.setContent("content");
+        spec.setStatus(com.schemaplexai.spec.domain.SpecStatus.APPROVED);
         when(specMapper.selectById(1L)).thenReturn(spec);
         when(specMapper.updateById(spec)).thenReturn(0);
 
@@ -362,6 +367,24 @@ class SpecServiceImplTest {
                 .extracting("code")
                 .isEqualTo(ResultCode.CONFLICT.getCode());
 
+        verify(specVersionMapper, never()).insert(any());
+    }
+
+    @Test
+    void publishSpec_fromDraft_throwsForbidden() {
+        SfSpec spec = new SfSpec();
+        spec.setId(1L);
+        spec.setContent("content");
+        spec.setStatus(com.schemaplexai.spec.domain.SpecStatus.DRAFT);
+        when(specMapper.selectById(1L)).thenReturn(spec);
+
+        // Review NEW-06: publishing must require an approved review decision.
+        assertThatThrownBy(() -> specService.publishSpec(1L))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.FORBIDDEN.getCode());
+
+        verify(specMapper, never()).updateById(any());
         verify(specVersionMapper, never()).insert(any());
     }
 
