@@ -85,7 +85,7 @@ class ToolCallingStateHandlerTest {
         handler = new ToolCallingStateHandler(
                 chatMemoryStore, sandbox, toolRegistry, safetyGuard,
                 loopDetection, executionRecorder, securityPolicyLoader,
-                engineProperties, toolApprovalService, modelRouter, modelResolver);
+                engineProperties, toolApprovalService, modelRouter, modelResolver, null);
     }
 
     @Test
@@ -671,7 +671,7 @@ class ToolCallingStateHandlerTest {
         ToolCallingStateHandler realHandler = new ToolCallingStateHandler(
                 chatMemoryStore, sandbox, realRegistry, safetyGuard,
                 loopDetection, executionRecorder, securityPolicyLoader,
-                engineProperties, toolApprovalService, modelRouter, modelResolver);
+                engineProperties, toolApprovalService, modelRouter, modelResolver, null);
 
         when(engineProperties.getMaxToolCalls()).thenReturn(10);
         SfAgentExecution execution = createExecution(43L);
@@ -710,7 +710,7 @@ class ToolCallingStateHandlerTest {
         ToolCallingStateHandler realHandler = new ToolCallingStateHandler(
                 chatMemoryStore, sandbox, realRegistry, safetyGuard,
                 loopDetection, executionRecorder, securityPolicyLoader,
-                engineProperties, toolApprovalService, modelRouter, modelResolver);
+                engineProperties, toolApprovalService, modelRouter, modelResolver, null);
 
         when(engineProperties.getMaxToolCalls()).thenReturn(10);
         SfAgentExecution execution = createExecution(44L);

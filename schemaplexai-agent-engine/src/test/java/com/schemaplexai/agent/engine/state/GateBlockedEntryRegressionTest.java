@@ -170,7 +170,7 @@ class GateBlockedEntryRegressionTest {
         toolCallingHandler = new ToolCallingStateHandler(
                 chatMemoryStore, sandbox, toolRegistry, safetyGuard, loopDetection,
                 executionRecorder, securityPolicyLoader, engineProperties, toolApprovalService,
-                modelRouter, modelResolver);
+                modelRouter, modelResolver, null);
 
         orchestrator = new AgentRuntimeOrchestrator(
                 stateMachine, admissionService, chatMemoryStore, observabilityRecorder,

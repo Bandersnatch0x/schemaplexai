@@ -32,6 +32,7 @@ public class QualityCheckEventPublisher {
 
     public static final String EVENT_TYPE_CHECK_REQUEST = "QUALITY_CHECK_REQUEST";
     public static final String TRIGGER_POINT_POST_EXECUTION = "POST_EXECUTION";
+    public static final String TRIGGER_POINT_POST_TOOL = "POST_TOOL";
 
     private final RabbitTemplate rabbitTemplate;
     private final ObjectMapper objectMapper;
@@ -44,6 +45,32 @@ public class QualityCheckEventPublisher {
      * @return true if the request was handed to MQ, false on failure
      */
     public boolean publishPostExecutionCheck(Long executionId, Long agentId, String tenantId, String output) {
+        // Evidence flags for SecurityScanRule: the engine's internal
+        // guardrail pass completed (this event is only published from the
+        // COMPLETED path, which guardrails have already cleared). The
+        // rule's own content checks (e.g. secret patterns) still apply
+        // to the output carried above.
+        return publishCheck(executionId, agentId, tenantId, output,
+                TRIGGER_POINT_POST_EXECUTION, true);
+    }
+
+    /**
+     * Publishes a post-tool-execution quality check request (trigger point 2
+     * of ticket 924). Tool output has NOT been cleared by the engine's
+     * guardrail pass, so the security-scan flags stay false and the quality
+     * rules inspect the carried output themselves.
+     *
+     * @return true if the request was handed to MQ, false on failure
+     */
+    public boolean publishPostToolCheck(Long executionId, Long agentId, String tenantId,
+                                        String toolName, String toolOutput) {
+        String output = "[" + toolName + "] " + toolOutput;
+        return publishCheck(executionId, agentId, tenantId, output,
+                TRIGGER_POINT_POST_TOOL, false);
+    }
+
+    private boolean publishCheck(Long executionId, Long agentId, String tenantId, String output,
+                                 String triggerPoint, boolean securityScanPassed) {
         try {
             Map<String, Object> payload = new HashMap<>();
             payload.put("eventType", EVENT_TYPE_CHECK_REQUEST);
@@ -51,25 +78,20 @@ public class QualityCheckEventPublisher {
             payload.put("executionId", executionId);
             payload.put("agentId", agentId);
             payload.put("tenantId", tenantId);
-            payload.put("triggerPoint", TRIGGER_POINT_POST_EXECUTION);
+            payload.put("triggerPoint", triggerPoint);
             payload.put("output", output);
-            // Evidence flags for SecurityScanRule: the engine's internal
-            // guardrail pass completed (this event is only published from the
-            // COMPLETED path, which guardrails have already cleared). The
-            // rule's own content checks (e.g. secret patterns) still apply
-            // to the output carried above.
-            payload.put("securityScanCompleted", Boolean.TRUE);
-            payload.put("securityScanPassed", Boolean.TRUE);
+            payload.put("securityScanCompleted", securityScanPassed);
+            payload.put("securityScanPassed", securityScanPassed);
             payload.put("timestamp", System.currentTimeMillis());
 
             String message = objectMapper.writeValueAsString(payload);
             rabbitTemplate.convertAndSend(CommonConstants.EXCHANGE_SCHEMAPLEXAI, CommonConstants.RK_QUALITY, message);
             log.info("Published quality check request for execution {} (trigger={})",
-                    executionId, TRIGGER_POINT_POST_EXECUTION);
+                    executionId, triggerPoint);
             return true;
         } catch (Exception e) {
             log.error("Failed to publish quality check request for execution {} — "
-                    + "post-execution quality gate skipped: {}", executionId, e.getMessage(), e);
+                    + "quality gate skipped for trigger {}: {}", executionId, triggerPoint, e.getMessage(), e);
             return false;
         }
     }

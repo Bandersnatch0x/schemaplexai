@@ -48,6 +48,7 @@ public class ToolCallingStateHandler implements AgentStateHandler {
     private final ToolApprovalService toolApprovalService;
     private final AiModelRouter modelRouter;
     private final ModelResolver modelResolver;
+    private final com.schemaplexai.agent.engine.mq.QualityCheckEventPublisher qualityCheckEventPublisher;
 
     @Autowired
     public ToolCallingStateHandler(CompositeChatMemoryStore chatMemoryStore,
@@ -60,7 +61,8 @@ public class ToolCallingStateHandler implements AgentStateHandler {
                                     AgentEngineProperties engineProperties,
                                     ToolApprovalService toolApprovalService,
                                     AiModelRouter modelRouter,
-                                    ModelResolver modelResolver) {
+                                    ModelResolver modelResolver,
+                                    com.schemaplexai.agent.engine.mq.QualityCheckEventPublisher qualityCheckEventPublisher) {
         this.chatMemoryStore = chatMemoryStore;
         this.sandbox = sandbox;
         this.toolRegistry = toolRegistry;
@@ -72,6 +74,7 @@ public class ToolCallingStateHandler implements AgentStateHandler {
         this.toolApprovalService = toolApprovalService;
         this.modelRouter = modelRouter;
         this.modelResolver = modelResolver;
+        this.qualityCheckEventPublisher = qualityCheckEventPublisher;
     }
 
     @Override
@@ -202,6 +205,15 @@ public class ToolCallingStateHandler implements AgentStateHandler {
                         "Tool " + toolCall.toolName() + " returned: " + truncate(result.output(), 500));
                 chatMemoryStore.saveMessage(execution.getConversationId(),
                         new LlmMessage("tool", result.output()));
+
+                // Ticket 924 / REQ-01 trigger point 2: post-tool quality check.
+                // Best-effort via MQ (same contract as the post-execution trigger);
+                // an MQ outage must not fail the tool round.
+                if (qualityCheckEventPublisher != null) {
+                    qualityCheckEventPublisher.publishPostToolCheck(
+                            execution.getId(), execution.getAgentId(), execution.getTenantId(),
+                            toolCall.toolName(), truncate(result.output(), 500));
+                }
 
                 incrementToolCallCount(execution);
                 incrementIterationToolCallCount(execution);

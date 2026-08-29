@@ -88,4 +88,31 @@ class QualityCheckEventPublisherTest {
         assertDoesNotThrow(() -> publisher.publishPostExecutionCheck(9L, 1L, "1", "output"));
         assertFalse(publisher.publishPostExecutionCheck(9L, 1L, "1", "output"));
     }
+
+    @Test
+    void publishPostToolCheckSendsPostToolRequestWithoutScanEvidence() throws Exception {
+        boolean sent = publisher.publishPostToolCheck(11L, 42L, "3", "shell_exec", "rm output");
+
+        assertTrue(sent);
+        ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
+        verify(rabbitTemplate).convertAndSend(eq(CommonConstants.EXCHANGE_SCHEMAPLEXAI),
+                eq(CommonConstants.RK_QUALITY), body.capture());
+
+        JsonNode payload = objectMapper.readTree(body.getValue());
+        assertEquals(QualityCheckEventPublisher.TRIGGER_POINT_POST_TOOL, payload.get("triggerPoint").asText());
+        assertEquals(11L, payload.get("executionId").asLong());
+        assertEquals("[shell_exec] rm output", payload.get("output").asText());
+        assertFalse(payload.get("securityScanCompleted").asBoolean(),
+                "tool output is not cleared by the guardrail pass — rules must inspect it");
+        assertFalse(payload.get("securityScanPassed").asBoolean());
+    }
+
+    @Test
+    void postToolCheckDegradesGracefullyOnMqFailure() {
+        doThrow(new RuntimeException("broker down"))
+                .when(rabbitTemplate).convertAndSend(anyString(), anyString(), anyString());
+
+        assertDoesNotThrow(() -> publisher.publishPostToolCheck(12L, 1L, "1", "t", "out"));
+        assertFalse(publisher.publishPostToolCheck(12L, 1L, "1", "t", "out"));
+    }
 }
