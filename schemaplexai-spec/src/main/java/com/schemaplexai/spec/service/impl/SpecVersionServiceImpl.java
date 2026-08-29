@@ -78,4 +78,13 @@ public class SpecVersionServiceImpl extends ServiceImpl<SfSpecVersionMapper, SfS
         log.info("Created version {} for spec {}", version, specId);
         return specVersion;
     }
+
+    @Override
+    public boolean updateVersion(Long id, SfSpecVersion version) {
+        // Version snapshots are immutable audit records (spec-management §3).
+        // A historical snapshot must never be overwritten in place; create a
+        // new version instead.
+        throw new BaseException(ResultCode.FORBIDDEN,
+                "Spec version snapshots are immutable; create a new version instead of editing version " + id);
+    }
 }

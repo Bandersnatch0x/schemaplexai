@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.schemaplexai.common.context.TenantContextHolder;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.spec.domain.SpecStatus;
 import com.schemaplexai.spec.entity.SfSpec;
 import com.schemaplexai.spec.entity.SfSpecTemplate;
 import com.schemaplexai.spec.entity.SfSpecVersion;
@@ -32,6 +33,51 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
     private final SfSpecTemplateMapper specTemplateMapper;
 
     @Override
+    public SfSpec createSpec(SfSpec spec) {
+        if (spec == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "spec is required");
+        }
+        // Lifecycle always starts in draft; a client-supplied status cannot
+        // shortcut the draft -> in_review -> approved -> published chain.
+        spec.setStatus(SpecStatus.DRAFT);
+        specMapper.insert(spec);
+        log.info("Created spec {} in status draft", spec.getId());
+        return spec;
+    }
+
+    @Override
+    public boolean updateSpec(Long id, SfSpec update) {
+        if (id == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "specId is required");
+        }
+        if (update == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "spec is required");
+        }
+        SfSpec existing = specMapper.selectById(id);
+        if (existing == null) {
+            throw new BaseException(ResultCode.SPEC_NOT_FOUND);
+        }
+        // Edit guard (spec-management §3.1): only drafts are editable.
+        if (!SpecStatus.isEditable(existing.getStatus())) {
+            throw new BaseException(ResultCode.FORBIDDEN,
+                    "Spec " + id + " is not editable in status " + existing.getStatus());
+        }
+        if (update.getTitle() != null) {
+            existing.setTitle(update.getTitle());
+        }
+        if (update.getType() != null) {
+            existing.setType(update.getType());
+        }
+        if (update.getContent() != null) {
+            existing.setContent(update.getContent());
+        }
+        // status is a lifecycle field: never rewritten by a plain update.
+        existing.setUpdatedAt(LocalDateTime.now());
+        int rows = specMapper.updateById(existing);
+        return rows > 0;
+    }
+
+    @Override
     public SfSpecVersion publishSpec(Long specId) {
         validateSpecId(specId);
         SfSpec spec = specMapper.selectById(specId);
@@ -39,7 +85,7 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
             throw new BaseException(ResultCode.SPEC_NOT_FOUND);
         }
 
-        spec.setStatus("published");
+        spec.setStatus(SpecStatus.PUBLISHED);
         spec.setUpdatedAt(LocalDateTime.now());
         specMapper.updateById(spec);
 
@@ -80,7 +126,7 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
         if (spec == null) {
             throw new BaseException(ResultCode.SPEC_NOT_FOUND);
         }
-        spec.setStatus("archived");
+        spec.setStatus(SpecStatus.ARCHIVED);
         spec.setUpdatedAt(LocalDateTime.now());
         int rows = specMapper.updateById(spec);
         log.info("Archived spec {}", specId);
@@ -129,7 +175,7 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
         SfSpec spec = new SfSpec();
         spec.setTitle(title);
         spec.setType(type);
-        spec.setStatus("draft");
+        spec.setStatus(SpecStatus.DRAFT);
         spec.setContent(template.getContent());
         specMapper.insert(spec);
 

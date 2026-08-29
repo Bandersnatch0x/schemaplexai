@@ -26,15 +26,13 @@ public class SpecController {
     @Operation(summary = "创建需求规格")
     @PostMapping
     public Result<Long> create(@RequestBody SfSpec spec) {
-        specService.save(spec);
-        return Result.success(spec.getId());
+        return Result.success(specService.createSpec(spec).getId());
     }
 
     @Operation(summary = "更新需求规格")
     @PutMapping("/{id}")
     public Result<Boolean> update(@PathVariable Long id, @RequestBody SfSpec spec) {
-        spec.setId(id);
-        return Result.success(specService.updateById(spec));
+        return Result.success(specService.updateSpec(id, spec));
     }
 
     @Operation(summary = "删除需求规格")

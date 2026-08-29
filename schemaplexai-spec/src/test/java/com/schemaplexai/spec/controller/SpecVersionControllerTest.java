@@ -1,7 +1,9 @@
 package com.schemaplexai.spec.controller;
 
+import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.page.PageParam;
 import com.schemaplexai.common.result.Result;
+import com.schemaplexai.common.result.ResultCode;
 import com.schemaplexai.model.dto.PageResult;
 import com.schemaplexai.spec.dto.SpecDiffResult;
 import com.schemaplexai.spec.entity.SfSpecVersion;
@@ -16,7 +18,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,13 +57,13 @@ class SpecVersionControllerTest {
     }
 
     @Test
-    void update_returnsBoolean() {
-        when(specVersionService.updateById(any())).thenReturn(true);
+    void update_alwaysRejected_snapshotsImmutable() {
+        when(specVersionService.updateVersion(eq(1L), any()))
+                .thenThrow(new com.schemaplexai.common.exception.BaseException(
+                        com.schemaplexai.common.result.ResultCode.FORBIDDEN, "immutable"));
 
-        Result<Boolean> result = specVersionController.update(1L, version);
-
-        assertThat(result.getCode()).isEqualTo(200);
-        assertThat(result.getData()).isTrue();
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> specVersionController.update(1L, version))
+                .isInstanceOf(com.schemaplexai.common.exception.BaseException.class);
     }
 
     @Test

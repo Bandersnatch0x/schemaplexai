@@ -30,8 +30,7 @@ public class SpecVersionController {
     @Operation(summary = "更新规格版本")
     @PutMapping("/{id}")
     public Result<Boolean> update(@PathVariable Long id, @RequestBody SfSpecVersion version) {
-        version.setId(id);
-        return Result.success(specVersionService.updateById(version));
+        return Result.success(specVersionService.updateVersion(id, version));
     }
 
     @Operation(summary = "删除规格版本")

@@ -19,6 +19,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,7 +54,7 @@ class SpecControllerTest {
 
     @Test
     void create_returnsId() {
-        when(specService.save(any())).thenReturn(true);
+        when(specService.createSpec(any())).thenReturn(spec);
 
         Result<Long> result = specController.create(spec);
 
@@ -63,7 +64,7 @@ class SpecControllerTest {
 
     @Test
     void update_returnsBoolean() {
-        when(specService.updateById(any())).thenReturn(true);
+        when(specService.updateSpec(eq(1L), any())).thenReturn(true);
 
         Result<Boolean> result = specController.update(1L, spec);
 

@@ -84,6 +84,7 @@ class SpecTemplateServiceImplTest {
         SfSpec existingSpec = new SfSpec();
         existingSpec.setId(2L);
         existingSpec.setTitle("Old Title");
+        existingSpec.setStatus("draft");
         when(specMapper.selectById(2L)).thenReturn(existingSpec);
 
         SfSpec result = specTemplateService.applyTemplate(1L, 2L, "New Title", "type");
@@ -92,6 +93,26 @@ class SpecTemplateServiceImplTest {
         assertThat(result.getUpdatedAt()).isNotNull();
         verify(specMapper).updateById(existingSpec);
         verify(specMapper, never()).insert(any(SfSpec.class));
+    }
+
+    @Test
+    void applyTemplate_withSpecId_publishedSpec_throwsForbidden() {
+        SfSpecTemplate template = new SfSpecTemplate();
+        template.setId(1L);
+        template.setContent("template content");
+        when(specTemplateMapper.selectById(1L)).thenReturn(template);
+
+        SfSpec existingSpec = new SfSpec();
+        existingSpec.setId(2L);
+        existingSpec.setStatus("published");
+        when(specMapper.selectById(2L)).thenReturn(existingSpec);
+
+        assertThatThrownBy(() -> specTemplateService.applyTemplate(1L, 2L, "New Title", "type"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.FORBIDDEN.getCode());
+
+        verify(specMapper, never()).updateById(any(SfSpec.class));
     }
 
     @Test

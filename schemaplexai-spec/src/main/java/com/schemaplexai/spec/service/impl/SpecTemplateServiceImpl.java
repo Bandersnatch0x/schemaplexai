@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.schemaplexai.common.context.TenantContextHolder;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.spec.domain.SpecStatus;
 import com.schemaplexai.spec.entity.SfSpec;
 import com.schemaplexai.spec.entity.SfSpecTemplate;
 import com.schemaplexai.spec.mapper.SfSpecMapper;
@@ -46,6 +47,11 @@ public class SpecTemplateServiceImpl extends ServiceImpl<SfSpecTemplateMapper, S
             if (spec == null) {
                 throw new BaseException(ResultCode.SPEC_NOT_FOUND);
             }
+            // Overwriting content is an edit: only drafts are editable (§3.1).
+            if (!SpecStatus.isEditable(spec.getStatus())) {
+                throw new BaseException(ResultCode.FORBIDDEN,
+                        "Spec " + specId + " is not editable in status " + spec.getStatus());
+            }
             spec.setContent(template.getContent());
             spec.setUpdatedAt(LocalDateTime.now());
             specMapper.updateById(spec);
@@ -54,7 +60,7 @@ public class SpecTemplateServiceImpl extends ServiceImpl<SfSpecTemplateMapper, S
             spec = new SfSpec();
             spec.setTitle(title);
             spec.setType(type);
-            spec.setStatus("draft");
+            spec.setStatus(SpecStatus.DRAFT);
             spec.setContent(template.getContent());
             specMapper.insert(spec);
             log.info("Created spec {} from template {}", spec.getId(), templateId);

@@ -54,6 +54,151 @@ class SpecServiceImplTest {
     }
 
     // ------------------------------------------------------------------
+    // createSpec
+    // ------------------------------------------------------------------
+
+    @Test
+    void createSpec_nullSpec_throwsParamError() {
+        assertThatThrownBy(() -> specService.createSpec(null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specMapper, never()).insert(any());
+    }
+
+    @Test
+    void createSpec_clientSuppliedStatus_isForcedToDraft() {
+        SfSpec input = new SfSpec();
+        input.setTitle("T");
+        input.setStatus("published");
+
+        SfSpec result = specService.createSpec(input);
+
+        assertThat(result.getStatus()).isEqualTo("draft");
+        verify(specMapper).insert(input);
+    }
+
+    // ------------------------------------------------------------------
+    // updateSpec (draft-only edit guard)
+    // ------------------------------------------------------------------
+
+    @Test
+    void updateSpec_nullId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specService.updateSpec(null, new SfSpec()))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specMapper, never()).selectById(any());
+    }
+
+    @Test
+    void updateSpec_nullBody_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specService.updateSpec(1L, null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specMapper, never()).selectById(any());
+    }
+
+    @Test
+    void updateSpec_specNotFound_throwsSpecNotFound() {
+        when(specMapper.selectById(1L)).thenReturn(null);
+
+        assertThatThrownBy(() -> specService.updateSpec(1L, new SfSpec()))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.SPEC_NOT_FOUND.getCode());
+
+        verify(specMapper, never()).updateById(any());
+    }
+
+    @Test
+    void updateSpec_draft_mergesNonNullFields() {
+        SfSpec existing = new SfSpec();
+        existing.setId(1L);
+        existing.setStatus("draft");
+        existing.setTitle("old title");
+        existing.setContent("old content");
+        when(specMapper.selectById(1L)).thenReturn(existing);
+        when(specMapper.updateById(existing)).thenReturn(1);
+
+        SfSpec update = new SfSpec();
+        update.setTitle("new title");
+
+        boolean result = specService.updateSpec(1L, update);
+
+        assertThat(result).isTrue();
+        assertThat(existing.getTitle()).isEqualTo("new title");
+        assertThat(existing.getContent()).isEqualTo("old content");
+        assertThat(existing.getUpdatedAt()).isNotNull();
+        verify(specMapper).updateById(existing);
+    }
+
+    @Test
+    void updateSpec_draft_cannotRewriteLifecycleStatus() {
+        SfSpec existing = new SfSpec();
+        existing.setId(1L);
+        existing.setStatus("draft");
+        when(specMapper.selectById(1L)).thenReturn(existing);
+        when(specMapper.updateById(existing)).thenReturn(1);
+
+        SfSpec update = new SfSpec();
+        update.setStatus("published");
+
+        specService.updateSpec(1L, update);
+
+        assertThat(existing.getStatus()).isEqualTo("draft");
+    }
+
+    @Test
+    void updateSpec_published_throwsForbidden() {
+        SfSpec existing = new SfSpec();
+        existing.setId(1L);
+        existing.setStatus("published");
+        when(specMapper.selectById(1L)).thenReturn(existing);
+
+        assertThatThrownBy(() -> specService.updateSpec(1L, new SfSpec()))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.FORBIDDEN.getCode());
+
+        verify(specMapper, never()).updateById(any());
+    }
+
+    @Test
+    void updateSpec_approved_throwsForbidden() {
+        SfSpec existing = new SfSpec();
+        existing.setId(1L);
+        existing.setStatus("approved");
+        when(specMapper.selectById(1L)).thenReturn(existing);
+
+        assertThatThrownBy(() -> specService.updateSpec(1L, new SfSpec()))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.FORBIDDEN.getCode());
+
+        verify(specMapper, never()).updateById(any());
+    }
+
+    @Test
+    void updateSpec_archived_throwsForbidden() {
+        SfSpec existing = new SfSpec();
+        existing.setId(1L);
+        existing.setStatus("archived");
+        when(specMapper.selectById(1L)).thenReturn(existing);
+
+        assertThatThrownBy(() -> specService.updateSpec(1L, new SfSpec()))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.FORBIDDEN.getCode());
+
+        verify(specMapper, never()).updateById(any());
+    }
+
+    // ------------------------------------------------------------------
     // publishSpec
     // ------------------------------------------------------------------
 

@@ -186,4 +186,21 @@ class SpecVersionServiceImplTest {
         verify(specMapper).updateById(spec);
         verify(specVersionMapper).insert(any());
     }
+
+    // ------------------------------------------------------------------
+    // updateVersion (immutability)
+    // ------------------------------------------------------------------
+
+    @Test
+    void updateVersion_alwaysThrowsForbidden_snapshotsImmutable() {
+        SfSpecVersion attempt = new SfSpecVersion();
+        attempt.setContent("tampered");
+
+        assertThatThrownBy(() -> specVersionService.updateVersion(1L, attempt))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.FORBIDDEN.getCode());
+
+        verify(specVersionMapper, never()).updateById(any());
+    }
 }
