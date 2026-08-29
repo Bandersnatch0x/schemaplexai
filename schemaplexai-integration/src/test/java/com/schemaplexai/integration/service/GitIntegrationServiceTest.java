@@ -38,6 +38,7 @@ import static org.mockito.Mockito.when;
 class GitIntegrationServiceTest {
 
     private static final Long TENANT_ID = 1L;
+    private static final Long OTHER_TENANT_ID = 2L;
     private static final String MASTER_SECRET = "test-master-secret-for-integration";
 
     @Mock
@@ -67,6 +68,14 @@ class GitIntegrationServiceTest {
         gitlab.setTokenUrl("https://gitlab.com/oauth/token");
         props.getProviders().put("gitlab", gitlab);
         return props;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> rawRepo(Long tenantId, Long repoId) {
+        Map<Long, Map<Long, Map<String, Object>>> repoStore =
+                (Map<Long, Map<Long, Map<String, Object>>>) ReflectionTestUtils.getField(gitService, "repoStore");
+        Map<Long, Map<String, Object>> tenantRepos = repoStore.get(tenantId);
+        return tenantRepos != null ? tenantRepos.get(repoId) : null;
     }
 
     // --- registerRepository ---
@@ -104,21 +113,18 @@ class GitIntegrationServiceTest {
     @Test
     void registerRepository_defaultBranch_defaultsToMain() {
         gitService.registerRepository(TENANT_ID, "github", "owner", "repo", "https://github.com/o/r.git", null, null);
-        Map<String, Object> repo = gitService.getRepository(1L);
+        Map<String, Object> repo = gitService.getRepository(TENANT_ID, 1L);
         assertThat(repo.get("defaultBranch")).isEqualTo("main");
         assertThat(repo.get("accessToken")).isNull();
         assertThat(repo.get("accessTokenCipher")).isNull();
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void registerRepository_storesEncryptedToken_neverPlaintext() {
         String token = "ghp_super_secret_token_value";
         gitService.registerRepository(TENANT_ID, "github", "owner", "repo", "https://github.com/o/r.git", "main", token);
 
-        Map<Long, Map<String, Object>> repoStore =
-                (Map<Long, Map<String, Object>>) ReflectionTestUtils.getField(gitService, "repoStore");
-        Map<String, Object> raw = repoStore.get(1L);
+        Map<String, Object> raw = rawRepo(TENANT_ID, 1L);
 
         // No plaintext token anywhere in the raw store
         assertThat(raw).doesNotContainKey("accessToken");
@@ -135,16 +141,25 @@ class GitIntegrationServiceTest {
 
     @Test
     void getRepository_notFound_throwsNotFound() {
-        assertThatThrownBy(() -> gitService.getRepository(999L))
+        assertThatThrownBy(() -> gitService.getRepository(TENANT_ID, 999L))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.NOT_FOUND.getCode());
     }
 
     @Test
+    void getRepository_nullTenant_throwsParamError() {
+        gitService.registerRepository(TENANT_ID, "github", "o", "r", "url", "main", "t");
+        assertThatThrownBy(() -> gitService.getRepository(null, 1L))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+    }
+
+    @Test
     void getRepository_found_excludesToken() {
         gitService.registerRepository(TENANT_ID, "github", "owner", "repo", "https://github.com/o/r.git", "main", "secret");
-        Map<String, Object> repo = gitService.getRepository(1L);
+        Map<String, Object> repo = gitService.getRepository(TENANT_ID, 1L);
         assertThat(repo).doesNotContainKey("accessToken");
         assertThat(repo).doesNotContainKey("accessTokenCipher");
         assertThat(repo.get("provider")).isEqualTo("github");
@@ -154,14 +169,22 @@ class GitIntegrationServiceTest {
 
     @Test
     void listRepositories_empty_returnsEmpty() {
-        assertThat(gitService.listRepositories()).isEmpty();
+        assertThat(gitService.listRepositories(TENANT_ID)).isEmpty();
+    }
+
+    @Test
+    void listRepositories_nullTenant_throwsParamError() {
+        assertThatThrownBy(() -> gitService.listRepositories(null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
     }
 
     @Test
     void listRepositories_returnsReposWithoutTokens() {
         gitService.registerRepository(TENANT_ID, "github", "o1", "r1", "url1", "main", "t1");
         gitService.registerRepository(TENANT_ID, "gitlab", "o2", "r2", "url2", "dev", "t2");
-        List<Map<String, Object>> repos = gitService.listRepositories();
+        List<Map<String, Object>> repos = gitService.listRepositories(TENANT_ID);
         assertThat(repos).hasSize(2);
         assertThat(repos.get(0)).doesNotContainKey("accessToken");
         assertThat(repos.get(0)).doesNotContainKey("accessTokenCipher");
@@ -171,7 +194,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void deleteRepository_notFound_throwsNotFound() {
-        assertThatThrownBy(() -> gitService.deleteRepository(999L))
+        assertThatThrownBy(() -> gitService.deleteRepository(TENANT_ID, 999L))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.NOT_FOUND.getCode());
@@ -180,16 +203,102 @@ class GitIntegrationServiceTest {
     @Test
     void deleteRepository_success() {
         gitService.registerRepository(TENANT_ID, "github", "o", "r", "url", "main", "t");
-        gitService.deleteRepository(1L);
-        assertThatThrownBy(() -> gitService.getRepository(1L))
+        gitService.deleteRepository(TENANT_ID, 1L);
+        assertThatThrownBy(() -> gitService.getRepository(TENANT_ID, 1L))
                 .isInstanceOf(BaseException.class);
+    }
+
+    // --- tenant isolation (issue 917) ---
+
+    @Test
+    void crossTenant_listRepositories_doesNotSeeOtherTenantRepos() {
+        gitService.registerRepository(TENANT_ID, "github", "o", "r", "url", "main", "t");
+        gitService.registerRepository(OTHER_TENANT_ID, "gitlab", "o2", "r2", "url2", "main", "t2");
+
+        assertThat(gitService.listRepositories(TENANT_ID)).hasSize(1);
+        assertThat(gitService.listRepositories(OTHER_TENANT_ID)).hasSize(1);
+        assertThat(gitService.listRepositories(TENANT_ID).get(0).get("owner")).isEqualTo("o");
+        assertThat(gitService.listRepositories(OTHER_TENANT_ID).get(0).get("owner")).isEqualTo("o2");
+    }
+
+    @Test
+    void crossTenant_getRepository_throwsNotFound() {
+        Long repoId = gitService.registerRepository(TENANT_ID, "github", "o", "r", "url", "main", "t");
+
+        assertThatThrownBy(() -> gitService.getRepository(OTHER_TENANT_ID, repoId))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.NOT_FOUND.getCode());
+
+        // Owning tenant still sees it
+        assertThat(gitService.getRepository(TENANT_ID, repoId)).isNotNull();
+    }
+
+    @Test
+    void crossTenant_deleteRepository_cannotRemoveOtherTenantRepo() {
+        Long repoId = gitService.registerRepository(TENANT_ID, "github", "o", "r", "url", "main", "t");
+
+        assertThatThrownBy(() -> gitService.deleteRepository(OTHER_TENANT_ID, repoId))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.NOT_FOUND.getCode());
+
+        // Tenant 1's repo survived the cross-tenant delete attempt
+        assertThat(gitService.getRepository(TENANT_ID, repoId)).isNotNull();
+    }
+
+    @Test
+    void crossTenant_clonePullPushFetch_allNotFound() {
+        Long repoId = gitService.registerRepository(TENANT_ID, "github", "o", "r", "https://github.com/o/r.git", "main", "t");
+
+        assertThatThrownBy(() -> gitService.cloneRepository(OTHER_TENANT_ID, repoId, null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.NOT_FOUND.getCode());
+        assertThatThrownBy(() -> gitService.pullRepository(OTHER_TENANT_ID, repoId, "/tmp/repo"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.NOT_FOUND.getCode());
+        assertThatThrownBy(() -> gitService.pushRepository(OTHER_TENANT_ID, repoId, "/tmp/repo", "main"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.NOT_FOUND.getCode());
+        assertThatThrownBy(() -> gitService.fetchRepositoryInfo(OTHER_TENANT_ID, repoId))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.NOT_FOUND.getCode());
+        assertThatThrownBy(() -> gitService.fetchBranchesViaApi(OTHER_TENANT_ID, repoId))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.NOT_FOUND.getCode());
+    }
+
+    @Test
+    void crossTenant_webhookEvents_areIsolated() {
+        gitService.handleWebhook(TENANT_ID, "github",
+                "{\"action\":\"opened\",\"repository\":{\"full_name\":\"o/r\"},\"ref\":\"refs/heads/main\",\"after\":\"abc123\"}");
+
+        assertThat(gitService.listWebhookEvents(TENANT_ID, null, null, 10)).hasSize(1);
+        assertThat(gitService.listWebhookEvents(OTHER_TENANT_ID, null, null, 10)).isEmpty();
+    }
+
+    @Test
+    void webhook_nullTenant_throwsParamError() {
+        assertThatThrownBy(() -> gitService.handleWebhook(null, "github", "{}"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+        assertThatThrownBy(() -> gitService.listWebhookEvents(null, null, null, 10))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
     }
 
     // --- cloneRepository / credential injection ---
 
     @Test
     void cloneRepository_notFound_throwsNotFound() {
-        assertThatThrownBy(() -> gitService.cloneRepository(999L, null))
+        assertThatThrownBy(() -> gitService.cloneRepository(TENANT_ID, 999L, null))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.NOT_FOUND.getCode());
@@ -199,10 +308,7 @@ class GitIntegrationServiceTest {
     void buildCloneArguments_github_injectsBasicAuthHeader_keepsUrlClean() {
         String token = "ghp_secret123";
         gitService.registerRepository(TENANT_ID, "github", "o", "r", "https://github.com/o/r.git", "main", token);
-        @SuppressWarnings("unchecked")
-        Map<Long, Map<String, Object>> repoStore =
-                (Map<Long, Map<String, Object>>) ReflectionTestUtils.getField(gitService, "repoStore");
-        Map<String, Object> raw = repoStore.get(1L);
+        Map<String, Object> raw = rawRepo(TENANT_ID, 1L);
 
         List<String> args = gitService.buildCloneArguments(raw, "https://github.com/o/r.git", "r");
 
@@ -220,10 +326,7 @@ class GitIntegrationServiceTest {
     void buildCloneArguments_gitlab_usesOAuth2Username() {
         String token = "glpat-secret";
         gitService.registerRepository(TENANT_ID, "gitlab", "g", "p", "https://gitlab.com/g/p.git", "main", token);
-        @SuppressWarnings("unchecked")
-        Map<Long, Map<String, Object>> repoStore =
-                (Map<Long, Map<String, Object>>) ReflectionTestUtils.getField(gitService, "repoStore");
-        Map<String, Object> raw = repoStore.get(1L);
+        Map<String, Object> raw = rawRepo(TENANT_ID, 1L);
 
         List<String> args = gitService.buildCloneArguments(raw, "https://gitlab.com/g/p.git", "p");
 
@@ -236,10 +339,7 @@ class GitIntegrationServiceTest {
     @Test
     void buildCloneArguments_noToken_plainClone() {
         gitService.registerRepository(TENANT_ID, "github", "o", "r", "https://github.com/o/r.git", "main", null);
-        @SuppressWarnings("unchecked")
-        Map<Long, Map<String, Object>> repoStore =
-                (Map<Long, Map<String, Object>>) ReflectionTestUtils.getField(gitService, "repoStore");
-        Map<String, Object> raw = repoStore.get(1L);
+        Map<String, Object> raw = rawRepo(TENANT_ID, 1L);
 
         List<String> args = gitService.buildCloneArguments(raw, "https://github.com/o/r.git", "r");
 
@@ -247,13 +347,12 @@ class GitIntegrationServiceTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void cloneRepository_injectsCredentialsNotUrl(@TempDir Path tempDir) throws Exception {
         gitService.registerRepository(TENANT_ID, "github", "o", "r", "https://github.com/o/r.git", "main", "tok-123");
         GitIntegrationService spyService = spy(gitService);
         doReturn("").when(spyService).executeGitCommandInDir(anyString(), anyList());
 
-        spyService.cloneRepository(1L, tempDir.resolve("r").toString());
+        spyService.cloneRepository(TENANT_ID, 1L, tempDir.resolve("r").toString());
 
         ArgumentCaptor<List<String>> captor = ArgumentCaptor.forClass(List.class);
         org.mockito.Mockito.verify(spyService).executeGitCommandInDir(anyString(), captor.capture());
@@ -268,7 +367,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void pullRepository_notFound_throwsNotFound() {
-        assertThatThrownBy(() -> gitService.pullRepository(999L, "/tmp/repo"))
+        assertThatThrownBy(() -> gitService.pullRepository(TENANT_ID, 999L, "/tmp/repo"))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.NOT_FOUND.getCode());
@@ -277,7 +376,7 @@ class GitIntegrationServiceTest {
     @Test
     void pullRepository_nullPath_throwsParamError() {
         gitService.registerRepository(TENANT_ID, "github", "o", "r", "url", "main", "t");
-        assertThatThrownBy(() -> gitService.pullRepository(1L, null))
+        assertThatThrownBy(() -> gitService.pullRepository(TENANT_ID, 1L, null))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.PARAM_ERROR.getCode());
@@ -287,7 +386,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void pushRepository_notFound_throwsNotFound() {
-        assertThatThrownBy(() -> gitService.pushRepository(999L, "/tmp/repo", "main"))
+        assertThatThrownBy(() -> gitService.pushRepository(TENANT_ID, 999L, "/tmp/repo", "main"))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.NOT_FOUND.getCode());
@@ -296,7 +395,7 @@ class GitIntegrationServiceTest {
     @Test
     void pushRepository_nullPath_throwsParamError() {
         gitService.registerRepository(TENANT_ID, "github", "o", "r", "url", "main", "t");
-        assertThatThrownBy(() -> gitService.pushRepository(1L, null, "main"))
+        assertThatThrownBy(() -> gitService.pushRepository(TENANT_ID, 1L, null, "main"))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.PARAM_ERROR.getCode());
@@ -306,7 +405,15 @@ class GitIntegrationServiceTest {
 
     @Test
     void listBranches_nullPath_throwsParamError() {
-        assertThatThrownBy(() -> gitService.listBranches(1L, null))
+        assertThatThrownBy(() -> gitService.listBranches(TENANT_ID, 1L, null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+    }
+
+    @Test
+    void listBranches_nullTenant_throwsParamError() {
+        assertThatThrownBy(() -> gitService.listBranches(null, 1L, "/tmp"))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.PARAM_ERROR.getCode());
@@ -316,7 +423,15 @@ class GitIntegrationServiceTest {
 
     @Test
     void createBranch_nullBranchName_throwsParamError() {
-        assertThatThrownBy(() -> gitService.createBranch(1L, "/tmp", null, "main"))
+        assertThatThrownBy(() -> gitService.createBranch(TENANT_ID, 1L, "/tmp", null, "main"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+    }
+
+    @Test
+    void createBranch_nullTenant_throwsParamError() {
+        assertThatThrownBy(() -> gitService.createBranch(null, 1L, "/tmp", "b", "main"))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.PARAM_ERROR.getCode());
@@ -326,7 +441,15 @@ class GitIntegrationServiceTest {
 
     @Test
     void deleteBranch_nullBranchName_throwsParamError() {
-        assertThatThrownBy(() -> gitService.deleteBranch(1L, "/tmp", null, false))
+        assertThatThrownBy(() -> gitService.deleteBranch(TENANT_ID, 1L, "/tmp", null, false))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+    }
+
+    @Test
+    void deleteBranch_nullTenant_throwsParamError() {
+        assertThatThrownBy(() -> gitService.deleteBranch(null, 1L, "/tmp", "b", false))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.PARAM_ERROR.getCode());
@@ -373,7 +496,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void handleWebhook_nullProvider_throwsParamError() {
-        assertThatThrownBy(() -> gitService.handleWebhook(null, "{}"))
+        assertThatThrownBy(() -> gitService.handleWebhook(TENANT_ID, null, "{}"))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.PARAM_ERROR.getCode());
@@ -381,7 +504,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void handleWebhook_nullPayload_throwsParamError() {
-        assertThatThrownBy(() -> gitService.handleWebhook("github", null))
+        assertThatThrownBy(() -> gitService.handleWebhook(TENANT_ID, "github", null))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.PARAM_ERROR.getCode());
@@ -389,7 +512,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void handleWebhook_invalidPayload_throwsParamError() {
-        assertThatThrownBy(() -> gitService.handleWebhook("github", "not-json"))
+        assertThatThrownBy(() -> gitService.handleWebhook(TENANT_ID, "github", "not-json"))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.PARAM_ERROR.getCode());
@@ -399,46 +522,46 @@ class GitIntegrationServiceTest {
     void handleWebhook_missingRepository_throwsParamErrorWithoutStoringEvent() {
         String payload = "{\"action\":\"opened\",\"ref\":\"refs/heads/main\",\"after\":\"abc123\"}";
 
-        assertThatThrownBy(() -> gitService.handleWebhook("github", payload))
+        assertThatThrownBy(() -> gitService.handleWebhook(TENANT_ID, "github", payload))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.PARAM_ERROR.getCode());
 
-        assertThat(gitService.listWebhookEvents(null, null, 10)).isEmpty();
+        assertThat(gitService.listWebhookEvents(TENANT_ID, null, null, 10)).isEmpty();
     }
 
     // --- listWebhookEvents ---
 
     @Test
     void listWebhookEvents_empty_returnsEmpty() {
-        assertThat(gitService.listWebhookEvents(null, null, 10)).isEmpty();
+        assertThat(gitService.listWebhookEvents(TENANT_ID, null, null, 10)).isEmpty();
     }
 
     @Test
     void listWebhookEvents_filtersByRepository() {
         gitService.registerRepository(TENANT_ID, "github", "o", "r", "url", "main", "t");
         // Can't easily trigger webhook without mocking ObjectMapper, but we can test filtering on empty store
-        assertThat(gitService.listWebhookEvents("nonexistent", null, 10)).isEmpty();
+        assertThat(gitService.listWebhookEvents(TENANT_ID, "nonexistent", null, 10)).isEmpty();
     }
 
     @Test
     void listWebhookEvents_respectsLimit() {
-        assertThat(gitService.listWebhookEvents(null, null, 0)).isEmpty();
+        assertThat(gitService.listWebhookEvents(TENANT_ID, null, null, 0)).isEmpty();
     }
 
     @Test
     void listWebhookEvents_zeroLimitWithStoredEvents_returnsEmpty() {
         gitService.registerRepository(TENANT_ID, "github", "o", "r", "url", "main", "t");
-        gitService.handleWebhook("github", "{\"action\":\"opened\",\"repository\":{\"full_name\":\"o/r\"},\"ref\":\"refs/heads/main\",\"after\":\"abc123\"}");
+        gitService.handleWebhook(TENANT_ID, "github", "{\"action\":\"opened\",\"repository\":{\"full_name\":\"o/r\"},\"ref\":\"refs/heads/main\",\"after\":\"abc123\"}");
 
-        assertThat(gitService.listWebhookEvents(null, null, 0)).isEmpty();
+        assertThat(gitService.listWebhookEvents(TENANT_ID, null, null, 0)).isEmpty();
     }
 
     // --- fetchRepositoryInfo ---
 
     @Test
     void fetchRepositoryInfo_notFound_throwsNotFound() {
-        assertThatThrownBy(() -> gitService.fetchRepositoryInfo(999L))
+        assertThatThrownBy(() -> gitService.fetchRepositoryInfo(TENANT_ID, 999L))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.NOT_FOUND.getCode());
@@ -447,7 +570,7 @@ class GitIntegrationServiceTest {
     @Test
     void fetchRepositoryInfo_unsupportedProvider_throwsParamError() {
         gitService.registerRepository(TENANT_ID, "bitbucket", "o", "r", "url", "main", "t");
-        assertThatThrownBy(() -> gitService.fetchRepositoryInfo(1L))
+        assertThatThrownBy(() -> gitService.fetchRepositoryInfo(TENANT_ID, 1L))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.PARAM_ERROR.getCode());
@@ -459,7 +582,7 @@ class GitIntegrationServiceTest {
         when(restTemplate.exchange(eq("https://api.github.com/repos/octocat/hello-world"), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class)))
                 .thenReturn(ResponseEntity.ok("{\"name\":\"hello-world\"}"));
 
-        String result = gitService.fetchRepositoryInfo(1L);
+        String result = gitService.fetchRepositoryInfo(TENANT_ID, 1L);
         assertThat(result).isEqualTo("{\"name\":\"hello-world\"}");
     }
 
@@ -469,7 +592,7 @@ class GitIntegrationServiceTest {
         when(restTemplate.exchange(eq("https://gitlab.com/api/v4/projects/group%2Fproject"), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class)))
                 .thenReturn(ResponseEntity.ok("{\"name\":\"project\"}"));
 
-        String result = gitService.fetchRepositoryInfo(1L);
+        String result = gitService.fetchRepositoryInfo(TENANT_ID, 1L);
         assertThat(result).isEqualTo("{\"name\":\"project\"}");
     }
 
@@ -481,7 +604,7 @@ class GitIntegrationServiceTest {
         when(restTemplate.exchange(eq("https://api.github.com/repos/octocat/hello-world/branches"), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class)))
                 .thenReturn(ResponseEntity.ok("[]"));
 
-        String result = gitService.fetchBranchesViaApi(1L);
+        String result = gitService.fetchBranchesViaApi(TENANT_ID, 1L);
         assertThat(result).isEqualTo("[]");
     }
 
@@ -491,13 +614,13 @@ class GitIntegrationServiceTest {
         when(restTemplate.exchange(eq("https://gitlab.com/api/v4/projects/group%2Fproject/repository/branches"), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class)))
                 .thenReturn(ResponseEntity.ok("[]"));
 
-        String result = gitService.fetchBranchesViaApi(1L);
+        String result = gitService.fetchBranchesViaApi(TENANT_ID, 1L);
         assertThat(result).isEqualTo("[]");
     }
 
     @Test
     void fetchBranchesViaApi_notFound_throwsNotFound() {
-        assertThatThrownBy(() -> gitService.fetchBranchesViaApi(999L))
+        assertThatThrownBy(() -> gitService.fetchBranchesViaApi(TENANT_ID, 999L))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.NOT_FOUND.getCode());
@@ -506,7 +629,7 @@ class GitIntegrationServiceTest {
     @Test
     void fetchBranchesViaApi_unsupportedProvider_throwsParamError() {
         gitService.registerRepository(TENANT_ID, "bitbucket", "o", "r", "url", "main", "t");
-        assertThatThrownBy(() -> gitService.fetchBranchesViaApi(1L))
+        assertThatThrownBy(() -> gitService.fetchBranchesViaApi(TENANT_ID, 1L))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.PARAM_ERROR.getCode());
@@ -518,7 +641,7 @@ class GitIntegrationServiceTest {
         when(restTemplate.exchange(eq("https://api.github.com/repos/octocat/hello-world"), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class)))
                 .thenReturn(ResponseEntity.ok("{}"));
 
-        String result = gitService.fetchRepositoryInfo(1L);
+        String result = gitService.fetchRepositoryInfo(TENANT_ID, 1L);
         assertThat(result).isEqualTo("{}");
     }
 
@@ -528,7 +651,7 @@ class GitIntegrationServiceTest {
         when(restTemplate.exchange(eq("https://gitlab.com/api/v4/projects/group%2Fproject"), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class)))
                 .thenReturn(ResponseEntity.ok("{}"));
 
-        String result = gitService.fetchRepositoryInfo(1L);
+        String result = gitService.fetchRepositoryInfo(TENANT_ID, 1L);
         assertThat(result).isEqualTo("{}");
     }
 
@@ -536,39 +659,39 @@ class GitIntegrationServiceTest {
     void handleWebhook_githubPayload_success() {
         gitService.registerRepository(TENANT_ID, "github", "o", "r", "url", "main", "t");
         String payload = "{\"action\":\"opened\",\"repository\":{\"full_name\":\"o/r\"},\"ref\":\"refs/heads/main\",\"after\":\"abc123\"}";
-        gitService.handleWebhook("github", payload);
-        assertThat(gitService.listWebhookEvents("o/r", null, 10)).hasSize(1);
+        gitService.handleWebhook(TENANT_ID, "github", payload);
+        assertThat(gitService.listWebhookEvents(TENANT_ID, "o/r", null, 10)).hasSize(1);
     }
 
     @Test
     void handleWebhook_gitlabPayload_success() {
         gitService.registerRepository(TENANT_ID, "gitlab", "o", "r", "url", "main", "t");
         String payload = "{\"object_kind\":\"push\",\"project\":{\"path_with_namespace\":\"o/r\"},\"ref\":\"refs/heads/dev\",\"after\":\"def456\"}";
-        gitService.handleWebhook("gitlab", payload);
-        assertThat(gitService.listWebhookEvents("o/r", null, 10)).hasSize(1);
+        gitService.handleWebhook(TENANT_ID, "gitlab", payload);
+        assertThat(gitService.listWebhookEvents(TENANT_ID, "o/r", null, 10)).hasSize(1);
     }
 
     @Test
     void handleWebhook_unknownProvider_success() {
         gitService.registerRepository(TENANT_ID, "other", "o", "r", "url", "main", "t");
         String payload = "{\"event_type\":\"push\",\"repository\":{\"full_name\":\"o/r\"},\"ref\":\"refs/heads/main\",\"after\":\"ghi789\"}";
-        gitService.handleWebhook("other", payload);
-        assertThat(gitService.listWebhookEvents("o/r", null, 10)).hasSize(1);
+        gitService.handleWebhook(TENANT_ID, "other", payload);
+        assertThat(gitService.listWebhookEvents(TENANT_ID, "o/r", null, 10)).hasSize(1);
     }
 
     @Test
     void listWebhookEvents_filtersByEventType() {
         gitService.registerRepository(TENANT_ID, "github", "o", "r", "url", "main", "t");
-        gitService.handleWebhook("github", "{\"action\":\"opened\",\"repository\":{\"full_name\":\"o/r\"},\"ref\":\"refs/heads/main\",\"after\":\"abc123\"}");
-        assertThat(gitService.listWebhookEvents(null, "opened", 10)).hasSize(1);
-        assertThat(gitService.listWebhookEvents(null, "closed", 10)).isEmpty();
+        gitService.handleWebhook(TENANT_ID, "github", "{\"action\":\"opened\",\"repository\":{\"full_name\":\"o/r\"},\"ref\":\"refs/heads/main\",\"after\":\"abc123\"}");
+        assertThat(gitService.listWebhookEvents(TENANT_ID, null, "opened", 10)).hasSize(1);
+        assertThat(gitService.listWebhookEvents(TENANT_ID, null, "closed", 10)).isEmpty();
     }
 
     @Test
     void listWebhookEvents_filtersByRepositoryAndEventType() {
         gitService.registerRepository(TENANT_ID, "github", "o", "r", "url", "main", "t");
-        gitService.handleWebhook("github", "{\"action\":\"opened\",\"repository\":{\"full_name\":\"o/r\"},\"ref\":\"refs/heads/main\",\"after\":\"abc123\"}");
-        assertThat(gitService.listWebhookEvents("o/r", "opened", 10)).hasSize(1);
-        assertThat(gitService.listWebhookEvents("other", "opened", 10)).isEmpty();
+        gitService.handleWebhook(TENANT_ID, "github", "{\"action\":\"opened\",\"repository\":{\"full_name\":\"o/r\"},\"ref\":\"refs/heads/main\",\"after\":\"abc123\"}");
+        assertThat(gitService.listWebhookEvents(TENANT_ID, "o/r", "opened", 10)).hasSize(1);
+        assertThat(gitService.listWebhookEvents(TENANT_ID, "other", "opened", 10)).isEmpty();
     }
 }

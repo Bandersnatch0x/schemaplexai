@@ -62,20 +62,20 @@ class GitIntegrationEndToEndTest {
         assertThat(repoId).isEqualTo(1L);
 
         // Step 2: Get repository (safe view, no token)
-        Map<String, Object> repo = gitService.getRepository(repoId);
+        Map<String, Object> repo = gitService.getRepository(TENANT_ID, repoId);
         assertThat(repo.get("provider")).isEqualTo("github");
         assertThat(repo.get("repoName")).isEqualTo("core");
         assertThat(repo.containsKey("accessToken")).isFalse();
 
         // Step 3: List repositories
-        List<Map<String, Object>> repos = gitService.listRepositories();
+        List<Map<String, Object>> repos = gitService.listRepositories(TENANT_ID);
         assertThat(repos).hasSize(1);
 
         // Step 4: Handle webhook
         String payload = "{\"action\":\"push\",\"repository\":{\"full_name\":\"schemaplexai/core\"},\"ref\":\"refs/heads/main\",\"after\":\"abc123\"}";
-        gitService.handleWebhook("github", payload);
+        gitService.handleWebhook(TENANT_ID, "github", payload);
 
-        List<Map<String, Object>> events = gitService.listWebhookEvents("schemaplexai/core", "push", 10);
+        List<Map<String, Object>> events = gitService.listWebhookEvents(TENANT_ID, "schemaplexai/core", "push", 10);
         assertThat(events).hasSize(1);
         assertThat(events.get(0).get("eventType")).isEqualTo("push");
     }
@@ -92,7 +92,7 @@ class GitIntegrationEndToEndTest {
     @Test
     @DisplayName("E2E: Handle invalid webhook payload throws param error")
     void handleInvalidWebhook() {
-        assertThatThrownBy(() -> gitService.handleWebhook("github", "not-json"))
+        assertThatThrownBy(() -> gitService.handleWebhook(TENANT_ID, "github", "not-json"))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.PARAM_ERROR.getCode());
@@ -112,16 +112,16 @@ class GitIntegrationEndToEndTest {
     void deleteRepository() {
         Long repoId = gitService.registerRepository(TENANT_ID, "gitlab", "group", "project",
                 "https://gitlab.com/group/project.git", "master", null);
-        assertThat(gitService.listRepositories()).hasSize(1);
+        assertThat(gitService.listRepositories(TENANT_ID)).hasSize(1);
 
-        gitService.deleteRepository(repoId);
-        assertThat(gitService.listRepositories()).isEmpty();
+        gitService.deleteRepository(TENANT_ID, repoId);
+        assertThat(gitService.listRepositories(TENANT_ID)).isEmpty();
     }
 
     @Test
     @DisplayName("E2E: Get non-existent repository throws NOT_FOUND")
     void getNonExistentRepository() {
-        assertThatThrownBy(() -> gitService.getRepository(999L))
+        assertThatThrownBy(() -> gitService.getRepository(TENANT_ID, 999L))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.NOT_FOUND.getCode());

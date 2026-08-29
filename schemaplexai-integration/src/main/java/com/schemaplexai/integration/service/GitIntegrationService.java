@@ -42,11 +42,12 @@ public class GitIntegrationService {
     private final IntegrationCredentialEncryptor credentialEncryptor;
     private final IntegrationOAuthProperties oauthProperties;
 
-    // In-memory repository metadata store (key: repoId).
+    // In-memory repository metadata store, tenant-scoped (key: tenantId -> repoId).
     // Access tokens are stored ONLY as AES-256-GCM ciphertext ("accessTokenCipher");
-    // plaintext tokens never reside in this store.
-    private final Map<Long, Map<String, Object>> repoStore = new ConcurrentHashMap<>();
-    private final Map<String, Map<String, Object>> webhookStore = new ConcurrentHashMap<>();
+    // plaintext tokens never reside in this store. Every read path requires the
+    // owning tenant context — repositories are invisible across tenants.
+    private final Map<Long, Map<Long, Map<String, Object>>> repoStore = new ConcurrentHashMap<>();
+    private final Map<Long, Map<String, Map<String, Object>>> webhookStore = new ConcurrentHashMap<>();
     // OAuth access tokens per tenant/provider — ciphertext only (key: tenantId -> provider).
     private final Map<Long, Map<String, Map<String, Object>>> oauthTokenStore = new ConcurrentHashMap<>();
     private long repoIdSequence = 1;
@@ -55,9 +56,7 @@ public class GitIntegrationService {
 
     public synchronized Long registerRepository(Long tenantId, String provider, String owner, String repoName,
                                                   String cloneUrl, String defaultBranch, String accessToken) {
-        if (tenantId == null) {
-            throw new BaseException(ResultCode.PARAM_ERROR, "Tenant ID is required");
-        }
+        requireTenant(tenantId);
         if (provider == null || provider.isBlank() || cloneUrl == null || cloneUrl.isBlank()) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Provider and clone URL are required");
         }
@@ -76,13 +75,13 @@ public class GitIntegrationService {
         }
         repo.put("createdAt", Instant.now().toString());
         repo.put("status", "active");
-        repoStore.put(repoId, repo);
+        repoStore.computeIfAbsent(tenantId, k -> new ConcurrentHashMap<>()).put(repoId, repo);
         log.info("Repository registered: id={}, provider={}, repo={}/{}", repoId, provider, owner, repoName);
         return repoId;
     }
 
-    public Map<String, Object> getRepository(Long repoId) {
-        Map<String, Object> repo = repoStore.get(repoId);
+    public Map<String, Object> getRepository(Long tenantId, Long repoId) {
+        Map<String, Object> repo = findRepository(tenantId, repoId);
         if (repo == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
         }
@@ -92,9 +91,10 @@ public class GitIntegrationService {
         return safe;
     }
 
-    public List<Map<String, Object>> listRepositories() {
+    public List<Map<String, Object>> listRepositories(Long tenantId) {
+        requireTenant(tenantId);
         List<Map<String, Object>> result = new ArrayList<>();
-        for (Map<String, Object> repo : repoStore.values()) {
+        for (Map<String, Object> repo : repoStore.getOrDefault(tenantId, Map.of()).values()) {
             Map<String, Object> safe = new ConcurrentHashMap<>(repo);
             safe.remove("accessTokenCipher");
             result.add(safe);
@@ -102,8 +102,11 @@ public class GitIntegrationService {
         return result;
     }
 
-    public void deleteRepository(Long repoId) {
-        if (repoStore.remove(repoId) == null) {
+    public void deleteRepository(Long tenantId, Long repoId) {
+        requireTenant(tenantId);
+        Map<Long, Map<String, Object>> tenantRepos = repoStore.get(tenantId);
+        Map<String, Object> removed = tenantRepos != null ? tenantRepos.remove(repoId) : null;
+        if (removed == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
         }
         log.info("Repository deleted: {}", repoId);
@@ -117,10 +120,30 @@ public class GitIntegrationService {
         repoIdSequence = 1;
     }
 
+    private void requireTenant(Long tenantId) {
+        if (tenantId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "Tenant ID is required");
+        }
+    }
+
+    /**
+     * Tenant-scoped repository lookup. Returns null when the repository does not
+     * exist within the given tenant's scope — cross-tenant access is indistinguishable
+     * from a missing repository.
+     */
+    private Map<String, Object> findRepository(Long tenantId, Long repoId) {
+        requireTenant(tenantId);
+        if (repoId == null) {
+            return null;
+        }
+        Map<Long, Map<String, Object>> tenantRepos = repoStore.get(tenantId);
+        return tenantRepos != null ? tenantRepos.get(repoId) : null;
+    }
+
     // --- Git Operations ---
 
-    public String cloneRepository(Long repoId, String targetDir) {
-        Map<String, Object> repo = repoStore.get(repoId);
+    public String cloneRepository(Long tenantId, Long repoId, String targetDir) {
+        Map<String, Object> repo = findRepository(tenantId, repoId);
         if (repo == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
         }
@@ -189,8 +212,8 @@ public class GitIntegrationService {
         return credentialEncryptor.decrypt((String) cipher, tenantId);
     }
 
-    public String pullRepository(Long repoId, String localPath) {
-        Map<String, Object> repo = repoStore.get(repoId);
+    public String pullRepository(Long tenantId, Long repoId, String localPath) {
+        Map<String, Object> repo = findRepository(tenantId, repoId);
         if (repo == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
         }
@@ -207,8 +230,8 @@ public class GitIntegrationService {
         }
     }
 
-    public String pushRepository(Long repoId, String localPath, String branch) {
-        Map<String, Object> repo = repoStore.get(repoId);
+    public String pushRepository(Long tenantId, Long repoId, String localPath, String branch) {
+        Map<String, Object> repo = findRepository(tenantId, repoId);
         if (repo == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
         }
@@ -228,7 +251,8 @@ public class GitIntegrationService {
 
     // --- Branch Management ---
 
-    public List<String> listBranches(Long repoId, String localPath) {
+    public List<String> listBranches(Long tenantId, Long repoId, String localPath) {
+        requireTenant(tenantId);
         if (localPath == null || localPath.isBlank()) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Local path is required");
         }
@@ -248,7 +272,8 @@ public class GitIntegrationService {
         }
     }
 
-    public void createBranch(Long repoId, String localPath, String branchName, String baseBranch) {
+    public void createBranch(Long tenantId, Long repoId, String localPath, String branchName, String baseBranch) {
+        requireTenant(tenantId);
         if (branchName == null || branchName.isBlank()) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Branch name is required");
         }
@@ -264,7 +289,8 @@ public class GitIntegrationService {
         }
     }
 
-    public void deleteBranch(Long repoId, String localPath, String branchName, boolean force) {
+    public void deleteBranch(Long tenantId, Long repoId, String localPath, String branchName, boolean force) {
+        requireTenant(tenantId);
         if (branchName == null || branchName.isBlank()) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Branch name is required");
         }
@@ -386,7 +412,8 @@ public class GitIntegrationService {
         }
     }
 
-    public void handleWebhook(String provider, String payload) {
+    public void handleWebhook(Long tenantId, String provider, String payload) {
+        requireTenant(tenantId);
         log.info("Handle webhook for provider: {}", provider);
         if (provider == null || provider.isBlank() || payload == null || payload.isBlank()) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Provider and payload are required");
@@ -402,6 +429,7 @@ public class GitIntegrationService {
             String webhookId = UUID.randomUUID().toString();
             Map<String, Object> record = new ConcurrentHashMap<>();
             record.put("id", webhookId);
+            record.put("tenantId", tenantId);
             record.put("provider", provider);
             record.put("eventType", eventType);
             record.put("repository", repository);
@@ -409,7 +437,7 @@ public class GitIntegrationService {
             record.put("commitSha", commitSha);
             record.put("receivedAt", Instant.now().toString());
             record.put("payload", payload);
-            webhookStore.put(webhookId, record);
+            webhookStore.computeIfAbsent(tenantId, k -> new ConcurrentHashMap<>()).put(webhookId, record);
 
             log.info("Webhook {} received: event={}, repo={}, branch={}", webhookId, eventType, repository, branch);
 
@@ -423,12 +451,13 @@ public class GitIntegrationService {
         }
     }
 
-    public List<Map<String, Object>> listWebhookEvents(String repository, String eventType, int limit) {
+    public List<Map<String, Object>> listWebhookEvents(Long tenantId, String repository, String eventType, int limit) {
+        requireTenant(tenantId);
         if (limit <= 0) {
             return List.of();
         }
         List<Map<String, Object>> result = new ArrayList<>();
-        for (Map<String, Object> event : webhookStore.values()) {
+        for (Map<String, Object> event : webhookStore.getOrDefault(tenantId, Map.of()).values()) {
             if (repository != null && !repository.equals(event.get("repository"))) {
                 continue;
             }
@@ -445,8 +474,8 @@ public class GitIntegrationService {
 
     // --- GitHub/GitLab REST API helpers ---
 
-    public String fetchRepositoryInfo(Long repoId) {
-        Map<String, Object> repo = repoStore.get(repoId);
+    public String fetchRepositoryInfo(Long tenantId, Long repoId) {
+        Map<String, Object> repo = findRepository(tenantId, repoId);
         if (repo == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
         }
@@ -463,8 +492,8 @@ public class GitIntegrationService {
         throw new BaseException(ResultCode.PARAM_ERROR, "Unsupported provider: " + provider);
     }
 
-    public String fetchBranchesViaApi(Long repoId) {
-        Map<String, Object> repo = repoStore.get(repoId);
+    public String fetchBranchesViaApi(Long tenantId, Long repoId) {
+        Map<String, Object> repo = findRepository(tenantId, repoId);
         if (repo == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
         }
