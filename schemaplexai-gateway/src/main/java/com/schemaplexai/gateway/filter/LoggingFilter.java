@@ -12,6 +12,17 @@ import reactor.core.publisher.Mono;
 
 import java.util.UUID;
 
+/**
+ * Access-log filter (request/response line per exchange).
+ *
+ * <p>Order note: this filter intentionally keeps {@link Ordered#HIGHEST_PRECEDENCE}
+ * so <b>every</b> request — including ones later rejected with 429/401 — is logged
+ * for audit and observability. Spec §2 lists the access log as step 4 (after JWT /
+ * tenant resolution); placing it last would drop log lines for all rejected traffic.
+ * The relative order Logging &lt; TracePropagation is also preserved so trace context
+ * generation happens after the log attributes are written.
+ * See {@link RateLimitFilter} Javadoc for the full chain order table.
+ */
 @Slf4j
 @Component
 public class LoggingFilter implements GlobalFilter, Ordered {

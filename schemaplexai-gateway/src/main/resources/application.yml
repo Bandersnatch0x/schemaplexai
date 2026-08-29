@@ -80,16 +80,16 @@ jwt:
   secret: ${JWT_SECRET}
   expiration: 86400000
 
+# Rate limiting (spec §4.1). Runs BEFORE JWT auth (RateLimitFilter order -150 <
+# JwtAuthFilter -100), so anonymous and invalid-token traffic is throttled too.
+# whitelist-paths is intentionally empty: exempting /auth/** previously left the
+# login endpoint with zero brute-force throttling at the edge. Paths can still be
+# exempted here per deployment, but the default is full coverage.
 rate-limit:
   enabled: true
   default-limit: 100
   window-size: 60
-  whitelist-paths:
-    - /auth/**
-    - /v3/api-docs/**
-    - /swagger-ui/**
-    - /webjars/**
-    - /doc.html
+  whitelist-paths: []
 
 logging:
   level:

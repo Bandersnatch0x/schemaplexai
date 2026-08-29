@@ -25,10 +25,46 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
 
+/**
+ * Redis-backed rate limit filter (fixed-window counter, fail-closed).
+ *
+ * <h3>Filter chain order (custom gateway filters, lowest {@code getOrder()} first)</h3>
+ * <pre>
+ *   1. LoggingFilter           (Integer.MIN_VALUE)      — access log, runs first so even
+ *                                                         rate-limited/rejected requests are logged
+ *   2. TracePropagationFilter  (Integer.MIN_VALUE+100)  — W3C traceparent propagation
+ *   3. RateLimitFilter         (-150)                   — this filter
+ *   4. JwtAuthFilter           (-100)                   — JWT validation + identity injection
+ *   5. TenantResolveFilter     (-90)                    — tenant resolution/validation
+ *   6. Route to downstream service
+ * </pre>
+ *
+ * <p>Rate limiting intentionally runs <b>before</b> {@link JwtAuthFilter} (spec §2:
+ * "RateLimitFilter" is step 1, ahead of JWT). With this order:
+ * <ul>
+ *   <li>anonymous traffic (no token) is throttled at the edge instead of short-circuiting
+ *       to a 401 in JwtAuthFilter before ever reaching the limiter;</li>
+ *   <li>requests with invalid/expired tokens are also counted against the limit;</li>
+ *   <li>no HMAC parsing cost is paid for traffic that is already over the limit.</li>
+ * </ul>
+ *
+ * <p>Engineering consequence of the spec order: at this point the token has not been
+ * validated yet, so the tenant-scoped key derives from the client-reported
+ * {@code X-Tenant-Id} header (forgeable). Requests without the header fall back to an
+ * IP-scoped key. JwtAuthFilter later strips/re-injects the header from the validated
+ * token, and TenantResolveFilter validates the tenant, so forged values do not reach
+ * downstream services — they can only influence the rate-limit bucket.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class RateLimitFilter implements GlobalFilter, Ordered {
+
+    /**
+     * Sentinel returned when the Redis counter operation itself fails.
+     * {@code increment} never returns a negative count, so -1 is unambiguous.
+     */
+    private static final long RATE_CHECK_FAILED = -1L;
 
     private final ReactiveStringRedisTemplate reactiveStringRedisTemplate;
     private final RateLimitProperties rateLimitProperties;
@@ -57,6 +93,10 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
         String windowKey = String.valueOf(System.currentTimeMillis() / 1000 / windowSeconds);
         String key = resolveRateLimitKey(request, windowKey);
 
+        // Fail-closed (spec §4.1): the error handler is scoped to the Redis counter
+        // operations ONLY. It must not wrap chain.filter(...), otherwise every
+        // downstream failure (e.g. connection refused) would surface as a
+        // misleading 429 "rate limit exceeded".
         return reactiveStringRedisTemplate.opsForValue()
                 .increment(key)
                 .flatMap(count -> {
@@ -66,15 +106,15 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
                     }
                     return Mono.just(count);
                 })
+                .onErrorResume(e -> {
+                    log.error("Rate limit check failed, denying request", e);
+                    return Mono.just(RATE_CHECK_FAILED);
+                })
                 .flatMap(count -> {
-                    if (count > rateLimitProperties.getDefaultLimit()) {
+                    if (count == RATE_CHECK_FAILED || count > rateLimitProperties.getDefaultLimit()) {
                         return rateLimitExceeded(exchange.getResponse());
                     }
                     return chain.filter(exchange);
-                })
-                .onErrorResume(e -> {
-                    log.error("Rate limit check failed, denying request", e);
-                    return rateLimitExceeded(exchange.getResponse());
                 });
     }
 
@@ -116,6 +156,8 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
 
     @Override
     public int getOrder() {
-        return -50;
+        // Must run before JwtAuthFilter (-100) so anonymous / invalid-token
+        // traffic is throttled at the edge (spec §2 filter order). See class Javadoc.
+        return -150;
     }
 }

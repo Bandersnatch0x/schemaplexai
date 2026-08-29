@@ -138,6 +138,21 @@ class RateLimitFilterTest {
     }
 
     @Test
+    void filter_downstreamError_isNotConvertedTo429() {
+        // Fail-closed is scoped to Redis errors (spec §4.1). A downstream failure
+        // (e.g. connection refused) must propagate with its own error, not be
+        // rewritten into a misleading 429 "rate limit exceeded" (issue 911).
+        when(valueOps.increment(anyString())).thenReturn(Mono.just(5L));
+        when(chain.filter(exchange)).thenReturn(Mono.error(new RuntimeException("downstream unavailable")));
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .expectErrorMatches(e -> "downstream unavailable".equals(e.getMessage()))
+                .verify();
+
+        verify(response, never()).setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+    }
+
+    @Test
     void filter_withTenantHeader_usesTenantAsClientId() {
         HttpHeaders headers = new HttpHeaders();
         headers.set(CommonConstants.HEADER_TENANT_ID, "tenant-xyz");
@@ -214,7 +229,9 @@ class RateLimitFilterTest {
     }
 
     @Test
-    void getOrder_returnsNegative50() {
-        assertThat(filter.getOrder()).isEqualTo(-50);
+    void getOrder_returnsNegative150_runsBeforeJwtAuthFilter() {
+        // Must be lower than JwtAuthFilter's -100 so anonymous / invalid-token
+        // traffic is rate limited before the auth short-circuit (issue 911).
+        assertThat(filter.getOrder()).isEqualTo(-150);
     }
 }

@@ -142,13 +142,41 @@ class GatewayIntegrationTest {
 
     @Test
     void rateLimit_withinLimit_passesThrough() {
-        // For the "within limit" test, just verify that a non-rate-limited path works.
-        // /auth/login is whitelisted by the rate limit filter, so rate limiting is skipped.
+        // Within the limit: the counter returns 1 (<= default 100), so the request
+        // must not be rejected by the limiter. (Downstream is not running in this
+        // test, but a routing/connection failure must NOT surface as a 429 — the
+        // fail-closed handler is scoped to Redis errors only, issue 911.)
         webTestClient.get()
                 .uri("/auth/login")
                 .exchange()
                 .expectStatus().value(status -> assertThat(status)
                         .isNotEqualTo(HttpStatus.TOO_MANY_REQUESTS.value()));
+    }
+
+    @Test
+    void anonymousFlood_isRateLimitedBeforeJwtAuth() {
+        // No token on a protected path. Previously the request short-circuited to a
+        // 401 in JwtAuthFilter and never reached the limiter. With the limiter moved
+        // ahead of auth (issue 911), an over-limit anonymous request must get 429.
+        doReturn(Mono.just(200L)).when(valueOps).increment(anyString());
+
+        webTestClient.get()
+                .uri("/agent/execute")
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+    }
+
+    @Test
+    void invalidTokenFlood_isRateLimitedBeforeJwtAuth() {
+        // An invalid token request must also be counted by the limiter (issue 911).
+        // Over the limit it returns 429 from the limiter rather than 401 from auth.
+        doReturn(Mono.just(200L)).when(valueOps).increment(anyString());
+
+        webTestClient.get()
+                .uri("/agent/execute")
+                .header(CommonConstants.HEADER_AUTHORIZATION, CommonConstants.TOKEN_PREFIX + "bad.token.value")
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
     }
 
     /**
@@ -182,7 +210,9 @@ class GatewayIntegrationTest {
             props.setEnabled(true);
             props.setDefaultLimit(100);
             props.setWindowSize(60);
-            props.setWhitelistPaths(List.of("/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/webjars/**", "/doc.html"));
+            // Mirrors production application.yml: no rate-limit exemptions (issue 911),
+            // so /auth/** traffic (login) is throttled at the edge too.
+            props.setWhitelistPaths(List.of());
             return props;
         }
 
