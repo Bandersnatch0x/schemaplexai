@@ -48,6 +48,20 @@ public interface SpecService extends IService<SfSpec> {
     boolean archiveSpec(Long specId);
 
     /**
+     * Roll a spec back to a historical version snapshot (spec-management §3.2
+     * "rollback", §6.1 {@code POST /spec/specs/{id}/rollback}). The snapshot's
+     * content is restored into the spec as a new editable {@code draft}; the
+     * historical snapshot itself is never mutated (snapshots are immutable).
+     * Distinct from {@link #archiveSpec(Long)}: rollback returns the document
+     * to an active working state, archive removes it from the active lifecycle.
+     *
+     * @param specId    the spec id
+     * @param versionId the id of the historical snapshot to restore
+     * @return the restored spec (status {@code draft})
+     */
+    SfSpec rollbackSpec(Long specId, Long versionId);
+
+    /**
      * Get the latest version for a spec.
      *
      * @param specId the spec id

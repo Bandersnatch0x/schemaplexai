@@ -154,6 +154,38 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
     }
 
     @Override
+    public SfSpec rollbackSpec(Long specId, Long versionId) {
+        validateSpecId(specId);
+        if (versionId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "versionId is required");
+        }
+        SfSpec spec = specMapper.selectById(specId);
+        if (spec == null) {
+            throw new BaseException(ResultCode.SPEC_NOT_FOUND);
+        }
+        SfSpecVersion snapshot = specVersionMapper.selectById(versionId);
+        if (snapshot == null) {
+            throw new BaseException(ResultCode.SPEC_NOT_FOUND, "Spec version not found: " + versionId);
+        }
+        if (!specId.equals(snapshot.getSpecId())) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "Version " + versionId + " belongs to a different spec");
+        }
+
+        // Restore the historical snapshot as a new editable draft. The
+        // snapshot itself is immutable; only the working document moves.
+        spec.setContent(snapshot.getContent());
+        spec.setStatus(SpecStatus.DRAFT);
+        spec.setUpdatedAt(LocalDateTime.now());
+        int rows = specMapper.updateById(spec);
+        if (rows == 0) {
+            throw new BaseException(ResultCode.CONFLICT,
+                    "Spec " + specId + " was modified concurrently; reload and retry");
+        }
+        log.info("Rolled back spec {} to version snapshot {}", specId, versionId);
+        return spec;
+    }
+
+    @Override
     public Optional<SfSpecVersion> getLatestVersion(Long specId) {
         validateSpecId(specId);
         String tenantId = TenantContextHolder.getTenantId();

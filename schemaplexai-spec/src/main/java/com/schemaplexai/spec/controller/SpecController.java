@@ -77,6 +77,13 @@ public class SpecController {
         return Result.success(specService.archiveSpec(id));
     }
 
+    @Operation(summary = "回滚到指定历史版本")
+    @PostMapping("/{id}/rollback")
+    @PreAuthorize("hasAuthority('spec:rollback')")
+    public Result<SfSpec> rollbackSpec(@PathVariable Long id, @RequestParam Long versionId) {
+        return Result.success(specService.rollbackSpec(id, versionId));
+    }
+
     @Operation(summary = "获取最新版本")
     @GetMapping("/{id}/latest-version")
     public Result<SfSpecVersion> getLatestVersion(@PathVariable Long id) {

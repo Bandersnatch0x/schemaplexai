@@ -57,6 +57,12 @@ class SpecSecurityMatrixTest {
     }
 
     @Test
+    void rollback_requiresAdminAuthority() {
+        assertThat(preAuthorizeOn(SpecController.class, "rollbackSpec"))
+                .isEqualTo("hasAuthority('spec:rollback')");
+    }
+
+    @Test
     void editing_requiresEditorAuthority() {
         assertThat(preAuthorizeOn(SpecController.class, "create"))
                 .isEqualTo("hasAuthority('spec:write')");

@@ -409,6 +409,119 @@ class SpecServiceImplTest {
     }
 
     // ------------------------------------------------------------------
+    // rollbackSpec
+    // ------------------------------------------------------------------
+
+    @Test
+    void rollbackSpec_nullSpecId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specService.rollbackSpec(null, 5L))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specMapper, never()).selectById(any());
+    }
+
+    @Test
+    void rollbackSpec_nullVersionId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specService.rollbackSpec(1L, null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specMapper, never()).selectById(any());
+    }
+
+    @Test
+    void rollbackSpec_specNotFound_throwsSpecNotFound() {
+        when(specMapper.selectById(1L)).thenReturn(null);
+
+        assertThatThrownBy(() -> specService.rollbackSpec(1L, 5L))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.SPEC_NOT_FOUND.getCode());
+    }
+
+    @Test
+    void rollbackSpec_versionNotFound_throwsSpecNotFound() {
+        SfSpec spec = new SfSpec();
+        spec.setId(1L);
+        when(specMapper.selectById(1L)).thenReturn(spec);
+        when(specVersionMapper.selectById(5L)).thenReturn(null);
+
+        assertThatThrownBy(() -> specService.rollbackSpec(1L, 5L))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.SPEC_NOT_FOUND.getCode());
+
+        verify(specMapper, never()).updateById(any());
+    }
+
+    @Test
+    void rollbackSpec_snapshotOfDifferentSpec_throwsParamError() {
+        SfSpec spec = new SfSpec();
+        spec.setId(1L);
+        when(specMapper.selectById(1L)).thenReturn(spec);
+
+        SfSpecVersion foreign = new SfSpecVersion();
+        foreign.setId(5L);
+        foreign.setSpecId(2L);
+        when(specVersionMapper.selectById(5L)).thenReturn(foreign);
+
+        assertThatThrownBy(() -> specService.rollbackSpec(1L, 5L))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specMapper, never()).updateById(any());
+    }
+
+    @Test
+    void rollbackSpec_success_restoresSnapshotContentAsDraft() {
+        SfSpec spec = new SfSpec();
+        spec.setId(1L);
+        spec.setStatus("published");
+        spec.setContent("bad published content");
+        when(specMapper.selectById(1L)).thenReturn(spec);
+        when(specMapper.updateById(spec)).thenReturn(1);
+
+        SfSpecVersion snapshot = new SfSpecVersion();
+        snapshot.setId(5L);
+        snapshot.setSpecId(1L);
+        snapshot.setContent("known good content");
+        when(specVersionMapper.selectById(5L)).thenReturn(snapshot);
+
+        SfSpec result = specService.rollbackSpec(1L, 5L);
+
+        assertThat(result.getContent()).isEqualTo("known good content");
+        assertThat(result.getStatus()).isEqualTo("draft");
+        assertThat(result.getUpdatedAt()).isNotNull();
+        verify(specMapper).updateById(spec);
+        // The historical snapshot itself must never be rewritten.
+        verify(specVersionMapper, never()).updateById(any());
+    }
+
+    @Test
+    void rollbackSpec_concurrentModification_throwsConflict() {
+        SfSpec spec = new SfSpec();
+        spec.setId(1L);
+        spec.setStatus("published");
+        when(specMapper.selectById(1L)).thenReturn(spec);
+        when(specMapper.updateById(spec)).thenReturn(0);
+
+        SfSpecVersion snapshot = new SfSpecVersion();
+        snapshot.setId(5L);
+        snapshot.setSpecId(1L);
+        snapshot.setContent("known good content");
+        when(specVersionMapper.selectById(5L)).thenReturn(snapshot);
+
+        assertThatThrownBy(() -> specService.rollbackSpec(1L, 5L))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.CONFLICT.getCode());
+    }
+
+    // ------------------------------------------------------------------
     // getLatestVersion
     // ------------------------------------------------------------------
 

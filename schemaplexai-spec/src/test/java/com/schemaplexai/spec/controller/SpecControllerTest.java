@@ -142,6 +142,21 @@ class SpecControllerTest {
     }
 
     @Test
+    void rollbackSpec_returnsRestoredSpec() {
+        SfSpec restored = new SfSpec();
+        restored.setId(1L);
+        restored.setStatus("draft");
+        restored.setContent("known good content");
+        when(specService.rollbackSpec(1L, 5L)).thenReturn(restored);
+
+        Result<SfSpec> result = specController.rollbackSpec(1L, 5L);
+
+        assertThat(result.getCode()).isEqualTo(200);
+        assertThat(result.getData().getStatus()).isEqualTo("draft");
+        assertThat(result.getData().getContent()).isEqualTo("known good content");
+    }
+
+    @Test
     void getLatestVersion_found() {
         when(specService.getLatestVersion(1L)).thenReturn(Optional.of(version));
 

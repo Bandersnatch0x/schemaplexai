@@ -108,6 +108,23 @@ class SpecMethodSecurityEnforcementTest {
     }
 
     @Test
+    void rollback_deniedWithoutRollbackAuthority() {
+        authenticate(SpecAuthorities.WRITE, SpecAuthorities.PUBLISH);
+
+        assertThatThrownBy(() -> controller.rollbackSpec(1L, 5L))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void rollback_allowedWithRollbackAuthority() {
+        when(specService.rollbackSpec(anyLong(), anyLong())).thenReturn(new SfSpec());
+        authenticate(SpecAuthorities.ROLLBACK);
+
+        assertThatCode(() -> controller.rollbackSpec(1L, 5L)).doesNotThrowAnyException();
+        verify(specService).rollbackSpec(1L, 5L);
+    }
+
+    @Test
     void unauthenticated_isDenied() {
         SecurityContextHolder.clearContext();
 
