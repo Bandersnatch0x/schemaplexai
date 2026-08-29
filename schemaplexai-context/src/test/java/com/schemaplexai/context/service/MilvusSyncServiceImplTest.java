@@ -141,6 +141,7 @@ class MilvusSyncServiceImplTest {
     void syncToMilvus_missingFileUrl_marksFailedWithoutSimulatedSync() {
         SfKnowledgeDoc doc = new SfKnowledgeDoc();
         doc.setId(1L);
+        doc.setTenantId("tenant-1");
         doc.setTitle("No File Doc");
         doc.setFileName("missing.txt");
         doc.setStatus("PENDING");
@@ -155,6 +156,58 @@ class MilvusSyncServiceImplTest {
         verify(milvusClient, never()).insert(any(InsertReq.class));
         assertThat(doc.getStatus()).isEqualTo("PENDING");
         assertThat(doc.getSyncStatus()).isNull();
+    }
+
+    @Test
+    void syncToMilvus_blankTenant_refusesSyncInsteadOfDefaultPartition() {
+        SfKnowledgeDoc doc = new SfKnowledgeDoc();
+        doc.setId(1L);
+        doc.setTitle("Tenantless Doc");
+        doc.setFileName("t.txt");
+        doc.setFileUrl("http://localhost:9000/documents/t.txt");
+        doc.setStatus("PENDING");
+        // no tenantId set
+        when(knowledgeDocMapper.selectById(1L)).thenReturn(doc);
+
+        Throwable thrown = catchThrowable(() -> milvusSyncService.syncToMilvus(1L));
+
+        assertThat(thrown).isInstanceOf(BaseException.class);
+        verify(failedStatusWriter).markFailed(eq(1L), contains("tenantId"));
+        verify(milvusClient, never()).insert(any(InsertReq.class));
+    }
+
+    @Test
+    void syncToMilvus_tenantBucketUrl_downloadsWithStrippedObjectName() throws Exception {
+        // MinioFileStorageService stores URLs as {endpoint}/{sf-files-<tenant>}/{object};
+        // the download must resolve the same bucket and strip it from the object name.
+        SfKnowledgeDoc doc = new SfKnowledgeDoc();
+        doc.setId(1L);
+        doc.setTenantId("tenant-1");
+        doc.setTitle("Round Trip Doc");
+        doc.setFileName("file.pdf");
+        doc.setFileUrl("http://localhost:9000/sf-files-tenant-1/uuid-file.pdf");
+        doc.setStatus("PENDING");
+        when(knowledgeDocMapper.selectById(1L)).thenReturn(doc);
+
+        mockMinioObject("uuid-file.pdf", "extracted text");
+
+        when(documentChunker.chunk(any(), any())).thenReturn(List.of(
+                TextChunk.builder().index(0).content("chunk1").startPosition(0).endPosition(6).build()
+        ));
+        when(embeddingService.embedBatch(any())).thenReturn(List.of(new float[]{0.1f, 0.2f}));
+        when(milvusProperties.getCollectionName()).thenReturn("test_collection");
+        when(milvusClient.insert(any(InsertReq.class))).thenReturn(InsertResp.builder().InsertCnt(1L).build());
+
+        milvusSyncService.syncToMilvus(1L);
+
+        org.mockito.ArgumentCaptor<GetObjectArgs> captor =
+                org.mockito.ArgumentCaptor.forClass(GetObjectArgs.class);
+        MinioClient minio = (MinioClient) ReflectionTestUtils.getField(milvusSyncService, "minioClient");
+        verify(minio).getObject(captor.capture());
+        GetObjectArgs args = captor.getValue();
+        assertThat(args.bucket()).isEqualTo("sf-files-tenant-1");
+        assertThat(args.object()).isEqualTo("uuid-file.pdf");
+        assertThat(doc.getStatus()).isEqualTo("SYNCED");
     }
 
     @Test

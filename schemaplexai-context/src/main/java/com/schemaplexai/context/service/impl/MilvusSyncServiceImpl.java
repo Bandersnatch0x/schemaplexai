@@ -117,6 +117,13 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
     private void doSync(SfKnowledgeDoc doc) {
         Long docId = doc.getId();
         try {
+            // Fail-closed tenant boundary: never write vectors for a tenantless document
+            // (previously fell back to a shared "default" partition).
+            if (doc.getTenantId() == null || doc.getTenantId().isBlank()) {
+                throw new BaseException(ResultCode.PARAM_ERROR,
+                        "Document " + docId + " has no tenantId; refusing Milvus sync");
+            }
+
             String content = extractText(doc);
 
             List<TextChunk> chunks = documentChunker.chunk(content, ChunkingConfig.defaults());
@@ -191,7 +198,7 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
         try {
             String tenantId = doc.getTenantId() != null ? doc.getTenantId().toString() : null;
             String bucket = resolveTenantBucket(tenantId);
-            String objectName = resolveObjectName(doc.getFileUrl());
+            String objectName = resolveObjectName(doc.getFileUrl(), bucket);
 
             log.info("Downloading from MinIO bucket={}, object={}", bucket, objectName);
 
@@ -213,15 +220,27 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
         }
     }
 
-    private String resolveObjectName(String fileUrl) {
+    /**
+     * Derive the MinIO object name from a stored file URL.
+     * <p>
+     * {@code MinioFileStorageService.upload} produces URLs of the form
+     * {@code {endpoint}/{bucket}/{objectName}} where the bucket is the tenant-scoped
+     * {@code sf-files-{tenantId}}. We must strip the bucket segment, otherwise the
+     * object name carries a duplicated bucket prefix and {@code getObject} fails with
+     * NoSuchKey. We strip the caller-resolved bucket first, then fall back to the
+     * default bucket prefix for legacy URLs.
+     */
+    String resolveObjectName(String fileUrl, String bucket) {
         try {
             URI uri = URI.create(fileUrl);
             String path = uri.getPath();
             if (path != null && path.startsWith("/")) {
                 path = path.substring(1);
             }
-            // If path contains bucket prefix, strip it
-            if (path != null && path.startsWith(minioDefaultBucket + "/")) {
+            // Strip the tenant-scoped bucket prefix, then the legacy default bucket prefix.
+            if (path != null && bucket != null && !bucket.isBlank() && path.startsWith(bucket + "/")) {
+                path = path.substring(bucket.length() + 1);
+            } else if (path != null && path.startsWith(minioDefaultBucket + "/")) {
                 path = path.substring(minioDefaultBucket.length() + 1);
             }
             return path != null && !path.isBlank() ? path : fileUrl;
@@ -255,7 +274,8 @@ public class MilvusSyncServiceImpl implements MilvusSyncService {
 
     private void insertChunksIntoMilvus(SfKnowledgeDoc doc, List<TextChunk> chunks, List<float[]> embeddings) {
         String collectionName = milvusProperties.getCollectionName();
-        String tenantId = doc.getTenantId() != null ? doc.getTenantId().toString() : "default";
+        // doSync guarantees a non-blank tenantId (fail-closed guard).
+        String tenantId = doc.getTenantId();
         String docIdStr = doc.getId().toString();
         long now = System.currentTimeMillis();
 

@@ -15,6 +15,37 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
       database: 0
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 55MB
+
+# RAG pipeline switches. Defaults are disabled (fail-closed); set the *_ENABLED env vars
+# plus credentials to run the upload -> vectorize -> search chain end-to-end.
+minio:
+  enabled: ${MINIO_ENABLED:false}
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:}
+  secret-key: ${MINIO_SECRET_KEY:}
+  bucket: ${MINIO_BUCKET:documents}
+
+milvus:
+  enabled: ${MILVUS_ENABLED:false}
+  host: ${MILVUS_HOST:localhost}
+  port: ${MILVUS_PORT:19530}
+  token: ${MILVUS_TOKEN:}
+  collection-name: ${MILVUS_COLLECTION:knowledge_doc_embedding}
+
+embedding:
+  provider: ${EMBEDDING_PROVIDER:mock}
+  openai:
+    api-key: ${OPENAI_API_KEY:}
+    model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
+
+clamav:
+  enabled: ${CLAMAV_ENABLED:false}
+  host: ${CLAMAV_HOST:localhost}
+  port: ${CLAMAV_PORT:3310}
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml

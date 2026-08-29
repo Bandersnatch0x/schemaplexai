@@ -67,6 +67,17 @@ class FileUploadControllerTest {
     }
 
     @Test
+    void uploadMissingTenant_shouldReturn400() throws Exception {
+        TenantContextHolder.clear();
+        MockMultipartFile file = new MockMultipartFile("file", "test.txt", "text/plain", "hello".getBytes());
+
+        Result<UploadResult> result = controller.upload(file);
+
+        assertEquals(400, result.getCode());
+        verify(storageService, never()).upload(any(), any(), any(), any(), anyLong());
+    }
+
+    @Test
     void scanStatus_whenHealthy_shouldReturnHealthy() {
         when(scanService.isHealthy()).thenReturn(true);
         Result<FileUploadController.ScanStatusDto> result = controller.scanStatus();
