@@ -741,6 +741,83 @@ class ToolCallingStateHandlerTest {
         verify(stateMachine, never()).transition(AgentExecutionState.FAILED, execution);
     }
 
+    // ------------------------------------------------------------------
+    // Issue 908 regression: retry replays only the failed tool call
+    // ------------------------------------------------------------------
+
+    @Test
+    void shouldRecordFailedToolNameWhenToolFailsInBatch() throws ToolExecutionException {
+        when(engineProperties.getMaxToolCalls()).thenReturn(10);
+        SfAgentExecution execution = createExecution(50L);
+        LlmMessage assistantMsg = new LlmMessage("assistant", "calling toolA and toolB");
+        when(chatMemoryStore.loadMessages("conv-50")).thenReturn(List.of(assistantMsg));
+        when(toolRegistry.parse("calling toolA and toolB", null))
+                .thenReturn(List.of(new ToolCall("toolA"), new ToolCall("toolB")));
+        when(loopDetection.detectLoop(eq(50L), anyString(), anyList())).thenReturn(LoopDetectionResult.noLoop());
+        when(toolRegistry.resolve("toolA")).thenReturn(toolAdapter);
+        when(toolRegistry.resolve("toolB")).thenReturn(toolAdapter);
+        when(securityPolicyLoader.load("tenant-50")).thenReturn(null);
+        when(safetyGuard.check(anyString(), any(), eq("tenant-50"))).thenReturn(
+                new ToolSafetyGuard.SafetyCheckResult(true, false, null, null));
+        when(toolAdapter.execute(argThat(c -> c != null && "toolA".equals(c.toolName())), any(ExecutionContext.class)))
+                .thenReturn(ToolResult.success("A ok"));
+        when(toolAdapter.execute(argThat(c -> c != null && "toolB".equals(c.toolName())), any(ExecutionContext.class)))
+                .thenThrow(new ToolExecutionException(ToolErrorCategory.TIMEOUT, "toolB timed out"));
+
+        handler.handle(stateMachine, execution);
+
+        // Production write-point aligned with the isRetryTarget read (issue 908 / REQ-05).
+        assertEquals("toolB", execution.getMetadata("failedToolName"));
+        assertEquals("TIMEOUT", execution.getMetadata("lastErrorCategory"));
+        verify(stateMachine).transition(AgentExecutionState.RETRYING, execution);
+    }
+
+    @Test
+    void shouldReplayOnlyFailedToolOnRetryRoundAndClearMarkersAfterwards() throws ToolExecutionException {
+        when(engineProperties.getMaxToolCalls()).thenReturn(10);
+        SfAgentExecution execution = createExecution(51L);
+        LlmMessage assistantMsg = new LlmMessage("assistant", "calling toolA and toolB");
+        when(chatMemoryStore.loadMessages("conv-51")).thenReturn(List.of(assistantMsg));
+        when(toolRegistry.parse("calling toolA and toolB", null))
+                .thenReturn(List.of(new ToolCall("toolA"), new ToolCall("toolB")));
+        when(loopDetection.detectLoop(eq(51L), anyString(), anyList())).thenReturn(LoopDetectionResult.noLoop());
+        when(toolRegistry.resolve("toolA")).thenReturn(toolAdapter);
+        when(toolRegistry.resolve("toolB")).thenReturn(toolAdapter);
+        when(securityPolicyLoader.load("tenant-51")).thenReturn(null);
+        when(safetyGuard.check(anyString(), any(), eq("tenant-51"))).thenReturn(
+                new ToolSafetyGuard.SafetyCheckResult(true, false, null, null));
+        when(toolAdapter.execute(argThat(c -> c != null && "toolA".equals(c.toolName())), any(ExecutionContext.class)))
+                .thenReturn(ToolResult.success("A ok"));
+        // Round 1: toolB fails (retryable). Round 2 (replay): toolB succeeds.
+        when(toolAdapter.execute(argThat(c -> c != null && "toolB".equals(c.toolName())), any(ExecutionContext.class)))
+                .thenThrow(new ToolExecutionException(ToolErrorCategory.TIMEOUT, "toolB timed out"))
+                .thenReturn(ToolResult.success("B recovered"));
+
+        // Round 1: both calls execute; toolB fails -> failedToolName recorded -> RETRYING.
+        handler.handle(stateMachine, execution);
+        assertEquals("toolB", execution.getMetadata("failedToolName"));
+        verify(stateMachine).transition(AgentExecutionState.RETRYING, execution);
+
+        // RetryingStateHandler writes retryContext before handing back to TOOL_CALLING.
+        execution.setMetadata("retryContext", "1");
+
+        // Round 2 (retry): only the failed call is replayed.
+        handler.handle(stateMachine, execution);
+
+        verify(toolRegistry, times(1)).resolve("toolA");   // NOT re-resolved on retry round
+        verify(toolRegistry, times(2)).resolve("toolB");   // replayed
+        verify(toolAdapter, times(1)).execute(
+                argThat(c -> c != null && "toolA".equals(c.toolName())), any(ExecutionContext.class));
+        verify(toolAdapter, times(2)).execute(
+                argThat(c -> c != null && "toolB".equals(c.toolName())), any(ExecutionContext.class));
+        verify(stateMachine).transition(AgentExecutionState.THINKING, execution);
+
+        // Replay markers are cleared so the next round executes all parsed calls normally.
+        assertNull(execution.getMetadata("retryContext"));
+        assertNull(execution.getMetadata("failedToolName"));
+        assertNull(execution.getMetadata("lastErrorCategory"));
+    }
+
     private SfAgentExecution createExecution(Long id) {
         SfAgentExecution e = new SfAgentExecution();
         e.setId(id);

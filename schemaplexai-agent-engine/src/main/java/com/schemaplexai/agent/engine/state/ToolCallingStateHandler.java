@@ -171,6 +171,11 @@ public class ToolCallingStateHandler implements AgentStateHandler {
                 executionRecorder.record(execution.getId(), result);
 
                 if (!result.success() && !result.blocked()) {
+                    // Record which tool failed so the RETRYING round replays ONLY this
+                    // call (read-point: isRetryTarget, issue 908 / REQ-05). Previously
+                    // this metadata was never written in production, so retry replayed
+                    // zero calls.
+                    execution.setMetadata("failedToolName", toolCall.toolName());
                     // Record error category for retry decision
                     if (result.errorCategory() != null) {
                         execution.setMetadata("lastErrorCategory", result.errorCategory().name());
@@ -200,6 +205,15 @@ public class ToolCallingStateHandler implements AgentStateHandler {
 
                 incrementToolCallCount(execution);
                 incrementIterationToolCallCount(execution);
+            }
+
+            // Retry round completed without re-failure: clear the replay markers so the
+            // next TOOL_CALLING round executes every parsed call normally. Leaving them
+            // set would keep filtering later rounds down to the (now stale) failed tool.
+            if (isRetry) {
+                execution.getMetadata().remove("retryContext");
+                execution.getMetadata().remove("failedToolName");
+                execution.getMetadata().remove("lastErrorCategory");
             }
 
             // 5. Transition back to THINKING for next LLM round
