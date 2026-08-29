@@ -69,9 +69,10 @@ public class SpecVersionServiceImpl extends ServiceImpl<SfSpecVersionMapper, SfS
         specVersion.setChangeLog(changeLog);
         baseMapper.insert(specVersion);
 
-        // Update spec content and status
+        // Update spec content and status: a new version means the spec's
+        // current content diverges from any published snapshot -> draft.
         spec.setContent(content);
-        spec.setStatus("ACTIVE");
+        spec.setStatus("draft");
         specMapper.updateById(spec);
 
         log.info("Created version {} for spec {}", version, specId);

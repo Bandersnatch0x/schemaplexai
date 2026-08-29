@@ -88,7 +88,7 @@ class SpecReviewServiceImplTest {
     void submitReview_approved_updatesSpecStatusToApproved() {
         SfSpec spec = new SfSpec();
         spec.setId(1L);
-        spec.setStatus("DRAFT");
+        spec.setStatus("draft");
         when(specMapper.selectById(1L)).thenReturn(spec);
         when(specReviewMapper.insert(any())).thenReturn(1);
 
@@ -97,22 +97,22 @@ class SpecReviewServiceImplTest {
         assertThat(result.getSpecId()).isEqualTo(1L);
         assertThat(result.getReviewerId()).isEqualTo(10L);
         assertThat(result.getStatus()).isEqualTo("APPROVED");
-        assertThat(spec.getStatus()).isEqualTo("APPROVED");
+        assertThat(spec.getStatus()).isEqualTo("approved");
         verify(specMapper).updateById(spec);
     }
 
     @Test
-    void submitReview_rejected_updatesSpecStatusToChangesRequested() {
+    void submitReview_rejected_updatesSpecStatusToDraft() {
         SfSpec spec = new SfSpec();
         spec.setId(1L);
-        spec.setStatus("DRAFT");
+        spec.setStatus("draft");
         when(specMapper.selectById(1L)).thenReturn(spec);
         when(specReviewMapper.insert(any())).thenReturn(1);
 
         SfSpecReview result = specReviewService.submitReview(1L, 10L, "REJECTED", "Needs work");
 
         assertThat(result.getStatus()).isEqualTo("REJECTED");
-        assertThat(spec.getStatus()).isEqualTo("CHANGES_REQUESTED");
+        assertThat(spec.getStatus()).isEqualTo("draft");
         verify(specMapper).updateById(spec);
     }
 
@@ -120,27 +120,27 @@ class SpecReviewServiceImplTest {
     void submitReview_changesRequested_updatesSpecStatus() {
         SfSpec spec = new SfSpec();
         spec.setId(1L);
-        spec.setStatus("DRAFT");
+        spec.setStatus("draft");
         when(specMapper.selectById(1L)).thenReturn(spec);
         when(specReviewMapper.insert(any())).thenReturn(1);
 
         SfSpecReview result = specReviewService.submitReview(1L, 10L, "changes_requested", "Fix X");
 
         assertThat(result.getStatus()).isEqualTo("changes_requested");
-        assertThat(spec.getStatus()).isEqualTo("CHANGES_REQUESTED");
+        assertThat(spec.getStatus()).isEqualTo("draft");
     }
 
     @Test
     void submitReview_otherStatus_doesNotUpdateSpec() {
         SfSpec spec = new SfSpec();
         spec.setId(1L);
-        spec.setStatus("DRAFT");
+        spec.setStatus("draft");
         when(specMapper.selectById(1L)).thenReturn(spec);
         when(specReviewMapper.insert(any())).thenReturn(1);
 
         specReviewService.submitReview(1L, 10L, "PENDING", "Reviewing");
 
-        assertThat(spec.getStatus()).isEqualTo("DRAFT");
+        assertThat(spec.getStatus()).isEqualTo("draft");
         verify(specMapper, never()).updateById(any());
     }
 

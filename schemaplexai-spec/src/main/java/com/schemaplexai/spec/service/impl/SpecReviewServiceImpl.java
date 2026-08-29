@@ -44,12 +44,14 @@ public class SpecReviewServiceImpl extends ServiceImpl<SfSpecReviewMapper, SfSpe
         review.setComment(comment);
         baseMapper.insert(review);
 
-        // Update spec status based on review decision
+        // Map the review decision onto the spec lifecycle vocabulary
+        // (draft / in_review / approved / published / archived).
+        // The raw decision value is kept on sf_spec_review.status.
         if ("REJECTED".equalsIgnoreCase(status) || "CHANGES_REQUESTED".equalsIgnoreCase(status)) {
-            spec.setStatus("CHANGES_REQUESTED");
+            spec.setStatus("draft");
             specMapper.updateById(spec);
         } else if ("APPROVED".equalsIgnoreCase(status)) {
-            spec.setStatus("APPROVED");
+            spec.setStatus("approved");
             specMapper.updateById(spec);
         }
 

@@ -129,7 +129,7 @@ CREATE TABLE sf_spec (
     tenant_id       BIGINT NOT NULL,
     title           VARCHAR(256) NOT NULL,
     type            VARCHAR(32) NOT NULL, -- REQUIREMENT / DESIGN / TASK / STEERING
-    status          VARCHAR(32) NOT NULL DEFAULT 'DRAFT',
+    status          VARCHAR(32) NOT NULL DEFAULT 'draft', -- draft / in_review / approved / published / archived
     content         TEXT,
     version         INT NOT NULL DEFAULT 1,
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -171,7 +171,7 @@ class SpecVersionServiceImplTest {
     void createVersion_success_createsVersionAndUpdatesSpec() {
         SfSpec spec = new SfSpec();
         spec.setId(1L);
-        spec.setStatus("DRAFT");
+        spec.setStatus("draft");
         when(specMapper.selectById(1L)).thenReturn(spec);
         when(specVersionMapper.insert(any())).thenReturn(1);
 
@@ -182,7 +182,7 @@ class SpecVersionServiceImplTest {
         assertThat(result.getContent()).isEqualTo("new content");
         assertThat(result.getChangeLog()).isEqualTo("first version");
         assertThat(spec.getContent()).isEqualTo("new content");
-        assertThat(spec.getStatus()).isEqualTo("ACTIVE");
+        assertThat(spec.getStatus()).isEqualTo("draft");
         verify(specMapper).updateById(spec);
         verify(specVersionMapper).insert(any());
     }

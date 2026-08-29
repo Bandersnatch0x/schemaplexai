@@ -12,6 +12,11 @@ public class SfSpec extends BaseEntity {
 
     private String title;
     private String type;
+
+    /**
+     * Spec lifecycle status, stored as VARCHAR(32) in sf_spec (DDL default 'draft').
+     * Unified vocabulary: draft / in_review / approved / published / archived.
+     */
     private String status;
     private String content;
 }
