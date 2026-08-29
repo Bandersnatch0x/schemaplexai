@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDateTime;
 
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -120,5 +121,31 @@ class ExecutionWebControllerMvcTest {
                 .andExpect(jsonPath("$.code").value(200));
 
         verify(queryPort).listExecutions(1, 10, "RUNNING", null);
+    }
+
+    @Test
+    @DisplayName("926: GET /web/executions with size above 100 returns param error 400")
+    void listExecutions_sizeAboveCap_returns400() throws Exception {
+        mockMvc.perform(get("/web/executions")
+                        .param("page", "1")
+                        .param("size", "101")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400));
+
+        verifyNoInteractions(queryPort);
+    }
+
+    @Test
+    @DisplayName("926: GET /web/executions with page below 1 returns param error 400")
+    void listExecutions_pageBelowOne_returns400() throws Exception {
+        mockMvc.perform(get("/web/executions")
+                        .param("page", "0")
+                        .param("size", "20")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400));
+
+        verifyNoInteractions(queryPort);
     }
 }

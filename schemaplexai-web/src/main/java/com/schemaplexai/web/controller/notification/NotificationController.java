@@ -9,6 +9,8 @@ import com.schemaplexai.common.result.ResultCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
@@ -27,8 +29,8 @@ public class NotificationController extends BaseController {
     @GetMapping("/page")
     public Result<IPage<NotificationVO>> page(
             @RequestHeader(value = "X-User-Id", required = false) String userId,
-            @Parameter(description = "页码，默认1") @RequestParam(defaultValue = "1") Integer page,
-            @Parameter(description = "每页大小，默认20") @RequestParam(defaultValue = "20") Integer size,
+            @Parameter(description = "页码，默认1") @Min(1) @RequestParam(defaultValue = "1") Integer page,
+            @Parameter(description = "每页大小，默认20") @Min(1) @Max(100) @RequestParam(defaultValue = "20") Integer size,
             @Parameter(description = "已读状态筛选") @RequestParam(required = false) Boolean read) {
         Long uid = parseUserId(userId);
         return success(notificationService.pageQuery(uid, page, size, read));

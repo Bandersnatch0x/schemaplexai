@@ -9,13 +9,17 @@ import com.schemaplexai.common.controller.BaseController;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Tenant Environment Config")
 @RestController
 @RequestMapping("/web/tenant-env-configs")
 @RequiredArgsConstructor
+@Validated
 public class TenantEnvironmentConfigController extends BaseController {
 
     private final TenantEnvironmentConfigService tenantEnvironmentConfigService;
