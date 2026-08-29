@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-08-29T17:42:07Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-08-29T17:39:17Z -->
 
 ---
 title: Wiki Operation Log
@@ -14,8 +14,6 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
-## 2026-08-30 — fix(workflow): reject non-published templates before instance trigger (issue 923)
-1f6062d
 ## 2026-08-30 — fix(integration): bound external calls with 30s timeouts and degrade on expiry (issue 918)
 d4b85ac
 ## 2026-08-30 — fix(agent-engine): write failedToolName on failure path so retry replays only the failed call (issue 908)
@@ -54,6 +52,8 @@ d8d1095
 cdcc318
 ## 2026-08-29 — fix(agent-engine): align pause tests with tenant-scoped Redis key
 99cb3e7
+## 2026-08-29 — chore: sync master (incl. dcab02b paused-key fix) into spec-compliance-fix branch
+76108b4
 
 ---
 
