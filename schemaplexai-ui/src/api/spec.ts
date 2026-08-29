@@ -12,7 +12,7 @@ export interface SpecItem {
 }
 
 export function getSpecList(params?: { page?: number; pageSize?: number; keyword?: string }) {
-  return request.get<{ list: SpecItem[]; total: number }>('/spec/specs', { params })
+  return request.get<{ list: SpecItem[]; total: number }>('/spec/specs/page', { params })
 }
 
 export function getSpecDetail(id: string) {

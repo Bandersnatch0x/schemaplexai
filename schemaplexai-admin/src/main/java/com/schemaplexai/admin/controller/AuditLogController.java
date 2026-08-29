@@ -1,5 +1,7 @@
 package com.schemaplexai.admin.controller;
 
+import com.schemaplexai.common.controller.BaseController;
+
 import com.schemaplexai.admin.dto.AuditLogQuery;
 import com.schemaplexai.admin.entity.SfAuditLog;
 import com.schemaplexai.admin.service.AuditLogService;
@@ -18,7 +20,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/admin/audit-logs")
 @RequiredArgsConstructor
-public class AuditLogController extends BaseAdminController {
+public class AuditLogController extends BaseController {
 
     private final AuditLogService auditLogService;
 

@@ -32,7 +32,7 @@ export function deleteContext(id: string) {
 }
 
 export function searchKnowledge(query: string, topK = 5) {
-  return request.post<{ results: { id: string; score: number; content: string }[] }>('/context/rag/search', {
+  return request.post<{ results: { id: string; score: number; content: string }[] }>('/context/rag/retrieve', {
     query,
     topK,
   })

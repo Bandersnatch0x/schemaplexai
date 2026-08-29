@@ -4,13 +4,13 @@ import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
 import com.schemaplexai.quality.entity.ApprovalTicket;
 import com.schemaplexai.quality.service.ApprovalTicketService;
+import com.schemaplexai.web.mapper.ApprovalMapper;
+import com.schemaplexai.web.vo.ApprovalVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -18,12 +18,13 @@ import java.util.UUID;
 public class QualityApprovalWorkflowPort implements ApprovalWorkflowPort {
 
     private final ObjectProvider<ApprovalTicketService> approvalTicketServiceProvider;
+    private final ApprovalMapper approvalMapper;
 
     @Override
-    public List<Map<String, Object>> listPendingApprovals(String tenantId) {
+    public List<ApprovalVO> listPendingApprovals(String tenantId) {
         Long parsedTenantId = parseTenantId(tenantId);
         return approvalTicketService().listPendingByTenant(parsedTenantId).stream()
-                .map(this::toApprovalMap)
+                .map(approvalMapper::toApprovalVO)
                 .toList();
     }
 
@@ -46,12 +47,12 @@ public class QualityApprovalWorkflowPort implements ApprovalWorkflowPort {
     }
 
     private ApprovalTicketService approvalTicketService() {
-        ApprovalTicketService approvalTicketService = approvalTicketServiceProvider.getIfAvailable();
-        if (approvalTicketService == null) {
+        ApprovalTicketService service = approvalTicketServiceProvider.getIfAvailable();
+        if (service == null) {
             throw new BaseException(ResultCode.ERROR,
                     "Approval workflow service is not available in web runtime");
         }
-        return approvalTicketService;
+        return service;
     }
 
     private Long parseTenantId(String tenantId) {
@@ -74,21 +75,5 @@ public class QualityApprovalWorkflowPort implements ApprovalWorkflowPort {
         } catch (IllegalArgumentException ex) {
             throw new BaseException(ResultCode.PARAM_ERROR, "ticketId must be a valid UUID", ex);
         }
-    }
-
-    private Map<String, Object> toApprovalMap(ApprovalTicket ticket) {
-        Map<String, Object> approval = new LinkedHashMap<>();
-        approval.put("ticketId", ticket.getTicketId() != null ? ticket.getTicketId().toString() : null);
-        approval.put("executionId", ticket.getExecutionId());
-        approval.put("tenantId", ticket.getTenantId());
-        approval.put("agentId", ticket.getAgentId());
-        approval.put("stage", ticket.getStage());
-        approval.put("handler", ticket.getHandler());
-        approval.put("riskLevel", ticket.getRiskLevel());
-        approval.put("actionDescription", ticket.getActionDescription());
-        approval.put("triggeringSeq", ticket.getTriggeringSeq());
-        approval.put("createdAt", ticket.getCreatedAt());
-        approval.put("updatedAt", ticket.getUpdatedAt());
-        return approval;
     }
 }

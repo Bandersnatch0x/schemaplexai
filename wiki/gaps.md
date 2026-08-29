@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-28T16:38:29Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-08-29T15:40:25Z -->
 
 ## Auto-Generated Gap Scan
 
@@ -15,12 +15,53 @@
 ### Undocumented Controllers
 
 - Missing wiki page for controller: `ApprovalWebController` (source: D:/code_space/frige/schemaplexai-web/src/main/java/com/schemaplexai/web/controller/ApprovalWebController.java)
-- Missing wiki page for controller: `BaseController` (source: D:/code_space/frige/schemaplexai-web/src/main/java/com/schemaplexai/web/controller/BaseController.java)
 - Missing wiki page for controller: `CostWebController` (source: D:/code_space/frige/schemaplexai-web/src/main/java/com/schemaplexai/web/controller/CostWebController.java)
 - Missing wiki page for controller: `ExecutionWebController` (source: D:/code_space/frige/schemaplexai-web/src/main/java/com/schemaplexai/web/controller/ExecutionWebController.java)
 
 ### Undocumented Services
 
+- Missing wiki page for service: `AuditLogService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/AuditLogService.java)
+- Missing wiki page for service: `PlatformHealthService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/PlatformHealthService.java)
+- Missing wiki page for service: `RoleAdminService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/RoleAdminService.java)
+- Missing wiki page for service: `SystemConfigService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/SystemConfigService.java)
+- Missing wiki page for service: `TenantAdminService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/TenantAdminService.java)
+- Missing wiki page for service: `UserAdminService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/UserAdminService.java)
+- Missing wiki page for service: `AgentShadowConfigService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-agent-config/src/main/java/com/schemaplexai/agent/config/service/AgentShadowConfigService.java)
+- Missing wiki page for service: `ApprovalService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/approval/ApprovalService.java)
+- Missing wiki page for service: `AutoCompactionService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/memory/compaction/AutoCompactionService.java)
+- Missing wiki page for service: `TenantKeyService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/memory/TenantKeyService.java)
+- Missing wiki page for service: `MemoryConsolidationService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/memory/vector/MemoryConsolidationService.java)
+- Missing wiki page for service: `MilvusIsolationService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/rag/MilvusIsolationService.java)
+- Missing wiki page for service: `ExecutionConcurrencyService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/service/ExecutionConcurrencyService.java)
+- Missing wiki page for service: `ExecutionEventService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/service/ExecutionEventService.java)
+- Missing wiki page for service: `ExecutionSnapshotService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/service/ExecutionSnapshotService.java)
+- Missing wiki page for service: `TimelineClickHouseService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/timeline/TimelineClickHouseService.java)
+- Missing wiki page for service: `McpToolDiscoveryService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/tool/mcp/McpToolDiscoveryService.java)
+- Missing wiki page for service: `SubAgentExecutionService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/tool/subagent/SubAgentExecutionService.java)
+- Missing wiki page for service: `SubAgentQuotaService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/tool/subagent/SubAgentQuotaService.java)
+- Missing wiki page for service: `ToolCallBudgetService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/tool/ToolCallBudgetService.java)
+- Missing wiki page for service: `OpenTelemetryTracingService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-common/src/main/java/com/schemaplexai/common/observability/OpenTelemetryTracingService.java)
+- Missing wiki page for service: `FileScanService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-context/src/main/java/com/schemaplexai/context/service/FileScanService.java)
+- Missing wiki page for service: `FileStorageService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-context/src/main/java/com/schemaplexai/context/service/FileStorageService.java)
+- Missing wiki page for service: `ClamAvFileScanService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-context/src/main/java/com/schemaplexai/context/service/impl/ClamAvFileScanService.java)
+- Missing wiki page for service: `DisabledFileStorageService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-context/src/main/java/com/schemaplexai/context/service/impl/DisabledFileStorageService.java)
+- Missing wiki page for service: `MinioFileStorageService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-context/src/main/java/com/schemaplexai/context/service/impl/MinioFileStorageService.java)
+- Missing wiki page for service: `NoOpFileScanService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-context/src/main/java/com/schemaplexai/context/service/impl/NoOpFileScanService.java)
+- Missing wiki page for service: `ClickHouseCostSyncService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-ops/src/main/java/com/schemaplexai/ops/service/ClickHouseCostSyncService.java)
+- Missing wiki page for service: `CostDataSyncService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-ops/src/main/java/com/schemaplexai/ops/service/CostDataSyncService.java)
+- Missing wiki page for service: `DisabledCostDataSyncService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-ops/src/main/java/com/schemaplexai/ops/service/DisabledCostDataSyncService.java)
+- Missing wiki page for service: `ApprovalEscalationService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-quality/src/main/java/com/schemaplexai/quality/service/ApprovalEscalationService.java)
+- Missing wiki page for service: `ApprovalTicketService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-quality/src/main/java/com/schemaplexai/quality/service/ApprovalTicketService.java)
+- Missing wiki page for service: `ComplianceReportService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-quality/src/main/java/com/schemaplexai/quality/service/ComplianceReportService.java)
+- Missing wiki page for service: `EscalationPolicyService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-quality/src/main/java/com/schemaplexai/quality/service/EscalationPolicyService.java)
+- Missing wiki page for service: `InboxDeduplicationService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-quality/src/main/java/com/schemaplexai/quality/service/InboxDeduplicationService.java)
+- Missing wiki page for service: `RbacService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-system/src/main/java/com/schemaplexai/system/security/RbacService.java)
+- Missing wiki page for service: `TenantPolicyService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-system/src/main/java/com/schemaplexai/system/service/TenantPolicyService.java)
+- Missing wiki page for service: `ChatMessageArchiveService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-task/src/main/java/com/schemaplexai/task/service/ChatMessageArchiveService.java)
+- Missing wiki page for service: `DeadLetterRetryService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-task/src/main/java/com/schemaplexai/task/service/DeadLetterRetryService.java)
+- Missing wiki page for service: `MilvusReconciliationService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-task/src/main/java/com/schemaplexai/task/service/MilvusReconciliationService.java)
+- Missing wiki page for service: `SseReplayService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-web/src/main/java/com/schemaplexai/web/service/SseReplayService.java)
+- Missing wiki page for service: `WorkflowDeployService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-workflow/src/main/java/com/schemaplexai/workflow/service/WorkflowDeployService.java)
 - Missing wiki page for service: `AuditLogService` (source: D:/code_space/frige/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/AuditLogService.java)
 - Missing wiki page for service: `PlatformHealthService` (source: D:/code_space/frige/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/PlatformHealthService.java)
 - Missing wiki page for service: `RoleAdminService` (source: D:/code_space/frige/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/RoleAdminService.java)
@@ -56,6 +97,7 @@
 - Missing wiki page for service: `ComplianceReportService` (source: D:/code_space/frige/schemaplexai-quality/src/main/java/com/schemaplexai/quality/service/ComplianceReportService.java)
 - Missing wiki page for service: `EscalationPolicyService` (source: D:/code_space/frige/schemaplexai-quality/src/main/java/com/schemaplexai/quality/service/EscalationPolicyService.java)
 - Missing wiki page for service: `InboxDeduplicationService` (source: D:/code_space/frige/schemaplexai-quality/src/main/java/com/schemaplexai/quality/service/InboxDeduplicationService.java)
+- Missing wiki page for service: `RbacService` (source: D:/code_space/frige/schemaplexai-system/src/main/java/com/schemaplexai/system/security/RbacService.java)
 - Missing wiki page for service: `TenantPolicyService` (source: D:/code_space/frige/schemaplexai-system/src/main/java/com/schemaplexai/system/service/TenantPolicyService.java)
 - Missing wiki page for service: `ChatMessageArchiveService` (source: D:/code_space/frige/schemaplexai-task/src/main/java/com/schemaplexai/task/service/ChatMessageArchiveService.java)
 - Missing wiki page for service: `DeadLetterRetryService` (source: D:/code_space/frige/schemaplexai-task/src/main/java/com/schemaplexai/task/service/DeadLetterRetryService.java)

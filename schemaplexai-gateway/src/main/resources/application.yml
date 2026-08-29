@@ -8,51 +8,9 @@ spring:
     name: schemaplexai-gateway
   cloud:
     gateway:
-      routes:
-        - id: system-route
-          uri: http://localhost:8081
-          predicates:
-            - Path=/system/**,/auth/**
-        - id: web-route
-          uri: http://localhost:8082
-          predicates:
-            - Path=/web/**
-        - id: agent-config-route
-          uri: http://localhost:8083
-          predicates:
-            - Path=/agent-config/**
-        - id: agent-engine-route
-          uri: http://localhost:8084
-          predicates:
-            - Path=/agents/**,/agent-engine/**
-        - id: context-route
-          uri: http://localhost:8085
-          predicates:
-            - Path=/context/**
-        - id: spec-route
-          uri: http://localhost:8086
-          predicates:
-            - Path=/spec/**
-        - id: workflow-route
-          uri: http://localhost:8087
-          predicates:
-            - Path=/workflow/**
-        - id: integration-route
-          uri: http://localhost:8088
-          predicates:
-            - Path=/integration/**
-        - id: ops-route
-          uri: http://localhost:8089
-          predicates:
-            - Path=/ops/**
-        - id: quality-route
-          uri: http://localhost:8090
-          predicates:
-            - Path=/quality/**
-        - id: task-route
-          uri: http://localhost:8091
-          predicates:
-            - Path=/task/**
+      # Routes are defined in GatewayConfig.java (Java DSL with lb:// scheme).
+      # YAML route definitions are intentionally omitted to avoid duplicate/conflicting
+      # routes. Only Java DSL routes are active.
       globalcors:
         cors-configurations:
           '[/**]':
@@ -72,8 +30,9 @@ spring:
 
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
       database: 0
       timeout: 5s
       lettuce:
@@ -90,10 +49,17 @@ rate-limit:
   enabled: true
   default-limit: 100
   window-size: 60
+  whitelist-paths:
+    - /auth/**
+    - /v3/api-docs/**
+    - /swagger-ui/**
+    - /webjars/**
+    - /doc.html
 
 logging:
   level:
     org.springframework.cloud.gateway: DEBUG
+    root: INFO
 
 management:
   otlp:

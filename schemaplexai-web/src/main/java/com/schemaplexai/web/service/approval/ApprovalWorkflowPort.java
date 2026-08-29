@@ -1,11 +1,12 @@
 package com.schemaplexai.web.service.approval;
 
+import com.schemaplexai.web.vo.ApprovalVO;
+
 import java.util.List;
-import java.util.Map;
 
 public interface ApprovalWorkflowPort {
 
-    List<Map<String, Object>> listPendingApprovals(String tenantId);
+    List<ApprovalVO> listPendingApprovals(String tenantId);
 
     void approve(String ticketId, String approverId, String reason);
 

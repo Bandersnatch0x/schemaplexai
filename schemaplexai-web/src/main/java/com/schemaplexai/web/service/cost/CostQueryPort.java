@@ -1,10 +1,11 @@
 package com.schemaplexai.web.service.cost;
 
-import java.util.Map;
+import com.schemaplexai.web.vo.CostSummaryVO;
+import com.schemaplexai.web.vo.ExecutionCostVO;
 
 public interface CostQueryPort {
 
-    Map<String, Object> getCostSummary(String tenantId);
+    CostSummaryVO getCostSummary(String tenantId);
 
-    Map<String, Object> getExecutionCost(String tenantId, Long executionId);
+    ExecutionCostVO getExecutionCost(String tenantId, Long executionId);
 }

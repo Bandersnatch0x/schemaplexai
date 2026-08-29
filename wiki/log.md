@@ -1,11 +1,11 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-28T16:35:42Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-08-29T15:39:37Z -->
 
 ---
 title: Wiki Operation Log
 type: log
 source: auto-generated
-creation_date: 2026-05-29
-update_date: 2026-05-29
+creation_date: 2026-08-29
+update_date: 2026-08-29
 tags: [wiki, log, maintenance]
 confidence: high
 ---
@@ -14,46 +14,46 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
+## 2026-08-29 — fix(ui): remove unused imports to restore tsc build
+d5706fd
+## 2026-05-29 — chore: update wiki sync stamp
+524f885
+## 2026-05-29 — chore: refresh wiki sync artifacts
+01bfe59
+## 2026-05-29 — chore: sync generated wiki state
+b6b4bbd
+## 2026-05-29 — chore: checkpoint current implementation and backlog
+60f6fa4
 ## 2026-05-10 — chore: update wiki sync stamp after M7 plan completion
-b579680
+6e4dbf2
 ## 2026-05-10 — feat: M7 Execution Control Plane infrastructure completion
-759d6d8
+155a4cc
 ## 2026-05-09 — test: M4.5 Cost Projection follow-up — BudgetServiceImpl and RabbitMqConfig tests
-2ff1a80
+0519c4e
 ## 2026-05-09 — feat: M6 Execution Control Plane infrastructure
-d853f49
+8069545
 ## 2026-05-09 — test(web): M4.2 SseController execution-specific subscription tests
-7dc6e2a
+222c141
 ## 2026-05-09 — feat(agent-engine): M4.3 Event Replay + Gap Recovery, M5.1 Compliance Reporting API
-00c981e
+2793d69
 ## 2026-05-09 — feat(agent-engine): M4.2/M4.4/M4.5 SSE Streaming, Audit Trail, and Cost Projection
-9405ee9
+51b27f7
 ## 2026-05-09 — feat(agent-engine): M4.1 Outbox Publisher with retry, backoff, and DEAD letter handling
-9d6a87f
+5f42f0f
 ## 2026-05-09 — feat(workflow): Phase 3 BPMN approval workflow with escalation and SLA policies
-ad3eabc
+9db0b1c
 ## 2026-05-09 — feat(agent-engine): Phase 0-2 execution control plane — event log, approval, state machine
-01f07df
+0331219
 ## 2026-05-09 — docs: update wiki for MAF Phase 1-3 + Tessera P0-P1 completion
-1871270
+08d38a0
 ## 2026-05-09 — test: v1 coverage for model, dao, web, integration, context, gateway
-1ceb528
+a747485
 ## 2026-05-09 — feat: Tessera P1 Task Branch Manager
-116d075
+3087001
 ## 2026-05-09 — feat: MAF Phase 3 Group Chat + Tessera P1 External Agent SPI
-2dab4a0
+580cb73
 ## 2026-05-09 — test(common): add TenantRedisKeyResolverTest — 24 tests, 91% redis pkg coverage
-27f491c
-## 2026-05-09 — chore: sync development status
-82c36e3
-## 2026-05-09 — refactor: refine HandoffStateHandler, streamline UI component tests
-c00e329
-## 2026-05-08 — fix(workflow): JoinNodeExecutor should skip failed results in join
-a2f1d0a
-## 2026-05-08 — chore: sync wiki from recent commits
-3dc963b
-## 2026-05-08 — test: fix AgentExecutionStateTest for HANDOFF, add HandoffStateHandlerTest
-8843972
+3936006
 
 ---
 

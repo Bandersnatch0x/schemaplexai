@@ -1,10 +1,10 @@
 package com.schemaplexai.system.service;
 
-import com.schemaplexai.common.constants.CommonConstants;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
 import com.schemaplexai.system.entity.SfUser;
 import com.schemaplexai.system.security.JwtTokenProvider;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,7 +52,6 @@ class AuthServiceTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(authService, "jwtSecret", SECRET);
         ReflectionTestUtils.setField(authService, "jwtExpiration", 86400000L);
         ReflectionTestUtils.setField(authService, "jwtRefreshExpiration", 604800000L);
 
@@ -64,19 +63,23 @@ class AuthServiceTest {
         sampleUser.setStatus(1);
     }
 
+    // ==================== Login ====================
+
     @Test
-    void login_validCredentials_returnsTokens() {
+    void login_validCredentials_delegatesToJwtTokenProvider() {
         when(userService.getByUsernameAndTenantId("testuser", "tenant-1")).thenReturn(sampleUser);
         when(stringRedisTemplate.opsForValue()).thenReturn(valueOps);
-        // The passwordEncoder is created inline in AuthService, so we need to match the BCrypt check
         sampleUser.setPassword(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode("rawPassword"));
+        when(jwtTokenProvider.generateToken("100", "tenant-1", "testuser")).thenReturn("access-token");
+        when(jwtTokenProvider.generateToken("100", "tenant-1", 604800000L)).thenReturn("refresh-token");
 
         Map<String, String> result = authService.login("testuser", "rawPassword", "tenant-1");
 
         assertThat(result).containsKeys("accessToken", "refreshToken", "tokenType");
+        assertThat(result.get("accessToken")).isEqualTo("access-token");
+        assertThat(result.get("refreshToken")).isEqualTo("refresh-token");
         assertThat(result.get("tokenType")).isEqualTo("Bearer");
-        assertThat(result.get("accessToken")).isNotBlank();
-        assertThat(result.get("refreshToken")).isNotBlank();
+        verify(jwtTokenProvider).generateToken("100", "tenant-1", "testuser");
     }
 
     @Test
@@ -125,22 +128,39 @@ class AuthServiceTest {
                 .isEqualTo(ResultCode.PASSWORD_ERROR.getCode());
     }
 
+    // ==================== Refresh Token ====================
+
     @Test
     void refreshToken_validRefreshToken_returnsNewTokens() {
+        // Create a real JWT that can be parsed by JwtTokenProvider
         SecretKey key = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
         String refreshToken = Jwts.builder()
                 .id(UUID.randomUUID().toString())
                 .subject("100")
                 .claim("tenantId", "tenant-1")
+                .claim("username", "testuser")
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 604800_000))
                 .signWith(key)
                 .compact();
 
+        // jwtTokenProvider is mocked, but for parseToken we need a real result
+        Claims claims = Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(refreshToken)
+                .getPayload();
+
+        when(jwtTokenProvider.parseToken(refreshToken)).thenReturn(claims);
+        when(jwtTokenProvider.generateToken("100", "tenant-1", "testuser")).thenReturn("new-access");
+        when(jwtTokenProvider.generateToken("100", "tenant-1", 604800000L)).thenReturn("new-refresh");
+
         Map<String, String> result = authService.refreshToken(refreshToken);
 
         assertThat(result).containsKeys("accessToken", "refreshToken", "tokenType");
-        assertThat(result.get("tokenType")).isEqualTo("Bearer");
+        assertThat(result.get("accessToken")).isEqualTo("new-access");
+        assertThat(result.get("refreshToken")).isEqualTo("new-refresh");
+        verify(jwtTokenProvider).generateToken("100", "tenant-1", "testuser");
     }
 
     @Test
@@ -153,11 +173,15 @@ class AuthServiceTest {
 
     @Test
     void refreshToken_invalidToken_throwsTokenInvalid() {
+        when(jwtTokenProvider.parseToken("invalid.token.value")).thenThrow(new RuntimeException("bad token"));
+
         assertThatThrownBy(() -> authService.refreshToken("invalid.token.value"))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.TOKEN_INVALID.getCode());
     }
+
+    // ==================== Logout ====================
 
     @Test
     void logout_withUserId_deletesRedisKey() {
@@ -174,17 +198,22 @@ class AuthServiceTest {
     }
 
     @Test
-    void isTokenBlacklisted_blacklistedToken_returnsTrue() {
-        SecretKey key = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
-        String token = Jwts.builder()
-                .id("test-jti")
-                .subject("100")
-                .claim("tenantId", "tenant-1")
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + 3600_000))
-                .signWith(key)
-                .compact();
+    void logout_withToken_blacklistsToken() {
+        String token = createTokenWithExpiration(new Date(System.currentTimeMillis() + 3600_000));
+        when(jwtTokenProvider.getJti(token)).thenReturn("test-jti");
+        when(jwtTokenProvider.getExpirationDate(token)).thenReturn(new Date(System.currentTimeMillis() + 3600_000));
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOps);
 
+        authService.logout("100", token);
+
+        verify(valueOps).set(eq("sf:token:blacklist:test-jti"), eq("1"), any(Duration.class));
+    }
+
+    // ==================== Token Blacklist ====================
+
+    @Test
+    void isTokenBlacklisted_blacklistedToken_returnsTrue() {
+        String token = createTokenWithExpiration(new Date(System.currentTimeMillis() + 3600_000));
         when(jwtTokenProvider.getJti(token)).thenReturn("test-jti");
         when(stringRedisTemplate.hasKey("sf:token:blacklist:test-jti")).thenReturn(true);
 
@@ -195,16 +224,7 @@ class AuthServiceTest {
 
     @Test
     void isTokenBlacklisted_nonBlacklistedToken_returnsFalse() {
-        SecretKey key = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
-        String token = Jwts.builder()
-                .id("test-jti-2")
-                .subject("100")
-                .claim("tenantId", "tenant-1")
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + 3600_000))
-                .signWith(key)
-                .compact();
-
+        String token = createTokenWithExpiration(new Date(System.currentTimeMillis() + 3600_000));
         when(jwtTokenProvider.getJti(token)).thenReturn("test-jti-2");
         when(stringRedisTemplate.hasKey("sf:token:blacklist:test-jti-2")).thenReturn(false);
 
@@ -215,17 +235,8 @@ class AuthServiceTest {
 
     @Test
     void blacklistToken_validToken_setsBlacklistEntry() {
-        SecretKey key = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
         Date expiration = new Date(System.currentTimeMillis() + 3600_000);
-        String token = Jwts.builder()
-                .id("blacklist-jti")
-                .subject("100")
-                .claim("tenantId", "tenant-1")
-                .issuedAt(new Date())
-                .expiration(expiration)
-                .signWith(key)
-                .compact();
-
+        String token = createTokenWithExpiration(expiration);
         when(jwtTokenProvider.getJti(token)).thenReturn("blacklist-jti");
         when(jwtTokenProvider.getExpirationDate(token)).thenReturn(expiration);
         when(stringRedisTemplate.opsForValue()).thenReturn(valueOps);
@@ -233,5 +244,77 @@ class AuthServiceTest {
         authService.blacklistToken(token);
 
         verify(valueOps).set(eq("sf:token:blacklist:blacklist-jti"), eq("1"), any(Duration.class));
+    }
+
+    // ==================== Change Password ====================
+
+    @Test
+    void changePassword_validRequest_updatesPasswordAndInvalidatesSession() {
+        SfUser user = new SfUser();
+        user.setId(1L);
+        user.setPassword(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode("oldPass"));
+
+        when(userService.getById(1L)).thenReturn(user);
+        when(userService.updateById(any())).thenReturn(true);
+
+        authService.changePassword(1L, "oldPass", "newPass");
+
+        verify(userService).updateById(argThat(u ->
+                u.getId().equals(1L) && !u.getPassword().equals("$2a$10$encodedPassword")
+        ));
+        verify(stringRedisTemplate).delete("sf:global:token:session:1");
+    }
+
+    @Test
+    void changePassword_userNotFound_throwsUserNotFound() {
+        when(userService.getById(99L)).thenReturn(null);
+
+        assertThatThrownBy(() -> authService.changePassword(99L, "old", "new"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.USER_NOT_FOUND.getCode());
+    }
+
+    @Test
+    void changePassword_wrongOldPassword_throwsPasswordError() {
+        SfUser user = new SfUser();
+        user.setId(1L);
+        user.setPassword(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode("correctOld"));
+
+        when(userService.getById(1L)).thenReturn(user);
+
+        assertThatThrownBy(() -> authService.changePassword(1L, "wrongOld", "newPass"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PASSWORD_ERROR.getCode());
+    }
+
+    @Test
+    void changePassword_updateFails_throwsInternalError() {
+        SfUser user = new SfUser();
+        user.setId(1L);
+        user.setPassword(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode("oldPass"));
+
+        when(userService.getById(1L)).thenReturn(user);
+        when(userService.updateById(any())).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.changePassword(1L, "oldPass", "newPass"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.INTERNAL_ERROR.getCode());
+    }
+
+    // ==================== Helpers ====================
+
+    private String createTokenWithExpiration(Date expiration) {
+        SecretKey key = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
+        return Jwts.builder()
+                .id(UUID.randomUUID().toString())
+                .subject("100")
+                .claim("tenantId", "tenant-1")
+                .issuedAt(new Date())
+                .expiration(expiration)
+                .signWith(key)
+                .compact();
     }
 }

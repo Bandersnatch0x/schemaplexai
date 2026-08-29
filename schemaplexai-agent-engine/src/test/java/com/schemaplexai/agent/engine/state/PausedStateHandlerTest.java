@@ -1,8 +1,10 @@
 package com.schemaplexai.agent.engine.state;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.lifecycle.ExecutionSnapshot;
 import com.schemaplexai.agent.engine.lifecycle.ExecutionSnapshotPersistence;
+import com.schemaplexai.agent.engine.memory.CompositeChatMemoryStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +24,12 @@ class PausedStateHandlerTest {
     private ExecutionSnapshotPersistence snapshotPersistence;
 
     @Mock
+    private CompositeChatMemoryStore chatMemoryStore;
+
+    @Mock
+    private ObjectMapper objectMapper;
+
+    @Mock
     private AgentStateMachine stateMachine;
 
     @InjectMocks
@@ -34,6 +42,7 @@ class PausedStateHandlerTest {
         execution = new SfAgentExecution();
         execution.setId(1L);
         execution.setAgentId(42L);
+        execution.setConversationId("conv-1");
         execution.setState(AgentExecutionState.THINKING.name());
     }
 
