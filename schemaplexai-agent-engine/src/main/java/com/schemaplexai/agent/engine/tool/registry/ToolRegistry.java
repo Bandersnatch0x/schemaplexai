@@ -3,6 +3,7 @@ package com.schemaplexai.agent.engine.tool.registry;
 import com.schemaplexai.agent.engine.model.LlmProvider;
 import com.schemaplexai.agent.engine.tool.ToolCall;
 import com.schemaplexai.agent.engine.tool.adapter.ToolAdapter;
+import com.schemaplexai.agent.engine.tool.parser.ToolCallParseException;
 import com.schemaplexai.agent.engine.tool.parser.ToolCallParser;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -70,24 +71,46 @@ public class ToolRegistry {
     }
 
     /**
+     * Fallback provider label used when no real provider was recorded.
+     * No parser is ever registered under this name; it exists only so the
+     * failure path can report what was routed.
+     */
+    static final String GENERIC_PROVIDER = "GENERIC";
+
+    /**
      * Parse tool calls from an LLM response.
      * Routes to the appropriate parser based on LLM provider.
      *
+     * <p>Failure is explicit, never silent (issue 905): when the responding
+     * provider is unknown or has no registered parser, a
+     * {@link ToolCallParseException} is thrown so the state machine fails loudly
+     * instead of treating the response as "no tool calls" and empty-spinning
+     * between THINKING and TOOL_CALLING.</p>
+     *
      * @param content  the raw LLM response content
      * @param provider the LLM provider that generated the response
-     * @return list of parsed tool calls, or empty list if no parser/parse error
+     * @return list of parsed tool calls (empty when the content holds none)
+     * @throws ToolCallParseException when no parser can be routed for the provider
      */
     public List<ToolCall> parse(String content, LlmProvider provider) {
         if (content == null || content.isBlank()) {
             return Collections.emptyList();
         }
 
-        String providerName = provider != null ? provider.getProviderName() : "GENERIC";
-        ToolCallParser parser = parsers.get(providerName);
+        String providerName = provider != null ? provider.getProviderName() : GENERIC_PROVIDER;
+        if (provider == null || providerName == null || providerName.isBlank()
+                || GENERIC_PROVIDER.equalsIgnoreCase(providerName)) {
+            throw new ToolCallParseException(providerName,
+                    "Cannot route tool-call parsing: no LLM provider was recorded for the response. "
+                            + "The execution context must capture the responding provider "
+                            + "(registered parsers: " + parsers.keySet() + ")");
+        }
 
+        ToolCallParser parser = parsers.get(providerName);
         if (parser == null) {
-            log.warn("No parser registered for provider: {}, attempting generic parse", providerName);
-            return Collections.emptyList();
+            throw new ToolCallParseException(providerName,
+                    "No tool-call parser registered for provider '" + providerName
+                            + "' (registered parsers: " + parsers.keySet() + ")");
         }
 
         try {
@@ -103,6 +126,7 @@ public class ToolRegistry {
             }
             return validCalls;
         } catch (Exception e) {
+            // Parser-internal failure: degrade to "no tool calls" but never silently.
             log.error("Failed to parse tool calls for provider {}: {} ({})",
                     providerName, e.getClass().getSimpleName(), e.getMessage(), e);
             return Collections.emptyList();

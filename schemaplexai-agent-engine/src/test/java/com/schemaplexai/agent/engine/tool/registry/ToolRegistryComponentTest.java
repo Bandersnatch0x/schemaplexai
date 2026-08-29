@@ -3,6 +3,7 @@ package com.schemaplexai.agent.engine.tool.registry;
 import com.schemaplexai.agent.engine.model.LlmProvider;
 import com.schemaplexai.agent.engine.tool.ToolCall;
 import com.schemaplexai.agent.engine.tool.adapter.ToolAdapter;
+import com.schemaplexai.agent.engine.tool.parser.ToolCallParseException;
 import com.schemaplexai.agent.engine.tool.parser.ToolCallParser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -181,8 +182,8 @@ class ToolRegistryComponentTest {
         }
 
         @Test
-        @DisplayName("should return empty list when no parser matches provider")
-        void shouldReturnEmptyWhenNoParser() {
+        @DisplayName("should throw explicit failure when no parser matches provider (issue 905)")
+        void shouldThrowWhenNoParser() {
             LlmProvider unknownProvider = mock(LlmProvider.class);
             when(unknownProvider.getProviderName()).thenReturn("unknown");
 
@@ -190,8 +191,38 @@ class ToolRegistryComponentTest {
                     Collections.emptyList(), List.of(mockParser)
             );
 
-            List<ToolCall> calls = registry.parse("some content", unknownProvider);
-            assertThat(calls).isEmpty();
+            // No silent empty result: unroutable provider must fail loudly with context.
+            ToolCallParseException ex = assertThrows(ToolCallParseException.class,
+                    () -> registry.parse("some content", unknownProvider));
+            assertEquals("unknown", ex.getProviderName());
+            assertTrue(ex.getMessage().contains("unknown"));
+            assertTrue(ex.getMessage().contains("No tool-call parser registered"));
+        }
+
+        @Test
+        @DisplayName("should throw explicit failure when provider is null (issue 905)")
+        void shouldThrowWhenProviderNull() {
+            ToolRegistry registry = new ToolRegistry(
+                    Collections.emptyList(), List.of(mockParser)
+            );
+
+            ToolCallParseException ex = assertThrows(ToolCallParseException.class,
+                    () -> registry.parse("some content", null));
+            assertTrue(ex.getMessage().contains("no LLM provider"));
+        }
+
+        @Test
+        @DisplayName("should throw explicit failure when provider is GENERIC (issue 905)")
+        void shouldThrowWhenProviderGeneric() {
+            LlmProvider genericProvider = mock(LlmProvider.class);
+            when(genericProvider.getProviderName()).thenReturn("GENERIC");
+
+            ToolRegistry registry = new ToolRegistry(
+                    Collections.emptyList(), List.of(mockParser)
+            );
+
+            assertThrows(ToolCallParseException.class,
+                    () -> registry.parse("some content", genericProvider));
         }
 
         @Test

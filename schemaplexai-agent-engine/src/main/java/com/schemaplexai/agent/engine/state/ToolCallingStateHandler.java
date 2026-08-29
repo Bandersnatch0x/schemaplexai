@@ -7,10 +7,14 @@ import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.loop.AgentLoopDetectionService;
 import com.schemaplexai.agent.engine.loop.LoopDetectionResult;
 import com.schemaplexai.agent.engine.memory.CompositeChatMemoryStore;
+import com.schemaplexai.agent.engine.model.AiModelRouter;
 import com.schemaplexai.agent.engine.model.LlmMessage;
+import com.schemaplexai.agent.engine.model.LlmProvider;
+import com.schemaplexai.agent.engine.model.ModelResolver;
 import com.schemaplexai.agent.engine.tool.*;
 import com.schemaplexai.agent.engine.tool.adapter.ExecutionContext;
 import com.schemaplexai.agent.engine.tool.adapter.ToolAdapter;
+import com.schemaplexai.agent.engine.tool.parser.ToolCallParseException;
 import com.schemaplexai.agent.engine.tool.registry.ToolRegistry;
 import com.schemaplexai.agent.engine.util.TokenEstimator;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +46,8 @@ public class ToolCallingStateHandler implements AgentStateHandler {
     private final SecurityPolicyLoader securityPolicyLoader;
     private final AgentEngineProperties engineProperties;
     private final ToolApprovalService toolApprovalService;
+    private final AiModelRouter modelRouter;
+    private final ModelResolver modelResolver;
 
     @Autowired
     public ToolCallingStateHandler(CompositeChatMemoryStore chatMemoryStore,
@@ -52,7 +58,9 @@ public class ToolCallingStateHandler implements AgentStateHandler {
                                     ToolExecutionRecorder executionRecorder,
                                     SecurityPolicyLoader securityPolicyLoader,
                                     AgentEngineProperties engineProperties,
-                                    ToolApprovalService toolApprovalService) {
+                                    ToolApprovalService toolApprovalService,
+                                    AiModelRouter modelRouter,
+                                    ModelResolver modelResolver) {
         this.chatMemoryStore = chatMemoryStore;
         this.sandbox = sandbox;
         this.toolRegistry = toolRegistry;
@@ -62,6 +70,8 @@ public class ToolCallingStateHandler implements AgentStateHandler {
         this.securityPolicyLoader = securityPolicyLoader;
         this.engineProperties = engineProperties;
         this.toolApprovalService = toolApprovalService;
+        this.modelRouter = modelRouter;
+        this.modelResolver = modelResolver;
     }
 
     @Override
@@ -91,8 +101,13 @@ public class ToolCallingStateHandler implements AgentStateHandler {
                 return;
             }
 
-            // 2. Structured tool call parsing (replaces heuristic parseToolCalls)
-            List<ToolCall> toolCalls = toolRegistry.parse(lastMessage.getContent(), null);
+            // 2. Structured tool call parsing (replaces heuristic parseToolCalls).
+            // The responding provider is resolved from the execution context so the
+            // registry can route to the matching structured parser (issue 905);
+            // passing null here previously routed to a non-existent GENERIC parser
+            // and silently returned empty for every response.
+            LlmProvider respondingProvider = resolveRespondingProvider(execution);
+            List<ToolCall> toolCalls = toolRegistry.parse(lastMessage.getContent(), respondingProvider);
             if (toolCalls == null || toolCalls.isEmpty()) {
                 log.info("No tool calls parsed from assistant message for execution {}, transitioning to THINKING",
                         execution.getId());
@@ -189,6 +204,19 @@ public class ToolCallingStateHandler implements AgentStateHandler {
 
             // 5. Transition back to THINKING for next LLM round
             stateMachine.transition(AgentExecutionState.THINKING, execution);
+        } catch (ToolCallParseException e) {
+            // Explicit failure path (issue 905): when the structured parser cannot be
+            // routed (unknown/absent provider), fail loudly instead of treating the
+            // response as "no tool calls" and spinning TOOL_CALLING -> THINKING.
+            log.error("Structured tool-call parsing unavailable for execution {} (provider={}): {}",
+                    execution.getId(), e.getProviderName(), e.getMessage());
+            execution.setMetadata("failureReason", "tool_call_parse_unavailable: " + e.getMessage());
+            stateMachine.emitTimelineEvent(execution, "error",
+                    "TOOL_CALLING parse failure: " + e.getMessage());
+            executionRecorder.record(execution.getId(), ToolExecutionResult.failure(
+                "unknown", ToolErrorCategory.INTERNAL_ERROR,
+                e.getMessage(), 0, 0));
+            stateMachine.transition(AgentExecutionState.FAILED, execution);
         } catch (Exception e) {
             log.error("Tool calling failed for execution {}", execution.getId(), e);
             stateMachine.emitTimelineEvent(execution, "error",
@@ -280,6 +308,34 @@ public class ToolCallingStateHandler implements AgentStateHandler {
     private boolean isRetryContext(SfAgentExecution execution) {
         String retryCtx = (String) execution.getMetadata("retryContext");
         return retryCtx != null && !retryCtx.isBlank();
+    }
+
+    /**
+     * Resolve the LLM provider that serves this execution from the execution context.
+     *
+     * <p>The model configured for the execution is resolved first (execution metadata
+     * {@code modelId} or application config via {@link ModelResolver}), then routed
+     * through {@link AiModelRouter}. Because the router puts failing providers on
+     * cooldown, routing after a fallback generation converges on the provider that
+     * actually responded — making this the real provider for parse routing
+     * (issue 905).</p>
+     *
+     * @throws ToolCallParseException when no responding provider can be resolved
+     */
+    private LlmProvider resolveRespondingProvider(SfAgentExecution execution) {
+        if (modelRouter == null) {
+            throw new ToolCallParseException(null,
+                    "AiModelRouter is not available; cannot resolve responding provider for execution "
+                            + execution.getId());
+        }
+        String modelId = modelResolver != null ? modelResolver.resolve(execution) : null;
+        try {
+            return modelRouter.route(modelId);
+        } catch (RuntimeException e) {
+            throw new ToolCallParseException(null,
+                    "Unable to resolve responding LLM provider for execution "
+                            + execution.getId() + " (modelId=" + modelId + "): " + e.getMessage());
+        }
     }
 
     private boolean isRetryTarget(SfAgentExecution execution, ToolCall toolCall) {

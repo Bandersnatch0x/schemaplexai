@@ -17,6 +17,7 @@ import com.schemaplexai.agent.engine.tool.registry.ToolRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -64,6 +65,12 @@ class ToolCallingStateHandlerTest {
     @Mock
     private ApprovalService approvalService;
 
+    @Mock
+    private com.schemaplexai.agent.engine.model.AiModelRouter modelRouter;
+
+    @Mock
+    private com.schemaplexai.agent.engine.model.ModelResolver modelResolver;
+
     private ToolApprovalService toolApprovalService;
 
     @InjectMocks
@@ -78,7 +85,7 @@ class ToolCallingStateHandlerTest {
         handler = new ToolCallingStateHandler(
                 chatMemoryStore, sandbox, toolRegistry, safetyGuard,
                 loopDetection, executionRecorder, securityPolicyLoader,
-                engineProperties, toolApprovalService);
+                engineProperties, toolApprovalService, modelRouter, modelResolver);
     }
 
     @Test
@@ -573,6 +580,165 @@ class ToolCallingStateHandlerTest {
         assertEquals(2, execution.getMetadata("iterationToolCallCount"));
         assertEquals(2, execution.getMetadata("toolCallCount"));
         verify(stateMachine).transition(AgentExecutionState.THINKING, execution);
+    }
+
+    // ------------------------------------------------------------------
+    // Issue 905 regression: structured parse wiring (eliminate always-empty route)
+    // ------------------------------------------------------------------
+
+    @Test
+    void shouldPassRealProviderFromExecutionContextToParse() throws ToolExecutionException {
+        when(engineProperties.getMaxToolCalls()).thenReturn(10);
+        SfAgentExecution execution = createExecution(40L);
+        LlmMessage assistantMsg = new LlmMessage("assistant", "structured response");
+        when(chatMemoryStore.loadMessages("conv-40")).thenReturn(List.of(assistantMsg));
+
+        com.schemaplexai.agent.engine.model.LlmProvider openAiProvider =
+                mock(com.schemaplexai.agent.engine.model.LlmProvider.class);
+        lenient().when(openAiProvider.getProviderName()).thenReturn("OPENAI");
+        when(modelRouter.route(any())).thenReturn(openAiProvider);
+        when(toolRegistry.parse("structured response", openAiProvider))
+                .thenReturn(List.of(new ToolCall("fileRead")));
+        when(loopDetection.detectLoop(eq(40L), anyString(), anyList())).thenReturn(LoopDetectionResult.noLoop());
+        when(toolRegistry.resolve("fileRead")).thenReturn(toolAdapter);
+        when(securityPolicyLoader.load("tenant-40")).thenReturn(null);
+        when(safetyGuard.check("fileRead", "{}", "tenant-40")).thenReturn(
+                new ToolSafetyGuard.SafetyCheckResult(true, false, null, null));
+        when(toolAdapter.execute(any(ToolCall.class), any(ExecutionContext.class)))
+                .thenReturn(ToolResult.success("ok"));
+
+        handler.handle(stateMachine, execution);
+
+        // The parse call must carry the real provider resolved from the execution
+        // context — never the old constant null that routed to a dead GENERIC parser.
+        verify(toolRegistry).parse("structured response", openAiProvider);
+        verify(toolAdapter).execute(any(ToolCall.class), any(ExecutionContext.class));
+        verify(stateMachine).transition(AgentExecutionState.THINKING, execution);
+    }
+
+    @Test
+    void shouldFailExplicitlyWhenProviderHasNoRegisteredParser() {
+        SfAgentExecution execution = createExecution(41L);
+        LlmMessage assistantMsg = new LlmMessage("assistant", "some tool-ish content");
+        when(chatMemoryStore.loadMessages("conv-41")).thenReturn(List.of(assistantMsg));
+
+        com.schemaplexai.agent.engine.model.LlmProvider unknownProvider =
+                mock(com.schemaplexai.agent.engine.model.LlmProvider.class);
+        lenient().when(unknownProvider.getProviderName()).thenReturn("UNKNOWN_VENDOR");
+        when(modelRouter.route(any())).thenReturn(unknownProvider);
+        when(toolRegistry.parse("some tool-ish content", unknownProvider))
+                .thenThrow(new com.schemaplexai.agent.engine.tool.parser.ToolCallParseException(
+                        "UNKNOWN_VENDOR",
+                        "No tool-call parser registered for provider 'UNKNOWN_VENDOR'"));
+
+        handler.handle(stateMachine, execution);
+
+        // Explicit failure — not the legacy silent empty parse -> THINKING spin.
+        verify(stateMachine).transition(AgentExecutionState.FAILED, execution);
+        verify(stateMachine, never()).transition(AgentExecutionState.THINKING, execution);
+        Object failureReason = execution.getMetadata("failureReason");
+        assertNotNull(failureReason);
+        assertTrue(failureReason.toString().contains("tool_call_parse_unavailable"));
+        assertTrue(failureReason.toString().contains("UNKNOWN_VENDOR"));
+    }
+
+    @Test
+    void shouldFailExplicitlyWhenProviderCannotBeRouted() {
+        SfAgentExecution execution = createExecution(42L);
+        LlmMessage assistantMsg = new LlmMessage("assistant", "some content");
+        when(chatMemoryStore.loadMessages("conv-42")).thenReturn(List.of(assistantMsg));
+        when(modelRouter.route(any())).thenThrow(new IllegalStateException("No healthy LLM provider available"));
+
+        handler.handle(stateMachine, execution);
+
+        verify(stateMachine).transition(AgentExecutionState.FAILED, execution);
+        verify(stateMachine, never()).transition(AgentExecutionState.THINKING, execution);
+        Object failureReason = execution.getMetadata("failureReason");
+        assertNotNull(failureReason);
+        assertTrue(failureReason.toString().contains("tool_call_parse_unavailable"));
+        assertTrue(failureReason.toString().contains("No healthy LLM provider available"));
+    }
+
+    @Test
+    void shouldExecuteToolParsedFromStructuredOpenAiResponseViaRealRegistry() throws ToolExecutionException {
+        // End-to-end wiring: REAL ToolRegistry + REAL OpenAiToolCallParser on the
+        // state-machine path (issue 905 acceptance: structured output -> executable tool call).
+        ToolAdapter realAdapter = mock(ToolAdapter.class);
+        when(realAdapter.getToolName()).thenReturn("fileRead");
+        ToolRegistry realRegistry = new ToolRegistry(
+                List.of(realAdapter),
+                List.of(new com.schemaplexai.agent.engine.tool.parser.OpenAiToolCallParser()));
+        ToolCallingStateHandler realHandler = new ToolCallingStateHandler(
+                chatMemoryStore, sandbox, realRegistry, safetyGuard,
+                loopDetection, executionRecorder, securityPolicyLoader,
+                engineProperties, toolApprovalService, modelRouter, modelResolver);
+
+        when(engineProperties.getMaxToolCalls()).thenReturn(10);
+        SfAgentExecution execution = createExecution(43L);
+        String openAiJson = "{\"tool_calls\":[{\"id\":\"call_1\",\"type\":\"function\","
+                + "\"function\":{\"name\":\"fileRead\",\"arguments\":\"{\\\"path\\\":\\\"/tmp/log\\\"}\"}}]}";
+        when(chatMemoryStore.loadMessages("conv-43")).thenReturn(List.of(new LlmMessage("assistant", openAiJson)));
+
+        com.schemaplexai.agent.engine.model.LlmProvider openAiProvider =
+                mock(com.schemaplexai.agent.engine.model.LlmProvider.class);
+        when(openAiProvider.getProviderName()).thenReturn("OPENAI");
+        when(modelRouter.route(any())).thenReturn(openAiProvider);
+        when(loopDetection.detectLoop(eq(43L), anyString(), anyList())).thenReturn(LoopDetectionResult.noLoop());
+        when(securityPolicyLoader.load("tenant-43")).thenReturn(null);
+        when(safetyGuard.check(eq("fileRead"), anyString(), eq("tenant-43"))).thenReturn(
+                new ToolSafetyGuard.SafetyCheckResult(true, false, null, null));
+        when(realAdapter.execute(any(ToolCall.class), any(ExecutionContext.class)))
+                .thenReturn(ToolResult.success("file content"));
+
+        realHandler.handle(stateMachine, execution);
+
+        ArgumentCaptor<ToolCall> callCaptor = ArgumentCaptor.forClass(ToolCall.class);
+        verify(realAdapter).execute(callCaptor.capture(), any(ExecutionContext.class));
+        assertEquals("fileRead", callCaptor.getValue().toolName());
+        assertEquals("/tmp/log", callCaptor.getValue().parameters().get("path"));
+        verify(stateMachine).transition(AgentExecutionState.THINKING, execution);
+        verify(stateMachine, never()).transition(AgentExecutionState.FAILED, execution);
+    }
+
+    @Test
+    void shouldExecuteToolParsedFromStructuredAnthropicResponseViaRealRegistry() throws ToolExecutionException {
+        ToolAdapter realAdapter = mock(ToolAdapter.class);
+        when(realAdapter.getToolName()).thenReturn("httpCall");
+        ToolRegistry realRegistry = new ToolRegistry(
+                List.of(realAdapter),
+                List.of(new com.schemaplexai.agent.engine.tool.parser.AnthropicToolCallParser()));
+        ToolCallingStateHandler realHandler = new ToolCallingStateHandler(
+                chatMemoryStore, sandbox, realRegistry, safetyGuard,
+                loopDetection, executionRecorder, securityPolicyLoader,
+                engineProperties, toolApprovalService, modelRouter, modelResolver);
+
+        when(engineProperties.getMaxToolCalls()).thenReturn(10);
+        SfAgentExecution execution = createExecution(44L);
+        String closingParamTag = "</" + "parameter>";
+        String anthropicXml = "<tool_use><name>httpCall</name>"
+                + "<parameter name=\"url\">https://api.example.com" + closingParamTag
+                + "</" + "tool_use>";
+        when(chatMemoryStore.loadMessages("conv-44")).thenReturn(List.of(new LlmMessage("assistant", anthropicXml)));
+
+        com.schemaplexai.agent.engine.model.LlmProvider anthropicProvider =
+                mock(com.schemaplexai.agent.engine.model.LlmProvider.class);
+        when(anthropicProvider.getProviderName()).thenReturn("ANTHROPIC");
+        when(modelRouter.route(any())).thenReturn(anthropicProvider);
+        when(loopDetection.detectLoop(eq(44L), anyString(), anyList())).thenReturn(LoopDetectionResult.noLoop());
+        when(securityPolicyLoader.load("tenant-44")).thenReturn(null);
+        when(safetyGuard.check(eq("httpCall"), anyString(), eq("tenant-44"))).thenReturn(
+                new ToolSafetyGuard.SafetyCheckResult(true, false, null, null));
+        when(realAdapter.execute(any(ToolCall.class), any(ExecutionContext.class)))
+                .thenReturn(ToolResult.success("200 OK"));
+
+        realHandler.handle(stateMachine, execution);
+
+        ArgumentCaptor<ToolCall> callCaptor = ArgumentCaptor.forClass(ToolCall.class);
+        verify(realAdapter).execute(callCaptor.capture(), any(ExecutionContext.class));
+        assertEquals("httpCall", callCaptor.getValue().toolName());
+        assertEquals("https://api.example.com", callCaptor.getValue().parameters().get("url"));
+        verify(stateMachine).transition(AgentExecutionState.THINKING, execution);
+        verify(stateMachine, never()).transition(AgentExecutionState.FAILED, execution);
     }
 
     private SfAgentExecution createExecution(Long id) {
