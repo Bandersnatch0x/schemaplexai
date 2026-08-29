@@ -183,20 +183,65 @@ public class GitIntegrationService {
      * error messages — free of any credential material.
      */
     List<String> buildCloneArguments(Map<String, Object> repo, String cloneUrl, String destName) {
-        List<String> args = new ArrayList<>();
-        String token = resolveAccessToken(repo);
-        if (token != null && !token.isBlank()) {
-            String provider = String.valueOf(repo.getOrDefault("provider", ""));
-            String basicAuth = basicAuthUsername(provider) + ":" + token;
-            String header = "Authorization: Basic "
-                    + Base64.getEncoder().encodeToString(basicAuth.getBytes(StandardCharsets.UTF_8));
-            args.add("-c");
-            args.add("http.extraHeader=" + header);
-        }
+        List<String> args = new ArrayList<>(credentialArguments(repo));
         args.add("clone");
         args.add(cloneUrl);
         args.add(destName);
         return args;
+    }
+
+    /**
+     * Build the git pull argument list with credential injection.
+     *
+     * <p>Clone stores a credential-free {@code origin} URL, so every subsequent
+     * remote operation must re-inject credentials the same way: with
+     * {@code GIT_TERMINAL_PROMPT=0} a bare {@code git pull} against a private
+     * remote can never prompt and would fail authentication every time. The
+     * {@code http.extraHeader} configuration applies to every HTTP(S) request
+     * the command makes, so pull/fetch/push authenticate exactly like clone
+     * without touching the persisted remote URL.
+     */
+    List<String> buildPullArguments(Map<String, Object> repo) {
+        List<String> args = new ArrayList<>(credentialArguments(repo));
+        args.add("pull");
+        return args;
+    }
+
+    /** Build the git fetch argument list with credential injection (see {@link #buildPullArguments}). */
+    List<String> buildFetchArguments(Map<String, Object> repo) {
+        List<String> args = new ArrayList<>(credentialArguments(repo));
+        args.add("fetch");
+        args.add("origin");
+        return args;
+    }
+
+    /** Build the git push argument list with credential injection (see {@link #buildPullArguments}). */
+    List<String> buildPushArguments(Map<String, Object> repo, String branch) {
+        List<String> args = new ArrayList<>(credentialArguments(repo));
+        args.add("push");
+        args.add("origin");
+        args.add(branch);
+        return args;
+    }
+
+    /**
+     * Credential configuration arguments ({@code -c http.extraHeader=...}) shared
+     * by every remote-touching git command (clone/pull/fetch/push). Returns an
+     * empty list when the repository has no stored token — the command then runs
+     * unauthenticated and, with terminal prompts disabled, a private remote fails
+     * fast with a non-zero exit (surfaced as a structured {@link BaseException})
+     * instead of hanging on an interactive credential prompt.
+     */
+    private List<String> credentialArguments(Map<String, Object> repo) {
+        String token = resolveAccessToken(repo);
+        if (token == null || token.isBlank()) {
+            return List.of();
+        }
+        String provider = String.valueOf(repo.getOrDefault("provider", ""));
+        String basicAuth = basicAuthUsername(provider) + ":" + token;
+        String header = "Authorization: Basic "
+                + Base64.getEncoder().encodeToString(basicAuth.getBytes(StandardCharsets.UTF_8));
+        return List.of("-c", "http.extraHeader=" + header);
     }
 
     /** Username portion of HTTP Basic auth per provider (tokens act as the password). */
@@ -230,7 +275,7 @@ public class GitIntegrationService {
             throw new BaseException(ResultCode.PARAM_ERROR, "Local path is required");
         }
         try {
-            executeGitCommandInDir(localPath, "pull");
+            executeGitCommandInDir(localPath, buildPullArguments(repo));
             log.info("Repository {} pulled at {}", repoId, localPath);
             return localPath;
         } catch (BaseException e) {
@@ -238,6 +283,30 @@ public class GitIntegrationService {
         } catch (Exception e) {
             log.error("Failed to pull repository {}", repoId, e);
             throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED, "Pull failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Fetch from {@code origin} with credential injection (same mechanism as
+     * clone/pull/push — the persisted remote URL carries no credentials).
+     */
+    public String fetchRepository(Long tenantId, Long repoId, String localPath) {
+        Map<String, Object> repo = findRepository(tenantId, repoId);
+        if (repo == null) {
+            throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
+        }
+        if (localPath == null || localPath.isBlank()) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "Local path is required");
+        }
+        try {
+            executeGitCommandInDir(localPath, buildFetchArguments(repo));
+            log.info("Repository {} fetched at {}", repoId, localPath);
+            return localPath;
+        } catch (BaseException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to fetch repository {}", repoId, e);
+            throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED, "Fetch failed: " + e.getMessage());
         }
     }
 
@@ -251,7 +320,7 @@ public class GitIntegrationService {
         }
         String targetBranch = branch != null ? branch : (String) repo.get("defaultBranch");
         try {
-            executeGitCommandInDir(localPath, "push", "origin", targetBranch);
+            executeGitCommandInDir(localPath, buildPushArguments(repo, targetBranch));
             log.info("Repository {} pushed to branch {}", repoId, targetBranch);
             return localPath;
         } catch (BaseException e) {
@@ -558,7 +627,18 @@ public class GitIntegrationService {
         reader.join(1000);
         int exitCode = process.exitValue();
         if (exitCode != 0) {
-            throw new RuntimeException("Git command failed with exit code " + exitCode);
+            // Surface a bounded tail of git's output so failures are explicit and
+            // diagnosable (e.g. "terminal prompts disabled" on auth failure). The
+            // URL is always credential-free and tokens ride http.extraHeader only,
+            // so git's output carries no secret material.
+            String detail;
+            synchronized (output) {
+                String text = output.toString().trim();
+                detail = text.length() > 500 ? text.substring(text.length() - 500) : text;
+            }
+            throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED,
+                    "Git command failed with exit code " + exitCode
+                            + (detail.isEmpty() ? "" : ": " + detail));
         }
         synchronized (output) {
             return output.toString();
@@ -581,11 +661,22 @@ public class GitIntegrationService {
     /** Visible for testing: create and start the git process. */
     Process startProcess(List<String> command, File workingDir) throws IOException {
         ProcessBuilder pb = new ProcessBuilder(command);
+        configureProcessBuilder(pb, workingDir);
+        return pb.start();
+    }
+
+    /**
+     * Configure the git process before launch. Visible for testing so the
+     * no-prompt guarantee can be asserted without spawning a process.
+     */
+    void configureProcessBuilder(ProcessBuilder pb, File workingDir) {
         pb.directory(workingDir);
         pb.redirectErrorStream(true);
-        // Never block on interactive credential prompts; credentials arrive via http.extraHeader.
+        // Never block on interactive credential prompts; credentials arrive via
+        // http.extraHeader. With prompts disabled, a missing or rejected token on
+        // a private remote fails fast (non-zero exit -> structured BaseException)
+        // instead of hanging until the command timeout.
         pb.environment().put("GIT_TERMINAL_PROMPT", "0");
-        return pb.start();
     }
 
     private String extractEventType(JsonNode root, String provider) {
