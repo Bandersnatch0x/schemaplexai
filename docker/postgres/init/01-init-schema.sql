@@ -137,7 +137,7 @@ CREATE TABLE sf_spec (
     type            VARCHAR(32) NOT NULL, -- REQUIREMENT / DESIGN / TASK / STEERING
     status          VARCHAR(32) NOT NULL DEFAULT 'draft', -- draft / in_review / approved / published / archived / rejected (rejected = terminal review-rejection outcome)
     content         TEXT,
-    version         INT NOT NULL DEFAULT 1,
+    version         INT NOT NULL DEFAULT 1, -- optimistic-lock counter (@Version, ticket 925); NOT the "current published version pointer" of the spec text — published versions live in sf_spec_version
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by      BIGINT,
