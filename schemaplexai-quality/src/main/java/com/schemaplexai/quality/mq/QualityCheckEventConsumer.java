@@ -35,10 +35,10 @@ import java.util.UUID;
  * (their {@code scanBasePackages} excludes it), so gate beans are only
  * instantiated here.
  *
- * <p>Note: the task module's legacy {@code sf.quality.queue} consumer keeps
- * its own binding to the same routing key; it receives a copy of every event
- * and dead-letters it (its handler is the pre-existing unsupported stub).
- * This duplication is recorded in ticket 924 for follow-up retirement.
+ * <p>Note: the task module's legacy {@code sf.quality.queue} consumer was
+ * retired in the review rework batch (issue NEW-03, commit retiring
+ * QualityEventConsumer); this consumer is now the sole listener on
+ * {@code sf.quality}.
  */
 @Slf4j
 @Component
