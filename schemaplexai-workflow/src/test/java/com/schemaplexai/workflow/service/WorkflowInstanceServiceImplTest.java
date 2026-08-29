@@ -216,6 +216,30 @@ class WorkflowInstanceServiceImplTest {
     }
 
     @Test
+    void trigger_nodeThrowsException_marksInstanceFailedAndRethrows() {
+        SfWorkflowInstance instance = new SfWorkflowInstance();
+        instance.setId(1L);
+        instance.setTemplateId(10L);
+        instance.setStatus("PENDING");
+        when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
+
+        SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setId(10L);
+        template.setStatus("deployed");
+        template.setNodeConfigJson("[{\"nodeId\":\"n1\",\"nodeType\":\"AI\",\"input\":{}}]");
+        when(templateMapper.selectById(10L)).thenReturn(template);
+        when(nodeExecutionMapper.insert(any())).thenReturn(1);
+        when(nodeEngine.executeNode(any())).thenThrow(new BaseException(ResultCode.ERROR, "boom"));
+
+        assertThatThrownBy(() -> workflowInstanceService.trigger(1L))
+                .isInstanceOf(BaseException.class)
+                .hasMessageContaining("boom");
+
+        assertThat(instance.getStatus()).isEqualTo("FAILED");
+        verify(workflowInstanceMapper, atLeast(2)).updateById(instance);
+    }
+
+    @Test
     void trigger_nodeFails_setsFailed() {
         SfWorkflowInstance instance = new SfWorkflowInstance();
         instance.setId(1L);

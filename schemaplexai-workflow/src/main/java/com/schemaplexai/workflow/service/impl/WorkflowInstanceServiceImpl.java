@@ -19,7 +19,6 @@ import com.schemaplexai.workflow.service.WorkflowNodeEngine;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -35,8 +34,11 @@ public class WorkflowInstanceServiceImpl extends ServiceImpl<SfWorkflowInstanceM
     private final ObjectMapper objectMapper;
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public void trigger(Long instanceId) {
+        // Deliberately NOT @Transactional: node execution performs long external calls
+        // (LLM/HTTP) and every status transition (RUNNING/FAILED/COMPLETED) must be
+        // durable the moment it is written. A wrapping transaction would roll back the
+        // FAILED status on exception paths, leaving no failure trace in the database.
         SfWorkflowInstance instance = baseMapper.selectById(instanceId);
         if (instance == null) {
             throw new BaseException(ResultCode.WORKFLOW_NOT_FOUND, "Workflow instance not found: " + instanceId);
@@ -78,6 +80,7 @@ public class WorkflowInstanceServiceImpl extends ServiceImpl<SfWorkflowInstanceM
         baseMapper.updateById(instance);
 
         List<NodeConfig> nodeConfigs = parseNodeConfig(template.getNodeConfigJson());
+
         for (NodeConfig config : nodeConfigs) {
             SfWorkflowNodeExecution nodeExecution = new SfWorkflowNodeExecution();
             nodeExecution.setInstanceId(instanceId);
@@ -91,7 +94,18 @@ public class WorkflowInstanceServiceImpl extends ServiceImpl<SfWorkflowInstanceM
             }
             nodeExecutionMapper.insert(nodeExecution);
 
-            NodeExecutionResult result = nodeEngine.executeNode(nodeExecution);
+            NodeExecutionResult result;
+            try {
+                result = nodeEngine.executeNode(nodeExecution);
+            } catch (RuntimeException e) {
+                // Exception path: persist FAILED instance state before propagating, so the
+                // failure is observable in the database instead of a permanently RUNNING row.
+                instance.setStatus("FAILED");
+                baseMapper.updateById(instance);
+                log.warn("Workflow instance {} failed with exception at node {}: {}",
+                        instanceId, config.getNodeId(), e.getMessage());
+                throw e;
+            }
             if (!result.isSuccess()) {
                 instance.setStatus("FAILED");
                 baseMapper.updateById(instance);

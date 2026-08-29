@@ -11,7 +11,6 @@ import com.schemaplexai.workflow.node.NodeExecutor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -35,7 +34,10 @@ public class WorkflowNodeEngine {
                 .collect(Collectors.toMap(NodeExecutor::getNodeType, Function.identity()));
     }
 
-    @Transactional(rollbackFor = Exception.class)
+    // Deliberately NOT @Transactional: node execution wraps external calls (LLM/HTTP) and
+    // must record FAILED status durably even when the execution throws. Inside a wrapping
+    // transaction the failure-status update was rolled back along with the rethrown
+    // exception, leaving no trace of the failure in the database.
     public NodeExecutionResult executeNode(SfWorkflowNodeExecution nodeExecution) {
         NodeExecutor executor = executors.get(nodeExecution.getNodeType());
         if (executor == null) {
@@ -59,9 +61,17 @@ public class WorkflowNodeEngine {
             log.error("Node execution failed: nodeId={}, instanceId={}",
                     nodeExecution.getNodeId(), nodeExecution.getInstanceId(), e);
             nodeExecution.setStatus("FAILED");
-            nodeExecution.setOutputJson("{\"error\":\"" + e.getMessage() + "\"}");
+            nodeExecution.setOutputJson(toErrorJson(e.getMessage()));
             nodeExecutionMapper.updateById(nodeExecution);
             throw new BaseException(ResultCode.ERROR, "Node execution failed: " + e.getMessage());
+        }
+    }
+
+    private String toErrorJson(String message) {
+        try {
+            return objectMapper.writeValueAsString(Map.of("error", message != null ? message : "unknown"));
+        } catch (Exception e) {
+            return "{\"error\":\"unknown\"}";
         }
     }
 

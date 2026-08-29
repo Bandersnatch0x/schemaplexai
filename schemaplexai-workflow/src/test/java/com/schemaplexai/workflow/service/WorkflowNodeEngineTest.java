@@ -118,6 +118,26 @@ class WorkflowNodeEngineTest {
     }
 
     @Test
+    void executeNode_exception_flushesFailedStatusBeforeRethrow() throws Exception {
+        SfWorkflowNodeExecution node = new SfWorkflowNodeExecution();
+        node.setNodeId("n1");
+        node.setNodeType("SCRIPT");
+        node.setInputJson(null);
+        node.setTenantId("t1");
+
+        when(nodeExecutor.execute(any(), eq("t1")))
+                .thenThrow(new RuntimeException("Boom"));
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        assertThatThrownBy(() -> workflowNodeEngine.executeNode(node))
+                .isInstanceOf(BaseException.class);
+
+        // RUNNING update + FAILED update must both reach the mapper (no transaction to roll back)
+        assertThat(node.getStatus()).isEqualTo("FAILED");
+        verify(nodeExecutionMapper, times(2)).updateById(node);
+    }
+
+    @Test
     void executeNode_invalidInputJson_usesEmptyMap() throws Exception {
         SfWorkflowNodeExecution node = new SfWorkflowNodeExecution();
         node.setNodeId("n1");
