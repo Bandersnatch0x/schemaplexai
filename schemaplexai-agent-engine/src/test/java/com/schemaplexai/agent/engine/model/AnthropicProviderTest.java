@@ -3,6 +3,7 @@ package com.schemaplexai.agent.engine.model;
 import com.schemaplexai.agent.engine.config.LlmProviderProperties;
 import com.schemaplexai.common.exception.BaseException;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.BeforeEach;
@@ -87,12 +88,13 @@ class AnthropicProviderTest {
     @Test
     void generateShouldUseInjectedMockModel() throws Exception {
         injectMockModel("claude-3-sonnet@0.7", chatLanguageModel);
-        when(chatLanguageModel.generate(anyString())).thenReturn("Hello from Claude");
+        when(chatLanguageModel.generate(any(ChatMessage.class)))
+                .thenReturn(Response.from(new AiMessage("Hello from Claude")));
 
         String result = anthropicProvider.generate("prompt", "claude-3-sonnet", 0.7);
 
         assertEquals("Hello from Claude", result);
-        verify(chatLanguageModel).generate("prompt");
+        verify(chatLanguageModel).generate(any(ChatMessage.class));
     }
 
     @Test
@@ -114,7 +116,7 @@ class AnthropicProviderTest {
     @Test
     void generateShouldHandleModelFailure() throws Exception {
         injectMockModel("claude-3-sonnet@0.7", chatLanguageModel);
-        when(chatLanguageModel.generate(anyString()))
+        when(chatLanguageModel.generate(any(ChatMessage.class)))
                 .thenThrow(new RuntimeException("API rate limit exceeded"));
 
         BaseException ex = assertThrows(BaseException.class,
@@ -137,7 +139,7 @@ class AnthropicProviderTest {
     @Test
     void generateShouldReturnEmptyStringWhenModelReturnsNull() throws Exception {
         injectMockModel("claude-3-sonnet@0.7", chatLanguageModel);
-        when(chatLanguageModel.generate(anyString())).thenReturn(null);
+        when(chatLanguageModel.generate(any(ChatMessage.class))).thenReturn(null);
 
         String result = anthropicProvider.generate("prompt", "claude-3-sonnet", 0.7);
         assertEquals("", result);
@@ -172,19 +174,21 @@ class AnthropicProviderTest {
     @Test
     void generateShouldCacheModelForSameConfig() throws Exception {
         injectMockModel("claude-3-sonnet@0.7", chatLanguageModel);
-        when(chatLanguageModel.generate(anyString())).thenReturn("response");
+        when(chatLanguageModel.generate(any(ChatMessage.class)))
+                .thenReturn(Response.from(new AiMessage("response")));
 
         anthropicProvider.generate("prompt1", "claude-3-sonnet", 0.7);
         anthropicProvider.generate("prompt2", "claude-3-sonnet", 0.7);
 
-        verify(chatLanguageModel, times(2)).generate(anyString());
+        verify(chatLanguageModel, times(2)).generate(any(ChatMessage.class));
     }
 
     @Test
     void generateShouldUseDefaultModelWhenModelIdBlank() throws Exception {
         ChatLanguageModel defaultModel = mock(ChatLanguageModel.class);
         injectMockModel("claude-3-sonnet-20240229@0.7", defaultModel);
-        when(defaultModel.generate(anyString())).thenReturn("default model response");
+        when(defaultModel.generate(any(ChatMessage.class)))
+                .thenReturn(Response.from(new AiMessage("default model response")));
 
         String result = anthropicProvider.generate("prompt", "", 0.7);
         assertEquals("default model response", result);
@@ -195,20 +199,22 @@ class AnthropicProviderTest {
         // Anthropic temperature max is 1.0
         ChatLanguageModel hotModel = mock(ChatLanguageModel.class);
         injectMockModel("claude-3-sonnet@1.0", hotModel);
-        when(hotModel.generate(anyString())).thenReturn("hot");
+        when(hotModel.generate(any(ChatMessage.class)))
+                .thenReturn(Response.from(new AiMessage("hot")));
 
         anthropicProvider.generate("prompt", "claude-3-sonnet", 2.0);
-        verify(hotModel).generate(anyString());
+        verify(hotModel).generate(any(ChatMessage.class));
     }
 
     @Test
     void generateShouldClampTemperatureBelowMin() throws Exception {
         ChatLanguageModel coldModel = mock(ChatLanguageModel.class);
         injectMockModel("claude-3-sonnet@0.0", coldModel);
-        when(coldModel.generate(anyString())).thenReturn("cold");
+        when(coldModel.generate(any(ChatMessage.class)))
+                .thenReturn(Response.from(new AiMessage("cold")));
 
         anthropicProvider.generate("prompt", "claude-3-sonnet", -1.0);
-        verify(coldModel).generate(anyString());
+        verify(coldModel).generate(any(ChatMessage.class));
     }
 
     @Test

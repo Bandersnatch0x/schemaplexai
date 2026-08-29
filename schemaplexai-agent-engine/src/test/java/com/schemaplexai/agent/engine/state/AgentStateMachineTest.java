@@ -176,6 +176,38 @@ class AgentStateMachineTest {
     }
 
     @Test
+    void handlerRunsInsideBoundLlmCallContext() {
+        execution.setTenantId("10");
+
+        java.util.concurrent.atomic.AtomicReference<com.schemaplexai.agent.engine.cost.LlmCallContext> seen =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        doAnswer(inv -> {
+            seen.set(com.schemaplexai.agent.engine.cost.LlmCallContext.current());
+            return null;
+        }).when(handler).handle(any(AgentStateMachine.class), any(SfAgentExecution.class));
+
+        stateMachine.transition(AgentExecutionState.THINKING, execution);
+
+        assertNotNull(seen.get(), "LLM calls inside a handler must see the bound execution context");
+        assertEquals(1L, seen.get().executionId());
+        assertEquals("10", seen.get().tenantId());
+        assertEquals(42L, seen.get().agentId());
+        // Context must not leak beyond the handler dispatch
+        assertNull(com.schemaplexai.agent.engine.cost.LlmCallContext.current());
+    }
+
+    @Test
+    void llmCallContextIsClearedEvenWhenHandlerThrows() {
+        execution.setTenantId("10");
+        doThrow(new RuntimeException("boom")).when(handler)
+                .handle(any(AgentStateMachine.class), any(SfAgentExecution.class));
+
+        stateMachine.transition(AgentExecutionState.THINKING, execution);
+
+        assertNull(com.schemaplexai.agent.engine.cost.LlmCallContext.current());
+    }
+
+    @Test
     void saveExecutionCallsMapper() {
         stateMachine.saveExecution(execution);
         verify(executionMapper).updateById(execution);

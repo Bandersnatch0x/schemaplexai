@@ -1,5 +1,6 @@
 package com.schemaplexai.agent.engine.state;
 
+import com.schemaplexai.agent.engine.cost.LlmCallContext;
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.mapper.SfAgentExecutionMapper;
 import com.schemaplexai.agent.engine.service.ExecutionConcurrencyService;
@@ -77,6 +78,14 @@ public class AgentStateMachine {
 
         AgentStateHandler handler = handlers.get(newState);
         if (handler != null) {
+            // Bind the execution context for the handler thread so every LLM
+            // call performed by this handler (inline reasoning, strategies,
+            // planning, compaction) can be attributed to this execution for
+            // cost collection. The previous context is restored afterwards to
+            // keep nested transitions safe.
+            LlmCallContext previousContext = LlmCallContext.current();
+            LlmCallContext.set(new LlmCallContext(
+                    execution.getId(), execution.getTenantId(), execution.getAgentId()));
             try {
                 // Execute handler through the middleware pipeline
                 final AgentStateMachine self = this;
@@ -94,6 +103,8 @@ public class AgentStateMachine {
                     removeExecution(execution.getId());
                 }
                 return;
+            } finally {
+                LlmCallContext.set(previousContext);
             }
         }
 
