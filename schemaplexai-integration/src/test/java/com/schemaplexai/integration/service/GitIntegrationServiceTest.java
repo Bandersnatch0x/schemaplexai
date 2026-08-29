@@ -3,6 +3,7 @@ package com.schemaplexai.integration.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.integration.config.IntegrationOAuthProperties;
 import com.schemaplexai.integration.security.IntegrationCredentialEncryptor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,8 +50,23 @@ class GitIntegrationServiceTest {
     @BeforeEach
     void setUp() {
         encryptor = new IntegrationCredentialEncryptor(MASTER_SECRET);
-        gitService = new GitIntegrationService(new ObjectMapper(), restTemplate, encryptor);
+        gitService = new GitIntegrationService(new ObjectMapper(), restTemplate, encryptor, oauthProperties());
         gitService.clearStore();
+    }
+
+    static IntegrationOAuthProperties oauthProperties() {
+        IntegrationOAuthProperties props = new IntegrationOAuthProperties();
+        IntegrationOAuthProperties.Provider github = new IntegrationOAuthProperties.Provider();
+        github.setClientId("test-client-id");
+        github.setClientSecret("test-client-secret");
+        github.setTokenUrl("https://github.com/login/oauth/access_token");
+        props.getProviders().put("github", github);
+        IntegrationOAuthProperties.Provider gitlab = new IntegrationOAuthProperties.Provider();
+        gitlab.setClientId("gitlab-client-id");
+        gitlab.setClientSecret("gitlab-client-secret");
+        gitlab.setTokenUrl("https://gitlab.com/oauth/token");
+        props.getProviders().put("gitlab", gitlab);
+        return props;
     }
 
     // --- registerRepository ---
@@ -319,8 +335,16 @@ class GitIntegrationServiceTest {
     // --- handleOAuthCallback ---
 
     @Test
+    void handleOAuthCallback_nullTenant_throwsParamError() {
+        assertThatThrownBy(() -> gitService.handleOAuthCallback(null, "github", "code"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+    }
+
+    @Test
     void handleOAuthCallback_nullProvider_throwsParamError() {
-        assertThatThrownBy(() -> gitService.handleOAuthCallback(null, "code"))
+        assertThatThrownBy(() -> gitService.handleOAuthCallback(TENANT_ID, null, "code"))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.PARAM_ERROR.getCode());
@@ -328,7 +352,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void handleOAuthCallback_nullCode_throwsParamError() {
-        assertThatThrownBy(() -> gitService.handleOAuthCallback("github", null))
+        assertThatThrownBy(() -> gitService.handleOAuthCallback(TENANT_ID, "github", null))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.PARAM_ERROR.getCode());
@@ -336,8 +360,13 @@ class GitIntegrationServiceTest {
 
     @Test
     void handleOAuthCallback_success() {
-        gitService.handleOAuthCallback("github", "authcode123");
-        // no exception
+        when(restTemplate.exchange(eq("https://github.com/login/oauth/access_token"), eq(HttpMethod.POST), any(HttpEntity.class), eq(String.class)))
+                .thenReturn(ResponseEntity.ok("{\"access_token\":\"gho_authcode_exchange\",\"token_type\":\"bearer\"}"));
+
+        Map<String, Object> result = gitService.handleOAuthCallback(TENANT_ID, "github", "authcode123");
+
+        assertThat(result.get("provider")).isEqualTo("github");
+        assertThat(result.get("status")).isEqualTo("connected");
     }
 
     // --- handleWebhook ---

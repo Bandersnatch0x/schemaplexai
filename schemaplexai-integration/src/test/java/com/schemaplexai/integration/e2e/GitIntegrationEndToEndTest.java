@@ -37,8 +37,18 @@ class GitIntegrationEndToEndTest {
 
     @BeforeEach
     void setUp() {
+        com.schemaplexai.integration.config.IntegrationOAuthProperties oauth =
+                new com.schemaplexai.integration.config.IntegrationOAuthProperties();
+        com.schemaplexai.integration.config.IntegrationOAuthProperties.Provider github =
+                new com.schemaplexai.integration.config.IntegrationOAuthProperties.Provider();
+        github.setClientId("e2e-client-id");
+        github.setClientSecret("e2e-client-secret");
+        github.setTokenUrl("https://github.com/login/oauth/access_token");
+        oauth.getProviders().put("github", github);
+
         gitService = new GitIntegrationService(new com.fasterxml.jackson.databind.ObjectMapper(), restTemplate,
-                new com.schemaplexai.integration.security.IntegrationCredentialEncryptor("e2e-test-master-secret"));
+                new com.schemaplexai.integration.security.IntegrationCredentialEncryptor("e2e-test-master-secret"),
+                oauth);
         // Clear internal state for test isolation
         gitService.clearStore();
     }
@@ -91,7 +101,7 @@ class GitIntegrationEndToEndTest {
     @Test
     @DisplayName("E2E: OAuth callback validation")
     void oauthCallbackValidation() {
-        assertThatThrownBy(() -> gitService.handleOAuthCallback(null, "code"))
+        assertThatThrownBy(() -> gitService.handleOAuthCallback(TENANT_ID, null, "code"))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.PARAM_ERROR.getCode());

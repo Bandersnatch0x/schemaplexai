@@ -4,14 +4,18 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.integration.config.IntegrationOAuthProperties;
 import com.schemaplexai.integration.security.IntegrationCredentialEncryptor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.BufferedReader;
@@ -36,12 +40,15 @@ public class GitIntegrationService {
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
     private final IntegrationCredentialEncryptor credentialEncryptor;
+    private final IntegrationOAuthProperties oauthProperties;
 
     // In-memory repository metadata store (key: repoId).
     // Access tokens are stored ONLY as AES-256-GCM ciphertext ("accessTokenCipher");
     // plaintext tokens never reside in this store.
     private final Map<Long, Map<String, Object>> repoStore = new ConcurrentHashMap<>();
     private final Map<String, Map<String, Object>> webhookStore = new ConcurrentHashMap<>();
+    // OAuth access tokens per tenant/provider — ciphertext only (key: tenantId -> provider).
+    private final Map<Long, Map<String, Map<String, Object>>> oauthTokenStore = new ConcurrentHashMap<>();
     private long repoIdSequence = 1;
 
     // --- Repository CRUD ---
@@ -106,6 +113,7 @@ public class GitIntegrationService {
     public void clearStore() {
         repoStore.clear();
         webhookStore.clear();
+        oauthTokenStore.clear();
         repoIdSequence = 1;
     }
 
@@ -272,15 +280,110 @@ public class GitIntegrationService {
 
     // --- Webhook Handling ---
 
-    public void handleOAuthCallback(String provider, String code) {
-        log.info("Handle OAuth callback for provider: {}, code: {}", provider, code);
-        // Phase 1: Store authorization code, exchange for access token via provider API
-        // Phase 2: Persist token securely for subsequent API calls
-        // For now, log the callback and acknowledge receipt
+    /**
+     * Handle the OAuth authorization callback: exchange the authorization code for
+     * an access token at the provider's token endpoint, then persist the token
+     * encrypted (AES-256-GCM, tenant-scoped key). The plaintext token exists only
+     * inside this call frame; failures degrade to structured {@link BaseException}s
+     * and nothing is stored.
+     *
+     * @return connection status (provider, status, connectedAt) — never token material
+     */
+    public Map<String, Object> handleOAuthCallback(Long tenantId, String provider, String code) {
+        log.info("Handle OAuth callback for provider: {}", provider);
+        if (tenantId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "Tenant ID is required");
+        }
         if (provider == null || provider.isBlank() || code == null || code.isBlank()) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Provider and authorization code are required");
         }
-        log.info("OAuth callback acknowledged for provider: {}", provider);
+
+        String providerKey = provider.toLowerCase();
+        IntegrationOAuthProperties.Provider providerConfig = oauthProperties.provider(providerKey);
+        if (providerConfig == null
+                || providerConfig.getClientId() == null || providerConfig.getClientId().isBlank()
+                || providerConfig.getClientSecret() == null || providerConfig.getClientSecret().isBlank()
+                || providerConfig.getTokenUrl() == null || providerConfig.getTokenUrl().isBlank()) {
+            log.warn("OAuth callback received for unconfigured provider: {}", providerKey);
+            throw new BaseException(ResultCode.ERROR, "OAuth is not configured for provider: " + providerKey);
+        }
+
+        String accessToken = exchangeAuthorizationCode(providerConfig, providerKey, code);
+
+        // Encrypt before persisting; only ciphertext enters the store.
+        Map<String, Object> record = new ConcurrentHashMap<>();
+        record.put("provider", providerKey);
+        record.put("tokenCipher", credentialEncryptor.encrypt(accessToken, tenantId));
+        record.put("status", "connected");
+        record.put("connectedAt", Instant.now().toString());
+        oauthTokenStore.computeIfAbsent(tenantId, k -> new ConcurrentHashMap<>()).put(providerKey, record);
+        log.info("OAuth access token stored (encrypted) for provider: {}", providerKey);
+
+        Map<String, Object> result = new ConcurrentHashMap<>();
+        result.put("provider", providerKey);
+        result.put("status", "connected");
+        result.put("connectedAt", record.get("connectedAt"));
+        return result;
+    }
+
+    /**
+     * Connection status + stored ciphertext for a tenant/provider, or null when the
+     * tenant has no OAuth connection for that provider. Plaintext is never returned.
+     */
+    public Map<String, Object> getOAuthConnection(Long tenantId, String provider) {
+        if (tenantId == null || provider == null) {
+            return null;
+        }
+        Map<String, Map<String, Object>> byProvider = oauthTokenStore.get(tenantId);
+        if (byProvider == null) {
+            return null;
+        }
+        Map<String, Object> record = byProvider.get(provider.toLowerCase());
+        return record != null ? new ConcurrentHashMap<>(record) : null;
+    }
+
+    /** Exchange the authorization code for an access token at the provider endpoint. */
+    private String exchangeAuthorizationCode(IntegrationOAuthProperties.Provider config,
+                                             String providerKey, String code) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+        headers.set("Accept", "application/json");
+
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("grant_type", "authorization_code");
+        form.add("code", code);
+        form.add("client_id", config.getClientId());
+        form.add("client_secret", config.getClientSecret());
+        if (config.getRedirectUri() != null && !config.getRedirectUri().isBlank()) {
+            form.add("redirect_uri", config.getRedirectUri());
+        }
+
+        try {
+            HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(form, headers);
+            ResponseEntity<String> response = restTemplate.exchange(
+                    config.getTokenUrl(), HttpMethod.POST, request, String.class);
+
+            JsonNode root = objectMapper.readTree(response.getBody() != null ? response.getBody() : "{}");
+            if (root.hasNonNull("error")) {
+                String description = root.path("error_description").asText(root.path("error").asText());
+                log.warn("OAuth token exchange rejected by provider {}: {}", providerKey, description);
+                throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED,
+                        "OAuth token exchange rejected: " + description);
+            }
+            String accessToken = root.path("access_token").asText("");
+            if (accessToken.isBlank()) {
+                log.warn("OAuth token exchange returned no access_token for provider {}", providerKey);
+                throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED,
+                        "OAuth token exchange returned no access token");
+            }
+            return accessToken;
+        } catch (BaseException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("OAuth token exchange failed for provider {}", providerKey, e);
+            throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED,
+                    "OAuth token exchange failed: " + e.getMessage());
+        }
     }
 
     public void handleWebhook(String provider, String payload) {
