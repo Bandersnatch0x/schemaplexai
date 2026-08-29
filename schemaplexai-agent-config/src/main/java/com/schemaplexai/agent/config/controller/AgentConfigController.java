@@ -1,10 +1,12 @@
 package com.schemaplexai.agent.config.controller;
 
+import com.schemaplexai.agent.config.dto.AgentStatsVO;
 import com.schemaplexai.agent.config.entity.SfAgent;
 import com.schemaplexai.agent.config.entity.SfAgentConfig;
 import com.schemaplexai.model.entity.agent.SfAgentShadowConfig;
 import com.schemaplexai.agent.config.entity.SfAgentToolBinding;
 import com.schemaplexai.agent.config.service.AgentConfigService;
+import com.schemaplexai.agent.config.service.AgentStatsService;
 import com.schemaplexai.agent.config.service.ShadowConfigService;
 import com.schemaplexai.common.result.Result;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,6 +24,17 @@ public class AgentConfigController {
 
     private final AgentConfigService agentConfigService;
     private final ShadowConfigService shadowConfigService;
+    private final AgentStatsService agentStatsService;
+
+    /**
+     * Tenant-scoped statistics for the Cockpit page (issue 927). The literal
+     * {@code /agents/stats} mapping takes precedence over {@code /agents/{id}}.
+     */
+    @GetMapping("/agents/stats")
+    @Operation(summary = "Tenant-scoped agent statistics (Cockpit)")
+    public Result<AgentStatsVO> getAgentStats() {
+        return Result.success(agentStatsService.getStats());
+    }
 
     @GetMapping("/agents")
     @Operation(summary = "List all agents")
