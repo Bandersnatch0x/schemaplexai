@@ -13,6 +13,16 @@
 > model, dao, integration, ops, and agent-engine reactor with 1843 agent-engine
 > tests run, 0 failures, 0 errors, and 4 skipped. The percentage table above is
 > still the 2026-05-06 JaCoCo baseline until a fresh `mvn clean verify` is run.
+>
+> Update 2026-08-30（文档漂移注记，票据 928）：上述 2026-05-25 全绿记录已被
+> 2026-07-02 的记录运行**推翻**——该次运行中 `schemaplexai-agent-engine` 存在
+> 2 failures + 1 error（`AgentRuntimeOrchestratorTest` 2 失败、
+> `AgentExecutionLifecycleServiceTest` 1 错误），其后全仓无重跑产物；证据见
+> `docs/reviews/spec-compliance-2026-08-29/requirements/release-readiness.md`
+> REQ-05/REQ-18（发布门禁 "0 failures" 被该红运行证伪）。截至 2026-08-30，
+> Spec 合规修复批（票据 901b 等，状态见 `.scratch/spec-compliance-fix/issues/REGISTRY.md`）
+> 处理后，本 worktree 2026-08-30 运行 agent-engine 1,874 tests / 0 failures /
+> 0 errors / 4 skipped（实测口径）；本文档其余数字仍为各自标注日期的历史记录。
 
 ---
 
@@ -70,7 +80,7 @@ schemaplexai-gateway:       18 passed
 schemaplexai-web:          140 passed (2026-05-21 web reactor run)
 schemaplexai-system:        129 passed (2026-05-24 system module run)
 schemaplexai-agent-config:  85 passed (2026-05-24 agent-config reactor run)
-schemaplexai-agent-engine: 1844 run, 0 failures, 0 errors, 4 skipped (2026-05-25 agent-engine reactor run)
+schemaplexai-agent-engine: 1844 run, 0 failures, 0 errors, 4 skipped (2026-05-25 agent-engine reactor run；注：该全绿记录被 2026-07-02 红运行推翻，见文首 2026-08-30 注记)
 schemaplexai-integration:    0 passed (no tests written)
 schemaplexai-context:      228 passed (2026-05-24 context module run)
 schemaplexai-quality:      271 passed (2026-05-25 quality reactor run)

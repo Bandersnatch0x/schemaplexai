@@ -1,11 +1,11 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-08-29T15:39:37Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-08-29T17:42:07Z -->
 
 ---
 title: Wiki Operation Log
 type: log
 source: auto-generated
-creation_date: 2026-08-29
-update_date: 2026-08-29
+creation_date: 2026-08-30
+update_date: 2026-08-30
 tags: [wiki, log, maintenance]
 confidence: high
 ---
@@ -14,46 +14,46 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
-## 2026-08-29 — fix(ui): remove unused imports to restore tsc build
-d5706fd
-## 2026-05-29 — chore: update wiki sync stamp
-524f885
-## 2026-05-29 — chore: refresh wiki sync artifacts
-01bfe59
-## 2026-05-29 — chore: sync generated wiki state
-b6b4bbd
-## 2026-05-29 — chore: checkpoint current implementation and backlog
-60f6fa4
-## 2026-05-10 — chore: update wiki sync stamp after M7 plan completion
-6e4dbf2
-## 2026-05-10 — feat: M7 Execution Control Plane infrastructure completion
-155a4cc
-## 2026-05-09 — test: M4.5 Cost Projection follow-up — BudgetServiceImpl and RabbitMqConfig tests
-0519c4e
-## 2026-05-09 — feat: M6 Execution Control Plane infrastructure
-8069545
-## 2026-05-09 — test(web): M4.2 SseController execution-specific subscription tests
-222c141
-## 2026-05-09 — feat(agent-engine): M4.3 Event Replay + Gap Recovery, M5.1 Compliance Reporting API
-2793d69
-## 2026-05-09 — feat(agent-engine): M4.2/M4.4/M4.5 SSE Streaming, Audit Trail, and Cost Projection
-51b27f7
-## 2026-05-09 — feat(agent-engine): M4.1 Outbox Publisher with retry, backoff, and DEAD letter handling
-5f42f0f
-## 2026-05-09 — feat(workflow): Phase 3 BPMN approval workflow with escalation and SLA policies
-9db0b1c
-## 2026-05-09 — feat(agent-engine): Phase 0-2 execution control plane — event log, approval, state machine
-0331219
-## 2026-05-09 — docs: update wiki for MAF Phase 1-3 + Tessera P0-P1 completion
-08d38a0
-## 2026-05-09 — test: v1 coverage for model, dao, web, integration, context, gateway
-a747485
-## 2026-05-09 — feat: Tessera P1 Task Branch Manager
-3087001
-## 2026-05-09 — feat: MAF Phase 3 Group Chat + Tessera P1 External Agent SPI
-580cb73
-## 2026-05-09 — test(common): add TenantRedisKeyResolverTest — 24 tests, 91% redis pkg coverage
-3936006
+## 2026-08-30 — fix(workflow): reject non-published templates before instance trigger (issue 923)
+1f6062d
+## 2026-08-30 — fix(integration): bound external calls with 30s timeouts and degrade on expiry (issue 918)
+d4b85ac
+## 2026-08-30 — fix(agent-engine): write failedToolName on failure path so retry replays only the failed call (issue 908)
+7b9ef46
+## 2026-08-30 — fix(ops): unify budget threshold to decimal, hourly alert job with notification chain (issue 921)
+37d1de3
+## 2026-08-30 — fix(integration): tenant-scope Git repository/webhook in-memory stores (issue 917)
+e051bce
+## 2026-08-30 — fix(agent-engine): wire real provider into TOOL_CALLING structured parse (issue 905)
+6854c31
+## 2026-08-30 — fix(agent-engine): allow null fromState in state-transition event payload (issue 929)
+7bf3a6e
+## 2026-08-30 — fix(web): wire pagination/tenant interceptors and bound page params (issue 926)
+086e302
+## 2026-08-30 — fix(integration): implement OAuth authorization_code exchange with encrypted token storage (issue 916)
+8552f44
+## 2026-08-30 — fix(ops): configurable model pricing, 6-digit cost precision, claude fallback (issue 920)
+9466cef
+## 2026-08-30 — fix(gateway): tenant existence validation with Caffeine+Redis channel (issue 913)
+703d896
+## 2026-08-30 — fix(integration): encrypt Git credentials at rest, stop embedding tokens in clone URLs (issue 915)
+fad2188
+## 2026-08-30 — fix(gateway): converge JWT whitelist to spec set, fix change-password/logout (issue 912)
+e28965b
+## 2026-08-30 — fix(gateway): run rate limiting before the JWT auth short-circuit (issue 911)
+6795f6a
+## 2026-08-30 — fix: unify spec lifecycle status vocabulary with DDL VARCHAR semantics
+d8d1095
+## 2026-08-30 — fix: align quality/MCP entity status types with DDL VARCHAR semantics
+04dcc3a
+## 2026-08-30 — fix(agent-engine): mutable GATE_BLOCKED event payload
+635aaad
+## 2026-08-30 — fix(gateway): make lb:// routes resolvable via static instance source (issue 910)
+5bc0e53
+## 2026-08-30 — fix(db): unify sf_notification DDL into 03 and drop conflicting 04
+cdcc318
+## 2026-08-29 — fix(agent-engine): align pause tests with tenant-scoped Redis key
+99cb3e7
 
 ---
 
