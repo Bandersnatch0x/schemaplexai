@@ -58,8 +58,9 @@ public class AgentRuntimeOrchestrator {
      * @param executionId the execution ID to check
      * @return true if paused, false otherwise
      */
-    private boolean isPaused(Long executionId) {
-        String key = String.format(CommonConstants.REDIS_KEY_EXECUTION_PAUSED, executionId);
+    private boolean isPaused(Long executionId, String tenantId) {
+        String key = com.schemaplexai.common.redis.TenantRedisKeyResolver.executionPaused(
+                tenantId, String.valueOf(executionId));
         String value = redisTemplate.opsForValue().get(key);
         return value != null;
     }
@@ -118,7 +119,7 @@ public class AgentRuntimeOrchestrator {
             int iteration = 0;
             while (iteration < MAX_ITERATIONS) {
                 // Check for external pause signal (Redis key set by pauseExecution API)
-                if (isPaused(execution.getId())) {
+                if (isPaused(execution.getId(), tenantId)) {
                     log.info("Execution {} pause signal detected, transitioning to PAUSED", execution.getId());
                     stateMachine.transition(AgentExecutionState.PAUSED, execution);
                     break;
@@ -140,7 +141,7 @@ public class AgentRuntimeOrchestrator {
             }
             roundCount = iteration;
 
-            if (iteration >= MAX_ITERATIONS && !cancelled && !isPaused(execution.getId())) {
+            if (iteration >= MAX_ITERATIONS && !cancelled && !isPaused(execution.getId(), tenantId)) {
                 log.warn("Execution {} hit max iterations, forcing completion", execution.getId());
                 stateMachine.transition(AgentExecutionState.COMPLETED, execution);
             }

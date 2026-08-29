@@ -10,7 +10,6 @@ import com.schemaplexai.agent.engine.service.ExecutionEventService;
 import com.schemaplexai.agent.engine.state.AgentExecutionState;
 import com.schemaplexai.agent.engine.state.AgentStateMachine;
 import com.schemaplexai.agent.engine.tool.sandbox.SandboxSession;
-import com.schemaplexai.common.constants.CommonConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -60,7 +59,8 @@ public class AgentExecutionLifecycleService {
         if (execution == null) {
             throw new IllegalArgumentException("Execution not found: " + executionId);
         }
-        String key = String.format(CommonConstants.REDIS_KEY_EXECUTION_PAUSED, executionId);
+        String key = com.schemaplexai.common.redis.TenantRedisKeyResolver.executionPaused(
+                execution.getTenantId(), String.valueOf(executionId));
         redisTemplate.opsForValue().set(key, reason.name(), Duration.ofHours(24));
         stateMachine.transition(AgentExecutionState.PAUSED, execution);
         log.info("Execution {} paused, reason: {}", executionId, reason);
@@ -71,7 +71,8 @@ public class AgentExecutionLifecycleService {
         if (execution == null) {
             throw new IllegalArgumentException("Execution not found: " + executionId);
         }
-        String key = String.format(CommonConstants.REDIS_KEY_EXECUTION_PAUSED, executionId);
+        String key = com.schemaplexai.common.redis.TenantRedisKeyResolver.executionPaused(
+                execution.getTenantId(), String.valueOf(executionId));
         redisTemplate.delete(key);
         // Fix: PAUSED -> RESUMING (not READY) so ResumingStateHandler loads snapshot and restores context
         stateMachine.transition(AgentExecutionState.RESUMING, execution);
@@ -83,7 +84,8 @@ public class AgentExecutionLifecycleService {
         if (execution == null) {
             throw new IllegalArgumentException("Execution not found: " + executionId);
         }
-        String key = String.format(CommonConstants.REDIS_KEY_EXECUTION_PAUSED, executionId);
+        String key = com.schemaplexai.common.redis.TenantRedisKeyResolver.executionPaused(
+                execution.getTenantId(), String.valueOf(executionId));
         redisTemplate.delete(key);
 
         // Signal the orchestrator to stop its loop

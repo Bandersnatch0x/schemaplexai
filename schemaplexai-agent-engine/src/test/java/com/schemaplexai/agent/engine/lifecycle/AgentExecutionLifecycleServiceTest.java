@@ -79,6 +79,7 @@ class AgentExecutionLifecycleServiceTest {
         when(redisTemplate.opsForValue()).thenReturn(valueOps);
         SfAgentExecution execution = new SfAgentExecution();
         execution.setId(1L);
+        execution.setTenantId("test-tenant");
         when(executionMapper.selectById(1L)).thenReturn(execution);
 
         lifecycleService.pauseExecution(1L, PauseReason.USER_REQUEST);
@@ -91,6 +92,7 @@ class AgentExecutionLifecycleServiceTest {
     void resumeExecutionClearsRedisAndTransitionsToResuming() {
         SfAgentExecution execution = new SfAgentExecution();
         execution.setId(1L);
+        execution.setTenantId("test-tenant");
         when(executionMapper.selectById(1L)).thenReturn(execution);
 
         lifecycleService.resumeExecution(1L);
@@ -103,6 +105,7 @@ class AgentExecutionLifecycleServiceTest {
     void cancelExecutionRemovesStateAndTransitionsToCancelled() {
         SfAgentExecution execution = new SfAgentExecution();
         execution.setId(1L);
+        execution.setTenantId("test-tenant");
         when(executionMapper.selectById(1L)).thenReturn(execution);
 
         lifecycleService.cancelExecution(1L);
