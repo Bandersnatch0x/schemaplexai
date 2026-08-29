@@ -216,6 +216,62 @@ class WorkflowInstanceServiceImplTest {
     }
 
     @Test
+    void trigger_upstreamOutputInjectedIntoDownstreamInput() {
+        SfWorkflowInstance instance = new SfWorkflowInstance();
+        instance.setId(1L);
+        instance.setTemplateId(10L);
+        instance.setStatus("PENDING");
+        when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
+
+        SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setId(10L);
+        template.setStatus("deployed");
+        template.setNodeConfigJson("["
+                + "{\"nodeId\":\"n1\",\"nodeType\":\"AI_MODEL\",\"input\":{\"prompt\":\"start\"}},"
+                + "{\"nodeId\":\"n2\",\"nodeType\":\"AI_MODEL\",\"input\":{\"prompt\":\"use ${input.token} and ${n1.token}\"}}"
+                + "]");
+        when(templateMapper.selectById(10L)).thenReturn(template);
+        when(nodeExecutionMapper.insert(any())).thenReturn(1);
+        when(nodeEngine.executeNode(any()))
+                .thenReturn(NodeExecutionResult.success(Map.of("token", "abc")))
+                .thenReturn(NodeExecutionResult.success());
+
+        workflowInstanceService.trigger(1L);
+
+        org.mockito.ArgumentCaptor<SfWorkflowNodeExecution> captor =
+                org.mockito.ArgumentCaptor.forClass(SfWorkflowNodeExecution.class);
+        verify(nodeExecutionMapper, times(2)).insert(captor.capture());
+        assertThat(captor.getAllValues().get(0).getInputJson()).contains("start");
+        assertThat(captor.getAllValues().get(1).getInputJson()).contains("use abc and abc");
+        assertThat(instance.getStatus()).isEqualTo("COMPLETED");
+    }
+
+    @Test
+    void trigger_noPlaceholderResolutionWithoutUpstream_placeholderPreserved() {
+        SfWorkflowInstance instance = new SfWorkflowInstance();
+        instance.setId(1L);
+        instance.setTemplateId(10L);
+        instance.setStatus("PENDING");
+        when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
+
+        SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setId(10L);
+        template.setStatus("deployed");
+        template.setNodeConfigJson(
+                "[{\"nodeId\":\"n1\",\"nodeType\":\"AI_MODEL\",\"input\":{\"prompt\":\"use ${input.missing}\"}}]");
+        when(templateMapper.selectById(10L)).thenReturn(template);
+        when(nodeExecutionMapper.insert(any())).thenReturn(1);
+        when(nodeEngine.executeNode(any())).thenReturn(NodeExecutionResult.success());
+
+        workflowInstanceService.trigger(1L);
+
+        org.mockito.ArgumentCaptor<SfWorkflowNodeExecution> captor =
+                org.mockito.ArgumentCaptor.forClass(SfWorkflowNodeExecution.class);
+        verify(nodeExecutionMapper).insert(captor.capture());
+        assertThat(captor.getValue().getInputJson()).contains("${input.missing}");
+    }
+
+    @Test
     void trigger_nodeThrowsException_marksInstanceFailedAndRethrows() {
         SfWorkflowInstance instance = new SfWorkflowInstance();
         instance.setId(1L);

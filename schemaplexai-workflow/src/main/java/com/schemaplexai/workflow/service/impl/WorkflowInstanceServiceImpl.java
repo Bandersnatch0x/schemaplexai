@@ -12,6 +12,7 @@ import com.schemaplexai.workflow.mapper.SfWorkflowInstanceMapper;
 import com.schemaplexai.workflow.mapper.SfWorkflowNodeExecutionMapper;
 import com.schemaplexai.workflow.mapper.SfWorkflowTemplateMapper;
 import com.schemaplexai.workflow.node.NodeExecutionResult;
+import com.schemaplexai.workflow.service.NodeVariableSubstitutor;
 import com.schemaplexai.workflow.service.TopologyHasher;
 import com.schemaplexai.workflow.service.TopologyMismatchException;
 import com.schemaplexai.workflow.service.WorkflowInstanceService;
@@ -20,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -81,17 +83,24 @@ public class WorkflowInstanceServiceImpl extends ServiceImpl<SfWorkflowInstanceM
 
         List<NodeConfig> nodeConfigs = parseNodeConfig(template.getNodeConfigJson());
 
+        // Inter-node data flow (spec §3.2): upstream node outputs become available to
+        // downstream nodes. "input" is the merged output of all upstream nodes; each
+        // upstream node is also addressable individually by its nodeId.
+        Map<String, Object> mergedUpstreamOutput = new HashMap<>();
+        Map<String, Object> nodeOutputs = new HashMap<>();
+
         for (NodeConfig config : nodeConfigs) {
+            Map<String, Object> substitutionContext = new HashMap<>(nodeOutputs);
+            substitutionContext.put("input", mergedUpstreamOutput);
+            Map<String, Object> resolvedInput =
+                    NodeVariableSubstitutor.substitute(config.getInput(), substitutionContext);
+
             SfWorkflowNodeExecution nodeExecution = new SfWorkflowNodeExecution();
             nodeExecution.setInstanceId(instanceId);
             nodeExecution.setNodeId(config.getNodeId());
             nodeExecution.setNodeType(config.getNodeType());
             nodeExecution.setStatus("PENDING");
-            try {
-                nodeExecution.setInputJson(objectMapper.writeValueAsString(config.getInput()));
-            } catch (Exception e) {
-                nodeExecution.setInputJson("{}");
-            }
+            nodeExecution.setInputJson(writeJson(resolvedInput));
             nodeExecutionMapper.insert(nodeExecution);
 
             NodeExecutionResult result;
@@ -112,11 +121,25 @@ public class WorkflowInstanceServiceImpl extends ServiceImpl<SfWorkflowInstanceM
                 log.warn("Workflow instance {} failed at node {}", instanceId, config.getNodeId());
                 return;
             }
+
+            // Propagate this node's output to downstream nodes.
+            if (result.getOutput() != null) {
+                mergedUpstreamOutput.putAll(result.getOutput());
+                nodeOutputs.put(config.getNodeId(), result.getOutput());
+            }
         }
 
         instance.setStatus("COMPLETED");
         baseMapper.updateById(instance);
         log.info("Workflow instance {} completed successfully", instanceId);
+    }
+
+    private String writeJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (Exception e) {
+            return "{}";
+        }
     }
 
     private List<NodeConfig> parseNodeConfig(String nodeConfigJson) {
