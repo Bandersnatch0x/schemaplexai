@@ -28,6 +28,30 @@ public class WorkflowNodeEngine {
 
     private Map<String, NodeExecutor> executors;
 
+    // Retry policy (spec §8: 3 retries with exponential backoff). Only transient
+    // (retryable) failures and thrown exceptions are retried; deterministic failures and
+    // terminal TIMEOUT results are not. Injectable so tests run without real sleeping.
+    private int maxRetries = 3;
+    private long retryBaseDelayMillis = 1000L;
+    private RetrySleeper retrySleeper = Thread::sleep;
+
+    @FunctionalInterface
+    public interface RetrySleeper {
+        void sleep(long millis) throws InterruptedException;
+    }
+
+    public void setMaxRetries(int maxRetries) {
+        this.maxRetries = maxRetries;
+    }
+
+    public void setRetryBaseDelayMillis(long retryBaseDelayMillis) {
+        this.retryBaseDelayMillis = retryBaseDelayMillis;
+    }
+
+    public void setRetrySleeper(RetrySleeper retrySleeper) {
+        this.retrySleeper = retrySleeper;
+    }
+
     @jakarta.annotation.PostConstruct
     public void init() {
         this.executors = executorList.stream()
@@ -48,22 +72,57 @@ public class WorkflowNodeEngine {
         nodeExecution.setStatus("RUNNING");
         nodeExecutionMapper.updateById(nodeExecution);
 
-        try {
-            Map<String, Object> input = parseInput(nodeExecution.getInputJson());
-            NodeExecutionResult result = executor.execute(input, nodeExecution.getTenantId());
+        Map<String, Object> input = parseInput(nodeExecution.getInputJson());
 
-            nodeExecution.setStatus(result.isSuccess() ? "COMPLETED" : "FAILED");
+        NodeExecutionResult result = null;
+        Exception lastException = null;
+
+        for (int attempt = 0; attempt <= maxRetries; attempt++) {
+            if (attempt > 0) {
+                sleepBeforeRetry(attempt, nodeExecution.getNodeId());
+            }
+            try {
+                result = executor.execute(input, nodeExecution.getTenantId());
+                lastException = null;
+                // Success and terminal TIMEOUT stop the loop; deterministic failures stop
+                // too (retrying cannot help). Only transient failures continue to retry.
+                if (result.isSuccess() || result.isTimeout() || !result.isRetryable()) {
+                    break;
+                }
+            } catch (Exception e) {
+                lastException = e;
+                result = null;
+            }
+        }
+
+        if (lastException != null) {
+            log.error("Node execution failed after {} attempt(s): nodeId={}, instanceId={}",
+                    maxRetries + 1, nodeExecution.getNodeId(), nodeExecution.getInstanceId(), lastException);
+            nodeExecution.setStatus("FAILED");
+            nodeExecution.setOutputJson(toErrorJson(lastException.getMessage()));
+            nodeExecutionMapper.updateById(nodeExecution);
+            throw new BaseException(ResultCode.ERROR, "Node execution failed: " + lastException.getMessage());
+        }
+
+        String status = result.isSuccess() ? "COMPLETED" : (result.isTimeout() ? "TIMEOUT" : "FAILED");
+        try {
+            nodeExecution.setStatus(status);
             nodeExecution.setOutputJson(objectMapper.writeValueAsString(result.getOutput()));
             nodeExecutionMapper.updateById(nodeExecution);
-
-            return result;
         } catch (Exception e) {
-            log.error("Node execution failed: nodeId={}, instanceId={}",
-                    nodeExecution.getNodeId(), nodeExecution.getInstanceId(), e);
-            nodeExecution.setStatus("FAILED");
-            nodeExecution.setOutputJson(toErrorJson(e.getMessage()));
-            nodeExecutionMapper.updateById(nodeExecution);
-            throw new BaseException(ResultCode.ERROR, "Node execution failed: " + e.getMessage());
+            log.warn("Failed to persist node execution result for nodeId={}", nodeExecution.getNodeId(), e);
+        }
+        return result;
+    }
+
+    private void sleepBeforeRetry(int attempt, String nodeId) {
+        long delay = retryBaseDelayMillis * (1L << (attempt - 1));
+        log.info("Retrying node {} (attempt {}/{}) after {}ms backoff",
+                nodeId, attempt, maxRetries, delay);
+        try {
+            retrySleeper.sleep(delay);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 

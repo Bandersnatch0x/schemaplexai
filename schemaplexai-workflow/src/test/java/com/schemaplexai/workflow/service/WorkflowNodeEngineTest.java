@@ -42,6 +42,9 @@ class WorkflowNodeEngineTest {
     void init() {
         when(nodeExecutor.getNodeType()).thenReturn("SCRIPT");
         ReflectionTestUtils.setField(workflowNodeEngine, "executorList", List.of(nodeExecutor));
+        // Keep retry tests instant: no real sleeping, zero backoff.
+        workflowNodeEngine.setRetrySleeper(millis -> { });
+        workflowNodeEngine.setRetryBaseDelayMillis(0);
         workflowNodeEngine.init();
     }
 
@@ -155,5 +158,112 @@ class WorkflowNodeEngineTest {
         NodeExecutionResult result = workflowNodeEngine.executeNode(node);
 
         assertThat(result.isSuccess()).isTrue();
+    }
+
+    // ------------------------------------------------------------------
+    // retry policy (spec §8: 3 retries, exponential backoff)
+    // ------------------------------------------------------------------
+
+    private SfWorkflowNodeExecution retryableNode() {
+        SfWorkflowNodeExecution node = new SfWorkflowNodeExecution();
+        node.setNodeId("n1");
+        node.setNodeType("SCRIPT");
+        node.setInputJson(null);
+        node.setTenantId("t1");
+        return node;
+    }
+
+    @Test
+    void executeNode_transientFailure_retriedThenSucceeds() throws Exception {
+        SfWorkflowNodeExecution node = retryableNode();
+        when(nodeExecutor.execute(any(), eq("t1")))
+                .thenReturn(NodeExecutionResult.retryableFailure("flaky"))
+                .thenReturn(NodeExecutionResult.retryableFailure("flaky"))
+                .thenReturn(NodeExecutionResult.success(Map.of("ok", true)));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        NodeExecutionResult result = workflowNodeEngine.executeNode(node);
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(nodeExecutor, times(3)).execute(any(), eq("t1"));
+        assertThat(node.getStatus()).isEqualTo("COMPLETED");
+    }
+
+    @Test
+    void executeNode_transientFailure_exhaustsRetriesThenFails() throws Exception {
+        SfWorkflowNodeExecution node = retryableNode();
+        when(nodeExecutor.execute(any(), eq("t1")))
+                .thenReturn(NodeExecutionResult.retryableFailure("still flaky"));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        NodeExecutionResult result = workflowNodeEngine.executeNode(node);
+
+        assertThat(result.isSuccess()).isFalse();
+        // initial attempt + 3 retries
+        verify(nodeExecutor, times(4)).execute(any(), eq("t1"));
+        assertThat(node.getStatus()).isEqualTo("FAILED");
+    }
+
+    @Test
+    void executeNode_deterministicFailure_notRetried() throws Exception {
+        SfWorkflowNodeExecution node = retryableNode();
+        when(nodeExecutor.execute(any(), eq("t1")))
+                .thenReturn(NodeExecutionResult.failure("bad config"));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        NodeExecutionResult result = workflowNodeEngine.executeNode(node);
+
+        assertThat(result.isSuccess()).isFalse();
+        verify(nodeExecutor, times(1)).execute(any(), eq("t1"));
+        assertThat(node.getStatus()).isEqualTo("FAILED");
+    }
+
+    @Test
+    void executeNode_timeout_notRetriedAndMarkedTimeout() throws Exception {
+        SfWorkflowNodeExecution node = retryableNode();
+        when(nodeExecutor.execute(any(), eq("t1")))
+                .thenReturn(NodeExecutionResult.timeout("exceeded 300s"));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        NodeExecutionResult result = workflowNodeEngine.executeNode(node);
+
+        assertThat(result.isTimeout()).isTrue();
+        verify(nodeExecutor, times(1)).execute(any(), eq("t1"));
+        assertThat(node.getStatus()).isEqualTo("TIMEOUT");
+    }
+
+    @Test
+    void executeNode_thrownException_retriedThenRethrown() throws Exception {
+        SfWorkflowNodeExecution node = retryableNode();
+        when(nodeExecutor.execute(any(), eq("t1")))
+                .thenThrow(new RuntimeException("transient"));
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        assertThatThrownBy(() -> workflowNodeEngine.executeNode(node))
+                .isInstanceOf(BaseException.class)
+                .hasMessageContaining("transient");
+        verify(nodeExecutor, times(4)).execute(any(), eq("t1"));
+        assertThat(node.getStatus()).isEqualTo("FAILED");
+    }
+
+    @Test
+    void executeNode_backoffGrowsExponentially() throws Exception {
+        java.util.List<Long> delays = new java.util.ArrayList<>();
+        workflowNodeEngine.setRetryBaseDelayMillis(100);
+        workflowNodeEngine.setRetrySleeper(delays::add);
+
+        SfWorkflowNodeExecution node = retryableNode();
+        when(nodeExecutor.execute(any(), eq("t1")))
+                .thenReturn(NodeExecutionResult.retryableFailure("flaky"));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        workflowNodeEngine.executeNode(node);
+
+        assertThat(delays).containsExactly(100L, 200L, 400L);
     }
 }
