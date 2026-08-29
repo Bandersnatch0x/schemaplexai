@@ -103,8 +103,14 @@ CREATE TABLE sf_ai_model (
     model_code      VARCHAR(128) NOT NULL,
     status          VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
     config_json     TEXT,
+    -- 模型价格配置（成本分析 spec §3.1）：每 1K Token 单价，未配置时计费走兜底费率并告警
+    input_price_per_1k  NUMERIC(18,8),
+    output_price_per_1k NUMERIC(18,8),
+    currency            VARCHAR(8) NOT NULL DEFAULT 'USD',
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by      BIGINT,
+    updated_by      BIGINT,
     deleted         INT NOT NULL DEFAULT 0
 );
 

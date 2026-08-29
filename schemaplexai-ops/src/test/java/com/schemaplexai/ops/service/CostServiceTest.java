@@ -5,8 +5,10 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.schemaplexai.model.event.ExecutionEventMessage;
+import com.schemaplexai.ops.entity.AiModelPrice;
 import com.schemaplexai.ops.entity.SfBudget;
 import com.schemaplexai.ops.entity.SfCostRecord;
+import com.schemaplexai.ops.mapper.AiModelPriceMapper;
 import com.schemaplexai.ops.mapper.BudgetMapper;
 import com.schemaplexai.ops.mapper.SfCostRecordMapper;
 import org.junit.jupiter.api.AfterEach;
@@ -39,6 +41,9 @@ class CostServiceTest {
     @Mock
     private BudgetService budgetService;
 
+    @Mock
+    private AiModelPriceMapper aiModelPriceMapper;
+
     private CostService costService;
 
     private Logger costServiceLogger;
@@ -46,7 +51,8 @@ class CostServiceTest {
 
     @BeforeEach
     void setUp() {
-        costService = new CostService(budgetMapper, costRecordMapper, budgetService, new com.fasterxml.jackson.databind.ObjectMapper());
+        costService = new CostService(budgetMapper, costRecordMapper, budgetService,
+                new com.fasterxml.jackson.databind.ObjectMapper(), aiModelPriceMapper);
         costServiceLogger = (Logger) LoggerFactory.getLogger(CostService.class);
         logAppender = new ListAppender<>();
         logAppender.start();
@@ -437,10 +443,166 @@ class CostServiceTest {
     }
 
     @Test
-    void calculateCost_unknownModel_returnsZeroCost() {
+    void calculateCost_unknownModel_returnsZeroAndLogsExplicitWarning() {
         BigDecimal result = costService.calculateCost("unknown-model", 1000L, 500L);
 
         assertEquals(0, BigDecimal.ZERO.compareTo(result));
+        List<ILoggingEvent> warnings = getWarnEvents();
+        assertTrue(warnings.stream()
+                        .anyMatch(e -> e.getFormattedMessage().contains("no fallback rate available")),
+                "Unpriced model must produce an explicit warning instead of a silent zero");
+    }
+
+    @Test
+    void calculateCost_nullTokens_returnsZeroCost() {
+        assertEquals(0, BigDecimal.ZERO.compareTo(costService.calculateCost("gpt-4", null, 500L)));
+        assertEquals(0, BigDecimal.ZERO.compareTo(costService.calculateCost("gpt-4", 500L, null)));
+    }
+
+    @Test
+    void calculateCost_claudeSonnet_fallbackNonZeroCost() {
+        // claude models were previously billed 0 (issue 920 / REQ-03)
+        BigDecimal result = costService.calculateCost("claude-3-sonnet-20240229", 1000L, 1000L);
+
+        // 0.003 + 0.015 = 0.018
+        assertEquals(0, new BigDecimal("0.018000").compareTo(result));
+    }
+
+    @Test
+    void calculateCost_claudeHaiku_fallbackNonZeroCost() {
+        BigDecimal result = costService.calculateCost("claude-3-haiku-20240307", 1000L, 1000L);
+
+        // 0.00025 + 0.00125 = 0.0015
+        assertEquals(0, new BigDecimal("0.001500").compareTo(result));
+    }
+
+    @Test
+    void calculateCost_claudeOpus_fallbackNonZeroCost() {
+        BigDecimal result = costService.calculateCost("claude-3-opus-20240229", 1000L, 1000L);
+
+        // 0.015 + 0.075 = 0.09
+        assertEquals(0, new BigDecimal("0.090000").compareTo(result));
+    }
+
+    @Test
+    void calculateCost_genericClaudeName_fallsBackToSonnetRates() {
+        BigDecimal result = costService.calculateCost("claude-instant-1.2", 1000L, 0L);
+
+        assertEquals(0, new BigDecimal("0.003000").compareTo(result));
+    }
+
+    @Test
+    void calculateCost_gpt4o_matchesGpt4Family() {
+        BigDecimal result = costService.calculateCost("gpt-4o", 1000L, 0L);
+
+        assertEquals(0, new BigDecimal("0.030000").compareTo(result));
+    }
+
+    @Test
+    void calculateCost_fallbackUseLogsExplicitWarning() {
+        costService.calculateCost("gpt-4", 100L, 100L);
+
+        List<ILoggingEvent> warnings = getWarnEvents();
+        assertTrue(warnings.stream()
+                        .anyMatch(e -> e.getFormattedMessage().contains("built-in fallback rates")),
+                "Fallback pricing must warn so operators configure sf_ai_model prices");
+    }
+
+    @Test
+    void calculateCost_smallAmount_notZeroedAtSixDecimals() {
+        // REQ-15 acceptance: 33 tokens at gpt-3.5 input rate must survive rounding
+        BigDecimal result = costService.calculateCost("gpt-3.5-turbo", 33L, 0L);
+
+        // 33 * 0.0015 / 1000 = 0.0000495 -> 0.000050 at 6 decimals (was 0.0000 at scale 4)
+        assertTrue(result.compareTo(BigDecimal.ZERO) > 0, "Small invocations must not round to zero");
+        assertEquals(0, new BigDecimal("0.000050").compareTo(result));
+        assertEquals(CostService.COST_SCALE, result.scale());
+    }
+
+    @Test
+    void calculateCost_singleToken_nonZero() {
+        BigDecimal result = costService.calculateCost("gpt-3.5-turbo", 1L, 0L);
+
+        // 0.0000015 -> 0.000002 (HALF_UP at 6 decimals)
+        assertEquals(0, new BigDecimal("0.000002").compareTo(result));
+    }
+
+    @Test
+    void calculateCost_smallMixedAmount_roundsOnceAtFinalScale() {
+        // Rounding happens once on the sum, so sub-scale components are not individually zeroed
+        BigDecimal result = costService.calculateCost("gpt-3.5-turbo", 33L, 33L);
+
+        // 0.0000495 + 0.000066 = 0.0001155 -> 0.000116
+        assertEquals(0, new BigDecimal("0.000116").compareTo(result));
+    }
+
+    @Test
+    void calculateCost_tenantWithConfiguredPrice_overridesBuiltInRates() {
+        AiModelPrice configured = new AiModelPrice();
+        configured.setModelCode("gpt-4");
+        configured.setInputPricePer1k(new BigDecimal("0.01"));
+        configured.setOutputPricePer1k(new BigDecimal("0.02"));
+        configured.setCurrency("USD");
+        when(aiModelPriceMapper.selectOne(any())).thenReturn(configured);
+
+        BigDecimal result = costService.calculateCost("tenant-9", "gpt-4", 1000L, 1000L);
+
+        // configured rates win over the built-in 0.03/0.06
+        assertEquals(0, new BigDecimal("0.030000").compareTo(result));
+        assertTrue(getWarnEvents().isEmpty(), "Configured pricing must not emit fallback warnings");
+    }
+
+    @Test
+    void calculateCost_configuredPriceCoversUnlistedModel() {
+        AiModelPrice configured = new AiModelPrice();
+        configured.setModelCode("acme-llm-9b");
+        configured.setInputPricePer1k(new BigDecimal("0.005"));
+        configured.setOutputPricePer1k(new BigDecimal("0.01"));
+        when(aiModelPriceMapper.selectOne(any())).thenReturn(configured);
+
+        BigDecimal result = costService.calculateCost("tenant-9", "acme-llm-9b", 2000L, 500L);
+
+        // 2000*0.005/1000 + 500*0.01/1000 = 0.01 + 0.005 = 0.015
+        assertEquals(0, new BigDecimal("0.015000").compareTo(result));
+    }
+
+    @Test
+    void calculateCost_incompleteConfiguredPrice_fallsBackToFamilyRates() {
+        AiModelPrice incomplete = new AiModelPrice();
+        incomplete.setModelCode("gpt-4");
+        incomplete.setInputPricePer1k(new BigDecimal("0.01"));
+        incomplete.setOutputPricePer1k(null);
+        when(aiModelPriceMapper.selectOne(any())).thenReturn(incomplete);
+
+        BigDecimal result = costService.calculateCost("tenant-9", "gpt-4", 1000L, 0L);
+
+        assertEquals(0, new BigDecimal("0.030000").compareTo(result));
+        assertTrue(getWarnEvents().stream()
+                .anyMatch(e -> e.getFormattedMessage().contains("built-in fallback rates")));
+    }
+
+    @Test
+    void processExecutionEvent_configuredCurrency_propagatesToCostRecord() {
+        AiModelPrice configured = new AiModelPrice();
+        configured.setModelCode("claude-3-sonnet-20240229");
+        configured.setInputPricePer1k(new BigDecimal("0.003"));
+        configured.setOutputPricePer1k(new BigDecimal("0.015"));
+        configured.setCurrency("EUR");
+        when(aiModelPriceMapper.selectOne(any())).thenReturn(configured);
+
+        ExecutionEventMessage event = new ExecutionEventMessage(
+                java.util.UUID.randomUUID(), 7L, 1, "TOKEN_USED",
+                "{\"modelName\":\"claude-3-sonnet-20240229\",\"inputTokens\":1000,\"outputTokens\":1000}",
+                java.time.Instant.now(), 1L, 1L, "NORMAL"
+        );
+
+        costService.processExecutionEvent(event);
+
+        verify(costRecordMapper).insert(argThat(record ->
+                "EUR".equals(record.getCurrency()) &&
+                new BigDecimal("0.018000").compareTo(record.getCostAmount()) == 0
+        ));
+        verify(budgetService).addUsedAmount("1", new BigDecimal("0.018000"));
     }
 
     @Test
@@ -463,6 +625,7 @@ class CostServiceTest {
 
         // input: 500 * 0.03 / 1000 = 0.015, output: 250 * 0.06 / 1000 = 0.015, total = 0.03
         assertEquals(0, new BigDecimal("0.0300").compareTo(result));
+        assertEquals(CostService.COST_SCALE, result.scale());
     }
 
     // ------------------------------------------------------------------
@@ -532,7 +695,7 @@ class CostServiceTest {
 
         costService.processExecutionEvent(event);
 
-        verify(budgetService).addUsedAmount("1", new BigDecimal("0.0600"));
+        verify(budgetService).addUsedAmount("1", new BigDecimal("0.060000"));
     }
 
     @Test
@@ -575,7 +738,7 @@ class CostServiceTest {
                 java.time.Instant.now(), 1L, 1L, "NORMAL"
         );
         doThrow(new RuntimeException("budget failed"))
-                .when(budgetService).addUsedAmount("1", new BigDecimal("0.0600"));
+                .when(budgetService).addUsedAmount("1", new BigDecimal("0.060000"));
 
         RuntimeException error = assertThrows(RuntimeException.class,
                 () -> costService.processExecutionEvent(event));
