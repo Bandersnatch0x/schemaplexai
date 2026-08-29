@@ -16,22 +16,19 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Processes Milvus vector database synchronization requests from MQ.
+ * Processes Milvus vector database synchronization requests from {@code sf.milvus.sync.queue}
+ * (spec §3.4 consumer). Manual ACK is configured globally for this module's listeners.
  * <p>
- * TODO: Implement the following:
+ * Flow:
  * <ol>
- *   <li>Parse the MQ message payload into a MilvusSyncMessage DTO (define fields: collectionName, operation, documents[], tenantId, idempotencyKey).</li>
- *   <li>Check idempotency via Redis to avoid duplicate sync operations.</li>
- *   <li>Route by operation type:
- *       <ul>
- *         <li>{@code UPSERT} - Insert or update vector embeddings in the specified Milvus collection.</li>
- *         <li>{@code DELETE} - Remove vectors by primary key from the specified collection.</li>
- *         <li>{@code REBUILD} - Drop and recreate collection index, then re-ingest all documents.</li>
- *       </ul>
- *   </li>
- *   <li>Delegate to a MilvusVectorService (to be created in context module) for actual vector operations.</li>
- *   <li>Log sync metrics (document count, latency, success/failure).</li>
- *   <li>On failure, nack the message so it routes to the dead-letter queue for retry.</li>
+ *   <li>Parse the payload into {@link MilvusSyncMessage} and validate it
+ *       (operation must be {@code SYNC_DOC}, docId present).</li>
+ *   <li>Delegate to {@link MilvusSyncRequestHandler}, whose production implementation runs
+ *       the seven-step sync by calling the context service over HTTP.</li>
+ *   <li>On success, ack the delivery. On any failure, record the message in
+ *       {@code sf_message_fail_log} and nack without requeue so it routes to the
+ *       dead-letter exchange for manual retry; the daily reconciliation re-dispatches
+ *       docs still stuck in PENDING/FAILED.</li>
  * </ol>
  */
 @Slf4j

@@ -43,6 +43,15 @@ spring:
   flyway:
     enabled: false
 
+task:
+  # schemaplexai-context endpoints used by the Milvus sync handler and reconciliation.
+  context-service:
+    base-url: ${CONTEXT_SERVICE_BASE_URL:http://localhost:8085}
+    connect-timeout-ms: ${CONTEXT_SERVICE_CONNECT_TIMEOUT_MS:5000}
+    read-timeout-ms: ${CONTEXT_SERVICE_READ_TIMEOUT_MS:300000}
+  milvus-reconciliation:
+    collection-name: ${MILVUS_COLLECTION:knowledge_doc_embedding}
+
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
   type-aliases-package: com.schemaplexai.task.entity
