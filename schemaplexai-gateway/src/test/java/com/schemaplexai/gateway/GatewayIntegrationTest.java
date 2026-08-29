@@ -3,6 +3,8 @@ package com.schemaplexai.gateway;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.common.constants.CommonConstants;
 import com.schemaplexai.gateway.config.RateLimitProperties;
+import com.schemaplexai.gateway.tenant.ReactiveTenantValidator;
+import com.schemaplexai.gateway.tenant.TenantStatus;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
@@ -66,20 +68,32 @@ class GatewayIntegrationTest {
     @Autowired
     private ReactiveStringRedisTemplate redisTemplate;
 
+    @Autowired
+    private ReactiveTenantValidator tenantValidator;
+
     private static final String SECRET = "a]B@cD3fG6hI9kL2mN5oP8rS1tU4vW7xY0zA3bC6dE9fG2hI5kL8mN1oP4rS7tU0vW";
     private String validToken;
+    private String tokenWithoutTenant;
 
     @BeforeEach
     void setUp() {
         // Reset the increment mock for default behavior; do NOT reset redisTemplate
         // to preserve the opsForValue()→valueOps chain from @TestConfiguration.
         doReturn(Mono.just(1L)).when(valueOps).increment(anyString());
+        // Default tenant validation outcome; individual tests override per tenant.
+        doReturn(Mono.just(TenantStatus.ACTIVE)).when(tenantValidator).validate(anyString());
 
         // Generate a fresh valid token for each test
         SecretKey key = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
         validToken = Jwts.builder()
                 .subject("user-integration")
                 .claim("tenantId", "tenant-integration")
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + 3600_000))
+                .signWith(key)
+                .compact();
+        tokenWithoutTenant = Jwts.builder()
+                .subject("user-no-tenant")
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 3600_000))
                 .signWith(key)
@@ -129,6 +143,42 @@ class GatewayIntegrationTest {
                 .uri("/system/tenants")
                 .exchange()
                 .expectStatus().isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void unknownTenant_returnsUnauthorized() {
+        // Issue 913: a syntactically valid token whose tenant is not present in the
+        // shared cache channel (forged/stale id) must be rejected at the edge.
+        doReturn(Mono.just(TenantStatus.NOT_FOUND)).when(tenantValidator).validate("tenant-integration");
+
+        webTestClient.get()
+                .uri("/agent/execute")
+                .header(CommonConstants.HEADER_AUTHORIZATION, CommonConstants.TOKEN_PREFIX + validToken)
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void disabledTenant_returnsForbidden() {
+        // Issue 913: disabled tenants are rejected at the edge with 403.
+        doReturn(Mono.just(TenantStatus.DISABLED)).when(tenantValidator).validate("tenant-integration");
+
+        webTestClient.get()
+                .uri("/agent/execute")
+                .header(CommonConstants.HEADER_AUTHORIZATION, CommonConstants.TOKEN_PREFIX + validToken)
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    void missingTenant_returnsBadRequest() {
+        // Issue 913 (spec §4.3): a request that carries no tenant anywhere
+        // (token without tenantId claim, no header) is rejected with 400.
+        webTestClient.get()
+                .uri("/agent/execute")
+                .header(CommonConstants.HEADER_AUTHORIZATION, CommonConstants.TOKEN_PREFIX + tokenWithoutTenant)
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     @Test
@@ -244,6 +294,17 @@ class GatewayIntegrationTest {
             // so /auth/** traffic (login) is throttled at the edge too.
             props.setWhitelistPaths(List.of());
             return props;
+        }
+
+        /**
+         * Controllable tenant validator for the integration context (issue 913).
+         * The real CaffeineRedisTenantValidator is covered by unit tests; per-test
+         * stubbing here simulates ACTIVE/NOT_FOUND/DISABLED tenants.
+         */
+        @Bean
+        @Primary
+        ReactiveTenantValidator tenantValidator() {
+            return mock(ReactiveTenantValidator.class);
         }
 
         @Bean

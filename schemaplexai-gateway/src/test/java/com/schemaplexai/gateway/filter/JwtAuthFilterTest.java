@@ -2,6 +2,7 @@ package com.schemaplexai.gateway.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.common.constants.CommonConstants;
+import com.schemaplexai.gateway.config.GatewayWhitelistProperties;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,7 +39,7 @@ class JwtAuthFilterTest {
 
     @BeforeEach
     void setUp() {
-        filter = new JwtAuthFilter(new ObjectMapper());
+        filter = new JwtAuthFilter(new ObjectMapper(), new GatewayWhitelistProperties());
         ReflectionTestUtils.setField(filter, "jwtSecret", SECRET);
         // Skip PostConstruct validation in tests
         exchange = mock(ServerWebExchange.class);
@@ -340,7 +341,7 @@ class JwtAuthFilterTest {
     void filter_jsonProcessingException_returnsSetComplete() throws Exception {
         ObjectMapper mockObjectMapper = mock(ObjectMapper.class);
         when(mockObjectMapper.writeValueAsBytes(any())).thenThrow(new com.fasterxml.jackson.core.JsonProcessingException("fail") {});
-        filter = new JwtAuthFilter(mockObjectMapper);
+        filter = new JwtAuthFilter(mockObjectMapper, new GatewayWhitelistProperties());
         ReflectionTestUtils.setField(filter, "jwtSecret", SECRET);
 
         when(request.getURI()).thenReturn(java.net.URI.create("http://localhost/agent/execute"));

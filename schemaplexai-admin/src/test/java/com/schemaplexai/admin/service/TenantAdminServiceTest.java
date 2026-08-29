@@ -5,6 +5,7 @@ import com.schemaplexai.common.result.ResultCode;
 import com.schemaplexai.system.entity.SfTenant;
 import com.schemaplexai.system.mapper.SfTenantMapper;
 import com.schemaplexai.system.mapper.SfUserMapper;
+import com.schemaplexai.system.service.TenantCacheSyncer;
 import com.schemaplexai.admin.mapper.SfAuditLogMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,9 @@ class TenantAdminServiceTest {
 
     @Mock
     private SfAuditLogMapper auditLogMapper;
+
+    @Mock
+    private TenantCacheSyncer tenantCacheSyncer;
 
     @InjectMocks
     private TenantAdminService tenantAdminService;
@@ -111,6 +115,7 @@ class TenantAdminServiceTest {
     void disableTenant_success_setsStatusZero() {
         SfTenant tenant = new SfTenant();
         tenant.setId(1L);
+        tenant.setCode("acme");
         tenant.setStatus(1);
         when(tenantMapper.selectById(1L)).thenReturn(tenant);
 
@@ -118,6 +123,7 @@ class TenantAdminServiceTest {
 
         assertThat(tenant.getStatus()).isEqualTo(0);
         verify(tenantMapper).updateById(tenant);
+        verify(tenantCacheSyncer).sync(tenant);
     }
 
     // ------------------------------------------------------------------
@@ -138,6 +144,7 @@ class TenantAdminServiceTest {
     void enableTenant_success_setsStatusOne() {
         SfTenant tenant = new SfTenant();
         tenant.setId(1L);
+        tenant.setCode("acme");
         tenant.setStatus(0);
         when(tenantMapper.selectById(1L)).thenReturn(tenant);
 
@@ -145,6 +152,7 @@ class TenantAdminServiceTest {
 
         assertThat(tenant.getStatus()).isEqualTo(1);
         verify(tenantMapper).updateById(tenant);
+        verify(tenantCacheSyncer).sync(tenant);
     }
 
     // ------------------------------------------------------------------

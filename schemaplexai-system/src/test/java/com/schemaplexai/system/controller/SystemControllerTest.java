@@ -162,14 +162,14 @@ class SystemControllerTest {
     @Test
     void tenant_update() {
         SfTenant t = new SfTenant();
-        when(tenantService.updateById(any())).thenReturn(true);
+        when(tenantService.updateTenant(any())).thenReturn(true);
         Result<Boolean> result = tenantController.update(1L, t);
         assertThat(result.getData()).isTrue();
     }
 
     @Test
     void tenant_delete() {
-        when(tenantService.removeById(1L)).thenReturn(true);
+        when(tenantService.deleteTenant(1L)).thenReturn(true);
         Result<Boolean> result = tenantController.delete(1L);
         assertThat(result.getData()).isTrue();
     }

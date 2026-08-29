@@ -80,6 +80,31 @@ jwt:
   secret: ${JWT_SECRET}
   expiration: 86400000
 
+# Unauthenticated surface (spec §4.2, issue 912) — shared by JwtAuthFilter and
+# TenantResolveFilter. Paths here bypass JWT auth AND tenant validation, so keep
+# the list minimal. See JwtAuthFilter Javadoc for the rationale of each entry.
+gateway:
+  whitelist:
+    paths:
+      - /auth/login
+      - /auth/refresh
+      - /doc.html
+      - /v3/api-docs/**
+      - /swagger-ui/**
+      - /webjars/**
+
+# Tenant existence validation (spec §4.3, issue 913). The gateway has no DB
+# access, so it validates against a shared cache: Caffeine L1 in-process, Redis
+# L2 (key sf:global:cache:tenant:{tenantCode} -> ACTIVE|DISABLED) written by the
+# tenant-owning services (system/admin) on mutation and backfilled at startup.
+# Missing/unknown tenant -> 401, disabled -> 403, no tenant at all -> 400,
+# validation-channel failure -> 503 (fail-closed).
+tenant:
+  validation:
+    enabled: true
+    cache-max-size: 10000
+    cache-ttl: 5m
+
 # Rate limiting (spec §4.1). Runs BEFORE JWT auth (RateLimitFilter order -150 <
 # JwtAuthFilter -100), so anonymous and invalid-token traffic is throttled too.
 # whitelist-paths is intentionally empty: exempting /auth/** previously left the

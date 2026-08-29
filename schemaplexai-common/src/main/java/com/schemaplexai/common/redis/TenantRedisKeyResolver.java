@@ -185,4 +185,22 @@ public final class TenantRedisKeyResolver {
     public static String healthCheck() {
         return globalKey(CAT_HEALTH, "check");
     }
+
+    /** Tenant status value for an enabled tenant. */
+    public static final String TENANT_STATUS_ACTIVE = "ACTIVE";
+
+    /** Tenant status value for a disabled tenant. */
+    public static final String TENANT_STATUS_DISABLED = "DISABLED";
+
+    /**
+     * Tenant existence/status cache (issue 913): sf:global:cache:tenant:{tenantCode}.
+     * <p>
+     * Value is {@link #TENANT_STATUS_ACTIVE} or {@link #TENANT_STATUS_DISABLED}.
+     * Written by the tenant-owning services (system/admin) on mutation and at
+     * startup; read by the gateway TenantResolveFilter to validate tenant
+     * existence at the edge. A missing key means the tenant is unknown.
+     */
+    public static String tenantStatus(String tenantCode) {
+        return globalKey(CAT_CACHE, "tenant", tenantCode);
+    }
 }

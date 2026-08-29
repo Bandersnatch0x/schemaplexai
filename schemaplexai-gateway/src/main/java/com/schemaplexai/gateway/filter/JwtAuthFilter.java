@@ -2,6 +2,7 @@ package com.schemaplexai.gateway.filter;
 
 import com.schemaplexai.common.constants.CommonConstants;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.gateway.config.GatewayWhitelistProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
@@ -29,7 +30,6 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -53,6 +53,9 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
     /**
      * Authentication whitelist — paths reachable without a token (issue 912, spec §4.2).
+     * Shared with {@link TenantResolveFilter} via {@link GatewayWhitelistProperties}
+     * (single source of truth; whitelisted paths are also exempt from tenant
+     * validation because they legitimately carry no tenant).
      * <p>Deliberately converged from the previous 6-entry list:
      * <ul>
      *   <li>{@code /auth/**} wildcard removed: it exempted {@code /auth/logout} and
@@ -74,14 +77,7 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
      *       whitelisted doc UI ({@code /doc.html}, {@code /v3/api-docs/**}).</li>
      * </ul>
      */
-    private final List<String> whiteList = List.of(
-            "/auth/login",
-            "/auth/refresh",
-            "/doc.html",
-            "/v3/api-docs/**",
-            "/swagger-ui/**",
-            "/webjars/**"
-    );
+    private final GatewayWhitelistProperties whitelistProperties;
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -135,7 +131,8 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
     }
 
     private boolean isWhiteListed(String path) {
-        return whiteList.stream().anyMatch(pattern -> pathMatcher.match(pattern, path));
+        return whitelistProperties.getPaths().stream()
+                .anyMatch(pattern -> pathMatcher.match(pattern, path));
     }
 
     private String resolveToken(ServerHttpRequest request) {

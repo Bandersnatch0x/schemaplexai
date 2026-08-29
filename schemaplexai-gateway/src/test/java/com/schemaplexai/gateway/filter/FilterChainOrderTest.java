@@ -1,10 +1,11 @@
 package com.schemaplexai.gateway.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.schemaplexai.gateway.config.GatewayWhitelistProperties;
+import com.schemaplexai.gateway.config.TenantValidationProperties;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 
 /**
  * Documents and pins the custom gateway filter chain order (spec §2 requires
@@ -23,10 +24,19 @@ import static org.mockito.Mockito.mock;
  */
 class FilterChainOrderTest {
 
+    private JwtAuthFilter newJwtAuthFilter() {
+        return new JwtAuthFilter(new ObjectMapper(), new GatewayWhitelistProperties());
+    }
+
+    private TenantResolveFilter newTenantResolveFilter() {
+        return new TenantResolveFilter(new ObjectMapper(), tenantId -> null,
+                new TenantValidationProperties(), new GatewayWhitelistProperties());
+    }
+
     @Test
     void rateLimitRunsBeforeJwtAuthShortCircuit() {
         RateLimitFilter rateLimitFilter = new RateLimitFilter(null, null, new ObjectMapper());
-        JwtAuthFilter jwtAuthFilter = new JwtAuthFilter(new ObjectMapper());
+        JwtAuthFilter jwtAuthFilter = newJwtAuthFilter();
 
         assertThat(rateLimitFilter.getOrder())
                 .as("RateLimitFilter must run before JwtAuthFilter so anonymous and "
@@ -39,8 +49,8 @@ class FilterChainOrderTest {
         LoggingFilter loggingFilter = new LoggingFilter();
         TracePropagationFilter tracePropagationFilter = new TracePropagationFilter();
         RateLimitFilter rateLimitFilter = new RateLimitFilter(null, null, new ObjectMapper());
-        JwtAuthFilter jwtAuthFilter = new JwtAuthFilter(new ObjectMapper());
-        TenantResolveFilter tenantResolveFilter = new TenantResolveFilter();
+        JwtAuthFilter jwtAuthFilter = newJwtAuthFilter();
+        TenantResolveFilter tenantResolveFilter = newTenantResolveFilter();
 
         assertThat(loggingFilter.getOrder()).isEqualTo(Integer.MIN_VALUE);
         assertThat(tracePropagationFilter.getOrder()).isEqualTo(Integer.MIN_VALUE + 100);
@@ -59,3 +69,4 @@ class FilterChainOrderTest {
                 .isLessThan(tenantResolveFilter.getOrder());
     }
 }
+
