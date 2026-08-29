@@ -418,4 +418,274 @@ class WorkflowInstanceServiceImplTest {
         // Instance should be marked as FAILED
         assertThat(instance.getStatus()).isEqualTo("FAILED");
     }
+
+    // ------------------------------------------------------------------
+    // trigger - instance input/output and start/end times (spec §5.2)
+    // ------------------------------------------------------------------
+
+    @Test
+    void trigger_seedsInstanceInputIntoSubstitutionAndPersistsOutput() {
+        SfWorkflowInstance instance = new SfWorkflowInstance();
+        instance.setId(1L);
+        instance.setTemplateId(10L);
+        instance.setStatus("PENDING");
+        instance.setInputData("{\"topic\":\"alpha\"}");
+        when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
+
+        SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setId(10L);
+        template.setStatus("deployed");
+        template.setNodeConfigJson(
+                "[{\"nodeId\":\"n1\",\"nodeType\":\"AI_MODEL\",\"input\":{\"prompt\":\"about ${input.topic}\"}}]");
+        when(templateMapper.selectById(10L)).thenReturn(template);
+        when(nodeExecutionMapper.insert(any())).thenReturn(1);
+        when(nodeEngine.executeNode(any())).thenReturn(NodeExecutionResult.success(Map.of("token", "abc")));
+
+        workflowInstanceService.trigger(1L);
+
+        org.mockito.ArgumentCaptor<SfWorkflowNodeExecution> captor =
+                org.mockito.ArgumentCaptor.forClass(SfWorkflowNodeExecution.class);
+        verify(nodeExecutionMapper).insert(captor.capture());
+        assertThat(captor.getValue().getInputJson()).contains("about alpha");
+
+        assertThat(instance.getStatus()).isEqualTo("COMPLETED");
+        assertThat(instance.getOutputData()).contains("token").contains("abc");
+        assertThat(instance.getStartedAt()).isNotNull();
+        assertThat(instance.getCompletedAt()).isNotNull();
+    }
+
+    // ------------------------------------------------------------------
+    // HUMAN_APPROVAL pause and approve/reject control plane (spec §3.5 / §6.2)
+    // ------------------------------------------------------------------
+
+    @Test
+    void trigger_humanApprovalNode_pausesInstanceInWaitingApproval() {
+        SfWorkflowInstance instance = new SfWorkflowInstance();
+        instance.setId(1L);
+        instance.setTemplateId(10L);
+        instance.setStatus("PENDING");
+        instance.setTenantId("t1");
+        when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
+
+        SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setId(10L);
+        template.setStatus("deployed");
+        template.setNodeConfigJson("["
+                + "{\"nodeId\":\"n1\",\"nodeType\":\"AI_MODEL\",\"input\":{}},"
+                + "{\"nodeId\":\"gate\",\"nodeType\":\"HUMAN_APPROVAL\",\"input\":{\"approverRole\":\"lead\"}},"
+                + "{\"nodeId\":\"n3\",\"nodeType\":\"AI_MODEL\",\"input\":{}}"
+                + "]");
+        when(templateMapper.selectById(10L)).thenReturn(template);
+        when(nodeExecutionMapper.insert(any())).thenReturn(1);
+        when(nodeEngine.executeNode(any())).thenReturn(NodeExecutionResult.success());
+
+        workflowInstanceService.trigger(1L);
+
+        assertThat(instance.getStatus()).isEqualTo("WAITING_APPROVAL");
+        // Only n1 ran; n3 waits for the approval decision.
+        verify(nodeEngine, times(1)).executeNode(any());
+
+        org.mockito.ArgumentCaptor<SfWorkflowNodeExecution> captor =
+                org.mockito.ArgumentCaptor.forClass(SfWorkflowNodeExecution.class);
+        verify(nodeExecutionMapper, times(2)).insert(captor.capture());
+        SfWorkflowNodeExecution gate = captor.getAllValues().get(1);
+        assertThat(gate.getNodeId()).isEqualTo("gate");
+        assertThat(gate.getNodeType()).isEqualTo("HUMAN_APPROVAL");
+        assertThat(gate.getStatus()).isEqualTo("WAITING_APPROVAL");
+        assertThat(gate.getTenantId()).isEqualTo("t1");
+    }
+
+    @Test
+    void approve_resumesAfterGate_skippingCompletedNodes() {
+        SfWorkflowInstance instance = new SfWorkflowInstance();
+        instance.setId(1L);
+        instance.setTemplateId(10L);
+        instance.setStatus("WAITING_APPROVAL");
+        instance.setTenantId("t1");
+        when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
+
+        SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setId(10L);
+        template.setStatus("deployed");
+        template.setNodeConfigJson("["
+                + "{\"nodeId\":\"n1\",\"nodeType\":\"AI_MODEL\",\"input\":{\"prompt\":\"start\"}},"
+                + "{\"nodeId\":\"gate\",\"nodeType\":\"HUMAN_APPROVAL\",\"input\":{}},"
+                + "{\"nodeId\":\"n3\",\"nodeType\":\"AI_MODEL\",\"input\":{\"prompt\":\"use ${input.token}\"}}"
+                + "]");
+        when(templateMapper.selectById(10L)).thenReturn(template);
+
+        // Previous leg: n1 completed with output, gate left waiting.
+        SfWorkflowNodeExecution completedNode = new SfWorkflowNodeExecution();
+        completedNode.setId(101L);
+        completedNode.setNodeId("n1");
+        completedNode.setStatus("COMPLETED");
+        completedNode.setOutputJson("{\"token\":\"abc\"}");
+        SfWorkflowNodeExecution gateNode = new SfWorkflowNodeExecution();
+        gateNode.setId(102L);
+        gateNode.setNodeId("gate");
+        gateNode.setStatus("WAITING_APPROVAL");
+        // 1st query: findWaitingApprovalNode (filtered on WAITING_APPROVAL).
+        // 2nd query: resume reconstruction, after approve() flipped the gate to COMPLETED.
+        when(nodeExecutionMapper.selectList(any()))
+                .thenReturn(java.util.List.of(gateNode))
+                .thenReturn(java.util.List.of(completedNode, gateNode));
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+        when(nodeExecutionMapper.insert(any())).thenReturn(1);
+        when(nodeEngine.executeNode(any())).thenReturn(NodeExecutionResult.success());
+
+        workflowInstanceService.approve(1L, "looks good");
+
+        // The gate decision is recorded on the node execution...
+        assertThat(gateNode.getStatus()).isEqualTo("COMPLETED");
+        assertThat(gateNode.getOutputJson()).contains("approved").contains("true").contains("looks good");
+
+        // ...and execution resumes at n3 only, with upstream outputs re-seeded.
+        assertThat(instance.getStatus()).isEqualTo("COMPLETED");
+        org.mockito.ArgumentCaptor<SfWorkflowNodeExecution> engineCaptor =
+                org.mockito.ArgumentCaptor.forClass(SfWorkflowNodeExecution.class);
+        verify(nodeEngine, times(1)).executeNode(engineCaptor.capture());
+        assertThat(engineCaptor.getValue().getNodeId()).isEqualTo("n3");
+        assertThat(engineCaptor.getValue().getInputJson()).contains("use abc");
+        // n1 and the gate are not re-inserted.
+        verify(nodeExecutionMapper, times(1)).insert(any());
+    }
+
+    @Test
+    void approve_notWaitingApproval_throwsConflict() {
+        SfWorkflowInstance instance = new SfWorkflowInstance();
+        instance.setId(1L);
+        instance.setStatus("RUNNING");
+        when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
+
+        assertThatThrownBy(() -> workflowInstanceService.approve(1L, "ok"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.CONFLICT.getCode());
+
+        verify(nodeEngine, never()).executeNode(any());
+    }
+
+    @Test
+    void reject_marksGateFailedAndFailsInstance() {
+        SfWorkflowInstance instance = new SfWorkflowInstance();
+        instance.setId(1L);
+        instance.setTemplateId(10L);
+        instance.setStatus("WAITING_APPROVAL");
+        when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
+
+        SfWorkflowNodeExecution gateNode = new SfWorkflowNodeExecution();
+        gateNode.setId(102L);
+        gateNode.setNodeId("gate");
+        gateNode.setStatus("WAITING_APPROVAL");
+        when(nodeExecutionMapper.selectList(any())).thenReturn(java.util.List.of(gateNode));
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        workflowInstanceService.reject(1L, "too risky");
+
+        assertThat(gateNode.getStatus()).isEqualTo("FAILED");
+        assertThat(gateNode.getOutputJson()).contains("approved").contains("false").contains("too risky");
+        assertThat(instance.getStatus()).isEqualTo("FAILED");
+        assertThat(instance.getCompletedAt()).isNotNull();
+        verify(nodeEngine, never()).executeNode(any());
+    }
+
+    @Test
+    void reject_notWaitingApproval_throwsConflict() {
+        SfWorkflowInstance instance = new SfWorkflowInstance();
+        instance.setId(1L);
+        instance.setStatus("COMPLETED");
+        when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
+
+        assertThatThrownBy(() -> workflowInstanceService.reject(1L, "no"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.CONFLICT.getCode());
+    }
+
+    // ------------------------------------------------------------------
+    // cancel (spec §6.2 / §4: CANCELLED reachable)
+    // ------------------------------------------------------------------
+
+    @Test
+    void cancel_runningInstance_setsCancelled() {
+        SfWorkflowInstance instance = new SfWorkflowInstance();
+        instance.setId(1L);
+        instance.setStatus("RUNNING");
+        when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
+
+        workflowInstanceService.cancel(1L);
+
+        assertThat(instance.getStatus()).isEqualTo("CANCELLED");
+        assertThat(instance.getCompletedAt()).isNotNull();
+        verify(workflowInstanceMapper).updateById(instance);
+    }
+
+    @Test
+    void cancel_waitingApprovalInstance_setsCancelled() {
+        SfWorkflowInstance instance = new SfWorkflowInstance();
+        instance.setId(1L);
+        instance.setStatus("WAITING_APPROVAL");
+        when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
+
+        workflowInstanceService.cancel(1L);
+
+        assertThat(instance.getStatus()).isEqualTo("CANCELLED");
+    }
+
+    @Test
+    void cancel_completedInstance_throwsConflict() {
+        SfWorkflowInstance instance = new SfWorkflowInstance();
+        instance.setId(1L);
+        instance.setStatus("COMPLETED");
+        when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
+
+        assertThatThrownBy(() -> workflowInstanceService.cancel(1L))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.CONFLICT.getCode());
+
+        verify(workflowInstanceMapper, never()).updateById(any());
+    }
+
+    @Test
+    void cancel_instanceNotFound_throwsWorkflowNotFound() {
+        when(workflowInstanceMapper.selectById(1L)).thenReturn(null);
+
+        assertThatThrownBy(() -> workflowInstanceService.cancel(1L))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.WORKFLOW_NOT_FOUND.getCode());
+    }
+
+    @Test
+    void trigger_cancellationAtNodeBoundary_stopsBeforeNextNode() {
+        SfWorkflowInstance instance = new SfWorkflowInstance();
+        instance.setId(1L);
+        instance.setTemplateId(10L);
+        instance.setStatus("PENDING");
+        SfWorkflowInstance cancelled = new SfWorkflowInstance();
+        cancelled.setId(1L);
+        cancelled.setStatus("CANCELLED");
+
+        // 1st read: trigger start; 2nd: boundary check before n1; 3rd: boundary check
+        // before n2 observes the concurrent cancel and stops the loop.
+        when(workflowInstanceMapper.selectById(1L)).thenReturn(instance, instance, cancelled);
+
+        SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setId(10L);
+        template.setStatus("deployed");
+        template.setNodeConfigJson("["
+                + "{\"nodeId\":\"n1\",\"nodeType\":\"AI_MODEL\",\"input\":{}},"
+                + "{\"nodeId\":\"n2\",\"nodeType\":\"AI_MODEL\",\"input\":{}}"
+                + "]");
+        when(templateMapper.selectById(10L)).thenReturn(template);
+        when(nodeExecutionMapper.insert(any())).thenReturn(1);
+        when(nodeEngine.executeNode(any())).thenReturn(NodeExecutionResult.success());
+
+        workflowInstanceService.trigger(1L);
+
+        verify(nodeEngine, times(1)).executeNode(any());
+        assertThat(cancelled.getStatus()).isEqualTo("CANCELLED");
+        assertThat(instance.getStatus()).isNotEqualTo("COMPLETED");
+    }
 }

@@ -22,9 +22,11 @@ CREATE TABLE sf_workflow_instance (
     id              BIGSERIAL PRIMARY KEY,
     tenant_id       BIGINT NOT NULL,
     template_id     BIGINT NOT NULL,
-    status          VARCHAR(32) NOT NULL DEFAULT 'RUNNING',
+    status          VARCHAR(32) NOT NULL DEFAULT 'RUNNING', -- RUNNING / WAITING_APPROVAL / COMPLETED / FAILED / CANCELLED (spec §4)
     trigger_type    VARCHAR(32) NOT NULL, -- MANUAL / SCHEDULED / EVENT
     trigger_config  TEXT,
+    input_data      TEXT, -- instance-level input parameters seeding the ${input.xxx} substitution context (spec §5.2)
+    output_data     TEXT, -- merged node outputs once the instance completes (spec §5.2)
     started_at      TIMESTAMP,
     completed_at    TIMESTAMP,
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -35,9 +37,9 @@ CREATE TABLE sf_workflow_instance (
 CREATE TABLE sf_workflow_node_execution (
     id              BIGSERIAL PRIMARY KEY,
     tenant_id       BIGINT NOT NULL,
-    instance_id     BIGINT NOT NULL,
+    instance_id     BIGINT, -- nullable: Flowable-bridge (BPMN) executions have no sf_workflow_instance
     node_id         VARCHAR(64) NOT NULL,
-    node_type       VARCHAR(32) NOT NULL, -- TRIGGER / DOCUMENT / AGENT / APPROVAL / QUALITY / NOTIFICATION / ARTIFACT
+    node_type       VARCHAR(32) NOT NULL, -- START / END / CONDITION / JOIN / CONCURRENT / AI_MODEL / HTTP / SCRIPT / TOOL_CALL / HUMAN_APPROVAL
     status          VARCHAR(32) NOT NULL DEFAULT 'PENDING',
     input_json      TEXT,
     output_json     TEXT,

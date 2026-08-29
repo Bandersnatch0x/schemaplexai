@@ -2,6 +2,7 @@ package com.schemaplexai.workflow.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.schemaplexai.common.context.TenantContextHolder;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
 import com.schemaplexai.workflow.entity.SfWorkflowNodeExecution;
@@ -67,6 +68,19 @@ public class WorkflowNodeEngine {
         if (executor == null) {
             throw new BaseException(ResultCode.ERROR,
                     "No executor for node type: " + nodeExecution.getNodeType());
+        }
+
+        // Bridge callers (Flowable delegates) hand in a never-persisted record; the
+        // orchestrated path already inserted it. Insert if needed so every node
+        // execution is recorded regardless of entry point.
+        if (nodeExecution.getId() == null) {
+            if (nodeExecution.getStatus() == null) {
+                nodeExecution.setStatus("PENDING");
+            }
+            if (nodeExecution.getTenantId() == null) {
+                nodeExecution.setTenantId(TenantContextHolder.getTenantId());
+            }
+            nodeExecutionMapper.insert(nodeExecution);
         }
 
         nodeExecution.setStatus("RUNNING");

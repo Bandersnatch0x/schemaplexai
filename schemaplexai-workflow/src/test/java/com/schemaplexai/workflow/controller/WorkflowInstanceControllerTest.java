@@ -108,4 +108,56 @@ class WorkflowInstanceControllerTest {
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data").value(true));
     }
+
+    @Test
+    void cancel_returnsSuccess() throws Exception {
+        doNothing().when(workflowInstanceService).cancel(1L);
+
+        mockMvc.perform(post("/workflow/instances/1/cancel"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data").value(true));
+
+        verify(workflowInstanceService).cancel(1L);
+    }
+
+    @Test
+    void approve_passesComment() throws Exception {
+        doNothing().when(workflowInstanceService).approve(1L, "ok");
+
+        mockMvc.perform(post("/workflow/instances/1/approve")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"comment\":\"ok\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data").value(true));
+
+        verify(workflowInstanceService).approve(1L, "ok");
+    }
+
+    @Test
+    void approve_withoutBody_passesNullComment() throws Exception {
+        doNothing().when(workflowInstanceService).approve(eq(1L), isNull());
+
+        mockMvc.perform(post("/workflow/instances/1/approve"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data").value(true));
+
+        verify(workflowInstanceService).approve(1L, null);
+    }
+
+    @Test
+    void reject_passesReason() throws Exception {
+        doNothing().when(workflowInstanceService).reject(1L, "too risky");
+
+        mockMvc.perform(post("/workflow/instances/1/reject")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"too risky\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data").value(true));
+
+        verify(workflowInstanceService).reject(1L, "too risky");
+    }
 }

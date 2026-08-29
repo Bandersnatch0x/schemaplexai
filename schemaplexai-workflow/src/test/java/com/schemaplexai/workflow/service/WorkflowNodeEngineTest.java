@@ -266,4 +266,49 @@ class WorkflowNodeEngineTest {
 
         assertThat(delays).containsExactly(100L, 200L, 400L);
     }
+
+    // ------------------------------------------------------------------
+    // bridge persistence (spec §7 / REQ-19): Flowable-built records get persisted
+    // ------------------------------------------------------------------
+
+    @Test
+    void executeNode_unpersistedBridgeRecord_isInserted() throws Exception {
+        SfWorkflowNodeExecution node = new SfWorkflowNodeExecution();
+        node.setNodeId("serviceTask1");
+        node.setNodeType("SCRIPT");
+        node.setInputJson(null);
+        node.setTenantId("t1");
+        // id is null -> built by a Flowable delegate, never persisted yet
+
+        when(nodeExecutor.execute(any(), eq("t1")))
+                .thenReturn(NodeExecutionResult.success(Map.of("ok", true)));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(nodeExecutionMapper.insert(any())).thenReturn(1);
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        workflowNodeEngine.executeNode(node);
+
+        verify(nodeExecutionMapper, times(1)).insert(node);
+        assertThat(node.getStatus()).isEqualTo("COMPLETED");
+    }
+
+    @Test
+    void executeNode_persistedRecord_isNotReinserted() throws Exception {
+        SfWorkflowNodeExecution node = new SfWorkflowNodeExecution();
+        node.setId(42L); // already inserted by the orchestration path
+        node.setNodeId("n1");
+        node.setNodeType("SCRIPT");
+        node.setInputJson(null);
+        node.setTenantId("t1");
+
+        when(nodeExecutor.execute(any(), eq("t1")))
+                .thenReturn(NodeExecutionResult.success(Map.of()));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        workflowNodeEngine.executeNode(node);
+
+        verify(nodeExecutionMapper, never()).insert(any());
+        assertThat(node.getStatus()).isEqualTo("COMPLETED");
+    }
 }
