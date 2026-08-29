@@ -278,16 +278,21 @@ CREATE TABLE sf_delivery_record (
     deleted         INT NOT NULL DEFAULT 0
 );
 
+-- Authoritative notification table definition (single source of truth).
+-- Read/write contract: schemaplexai-model Notification entity (read BOOLEAN),
+-- schemaplexai-dao NotificationMapper (SET read = TRUE), schemaplexai-ops SfNotification.
 CREATE TABLE sf_notification (
     id              BIGSERIAL PRIMARY KEY,
     tenant_id       BIGINT NOT NULL,
     user_id         BIGINT NOT NULL,
-    type            VARCHAR(32) NOT NULL, -- IN_APP / EMAIL / IM
     title           VARCHAR(256) NOT NULL,
     content         TEXT,
-    status          VARCHAR(32) NOT NULL DEFAULT 'UNREAD',
+    type            VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    read            BOOLEAN NOT NULL DEFAULT FALSE,
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by      BIGINT,
+    updated_by      BIGINT,
     deleted         INT NOT NULL DEFAULT 0
 );
 
@@ -406,5 +411,7 @@ CREATE INDEX idx_node_execution_instance ON sf_workflow_node_execution(instance_
 CREATE INDEX idx_knowledge_doc_tenant ON sf_knowledge_doc(tenant_id);
 CREATE INDEX idx_quality_issue_execution ON sf_quality_issue(execution_id);
 CREATE INDEX idx_audit_event_tenant ON sf_audit_event(tenant_id, created_at);
-CREATE INDEX idx_notification_user ON sf_notification(user_id, status);
+CREATE INDEX idx_notification_tenant_user ON sf_notification(tenant_id, user_id);
+CREATE INDEX idx_notification_tenant_user_read ON sf_notification(tenant_id, user_id, read);
+CREATE INDEX idx_notification_created_at ON sf_notification(created_at);
 CREATE INDEX idx_message_fail_log_status ON sf_message_fail_log(status, created_at);
