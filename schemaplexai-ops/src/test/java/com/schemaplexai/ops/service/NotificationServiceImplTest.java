@@ -282,7 +282,7 @@ class NotificationServiceImplTest {
     }
 
     // ------------------------------------------------------------------
-    // listBudgetAlerts (issue 921)
+    // listBudgetAlerts (issue 921, tenant-scoped by review ST-01)
     // ------------------------------------------------------------------
 
     @Test
@@ -298,12 +298,22 @@ class NotificationServiceImplTest {
     }
 
     @Test
-    void listBudgetAlerts_blankTenant_omitsTenantFilter() {
-        when(notificationMapper.selectList(any())).thenReturn(Collections.emptyList());
+    void listBudgetAlerts_blankTenant_failsClosed() {
+        // Review ST-01: a blank tenant must be rejected, never produce an
+        // unfiltered cross-tenant listing.
+        assertThatThrownBy(() -> notificationService.listBudgetAlerts("   "))
+                .isInstanceOf(BaseException.class)
+                .satisfies(ex -> assertThat(((BaseException) ex).getCode())
+                        .isEqualTo(ResultCode.PARAM_ERROR.getCode()));
 
-        List<SfNotification> result = notificationService.listBudgetAlerts("   ");
+        verify(notificationMapper, never()).selectList(any());
+    }
 
-        assertThat(result).isEmpty();
-        verify(notificationMapper).selectList(any());
+    @Test
+    void listBudgetAlerts_nullTenant_failsClosed() {
+        assertThatThrownBy(() -> notificationService.listBudgetAlerts(null))
+                .isInstanceOf(BaseException.class);
+
+        verify(notificationMapper, never()).selectList(any());
     }
 }

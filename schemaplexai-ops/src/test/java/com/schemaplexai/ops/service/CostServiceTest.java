@@ -176,13 +176,13 @@ class CostServiceTest {
 
     @Test
     void checkBudgetAlerts_noBudgets_doesNotLogAnyWarning() {
-        when(budgetMapper.selectList(null)).thenReturn(Collections.emptyList());
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(Collections.emptyList());
 
         costService.checkBudgetAlerts();
 
         List<ILoggingEvent> warnings = getWarnEvents();
         assertTrue(warnings.isEmpty(), "Expected no warnings when no budgets exist");
-        verify(budgetMapper, times(1)).selectList(null);
+        verify(budgetMapper, times(1)).selectAllActiveBudgetsCrossTenant();
     }
 
     // ------------------------------------------------------------------
@@ -192,7 +192,7 @@ class CostServiceTest {
     @Test
     void checkBudgetAlerts_nullLimitAmount_skipsBudgetAndDoesNotLogWarning() {
         SfBudget budget = createBudget("API", null, BigDecimal.valueOf(50), BigDecimal.valueOf(80));
-        when(budgetMapper.selectList(null)).thenReturn(List.of(budget));
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(budget));
 
         costService.checkBudgetAlerts();
 
@@ -203,7 +203,7 @@ class CostServiceTest {
     @Test
     void checkBudgetAlerts_nullUsedAmount_skipsBudgetAndDoesNotLogWarning() {
         SfBudget budget = createBudget("API", BigDecimal.valueOf(100), null, BigDecimal.valueOf(80));
-        when(budgetMapper.selectList(null)).thenReturn(List.of(budget));
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(budget));
 
         costService.checkBudgetAlerts();
 
@@ -218,7 +218,7 @@ class CostServiceTest {
     @Test
     void checkBudgetAlerts_budgetExceeded_logsExceededWarning() {
         SfBudget budget = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(150), BigDecimal.valueOf(80));
-        when(budgetMapper.selectList(null)).thenReturn(List.of(budget));
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(budget));
 
         costService.checkBudgetAlerts();
 
@@ -231,7 +231,7 @@ class CostServiceTest {
     @Test
     void checkBudgetAlerts_exactlyAtLimit_logsExceededWarning() {
         SfBudget budget = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(100), null);
-        when(budgetMapper.selectList(null)).thenReturn(List.of(budget));
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(budget));
 
         costService.checkBudgetAlerts();
 
@@ -243,7 +243,7 @@ class CostServiceTest {
     @Test
     void checkBudgetAlerts_slightlyOverLimit_logsExceededWarning() {
         SfBudget budget = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(100.01), null);
-        when(budgetMapper.selectList(null)).thenReturn(List.of(budget));
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(budget));
 
         costService.checkBudgetAlerts();
 
@@ -259,7 +259,7 @@ class CostServiceTest {
     @Test
     void checkBudgetAlerts_thresholdReached_logsThresholdWarning() {
         SfBudget budget = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(85), BigDecimal.valueOf(80));
-        when(budgetMapper.selectList(null)).thenReturn(List.of(budget));
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(budget));
 
         costService.checkBudgetAlerts();
 
@@ -271,7 +271,7 @@ class CostServiceTest {
     @Test
     void checkBudgetAlerts_exactlyAtThreshold_logsThresholdWarning() {
         SfBudget budget = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(80), BigDecimal.valueOf(80));
-        when(budgetMapper.selectList(null)).thenReturn(List.of(budget));
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(budget));
 
         costService.checkBudgetAlerts();
 
@@ -283,7 +283,7 @@ class CostServiceTest {
     @Test
     void checkBudgetAlerts_underThreshold_doesNotLogWarning() {
         SfBudget budget = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(50), BigDecimal.valueOf(80));
-        when(budgetMapper.selectList(null)).thenReturn(List.of(budget));
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(budget));
 
         costService.checkBudgetAlerts();
 
@@ -294,7 +294,7 @@ class CostServiceTest {
     @Test
     void checkBudgetAlerts_slightlyUnderThreshold_doesNotLogWarning() {
         SfBudget budget = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(79.99), BigDecimal.valueOf(80));
-        when(budgetMapper.selectList(null)).thenReturn(List.of(budget));
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(budget));
 
         costService.checkBudgetAlerts();
 
@@ -309,7 +309,7 @@ class CostServiceTest {
     @Test
     void checkBudgetAlerts_nullAlertThreshold_underLimit_doesNotLogWarning() {
         SfBudget budget = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(90), null);
-        when(budgetMapper.selectList(null)).thenReturn(List.of(budget));
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(budget));
 
         costService.checkBudgetAlerts();
 
@@ -320,7 +320,7 @@ class CostServiceTest {
     @Test
     void checkBudgetAlerts_nullAlertThreshold_overLimit_logsExceededWarning() {
         SfBudget budget = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(110), null);
-        when(budgetMapper.selectList(null)).thenReturn(List.of(budget));
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(budget));
 
         costService.checkBudgetAlerts();
 
@@ -338,7 +338,7 @@ class CostServiceTest {
         SfBudget exceeded = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(150), null);
         SfBudget thresholdReached = createBudget("TOKEN", BigDecimal.valueOf(1000), BigDecimal.valueOf(850), BigDecimal.valueOf(80));
         SfBudget underThreshold = createBudget("STORAGE", BigDecimal.valueOf(500), BigDecimal.valueOf(100), BigDecimal.valueOf(80));
-        when(budgetMapper.selectList(null)).thenReturn(List.of(exceeded, thresholdReached, underThreshold));
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(exceeded, thresholdReached, underThreshold));
 
         costService.checkBudgetAlerts();
 
@@ -360,7 +360,7 @@ class CostServiceTest {
     void checkBudgetAlerts_multipleBudgets_allExceeded_logsAllExceeded() {
         SfBudget budget1 = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(200), BigDecimal.valueOf(50));
         SfBudget budget2 = createBudget("TOKEN", BigDecimal.valueOf(1000), BigDecimal.valueOf(1500), BigDecimal.valueOf(90));
-        when(budgetMapper.selectList(null)).thenReturn(List.of(budget1, budget2));
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(budget1, budget2));
 
         costService.checkBudgetAlerts();
 
@@ -373,7 +373,7 @@ class CostServiceTest {
     void checkBudgetAlerts_multipleBudgets_allUnderThreshold_logsNothing() {
         SfBudget budget1 = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(10), BigDecimal.valueOf(80));
         SfBudget budget2 = createBudget("TOKEN", BigDecimal.valueOf(1000), BigDecimal.valueOf(100), BigDecimal.valueOf(80));
-        when(budgetMapper.selectList(null)).thenReturn(List.of(budget1, budget2));
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(budget1, budget2));
 
         costService.checkBudgetAlerts();
 
@@ -388,7 +388,7 @@ class CostServiceTest {
     @Test
     void checkBudgetAlerts_zeroLimit_withNonZeroUsed_throwsArithmeticException() {
         SfBudget budget = createBudget("API", BigDecimal.ZERO, BigDecimal.valueOf(1), null);
-        when(budgetMapper.selectList(null)).thenReturn(List.of(budget));
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(budget));
 
         assertThrows(ArithmeticException.class, () -> costService.checkBudgetAlerts());
     }
@@ -396,7 +396,7 @@ class CostServiceTest {
     @Test
     void checkBudgetAlerts_zeroUsed_withPositiveLimit_doesNotLogWarning() {
         SfBudget budget = createBudget("API", BigDecimal.valueOf(100), BigDecimal.ZERO, BigDecimal.valueOf(1));
-        when(budgetMapper.selectList(null)).thenReturn(List.of(budget));
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(budget));
 
         costService.checkBudgetAlerts();
 
@@ -414,7 +414,7 @@ class CostServiceTest {
         // (the old percent-vs-decimal mix alerted the latter at 0.8% usage)
         SfBudget over = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(85), new BigDecimal("0.8"));
         SfBudget under = createBudget("TOKEN", BigDecimal.valueOf(100), BigDecimal.valueOf(5), new BigDecimal("0.8"));
-        when(budgetMapper.selectList(null)).thenReturn(List.of(over, under));
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(over, under));
 
         costService.checkBudgetAlerts();
 
@@ -427,7 +427,7 @@ class CostServiceTest {
     void checkBudgetAlerts_legacyPercentThreshold_normalizedLikeDecimal() {
         // legacy row storing 80.00 (percent) behaves exactly like 0.8 (decimal)
         SfBudget legacy = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(85), new BigDecimal("80.00"));
-        when(budgetMapper.selectList(null)).thenReturn(List.of(legacy));
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(legacy));
 
         costService.checkBudgetAlerts();
 
@@ -439,7 +439,7 @@ class CostServiceTest {
     @Test
     void checkBudgetAlerts_legacyPercentThreshold_lowUsageDoesNotMisfire() {
         SfBudget legacy = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(5), new BigDecimal("80.00"));
-        when(budgetMapper.selectList(null)).thenReturn(List.of(legacy));
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(legacy));
 
         costService.checkBudgetAlerts();
 
@@ -450,7 +450,7 @@ class CostServiceTest {
     @Test
     void checkBudgetAlerts_exceeded_dispatchesExceededAlert() {
         SfBudget budget = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(150), new BigDecimal("0.8"));
-        when(budgetMapper.selectList(null)).thenReturn(List.of(budget));
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(budget));
 
         costService.checkBudgetAlerts();
 
@@ -461,7 +461,7 @@ class CostServiceTest {
     @Test
     void checkBudgetAlerts_thresholdReached_dispatchesThresholdAlert() {
         SfBudget budget = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(85), new BigDecimal("0.8"));
-        when(budgetMapper.selectList(null)).thenReturn(List.of(budget));
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(budget));
 
         costService.checkBudgetAlerts();
 
@@ -472,11 +472,35 @@ class CostServiceTest {
     @Test
     void checkBudgetAlerts_underThreshold_dispatchesNothing() {
         SfBudget budget = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(50), new BigDecimal("0.8"));
-        when(budgetMapper.selectList(null)).thenReturn(List.of(budget));
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(budget));
 
         costService.checkBudgetAlerts();
 
         verifyNoInteractions(budgetAlertNotifier);
+    }
+
+    @Test
+    void checkBudgetAlerts_reinjectsBudgetTenantForDispatchAndClearsIt() {
+        // Review ST-01: the cross-tenant scan bypasses the tenant interceptor, but the
+        // downstream notification dedup/insert must run under the budget's tenant.
+        SfBudget budget = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(150), new BigDecimal("0.8"));
+        budget.setTenantId("tenant-alert");
+        when(budgetMapper.selectAllActiveBudgetsCrossTenant()).thenReturn(List.of(budget));
+
+        java.util.concurrent.atomic.AtomicReference<String> tenantDuringDispatch =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        doAnswer(inv -> {
+            tenantDuringDispatch.set(com.schemaplexai.common.context.TenantContextHolder.getTenantId());
+            return false;
+        }).when(budgetAlertNotifier).dispatchBudgetAlert(
+                eq(budget), eq(BudgetAlertNotifier.LEVEL_EXCEEDED), any(BigDecimal.class));
+
+        costService.checkBudgetAlerts();
+
+        assertEquals("tenant-alert", tenantDuringDispatch.get(),
+                "Dispatch must run under the budget's tenant context (ST-01)");
+        assertNull(com.schemaplexai.common.context.TenantContextHolder.getTenantId(),
+                "Tenant context must be cleared after the dispatch");
     }
 
     @Test

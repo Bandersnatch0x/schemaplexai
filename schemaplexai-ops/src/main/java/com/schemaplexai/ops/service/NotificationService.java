@@ -44,11 +44,16 @@ public interface NotificationService extends IService<SfNotification> {
 
     /**
      * List persisted budget alert records (notification type
-     * {@link BudgetAlertNotifier#ALERT_NOTIFICATION_TYPE}), newest first.
-     * Backs {@code GET /ops/budgets/alerts} (cost-analytics spec §4.2).
+     * {@link BudgetAlertNotifier#ALERT_NOTIFICATION_TYPE}) for one tenant,
+     * newest first. Backs {@code GET /ops/budgets/alerts} (cost-analytics
+     * spec §4.2).
      *
-     * @param tenantId optional tenant filter; all tenants when null/blank
-     * @return the budget alert records
+     * <p>Review ST-01: the tenant filter is mandatory. A null/blank tenant
+     * fails closed with a parameter error instead of returning all tenants'
+     * alert records.
+     *
+     * @param tenantId the tenant to list alerts for (required, non-blank)
+     * @return the budget alert records of that tenant
      */
     List<SfNotification> listBudgetAlerts(String tenantId);
 }

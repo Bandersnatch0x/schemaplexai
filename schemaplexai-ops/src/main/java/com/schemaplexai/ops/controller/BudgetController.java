@@ -1,5 +1,7 @@
 package com.schemaplexai.ops.controller;
 
+import com.schemaplexai.common.context.TenantContextHolder;
+import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.Result;
 import com.schemaplexai.common.result.ResultCode;
 import com.schemaplexai.ops.entity.SfBudget;
@@ -23,9 +25,23 @@ public class BudgetController {
     private final BudgetService budgetService;
     private final NotificationService notificationService;
 
+    /**
+     * Budget alert records for the calling tenant (review ST-01).
+     *
+     * <p>The tenant is resolved server-side from the gateway-injected
+     * {@code X-Tenant-Id} header (via {@link TenantContextHolder}, populated by
+     * {@code TenantContextFilter}); a client-supplied tenant parameter is no longer
+     * accepted. Requests without a tenant context fail closed instead of returning
+     * cross-tenant alert data.
+     */
     @GetMapping("/alerts")
-    @Operation(summary = "查询预算告警记录")
-    public Result<List<SfNotification>> listAlerts(@RequestParam(required = false) String tenantId) {
+    @Operation(summary = "查询当前租户的预算告警记录")
+    public Result<List<SfNotification>> listAlerts() {
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new BaseException(ResultCode.PARAM_ERROR,
+                    "Missing tenant context: X-Tenant-Id header is required");
+        }
         return Result.success(notificationService.listBudgetAlerts(tenantId));
     }
 

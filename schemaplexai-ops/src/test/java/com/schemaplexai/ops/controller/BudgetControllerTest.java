@@ -1,5 +1,7 @@
 package com.schemaplexai.ops.controller;
 
+import com.schemaplexai.common.context.TenantContextHolder;
+import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.Result;
 import com.schemaplexai.ops.entity.SfBudget;
 import com.schemaplexai.ops.entity.SfNotification;
@@ -13,12 +15,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -166,26 +169,32 @@ class BudgetControllerTest {
     }
 
     @Test
-    void listAlerts_returnsAlertRecordsForTenant() {
+    void listAlerts_withTenantContext_scopesToTenant() {
         SfNotification alert = new SfNotification();
         alert.setType("BUDGET_ALERT");
         when(notificationService.listBudgetAlerts("tenant1")).thenReturn(List.of(alert));
+        TenantContextHolder.setTenantId("tenant1");
+        try {
+            Result<List<SfNotification>> result = budgetController.listAlerts();
 
-        Result<List<SfNotification>> result = budgetController.listAlerts("tenant1");
-
-        assertThat(result.getCode()).isEqualTo(200);
-        assertThat(result.getData()).hasSize(1);
-        assertThat(result.getData().get(0).getType()).isEqualTo("BUDGET_ALERT");
+            assertThat(result.getCode()).isEqualTo(200);
+            assertThat(result.getData()).hasSize(1);
+            assertThat(result.getData().get(0).getType()).isEqualTo("BUDGET_ALERT");
+        } finally {
+            TenantContextHolder.clear();
+        }
     }
 
     @Test
-    void listAlerts_withoutTenantFilter_returnsAllAlerts() {
-        when(notificationService.listBudgetAlerts(null)).thenReturn(Collections.emptyList());
+    void listAlerts_withoutTenantContext_failsClosed() {
+        // Review ST-01: with no tenant context the endpoint must reject rather than
+        // return cross-tenant alert data.
+        TenantContextHolder.clear();
 
-        Result<List<SfNotification>> result = budgetController.listAlerts(null);
+        assertThatThrownBy(() -> budgetController.listAlerts())
+                .isInstanceOf(BaseException.class)
+                .hasMessageContaining("tenant");
 
-        assertThat(result.getCode()).isEqualTo(200);
-        assertThat(result.getData()).isEmpty();
-        verify(notificationService).listBudgetAlerts(null);
+        verifyNoInteractions(notificationService);
     }
 }

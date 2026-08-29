@@ -102,11 +102,15 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, SfN
 
     @Override
     public List<SfNotification> listBudgetAlerts(String tenantId) {
+        // Review ST-01: fail closed. A blank tenant must never produce an
+        // unfiltered cross-tenant alert listing.
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new BaseException(ResultCode.PARAM_ERROR,
+                    "Tenant ID is required for budget alert queries");
+        }
         LambdaQueryWrapper<SfNotification> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SfNotification::getType, BudgetAlertNotifier.ALERT_NOTIFICATION_TYPE);
-        if (tenantId != null && !tenantId.isBlank()) {
-            wrapper.eq(SfNotification::getTenantId, tenantId);
-        }
+        wrapper.eq(SfNotification::getTenantId, tenantId);
         wrapper.orderByDesc(SfNotification::getCreatedAt);
         return baseMapper.selectList(wrapper);
     }

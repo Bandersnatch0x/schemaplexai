@@ -3,6 +3,7 @@ package com.schemaplexai.ops.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.schemaplexai.common.context.TenantContextHolder;
 import com.schemaplexai.model.event.CostRecordedEvent;
 import com.schemaplexai.model.event.ExecutionEventMessage;
 import com.schemaplexai.ops.entity.AiModelPrice;
@@ -144,7 +145,13 @@ public class CostService {
     }
 
     public void checkBudgetAlerts() {
-        List<SfBudget> budgets = budgetMapper.selectList(null);
+        // Review ST-01: the hourly alert job is a legitimate cross-tenant analytics
+        // operation. The scan bypasses the tenant interceptor via
+        // BudgetMapper#selectAllActiveBudgetsCrossTenant (documented deviation, same
+        // pattern as task's MilvusReconciliationMapper); each budget's tenant is then
+        // re-injected into TenantContextHolder so the notification dedup check and
+        // insert remain tenant-scoped under the registered interceptor.
+        List<SfBudget> budgets = budgetMapper.selectAllActiveBudgetsCrossTenant();
         for (SfBudget budget : budgets) {
             if (budget.getLimitAmount() == null || budget.getUsedAmount() == null) {
                 continue;
@@ -158,16 +165,46 @@ public class CostService {
             BigDecimal usagePercent = ratio.multiply(BigDecimal.valueOf(100));
             BigDecimal threshold = normalizeAlertThreshold(budget.getAlertThreshold());
 
-            if (ratio.compareTo(BigDecimal.ONE) >= 0) {
+            boolean exceeded = ratio.compareTo(BigDecimal.ONE) >= 0;
+            boolean thresholdReached = !exceeded && threshold != null && ratio.compareTo(threshold) >= 0;
+            if (!exceeded && !thresholdReached) {
+                continue;
+            }
+
+            if (exceeded) {
                 log.warn("Budget exceeded: type={}, used={}/{} ({}%)",
                         budget.getBudgetType(), budget.getUsedAmount(),
                         budget.getLimitAmount(), usagePercent);
-                budgetAlertNotifier.dispatchBudgetAlert(budget, BudgetAlertNotifier.LEVEL_EXCEEDED, usagePercent);
-            } else if (threshold != null && ratio.compareTo(threshold) >= 0) {
+            } else {
                 log.warn("Budget alert threshold reached: type={}, used={}/{} ({}%)",
                         budget.getBudgetType(), budget.getUsedAmount(),
                         budget.getLimitAmount(), usagePercent);
-                budgetAlertNotifier.dispatchBudgetAlert(budget, BudgetAlertNotifier.LEVEL_THRESHOLD_REACHED, usagePercent);
+            }
+
+            dispatchWithTenantContext(budget,
+                    exceeded ? BudgetAlertNotifier.LEVEL_EXCEEDED : BudgetAlertNotifier.LEVEL_THRESHOLD_REACHED,
+                    usagePercent);
+        }
+    }
+
+    /**
+     * Dispatch one budget alert with the budget's tenant re-injected into
+     * {@link TenantContextHolder} so the dedup read and notification insert are
+     * tenant-scoped under the ops tenant interceptor (review ST-01). The context is
+     * always cleared afterwards to avoid leakage on pooled scheduler threads.
+     */
+    private void dispatchWithTenantContext(SfBudget budget, String alertLevel, BigDecimal usagePercent) {
+        String tenantId = budget.getTenantId();
+        boolean contextSet = false;
+        if (tenantId != null && !tenantId.isBlank()) {
+            TenantContextHolder.setTenantId(tenantId);
+            contextSet = true;
+        }
+        try {
+            budgetAlertNotifier.dispatchBudgetAlert(budget, alertLevel, usagePercent);
+        } finally {
+            if (contextSet) {
+                TenantContextHolder.clear();
             }
         }
     }
