@@ -15,3 +15,9 @@ logging:
   level:
     com.schemaplexai.integration: info
     root: INFO
+
+integration:
+  encryption:
+    # AES-256-GCM master secret for tenant-scoped credential encryption.
+    # Must be provided via environment variable in production.
+    master-secret: ${INTEGRATION_MASTER_SECRET:}

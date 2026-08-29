@@ -3,10 +3,12 @@ package com.schemaplexai.integration.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.integration.security.IntegrationCredentialEncryptor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import org.junit.jupiter.api.io.TempDir;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpEntity;
@@ -15,38 +17,55 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class GitIntegrationServiceTest {
 
-    @Mock
-    private ObjectMapper objectMapper;
+    private static final Long TENANT_ID = 1L;
+    private static final String MASTER_SECRET = "test-master-secret-for-integration";
 
     @Mock
     private RestTemplate restTemplate;
 
-    @InjectMocks
+    private IntegrationCredentialEncryptor encryptor;
+
     private GitIntegrationService gitService;
 
     @BeforeEach
     void setUp() {
+        encryptor = new IntegrationCredentialEncryptor(MASTER_SECRET);
+        gitService = new GitIntegrationService(new ObjectMapper(), restTemplate, encryptor);
         gitService.clearStore();
-        ReflectionTestUtils.setField(gitService, "objectMapper", new ObjectMapper());
     }
 
     // --- registerRepository ---
 
     @Test
+    void registerRepository_nullTenant_throwsParamError() {
+        assertThatThrownBy(() -> gitService.registerRepository(null, "github", "owner", "repo", "url", "main", "token"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+    }
+
+    @Test
     void registerRepository_nullProvider_throwsParamError() {
-        assertThatThrownBy(() -> gitService.registerRepository(null, "owner", "repo", "url", "main", "token"))
+        assertThatThrownBy(() -> gitService.registerRepository(TENANT_ID, null, "owner", "repo", "url", "main", "token"))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.PARAM_ERROR.getCode());
@@ -54,7 +73,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void registerRepository_nullCloneUrl_throwsParamError() {
-        assertThatThrownBy(() -> gitService.registerRepository("github", "owner", "repo", null, "main", "token"))
+        assertThatThrownBy(() -> gitService.registerRepository(TENANT_ID, "github", "owner", "repo", null, "main", "token"))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.PARAM_ERROR.getCode());
@@ -62,16 +81,38 @@ class GitIntegrationServiceTest {
 
     @Test
     void registerRepository_success_returnsId() {
-        Long id = gitService.registerRepository("github", "owner", "repo", "https://github.com/o/r.git", "main", "token");
+        Long id = gitService.registerRepository(TENANT_ID, "github", "owner", "repo", "https://github.com/o/r.git", "main", "token");
         assertThat(id).isEqualTo(1L);
     }
 
     @Test
     void registerRepository_defaultBranch_defaultsToMain() {
-        gitService.registerRepository("github", "owner", "repo", "https://github.com/o/r.git", null, null);
+        gitService.registerRepository(TENANT_ID, "github", "owner", "repo", "https://github.com/o/r.git", null, null);
         Map<String, Object> repo = gitService.getRepository(1L);
         assertThat(repo.get("defaultBranch")).isEqualTo("main");
         assertThat(repo.get("accessToken")).isNull();
+        assertThat(repo.get("accessTokenCipher")).isNull();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void registerRepository_storesEncryptedToken_neverPlaintext() {
+        String token = "ghp_super_secret_token_value";
+        gitService.registerRepository(TENANT_ID, "github", "owner", "repo", "https://github.com/o/r.git", "main", token);
+
+        Map<Long, Map<String, Object>> repoStore =
+                (Map<Long, Map<String, Object>>) ReflectionTestUtils.getField(gitService, "repoStore");
+        Map<String, Object> raw = repoStore.get(1L);
+
+        // No plaintext token anywhere in the raw store
+        assertThat(raw).doesNotContainKey("accessToken");
+        assertThat(raw.values()).noneMatch(v -> v instanceof String s && s.contains(token));
+
+        // Stored value is versioned AES-256-GCM ciphertext that decrypts back to the token
+        String cipher = (String) raw.get("accessTokenCipher");
+        assertThat(cipher).startsWith(IntegrationCredentialEncryptor.CIPHER_PREFIX);
+        assertThat(cipher).doesNotContain(token);
+        assertThat(encryptor.decrypt(cipher, TENANT_ID)).isEqualTo(token);
     }
 
     // --- getRepository ---
@@ -86,9 +127,10 @@ class GitIntegrationServiceTest {
 
     @Test
     void getRepository_found_excludesToken() {
-        gitService.registerRepository("github", "owner", "repo", "https://github.com/o/r.git", "main", "secret");
+        gitService.registerRepository(TENANT_ID, "github", "owner", "repo", "https://github.com/o/r.git", "main", "secret");
         Map<String, Object> repo = gitService.getRepository(1L);
         assertThat(repo).doesNotContainKey("accessToken");
+        assertThat(repo).doesNotContainKey("accessTokenCipher");
         assertThat(repo.get("provider")).isEqualTo("github");
     }
 
@@ -101,11 +143,12 @@ class GitIntegrationServiceTest {
 
     @Test
     void listRepositories_returnsReposWithoutTokens() {
-        gitService.registerRepository("github", "o1", "r1", "url1", "main", "t1");
-        gitService.registerRepository("gitlab", "o2", "r2", "url2", "dev", "t2");
+        gitService.registerRepository(TENANT_ID, "github", "o1", "r1", "url1", "main", "t1");
+        gitService.registerRepository(TENANT_ID, "gitlab", "o2", "r2", "url2", "dev", "t2");
         List<Map<String, Object>> repos = gitService.listRepositories();
         assertThat(repos).hasSize(2);
         assertThat(repos.get(0)).doesNotContainKey("accessToken");
+        assertThat(repos.get(0)).doesNotContainKey("accessTokenCipher");
     }
 
     // --- deleteRepository ---
@@ -120,13 +163,13 @@ class GitIntegrationServiceTest {
 
     @Test
     void deleteRepository_success() {
-        gitService.registerRepository("github", "o", "r", "url", "main", "t");
+        gitService.registerRepository(TENANT_ID, "github", "o", "r", "url", "main", "t");
         gitService.deleteRepository(1L);
         assertThatThrownBy(() -> gitService.getRepository(1L))
                 .isInstanceOf(BaseException.class);
     }
 
-    // --- cloneRepository ---
+    // --- cloneRepository / credential injection ---
 
     @Test
     void cloneRepository_notFound_throwsNotFound() {
@@ -134,6 +177,75 @@ class GitIntegrationServiceTest {
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
                 .isEqualTo(ResultCode.NOT_FOUND.getCode());
+    }
+
+    @Test
+    void buildCloneArguments_github_injectsBasicAuthHeader_keepsUrlClean() {
+        String token = "ghp_secret123";
+        gitService.registerRepository(TENANT_ID, "github", "o", "r", "https://github.com/o/r.git", "main", token);
+        @SuppressWarnings("unchecked")
+        Map<Long, Map<String, Object>> repoStore =
+                (Map<Long, Map<String, Object>>) ReflectionTestUtils.getField(gitService, "repoStore");
+        Map<String, Object> raw = repoStore.get(1L);
+
+        List<String> args = gitService.buildCloneArguments(raw, "https://github.com/o/r.git", "r");
+
+        // URL passed to git must be clean (no embedded token)
+        assertThat(args).contains("https://github.com/o/r.git");
+        assertThat(String.join(" ", args)).doesNotContain(token);
+
+        // Credential injected via http.extraHeader Basic auth
+        String expectedHeader = "http.extraHeader=Authorization: Basic "
+                + Base64.getEncoder().encodeToString(("x-access-token:" + token).getBytes(StandardCharsets.UTF_8));
+        assertThat(args).containsSequence("-c", expectedHeader, "clone", "https://github.com/o/r.git", "r");
+    }
+
+    @Test
+    void buildCloneArguments_gitlab_usesOAuth2Username() {
+        String token = "glpat-secret";
+        gitService.registerRepository(TENANT_ID, "gitlab", "g", "p", "https://gitlab.com/g/p.git", "main", token);
+        @SuppressWarnings("unchecked")
+        Map<Long, Map<String, Object>> repoStore =
+                (Map<Long, Map<String, Object>>) ReflectionTestUtils.getField(gitService, "repoStore");
+        Map<String, Object> raw = repoStore.get(1L);
+
+        List<String> args = gitService.buildCloneArguments(raw, "https://gitlab.com/g/p.git", "p");
+
+        String expectedHeader = "http.extraHeader=Authorization: Basic "
+                + Base64.getEncoder().encodeToString(("oauth2:" + token).getBytes(StandardCharsets.UTF_8));
+        assertThat(args).contains(expectedHeader);
+        assertThat(String.join(" ", args)).doesNotContain(token);
+    }
+
+    @Test
+    void buildCloneArguments_noToken_plainClone() {
+        gitService.registerRepository(TENANT_ID, "github", "o", "r", "https://github.com/o/r.git", "main", null);
+        @SuppressWarnings("unchecked")
+        Map<Long, Map<String, Object>> repoStore =
+                (Map<Long, Map<String, Object>>) ReflectionTestUtils.getField(gitService, "repoStore");
+        Map<String, Object> raw = repoStore.get(1L);
+
+        List<String> args = gitService.buildCloneArguments(raw, "https://github.com/o/r.git", "r");
+
+        assertThat(args).containsExactly("clone", "https://github.com/o/r.git", "r");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void cloneRepository_injectsCredentialsNotUrl(@TempDir Path tempDir) throws Exception {
+        gitService.registerRepository(TENANT_ID, "github", "o", "r", "https://github.com/o/r.git", "main", "tok-123");
+        GitIntegrationService spyService = spy(gitService);
+        doReturn("").when(spyService).executeGitCommandInDir(anyString(), anyList());
+
+        spyService.cloneRepository(1L, tempDir.resolve("r").toString());
+
+        ArgumentCaptor<List<String>> captor = ArgumentCaptor.forClass(List.class);
+        org.mockito.Mockito.verify(spyService).executeGitCommandInDir(anyString(), captor.capture());
+        List<String> command = captor.getValue();
+        assertThat(command).contains("https://github.com/o/r.git");
+        assertThat(String.join(" ", command)).doesNotContain("tok-123");
+        assertThat(command).contains("-c");
+        assertThat(command.stream().anyMatch(a -> a.startsWith("http.extraHeader=Authorization: Basic "))).isTrue();
     }
 
     // --- pullRepository ---
@@ -148,7 +260,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void pullRepository_nullPath_throwsParamError() {
-        gitService.registerRepository("github", "o", "r", "url", "main", "t");
+        gitService.registerRepository(TENANT_ID, "github", "o", "r", "url", "main", "t");
         assertThatThrownBy(() -> gitService.pullRepository(1L, null))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
@@ -167,7 +279,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void pushRepository_nullPath_throwsParamError() {
-        gitService.registerRepository("github", "o", "r", "url", "main", "t");
+        gitService.registerRepository(TENANT_ID, "github", "o", "r", "url", "main", "t");
         assertThatThrownBy(() -> gitService.pushRepository(1L, null, "main"))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
@@ -275,7 +387,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void listWebhookEvents_filtersByRepository() {
-        gitService.registerRepository("github", "o", "r", "url", "main", "t");
+        gitService.registerRepository(TENANT_ID, "github", "o", "r", "url", "main", "t");
         // Can't easily trigger webhook without mocking ObjectMapper, but we can test filtering on empty store
         assertThat(gitService.listWebhookEvents("nonexistent", null, 10)).isEmpty();
     }
@@ -287,7 +399,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void listWebhookEvents_zeroLimitWithStoredEvents_returnsEmpty() {
-        gitService.registerRepository("github", "o", "r", "url", "main", "t");
+        gitService.registerRepository(TENANT_ID, "github", "o", "r", "url", "main", "t");
         gitService.handleWebhook("github", "{\"action\":\"opened\",\"repository\":{\"full_name\":\"o/r\"},\"ref\":\"refs/heads/main\",\"after\":\"abc123\"}");
 
         assertThat(gitService.listWebhookEvents(null, null, 0)).isEmpty();
@@ -305,7 +417,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void fetchRepositoryInfo_unsupportedProvider_throwsParamError() {
-        gitService.registerRepository("bitbucket", "o", "r", "url", "main", "t");
+        gitService.registerRepository(TENANT_ID, "bitbucket", "o", "r", "url", "main", "t");
         assertThatThrownBy(() -> gitService.fetchRepositoryInfo(1L))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
@@ -314,7 +426,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void fetchRepositoryInfo_github_success() {
-        gitService.registerRepository("github", "octocat", "hello-world", "url", "main", "token");
+        gitService.registerRepository(TENANT_ID, "github", "octocat", "hello-world", "url", "main", "token");
         when(restTemplate.exchange(eq("https://api.github.com/repos/octocat/hello-world"), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class)))
                 .thenReturn(ResponseEntity.ok("{\"name\":\"hello-world\"}"));
 
@@ -324,7 +436,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void fetchRepositoryInfo_gitlab_success() {
-        gitService.registerRepository("gitlab", "group", "project", "url", "main", "token");
+        gitService.registerRepository(TENANT_ID, "gitlab", "group", "project", "url", "main", "token");
         when(restTemplate.exchange(eq("https://gitlab.com/api/v4/projects/group%2Fproject"), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class)))
                 .thenReturn(ResponseEntity.ok("{\"name\":\"project\"}"));
 
@@ -336,7 +448,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void fetchBranchesViaApi_github_success() {
-        gitService.registerRepository("github", "octocat", "hello-world", "url", "main", "token");
+        gitService.registerRepository(TENANT_ID, "github", "octocat", "hello-world", "url", "main", "token");
         when(restTemplate.exchange(eq("https://api.github.com/repos/octocat/hello-world/branches"), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class)))
                 .thenReturn(ResponseEntity.ok("[]"));
 
@@ -346,7 +458,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void fetchBranchesViaApi_gitlab_success() {
-        gitService.registerRepository("gitlab", "group", "project", "url", "main", "token");
+        gitService.registerRepository(TENANT_ID, "gitlab", "group", "project", "url", "main", "token");
         when(restTemplate.exchange(eq("https://gitlab.com/api/v4/projects/group%2Fproject/repository/branches"), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class)))
                 .thenReturn(ResponseEntity.ok("[]"));
 
@@ -364,7 +476,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void fetchBranchesViaApi_unsupportedProvider_throwsParamError() {
-        gitService.registerRepository("bitbucket", "o", "r", "url", "main", "t");
+        gitService.registerRepository(TENANT_ID, "bitbucket", "o", "r", "url", "main", "t");
         assertThatThrownBy(() -> gitService.fetchBranchesViaApi(1L))
                 .isInstanceOf(BaseException.class)
                 .extracting("code")
@@ -373,7 +485,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void fetchRepositoryInfo_github_withoutToken_success() {
-        gitService.registerRepository("github", "octocat", "hello-world", "url", "main", "");
+        gitService.registerRepository(TENANT_ID, "github", "octocat", "hello-world", "url", "main", "");
         when(restTemplate.exchange(eq("https://api.github.com/repos/octocat/hello-world"), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class)))
                 .thenReturn(ResponseEntity.ok("{}"));
 
@@ -383,7 +495,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void fetchRepositoryInfo_gitlab_withoutToken_success() {
-        gitService.registerRepository("gitlab", "group", "project", "url", "main", null);
+        gitService.registerRepository(TENANT_ID, "gitlab", "group", "project", "url", "main", null);
         when(restTemplate.exchange(eq("https://gitlab.com/api/v4/projects/group%2Fproject"), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class)))
                 .thenReturn(ResponseEntity.ok("{}"));
 
@@ -393,7 +505,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void handleWebhook_githubPayload_success() {
-        gitService.registerRepository("github", "o", "r", "url", "main", "t");
+        gitService.registerRepository(TENANT_ID, "github", "o", "r", "url", "main", "t");
         String payload = "{\"action\":\"opened\",\"repository\":{\"full_name\":\"o/r\"},\"ref\":\"refs/heads/main\",\"after\":\"abc123\"}";
         gitService.handleWebhook("github", payload);
         assertThat(gitService.listWebhookEvents("o/r", null, 10)).hasSize(1);
@@ -401,7 +513,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void handleWebhook_gitlabPayload_success() {
-        gitService.registerRepository("gitlab", "o", "r", "url", "main", "t");
+        gitService.registerRepository(TENANT_ID, "gitlab", "o", "r", "url", "main", "t");
         String payload = "{\"object_kind\":\"push\",\"project\":{\"path_with_namespace\":\"o/r\"},\"ref\":\"refs/heads/dev\",\"after\":\"def456\"}";
         gitService.handleWebhook("gitlab", payload);
         assertThat(gitService.listWebhookEvents("o/r", null, 10)).hasSize(1);
@@ -409,7 +521,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void handleWebhook_unknownProvider_success() {
-        gitService.registerRepository("other", "o", "r", "url", "main", "t");
+        gitService.registerRepository(TENANT_ID, "other", "o", "r", "url", "main", "t");
         String payload = "{\"event_type\":\"push\",\"repository\":{\"full_name\":\"o/r\"},\"ref\":\"refs/heads/main\",\"after\":\"ghi789\"}";
         gitService.handleWebhook("other", payload);
         assertThat(gitService.listWebhookEvents("o/r", null, 10)).hasSize(1);
@@ -417,7 +529,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void listWebhookEvents_filtersByEventType() {
-        gitService.registerRepository("github", "o", "r", "url", "main", "t");
+        gitService.registerRepository(TENANT_ID, "github", "o", "r", "url", "main", "t");
         gitService.handleWebhook("github", "{\"action\":\"opened\",\"repository\":{\"full_name\":\"o/r\"},\"ref\":\"refs/heads/main\",\"after\":\"abc123\"}");
         assertThat(gitService.listWebhookEvents(null, "opened", 10)).hasSize(1);
         assertThat(gitService.listWebhookEvents(null, "closed", 10)).isEmpty();
@@ -425,7 +537,7 @@ class GitIntegrationServiceTest {
 
     @Test
     void listWebhookEvents_filtersByRepositoryAndEventType() {
-        gitService.registerRepository("github", "o", "r", "url", "main", "t");
+        gitService.registerRepository(TENANT_ID, "github", "o", "r", "url", "main", "t");
         gitService.handleWebhook("github", "{\"action\":\"opened\",\"repository\":{\"full_name\":\"o/r\"},\"ref\":\"refs/heads/main\",\"after\":\"abc123\"}");
         assertThat(gitService.listWebhookEvents("o/r", "opened", 10)).hasSize(1);
         assertThat(gitService.listWebhookEvents("other", "opened", 10)).isEmpty();
