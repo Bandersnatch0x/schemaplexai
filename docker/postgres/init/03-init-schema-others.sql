@@ -10,7 +10,7 @@ CREATE TABLE sf_workflow_template (
     name            VARCHAR(128) NOT NULL,
     description     TEXT,
     node_config_json TEXT NOT NULL,
-    status          VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
+    status          VARCHAR(32) NOT NULL DEFAULT 'draft', -- draft / deployed / inactive; only deployed templates are executable (spec §4)
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by      BIGINT,

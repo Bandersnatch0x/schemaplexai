@@ -47,6 +47,17 @@ public class WorkflowInstanceServiceImpl extends ServiceImpl<SfWorkflowInstanceM
             throw new BaseException(ResultCode.WORKFLOW_NOT_FOUND, "Workflow template not found: " + instance.getTemplateId());
         }
 
+        // Spec §4: only published templates may be executed; DRAFT/inactive templates are rejected.
+        if (!WorkflowTemplateServiceImpl.STATUS_DEPLOYED.equals(template.getStatus())) {
+            log.warn("Refusing to trigger instance {}: template {} is not published (status={})",
+                    instanceId, instance.getTemplateId(), template.getStatus());
+            instance.setStatus("FAILED");
+            baseMapper.updateById(instance);
+            throw new BaseException(ResultCode.PARAM_ERROR,
+                    "Workflow template is not published (status=" + template.getStatus()
+                            + "); deploy it before triggering instances: " + instance.getTemplateId());
+        }
+
         // Validate topology hash on resume (prevents silent corruption)
         String currentHash = TopologyHasher.hash(template.getNodeConfigJson());
         if (instance.getTopologyHash() != null) {

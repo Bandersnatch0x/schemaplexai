@@ -80,6 +80,73 @@ class WorkflowInstanceServiceImplTest {
     }
 
     // ------------------------------------------------------------------
+    // trigger - publish gate (spec §4: DRAFT templates are not executable)
+    // ------------------------------------------------------------------
+
+    @Test
+    void trigger_draftTemplate_rejectedAndInstanceFailed() {
+        assertThatThrownBy(() -> triggerWithTemplateStatus("draft"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+    }
+
+    @Test
+    void trigger_inactiveTemplate_rejected() {
+        assertThatThrownBy(() -> triggerWithTemplateStatus("inactive"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+    }
+
+    @Test
+    void trigger_nullStatusTemplate_rejected() {
+        assertThatThrownBy(() -> triggerWithTemplateStatus(null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+    }
+
+    @Test
+    void trigger_draftTemplate_marksInstanceFailedInDb() {
+        SfWorkflowInstance instance = new SfWorkflowInstance();
+        instance.setId(1L);
+        instance.setTemplateId(10L);
+        instance.setStatus("PENDING");
+        when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
+
+        SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setId(10L);
+        template.setStatus("draft");
+        template.setNodeConfigJson("[{\"nodeId\":\"n1\",\"nodeType\":\"AI\",\"input\":{}}]");
+        when(templateMapper.selectById(10L)).thenReturn(template);
+
+        assertThatThrownBy(() -> workflowInstanceService.trigger(1L))
+                .isInstanceOf(BaseException.class);
+
+        assertThat(instance.getStatus()).isEqualTo("FAILED");
+        verify(workflowInstanceMapper).updateById(instance);
+        verify(nodeEngine, never()).executeNode(any());
+    }
+
+    private Void triggerWithTemplateStatus(String status) {
+        SfWorkflowInstance instance = new SfWorkflowInstance();
+        instance.setId(1L);
+        instance.setTemplateId(10L);
+        instance.setStatus("PENDING");
+        when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
+
+        SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setId(10L);
+        template.setStatus(status);
+        template.setNodeConfigJson("[{\"nodeId\":\"n1\",\"nodeType\":\"AI\",\"input\":{}}]");
+        when(templateMapper.selectById(10L)).thenReturn(template);
+
+        workflowInstanceService.trigger(1L);
+        return null;
+    }
+
+    // ------------------------------------------------------------------
     // trigger - empty node config
     // ------------------------------------------------------------------
 
@@ -92,6 +159,7 @@ class WorkflowInstanceServiceImplTest {
         when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
 
         SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setStatus("deployed");
         template.setId(10L);
         template.setNodeConfigJson(null);
         when(templateMapper.selectById(10L)).thenReturn(template);
@@ -112,6 +180,7 @@ class WorkflowInstanceServiceImplTest {
         when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
 
         SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setStatus("deployed");
         template.setId(10L);
         template.setNodeConfigJson("  ");
         when(templateMapper.selectById(10L)).thenReturn(template);
@@ -134,6 +203,7 @@ class WorkflowInstanceServiceImplTest {
         when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
 
         SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setStatus("deployed");
         template.setId(10L);
         template.setNodeConfigJson("[{\"nodeId\":\"n1\",\"nodeType\":\"AI\",\"input\":{}}]");
         when(templateMapper.selectById(10L)).thenReturn(template);
@@ -154,6 +224,7 @@ class WorkflowInstanceServiceImplTest {
         when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
 
         SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setStatus("deployed");
         template.setId(10L);
         template.setNodeConfigJson("[{\"nodeId\":\"n1\",\"nodeType\":\"AI\",\"input\":{}}]");
         when(templateMapper.selectById(10L)).thenReturn(template);
@@ -174,6 +245,7 @@ class WorkflowInstanceServiceImplTest {
         when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
 
         SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setStatus("deployed");
         template.setId(10L);
         template.setNodeConfigJson(null);
         when(templateMapper.selectById(10L)).thenReturn(template);
@@ -199,6 +271,7 @@ class WorkflowInstanceServiceImplTest {
 
         String nodeConfig = "[{\"nodeId\":\"n1\",\"nodeType\":\"AI\",\"input\":{}}]";
         SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setStatus("deployed");
         template.setId(10L);
         template.setNodeConfigJson(nodeConfig);
         when(templateMapper.selectById(10L)).thenReturn(template);
@@ -225,6 +298,7 @@ class WorkflowInstanceServiceImplTest {
         when(workflowInstanceMapper.selectById(1L)).thenReturn(instance);
 
         SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setStatus("deployed");
         template.setId(10L);
         template.setNodeConfigJson(nodeConfig);
         when(templateMapper.selectById(10L)).thenReturn(template);
@@ -251,6 +325,7 @@ class WorkflowInstanceServiceImplTest {
         // Template has been modified since checkpoint
         String modifiedConfig = "[{\"nodeId\":\"n2\",\"nodeType\":\"HTTP\",\"input\":{}}]";
         SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setStatus("deployed");
         template.setId(10L);
         template.setNodeConfigJson(modifiedConfig);
         when(templateMapper.selectById(10L)).thenReturn(template);

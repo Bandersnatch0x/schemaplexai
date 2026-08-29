@@ -43,6 +43,47 @@ class WorkflowTemplateServiceImplTest {
     }
 
     // ------------------------------------------------------------------
+    // save - default status
+    // ------------------------------------------------------------------
+
+    @Test
+    void save_nullStatus_defaultsToDraft() {
+        SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setName("New Template");
+        template.setStatus(null);
+        when(workflowTemplateMapper.insert(any(SfWorkflowTemplate.class))).thenReturn(1);
+
+        workflowTemplateService.save(template);
+
+        assertThat(template.getStatus()).isEqualTo("draft");
+        verify(workflowTemplateMapper).insert(template);
+    }
+
+    @Test
+    void save_blankStatus_defaultsToDraft() {
+        SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setName("New Template");
+        template.setStatus("  ");
+        when(workflowTemplateMapper.insert(any(SfWorkflowTemplate.class))).thenReturn(1);
+
+        workflowTemplateService.save(template);
+
+        assertThat(template.getStatus()).isEqualTo("draft");
+    }
+
+    @Test
+    void save_explicitStatus_preserved() {
+        SfWorkflowTemplate template = new SfWorkflowTemplate();
+        template.setName("New Template");
+        template.setStatus("deployed");
+        when(workflowTemplateMapper.insert(any(SfWorkflowTemplate.class))).thenReturn(1);
+
+        workflowTemplateService.save(template);
+
+        assertThat(template.getStatus()).isEqualTo("deployed");
+    }
+
+    // ------------------------------------------------------------------
     // deployTemplate
     // ------------------------------------------------------------------
 
