@@ -84,6 +84,7 @@ public class McpServerServiceImpl extends ServiceImpl<McpServerMapper, SfMcpServ
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(baseUrl + "/discover"))
                     .header("Content-Type", "application/json")
+                    .timeout(Duration.ofSeconds(30))
                     .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                     .build();
 
@@ -155,6 +156,7 @@ public class McpServerServiceImpl extends ServiceImpl<McpServerMapper, SfMcpServ
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(baseUrl + "/invoke"))
                     .header("Content-Type", "application/json")
+                    .timeout(Duration.ofSeconds(30))
                     .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                     .build();
 

@@ -33,3 +33,10 @@ integration:
         client-secret: ${GITLAB_OAUTH_CLIENT_SECRET:}
         token-url: ${GITLAB_OAUTH_TOKEN_URL:https://gitlab.com/oauth/token}
         redirect-uri: ${GITLAB_OAUTH_REDIRECT_URI:}
+  http:
+    # Outbound HTTP budget for RestTemplate-based external calls (SPEC-INT §7: 30s).
+    connect-timeout: ${INTEGRATION_HTTP_CONNECT_TIMEOUT:30s}
+    read-timeout: ${INTEGRATION_HTTP_READ_TIMEOUT:30s}
+  git:
+    # Upper bound for a single git CLI invocation; the process is destroyed on expiry.
+    command-timeout: ${INTEGRATION_GIT_COMMAND_TIMEOUT:30s}

@@ -8,6 +8,7 @@ import com.schemaplexai.integration.config.IntegrationOAuthProperties;
 import com.schemaplexai.integration.security.IntegrationCredentialEncryptor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -20,10 +21,13 @@ import org.springframework.web.client.RestTemplate;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -31,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -51,6 +56,10 @@ public class GitIntegrationService {
     // OAuth access tokens per tenant/provider — ciphertext only (key: tenantId -> provider).
     private final Map<Long, Map<String, Map<String, Object>>> oauthTokenStore = new ConcurrentHashMap<>();
     private long repoIdSequence = 1;
+
+    /** Upper bound for a single git CLI invocation; the process is destroyed on expiry. */
+    @Value("${integration.git.command-timeout:30s}")
+    private Duration gitCommandTimeout = Duration.ofSeconds(30);
 
     // --- Repository CRUD ---
 
@@ -224,6 +233,8 @@ public class GitIntegrationService {
             executeGitCommandInDir(localPath, "pull");
             log.info("Repository {} pulled at {}", repoId, localPath);
             return localPath;
+        } catch (BaseException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to pull repository {}", repoId, e);
             throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED, "Pull failed: " + e.getMessage());
@@ -243,6 +254,8 @@ public class GitIntegrationService {
             executeGitCommandInDir(localPath, "push", "origin", targetBranch);
             log.info("Repository {} pushed to branch {}", repoId, targetBranch);
             return localPath;
+        } catch (BaseException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to push repository {}", repoId, e);
             throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED, "Push failed: " + e.getMessage());
@@ -266,6 +279,8 @@ public class GitIntegrationService {
                 }
             }
             return branches;
+        } catch (BaseException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to list branches for repo {}", repoId, e);
             throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED, "List branches failed: " + e.getMessage());
@@ -283,6 +298,8 @@ public class GitIntegrationService {
             }
             executeGitCommandInDir(localPath, "checkout", "-b", branchName);
             log.info("Branch {} created for repo {}", branchName, repoId);
+        } catch (BaseException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to create branch for repo {}", repoId, e);
             throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED, "Create branch failed: " + e.getMessage());
@@ -298,6 +315,8 @@ public class GitIntegrationService {
             String flag = force ? "-D" : "-d";
             executeGitCommandInDir(localPath, "branch", flag, branchName);
             log.info("Branch {} deleted for repo {}", branchName, repoId);
+        } catch (BaseException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to delete branch for repo {}", repoId, e);
             throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED, "Delete branch failed: " + e.getMessage());
@@ -520,23 +539,53 @@ public class GitIntegrationService {
         List<String> command = new ArrayList<>();
         command.add("git");
         command.addAll(args);
-        ProcessBuilder pb = new ProcessBuilder(command);
-        pb.directory(new File(workingDir));
-        pb.redirectErrorStream(true);
-        Process process = pb.start();
+        Process process = startProcess(command, new File(workingDir));
 
+        // Drain output concurrently so pipe buffering cannot stall the timeout wait.
         StringBuilder output = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");
-            }
+        Thread reader = new Thread(() -> drainStream(process.getInputStream(), output));
+        reader.setDaemon(true);
+        reader.start();
+
+        boolean finished = process.waitFor(gitCommandTimeout.toSeconds(), TimeUnit.SECONDS);
+        if (!finished) {
+            process.destroyForcibly();
+            reader.join(1000);
+            log.warn("Git command timed out after {}s and was destroyed", gitCommandTimeout.toSeconds());
+            throw new BaseException(ResultCode.REQUEST_TIMEOUT,
+                    "Git command timed out after " + gitCommandTimeout.toSeconds() + "s");
         }
-        int exitCode = process.waitFor();
+        reader.join(1000);
+        int exitCode = process.exitValue();
         if (exitCode != 0) {
             throw new RuntimeException("Git command failed with exit code " + exitCode);
         }
-        return output.toString();
+        synchronized (output) {
+            return output.toString();
+        }
+    }
+
+    private void drainStream(InputStream stream, StringBuilder sink) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                synchronized (sink) {
+                    sink.append(line).append("\n");
+                }
+            }
+        } catch (IOException e) {
+            // Stream closed when the process is destroyed on timeout — nothing to report.
+        }
+    }
+
+    /** Visible for testing: create and start the git process. */
+    Process startProcess(List<String> command, File workingDir) throws IOException {
+        ProcessBuilder pb = new ProcessBuilder(command);
+        pb.directory(workingDir);
+        pb.redirectErrorStream(true);
+        // Never block on interactive credential prompts; credentials arrive via http.extraHeader.
+        pb.environment().put("GIT_TERMINAL_PROMPT", "0");
+        return pb.start();
     }
 
     private String extractEventType(JsonNode root, String provider) {
