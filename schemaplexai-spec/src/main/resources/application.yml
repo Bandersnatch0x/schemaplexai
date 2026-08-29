@@ -29,6 +29,9 @@ mybatis-plus:
       logic-delete-value: 1
       logic-not-delete-value: 0
 
+jwt:
+  secret: ${JWT_SECRET}
+
 logging:
   level:
     com.schemaplexai.spec: info
