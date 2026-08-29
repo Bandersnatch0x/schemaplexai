@@ -35,8 +35,20 @@ public class BudgetServiceImpl extends ServiceImpl<BudgetMapper, SfBudget> imple
         if (budget.getUsedAmount() == null) {
             budget.setUsedAmount(ZERO);
         }
+        // Spec §3.3: alert_threshold is a decimal fraction (0.8 = 80%).
         if (budget.getAlertThreshold() == null) {
             budget.setAlertThreshold(new BigDecimal("0.8"));
+        } else if (budget.getAlertThreshold().signum() < 0) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "Alert threshold must not be negative");
+        } else if (budget.getAlertThreshold().compareTo(BigDecimal.ONE) > 0) {
+            // Accept legacy percent input (e.g. 80) and normalize it to the decimal unit
+            BigDecimal normalized = budget.getAlertThreshold()
+                    .divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
+            if (normalized.compareTo(BigDecimal.ONE) > 0) {
+                throw new BaseException(ResultCode.PARAM_ERROR,
+                        "Alert threshold must be a fraction in [0,1] (e.g. 0.8 = 80%)");
+            }
+            budget.setAlertThreshold(normalized);
         }
         baseMapper.insert(budget);
         log.info("Allocated budget: id={}, type={}, limit={}", budget.getId(), budget.getBudgetType(), budget.getLimitAmount());

@@ -63,6 +63,7 @@ public class CostService {
     private final BudgetService budgetService;
     private final ObjectMapper objectMapper;
     private final AiModelPriceMapper aiModelPriceMapper;
+    private final BudgetAlertNotifier budgetAlertNotifier;
 
     /**
      * Resolved per-1K pricing for a model.
@@ -147,21 +148,49 @@ public class CostService {
                 continue;
             }
 
+            // Spec §3.3: threshold is a decimal fraction (0.8 = 80%). Usage is compared
+            // in the same unit so the legacy percent rows (e.g. 80.00) can no longer be
+            // mixed with decimal rows (0.8) — legacy values are normalized on the fly.
             BigDecimal ratio = budget.getUsedAmount()
-                    .divide(budget.getLimitAmount(), 4, RoundingMode.HALF_UP)
-                    .multiply(BigDecimal.valueOf(100));
+                    .divide(budget.getLimitAmount(), COST_SCALE, RoundingMode.HALF_UP);
+            BigDecimal usagePercent = ratio.multiply(BigDecimal.valueOf(100));
+            BigDecimal threshold = normalizeAlertThreshold(budget.getAlertThreshold());
 
-            if (ratio.compareTo(BigDecimal.valueOf(100)) >= 0) {
+            if (ratio.compareTo(BigDecimal.ONE) >= 0) {
                 log.warn("Budget exceeded: type={}, used={}/{} ({}%)",
                         budget.getBudgetType(), budget.getUsedAmount(),
-                        budget.getLimitAmount(), ratio);
-            } else if (budget.getAlertThreshold() != null &&
-                    ratio.compareTo(budget.getAlertThreshold()) >= 0) {
+                        budget.getLimitAmount(), usagePercent);
+                budgetAlertNotifier.dispatchBudgetAlert(budget, BudgetAlertNotifier.LEVEL_EXCEEDED, usagePercent);
+            } else if (threshold != null && ratio.compareTo(threshold) >= 0) {
                 log.warn("Budget alert threshold reached: type={}, used={}/{} ({}%)",
                         budget.getBudgetType(), budget.getUsedAmount(),
-                        budget.getLimitAmount(), ratio);
+                        budget.getLimitAmount(), usagePercent);
+                budgetAlertNotifier.dispatchBudgetAlert(budget, BudgetAlertNotifier.LEVEL_THRESHOLD_REACHED, usagePercent);
             }
         }
+    }
+
+    /**
+     * Normalize a budget alert threshold to the spec's decimal-fraction semantics
+     * (0.8 = 80%). Values above 1 are legacy percentages and are divided by 100;
+     * e.g. the old DDL default 80.00 becomes 0.80, preventing alerts from firing
+     * at 0.8% usage.
+     *
+     * @param rawThreshold the stored threshold (nullable)
+     * @return the decimal threshold in [0,1], or null when unset
+     */
+    static BigDecimal normalizeAlertThreshold(BigDecimal rawThreshold) {
+        if (rawThreshold == null) {
+            return null;
+        }
+        if (rawThreshold.compareTo(BigDecimal.ONE) > 0) {
+            BigDecimal normalized = rawThreshold.divide(BigDecimal.valueOf(100), COST_SCALE, RoundingMode.HALF_UP);
+            // debug: can fire every hourly run for legacy rows; the persisted row
+            // should be migrated to decimal semantics (sf_budget.alert_threshold)
+            log.debug("Legacy percent alert threshold {} normalized to decimal {}", rawThreshold, normalized);
+            return normalized;
+        }
+        return rawThreshold;
     }
 
     /**

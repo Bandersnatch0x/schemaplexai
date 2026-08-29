@@ -280,4 +280,30 @@ class NotificationServiceImplTest {
         assertThat(result).isEqualTo(0);
         verify(notificationMapper, never()).updateById(any(SfNotification.class));
     }
+
+    // ------------------------------------------------------------------
+    // listBudgetAlerts (issue 921)
+    // ------------------------------------------------------------------
+
+    @Test
+    void listBudgetAlerts_filtersByTypeAndTenant() {
+        SfNotification alert = new SfNotification();
+        alert.setType(BudgetAlertNotifier.ALERT_NOTIFICATION_TYPE);
+        when(notificationMapper.selectList(any())).thenReturn(List.of(alert));
+
+        List<SfNotification> result = notificationService.listBudgetAlerts("tenant-1");
+
+        assertThat(result).hasSize(1);
+        verify(notificationMapper).selectList(any());
+    }
+
+    @Test
+    void listBudgetAlerts_blankTenant_omitsTenantFilter() {
+        when(notificationMapper.selectList(any())).thenReturn(Collections.emptyList());
+
+        List<SfNotification> result = notificationService.listBudgetAlerts("   ");
+
+        assertThat(result).isEmpty();
+        verify(notificationMapper).selectList(any());
+    }
 }

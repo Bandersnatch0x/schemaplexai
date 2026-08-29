@@ -27,6 +27,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,6 +45,9 @@ class CostServiceTest {
     @Mock
     private AiModelPriceMapper aiModelPriceMapper;
 
+    @Mock
+    private BudgetAlertNotifier budgetAlertNotifier;
+
     private CostService costService;
 
     private Logger costServiceLogger;
@@ -52,7 +56,7 @@ class CostServiceTest {
     @BeforeEach
     void setUp() {
         costService = new CostService(budgetMapper, costRecordMapper, budgetService,
-                new com.fasterxml.jackson.databind.ObjectMapper(), aiModelPriceMapper);
+                new com.fasterxml.jackson.databind.ObjectMapper(), aiModelPriceMapper, budgetAlertNotifier);
         costServiceLogger = (Logger) LoggerFactory.getLogger(CostService.class);
         logAppender = new ListAppender<>();
         logAppender.start();
@@ -396,6 +400,95 @@ class CostServiceTest {
 
         List<ILoggingEvent> warnings = getWarnEvents();
         assertTrue(warnings.isEmpty());
+    }
+
+    // ------------------------------------------------------------------
+    // checkBudgetAlerts — unified decimal threshold semantics (issue 921)
+    // ------------------------------------------------------------------
+
+    @Test
+    void checkBudgetAlerts_decimalThreshold_firesAtFractionNotPercent() {
+        // threshold 0.8 means 80%: usage 85% fires, usage 5% must NOT misfire
+        // (the old percent-vs-decimal mix alerted the latter at 0.8% usage)
+        SfBudget over = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(85), new BigDecimal("0.8"));
+        SfBudget under = createBudget("TOKEN", BigDecimal.valueOf(100), BigDecimal.valueOf(5), new BigDecimal("0.8"));
+        when(budgetMapper.selectList(null)).thenReturn(List.of(over, under));
+
+        costService.checkBudgetAlerts();
+
+        List<ILoggingEvent> warnings = getWarnEvents();
+        assertEquals(1, warnings.size(), "Only the 85% budget may alert; 5% must not misfire");
+        assertTrue(warnings.get(0).getFormattedMessage().contains("Budget alert threshold reached"));
+    }
+
+    @Test
+    void checkBudgetAlerts_legacyPercentThreshold_normalizedLikeDecimal() {
+        // legacy row storing 80.00 (percent) behaves exactly like 0.8 (decimal)
+        SfBudget legacy = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(85), new BigDecimal("80.00"));
+        when(budgetMapper.selectList(null)).thenReturn(List.of(legacy));
+
+        costService.checkBudgetAlerts();
+
+        List<ILoggingEvent> warnings = getWarnEvents();
+        assertEquals(1, warnings.size());
+        assertTrue(warnings.get(0).getFormattedMessage().contains("Budget alert threshold reached"));
+    }
+
+    @Test
+    void checkBudgetAlerts_legacyPercentThreshold_lowUsageDoesNotMisfire() {
+        SfBudget legacy = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(5), new BigDecimal("80.00"));
+        when(budgetMapper.selectList(null)).thenReturn(List.of(legacy));
+
+        costService.checkBudgetAlerts();
+
+        assertTrue(getWarnEvents().isEmpty(),
+                "Legacy percent threshold must not fire at low usage after normalization");
+    }
+
+    @Test
+    void checkBudgetAlerts_exceeded_dispatchesExceededAlert() {
+        SfBudget budget = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(150), new BigDecimal("0.8"));
+        when(budgetMapper.selectList(null)).thenReturn(List.of(budget));
+
+        costService.checkBudgetAlerts();
+
+        verify(budgetAlertNotifier).dispatchBudgetAlert(
+                eq(budget), eq(BudgetAlertNotifier.LEVEL_EXCEEDED), any(BigDecimal.class));
+    }
+
+    @Test
+    void checkBudgetAlerts_thresholdReached_dispatchesThresholdAlert() {
+        SfBudget budget = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(85), new BigDecimal("0.8"));
+        when(budgetMapper.selectList(null)).thenReturn(List.of(budget));
+
+        costService.checkBudgetAlerts();
+
+        verify(budgetAlertNotifier).dispatchBudgetAlert(
+                eq(budget), eq(BudgetAlertNotifier.LEVEL_THRESHOLD_REACHED), any(BigDecimal.class));
+    }
+
+    @Test
+    void checkBudgetAlerts_underThreshold_dispatchesNothing() {
+        SfBudget budget = createBudget("API", BigDecimal.valueOf(100), BigDecimal.valueOf(50), new BigDecimal("0.8"));
+        when(budgetMapper.selectList(null)).thenReturn(List.of(budget));
+
+        costService.checkBudgetAlerts();
+
+        verifyNoInteractions(budgetAlertNotifier);
+    }
+
+    @Test
+    void normalizeAlertThreshold_decimalPassesThrough() {
+        assertEquals(0, new BigDecimal("0.8").compareTo(CostService.normalizeAlertThreshold(new BigDecimal("0.8"))));
+        assertEquals(0, BigDecimal.ONE.compareTo(CostService.normalizeAlertThreshold(BigDecimal.ONE)));
+        assertEquals(0, BigDecimal.ZERO.compareTo(CostService.normalizeAlertThreshold(BigDecimal.ZERO)));
+        assertNull(CostService.normalizeAlertThreshold(null));
+    }
+
+    @Test
+    void normalizeAlertThreshold_legacyPercentDividedBy100() {
+        assertEquals(0, new BigDecimal("0.8").compareTo(CostService.normalizeAlertThreshold(new BigDecimal("80.00"))));
+        assertEquals(0, new BigDecimal("0.95").compareTo(CostService.normalizeAlertThreshold(new BigDecimal("95"))));
     }
 
     // ------------------------------------------------------------------

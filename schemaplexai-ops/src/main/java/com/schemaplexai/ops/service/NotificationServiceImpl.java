@@ -99,4 +99,15 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, SfN
         log.info("Batch marked {} notifications as read", count);
         return count;
     }
+
+    @Override
+    public List<SfNotification> listBudgetAlerts(String tenantId) {
+        LambdaQueryWrapper<SfNotification> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SfNotification::getType, BudgetAlertNotifier.ALERT_NOTIFICATION_TYPE);
+        if (tenantId != null && !tenantId.isBlank()) {
+            wrapper.eq(SfNotification::getTenantId, tenantId);
+        }
+        wrapper.orderByDesc(SfNotification::getCreatedAt);
+        return baseMapper.selectList(wrapper);
+    }
 }

@@ -132,6 +132,60 @@ class BudgetServiceImplTest {
         assertThat(result.getAlertThreshold()).isEqualTo(new BigDecimal("0.9"));
     }
 
+    @Test
+    void allocateBudget_legacyPercentThreshold_normalizedToDecimal() {
+        // issue 921: threshold unit is a decimal fraction (0.8 = 80%)
+        SfBudget budget = new SfBudget();
+        budget.setBudgetType("API");
+        budget.setLimitAmount(BigDecimal.valueOf(100));
+        budget.setAlertThreshold(new BigDecimal("80"));
+
+        SfBudget result = budgetService.allocateBudget(budget);
+
+        assertThat(result.getAlertThreshold()).isEqualByComparingTo(new BigDecimal("0.8"));
+        verify(budgetMapper).insert(budget);
+    }
+
+    @Test
+    void allocateBudget_negativeThreshold_throwsParamError() {
+        SfBudget budget = new SfBudget();
+        budget.setBudgetType("API");
+        budget.setLimitAmount(BigDecimal.valueOf(100));
+        budget.setAlertThreshold(new BigDecimal("-0.1"));
+
+        assertThatThrownBy(() -> budgetService.allocateBudget(budget))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+        verify(budgetMapper, never()).insert(any());
+    }
+
+    @Test
+    void allocateBudget_thresholdAbove100Percent_throwsParamError() {
+        SfBudget budget = new SfBudget();
+        budget.setBudgetType("API");
+        budget.setLimitAmount(BigDecimal.valueOf(100));
+        budget.setAlertThreshold(new BigDecimal("150"));
+
+        assertThatThrownBy(() -> budgetService.allocateBudget(budget))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+        verify(budgetMapper, never()).insert(any());
+    }
+
+    @Test
+    void allocateBudget_thresholdAtExactlyOne_accepted() {
+        SfBudget budget = new SfBudget();
+        budget.setBudgetType("API");
+        budget.setLimitAmount(BigDecimal.valueOf(100));
+        budget.setAlertThreshold(BigDecimal.ONE);
+
+        SfBudget result = budgetService.allocateBudget(budget);
+
+        assertThat(result.getAlertThreshold()).isEqualByComparingTo(BigDecimal.ONE);
+    }
+
     // ------------------------------------------------------------------
     // checkBudgetLimit
     // ------------------------------------------------------------------

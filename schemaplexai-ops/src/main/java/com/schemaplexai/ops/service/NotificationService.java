@@ -41,4 +41,14 @@ public interface NotificationService extends IService<SfNotification> {
      * @return number of notifications marked as read
      */
     int batchMarkAsRead(List<Long> notificationIds);
+
+    /**
+     * List persisted budget alert records (notification type
+     * {@link BudgetAlertNotifier#ALERT_NOTIFICATION_TYPE}), newest first.
+     * Backs {@code GET /ops/budgets/alerts} (cost-analytics spec §4.2).
+     *
+     * @param tenantId optional tenant filter; all tenants when null/blank
+     * @return the budget alert records
+     */
+    List<SfNotification> listBudgetAlerts(String tenantId);
 }

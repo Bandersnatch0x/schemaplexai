@@ -2,7 +2,9 @@ package com.schemaplexai.ops.controller;
 
 import com.schemaplexai.common.result.Result;
 import com.schemaplexai.ops.entity.SfBudget;
+import com.schemaplexai.ops.entity.SfNotification;
 import com.schemaplexai.ops.service.BudgetService;
+import com.schemaplexai.ops.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,10 +13,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -22,6 +26,9 @@ class BudgetControllerTest {
 
     @Mock
     private BudgetService budgetService;
+
+    @Mock
+    private NotificationService notificationService;
 
     @InjectMocks
     private BudgetController budgetController;
@@ -156,5 +163,29 @@ class BudgetControllerTest {
 
         assertThat(result.getCode()).isEqualTo(200);
         assertThat(result.getData().getId()).isEqualTo(1L);
+    }
+
+    @Test
+    void listAlerts_returnsAlertRecordsForTenant() {
+        SfNotification alert = new SfNotification();
+        alert.setType("BUDGET_ALERT");
+        when(notificationService.listBudgetAlerts("tenant1")).thenReturn(List.of(alert));
+
+        Result<List<SfNotification>> result = budgetController.listAlerts("tenant1");
+
+        assertThat(result.getCode()).isEqualTo(200);
+        assertThat(result.getData()).hasSize(1);
+        assertThat(result.getData().get(0).getType()).isEqualTo("BUDGET_ALERT");
+    }
+
+    @Test
+    void listAlerts_withoutTenantFilter_returnsAllAlerts() {
+        when(notificationService.listBudgetAlerts(null)).thenReturn(Collections.emptyList());
+
+        Result<List<SfNotification>> result = budgetController.listAlerts(null);
+
+        assertThat(result.getCode()).isEqualTo(200);
+        assertThat(result.getData()).isEmpty();
+        verify(notificationService).listBudgetAlerts(null);
     }
 }

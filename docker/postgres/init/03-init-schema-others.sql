@@ -299,10 +299,11 @@ CREATE TABLE sf_notification (
 CREATE TABLE sf_budget (
     id              BIGSERIAL PRIMARY KEY,
     tenant_id       BIGINT NOT NULL,
-    budget_type     VARCHAR(32) NOT NULL, -- MONTHLY / PROJECT
-    limit_amount    DECIMAL(18,4) NOT NULL,
-    used_amount     DECIMAL(18,4) NOT NULL DEFAULT 0,
-    alert_threshold DECIMAL(5,2) DEFAULT 80.00,
+    budget_type     VARCHAR(32) NOT NULL, -- MONTHLY / AGENT / MODEL
+    limit_amount    DECIMAL(18,6) NOT NULL,
+    used_amount     DECIMAL(18,6) NOT NULL DEFAULT 0,
+    -- 阈值语义统一为小数（规格 §3.3：0.8 = 80%）；历史百分数行由服务端归一化兼容。
+    alert_threshold DECIMAL(3,2) DEFAULT 0.80,
     currency        VARCHAR(8) DEFAULT 'USD',
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

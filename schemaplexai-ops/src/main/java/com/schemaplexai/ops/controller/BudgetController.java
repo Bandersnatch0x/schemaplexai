@@ -3,7 +3,9 @@ package com.schemaplexai.ops.controller;
 import com.schemaplexai.common.result.Result;
 import com.schemaplexai.common.result.ResultCode;
 import com.schemaplexai.ops.entity.SfBudget;
+import com.schemaplexai.ops.entity.SfNotification;
 import com.schemaplexai.ops.service.BudgetService;
+import com.schemaplexai.ops.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,13 @@ import java.util.List;
 public class BudgetController {
 
     private final BudgetService budgetService;
+    private final NotificationService notificationService;
+
+    @GetMapping("/alerts")
+    @Operation(summary = "查询预算告警记录")
+    public Result<List<SfNotification>> listAlerts(@RequestParam(required = false) String tenantId) {
+        return Result.success(notificationService.listBudgetAlerts(tenantId));
+    }
 
     @PostMapping
     @Operation(summary = "创建预算")
