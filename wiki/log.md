@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-08-29T17:39:17Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-08-29T20:04:28Z -->
 
 ---
 title: Wiki Operation Log
@@ -14,46 +14,46 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
-## 2026-08-30 — fix(integration): bound external calls with 30s timeouts and degrade on expiry (issue 918)
-d4b85ac
-## 2026-08-30 — fix(agent-engine): write failedToolName on failure path so retry replays only the failed call (issue 908)
-7b9ef46
-## 2026-08-30 — fix(ops): unify budget threshold to decimal, hourly alert job with notification chain (issue 921)
-37d1de3
-## 2026-08-30 — fix(integration): tenant-scope Git repository/webhook in-memory stores (issue 917)
-e051bce
-## 2026-08-30 — fix(agent-engine): wire real provider into TOOL_CALLING structured parse (issue 905)
-6854c31
-## 2026-08-30 — fix(agent-engine): allow null fromState in state-transition event payload (issue 929)
-7bf3a6e
-## 2026-08-30 — fix(web): wire pagination/tenant interceptors and bound page params (issue 926)
-086e302
-## 2026-08-30 — fix(integration): implement OAuth authorization_code exchange with encrypted token storage (issue 916)
-8552f44
-## 2026-08-30 — fix(ops): configurable model pricing, 6-digit cost precision, claude fallback (issue 920)
-9466cef
-## 2026-08-30 — fix(gateway): tenant existence validation with Caffeine+Redis channel (issue 913)
-703d896
-## 2026-08-30 — fix(integration): encrypt Git credentials at rest, stop embedding tokens in clone URLs (issue 915)
-fad2188
-## 2026-08-30 — fix(gateway): converge JWT whitelist to spec set, fix change-password/logout (issue 912)
-e28965b
-## 2026-08-30 — fix(gateway): run rate limiting before the JWT auth short-circuit (issue 911)
-6795f6a
-## 2026-08-30 — fix: unify spec lifecycle status vocabulary with DDL VARCHAR semantics
-d8d1095
-## 2026-08-30 — fix: align quality/MCP entity status types with DDL VARCHAR semantics
-04dcc3a
-## 2026-08-30 — fix(agent-engine): mutable GATE_BLOCKED event payload
-635aaad
-## 2026-08-30 — fix(gateway): make lb:// routes resolvable via static instance source (issue 910)
-5bc0e53
-## 2026-08-30 — fix(db): unify sf_notification DDL into 03 and drop conflicting 04
-cdcc318
-## 2026-08-29 — fix(agent-engine): align pause tests with tenant-scoped Redis key
-99cb3e7
-## 2026-08-29 — chore: sync master (incl. dcab02b paused-key fix) into spec-compliance-fix branch
-76108b4
+## 2026-08-30 — fix(integration): fail fast when master secret is unset (review ST-04)
+66c4c87
+## 2026-08-30 — docs(quality): update javadoc after legacy consumer retirement (NEW-03)
+ae4db78
+## 2026-08-30 — docs(db): clarify sf_spec.version is an optimistic-lock counter (NEW-08)
+132308a
+## 2026-08-30 — fix(spec): require approved status before publish (NEW-06)
+2127a70
+## 2026-08-30 — fix(agent-engine): dispatch snapshot persistence through async proxy (NEW-02)
+6027601
+## 2026-08-30 — fix(workflow): wire post-node quality gate trigger (C4 remainder)
+8f62bd5
+## 2026-08-30 — fix(agent-engine): wire post-tool quality gate trigger (C4 remainder)
+229ef34
+## 2026-08-30 — fix(common): centralize sf.quality.verdict routing key (review ST-03)
+fc5d1af
+## 2026-08-30 — fix(web): align pagination params to API spec current/size defaults (review ST-02)
+5c4112a
+## 2026-08-30 — fix(ops): tenant-isolate budget alert endpoint and register tenant interceptor (review ST-01)
+eb2da55
+## 2026-08-30 — fix(task): retire legacy sf.quality consumer superseded by 924 chain (NEW-03)
+19470cb
+## 2026-08-30 — fix(integration): inject credentials for pull/fetch/push, not just clone (NEW-01)
+75f45ff
+## 2026-08-30 — fix(integration): implement real MCP client and wire tool discovery into execution chain (issue 930)
+811d673
+## 2026-08-30 — fix(agent-config): rename cockpit read-only mapper to avoid bean name clash
+d40eb89
+## 2026-08-30 — fix(task): consume sf.cost cost events and persist to sf_cost_record (issue 919)
+1eb82ac
+## 2026-08-30 — fix(agent-engine): capture LLM tokenUsage and publish CostRecordedEvent on sf.cost (issue 919)
+56d8648
+## 2026-08-30 — fix(agent-engine): wire post-execution quality gate trigger and verdict handling (issue 924)
+5135dcd
+## 2026-08-30 — fix(workflow): instance cancel/approve/reject control plane and Flowable bridge audit (issue 923)
+a6a08ec
+## 2026-08-30 — fix(quality): wire gate evaluation with default policy and disposition verdicts (issue 924)
+91cdfd9
+## 2026-08-30 — fix(spec): restore rejected review semantics, add change audit trail and steering prompt fragment (issue 925)
+c462839
 
 ---
 

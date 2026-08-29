@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-08-29T17:40:21Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-08-29T20:05:28Z -->
 
 ## Auto-Generated Gap Scan
 
@@ -27,6 +27,7 @@
 - Missing wiki page for service: `TenantAdminService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/TenantAdminService.java)
 - Missing wiki page for service: `UserAdminService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-admin/src/main/java/com/schemaplexai/admin/service/UserAdminService.java)
 - Missing wiki page for service: `AgentShadowConfigService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-agent-config/src/main/java/com/schemaplexai/agent/config/service/AgentShadowConfigService.java)
+- Missing wiki page for service: `AgentStatsService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-agent-config/src/main/java/com/schemaplexai/agent/config/service/AgentStatsService.java)
 - Missing wiki page for service: `ApprovalService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/approval/ApprovalService.java)
 - Missing wiki page for service: `AutoCompactionService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/memory/compaction/AutoCompactionService.java)
 - Missing wiki page for service: `TenantKeyService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/memory/TenantKeyService.java)
@@ -47,6 +48,7 @@
 - Missing wiki page for service: `DisabledFileStorageService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-context/src/main/java/com/schemaplexai/context/service/impl/DisabledFileStorageService.java)
 - Missing wiki page for service: `MinioFileStorageService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-context/src/main/java/com/schemaplexai/context/service/impl/MinioFileStorageService.java)
 - Missing wiki page for service: `NoOpFileScanService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-context/src/main/java/com/schemaplexai/context/service/impl/NoOpFileScanService.java)
+- Missing wiki page for service: `McpToolDiscoveryService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-integration/src/main/java/com/schemaplexai/integration/mcp/McpToolDiscoveryService.java)
 - Missing wiki page for service: `ClickHouseCostSyncService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-ops/src/main/java/com/schemaplexai/ops/service/ClickHouseCostSyncService.java)
 - Missing wiki page for service: `CostDataSyncService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-ops/src/main/java/com/schemaplexai/ops/service/CostDataSyncService.java)
 - Missing wiki page for service: `DisabledCostDataSyncService` (source: D:/code_space/frige/.qoder/worktrees/spec-compliance-fix/schemaplexai-ops/src/main/java/com/schemaplexai/ops/service/DisabledCostDataSyncService.java)
