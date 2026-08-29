@@ -35,6 +35,9 @@ class SpecTemplateServiceImplTest {
     @Mock
     private SfSpecMapper specMapper;
 
+    @Mock
+    private SpecChangeTracker changeTracker;
+
     @InjectMocks
     private SpecTemplateServiceImpl specTemplateService;
 

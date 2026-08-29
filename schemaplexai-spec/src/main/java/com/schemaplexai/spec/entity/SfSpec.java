@@ -16,7 +16,8 @@ public class SfSpec extends BaseEntity {
 
     /**
      * Spec lifecycle status, stored as VARCHAR(32) in sf_spec (DDL default 'draft').
-     * Unified vocabulary: draft / in_review / approved / published / archived.
+     * Unified vocabulary: draft / in_review / approved / published / archived /
+     * rejected (rejected = terminal REJECTED review outcome, §4.1 结束流程).
      */
     private String status;
     private String content;

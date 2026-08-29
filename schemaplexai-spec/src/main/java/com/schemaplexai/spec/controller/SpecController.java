@@ -42,7 +42,7 @@ public class SpecController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('spec:delete')")
     public Result<Boolean> delete(@PathVariable Long id) {
-        return Result.success(specService.removeById(id));
+        return Result.success(specService.deleteSpec(id));
     }
 
     @Operation(summary = "获取需求规格详情")

@@ -298,4 +298,74 @@ class SpecSteeringServiceImplTest {
 
         assertThat(result).isFalse();
     }
+
+    // ------------------------------------------------------------------
+    // buildPromptFragment (§5 System-Prompt injection, phase 1)
+    // ------------------------------------------------------------------
+
+    @Test
+    void buildPromptFragment_nullSteeringId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specSteeringService.buildPromptFragment(null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specSteeringMapper, never()).selectById(any());
+    }
+
+    @Test
+    void buildPromptFragment_notFound_throwsNotFound() {
+        when(specSteeringMapper.selectById(1L)).thenReturn(null);
+
+        assertThatThrownBy(() -> specSteeringService.buildPromptFragment(1L))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.NOT_FOUND.getCode());
+    }
+
+    @Test
+    void buildPromptFragment_emptySteering_throwsParamError() {
+        SfSpecSteering steering = new SfSpecSteering();
+        when(specSteeringMapper.selectById(1L)).thenReturn(steering);
+
+        assertThatThrownBy(() -> specSteeringService.buildPromptFragment(1L))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+    }
+
+    @Test
+    void buildPromptFragment_allFieldsSet_containsAllSections() {
+        SfSpecSteering steering = new SfSpecSteering();
+        steering.setDirection("Review code carefully");
+        steering.setConstraints("Never leak secrets");
+        steering.setAcceptanceCriteria("JSON output only");
+        when(specSteeringMapper.selectById(1L)).thenReturn(steering);
+
+        String fragment = specSteeringService.buildPromptFragment(1L);
+
+        assertThat(fragment)
+                .contains("## Steering Constraints")
+                .contains("### Direction")
+                .contains("Review code carefully")
+                .contains("### Constraints")
+                .contains("Never leak secrets")
+                .contains("### Acceptance Criteria")
+                .contains("JSON output only");
+    }
+
+    @Test
+    void buildPromptFragment_partialFields_omitsBlankSections() {
+        SfSpecSteering steering = new SfSpecSteering();
+        steering.setConstraints("Never leak secrets");
+        when(specSteeringMapper.selectById(1L)).thenReturn(steering);
+
+        String fragment = specSteeringService.buildPromptFragment(1L);
+
+        assertThat(fragment)
+                .contains("### Constraints")
+                .contains("Never leak secrets")
+                .doesNotContain("### Direction")
+                .doesNotContain("### Acceptance Criteria");
+    }
 }

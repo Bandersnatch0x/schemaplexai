@@ -10,6 +10,7 @@ import com.schemaplexai.spec.entity.SfSpec;
 import com.schemaplexai.spec.entity.SfSpecVersion;
 import com.schemaplexai.spec.mapper.SfSpecMapper;
 import com.schemaplexai.spec.mapper.SfSpecVersionMapper;
+import com.schemaplexai.spec.service.SpecChangeTracker;
 import com.schemaplexai.spec.service.SpecVersionService;
 import com.schemaplexai.spec.util.SpecDiffUtil;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ import java.util.List;
 public class SpecVersionServiceImpl extends ServiceImpl<SfSpecVersionMapper, SfSpecVersion> implements SpecVersionService {
 
     private final SfSpecMapper specMapper;
+    private final SpecChangeTracker changeTracker;
 
     @Override
     public SpecDiffResult diff(Long versionAId, Long versionBId) {
@@ -72,6 +74,7 @@ public class SpecVersionServiceImpl extends ServiceImpl<SfSpecVersionMapper, SfS
 
         // Update spec content and status: a new version means the spec's
         // current content diverges from any published snapshot -> draft.
+        SfSpec before = SpecChangeTracker.snapshot(spec);
         spec.setContent(content);
         spec.setStatus(SpecStatus.DRAFT);
         int rows = specMapper.updateById(spec);
@@ -81,6 +84,7 @@ public class SpecVersionServiceImpl extends ServiceImpl<SfSpecVersionMapper, SfS
             throw new BaseException(ResultCode.CONFLICT,
                     "Spec " + specId + " was modified concurrently; reload and retry");
         }
+        changeTracker.recordUpdate(before, spec, specVersion.getId());
 
         log.info("Created version {} for spec {}", version, specId);
         return specVersion;

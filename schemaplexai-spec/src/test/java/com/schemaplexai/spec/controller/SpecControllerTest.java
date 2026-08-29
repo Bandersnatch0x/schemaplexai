@@ -74,7 +74,7 @@ class SpecControllerTest {
 
     @Test
     void delete_returnsBoolean() {
-        when(specService.removeById(1L)).thenReturn(true);
+        when(specService.deleteSpec(1L)).thenReturn(true);
 
         Result<Boolean> result = specController.delete(1L);
 

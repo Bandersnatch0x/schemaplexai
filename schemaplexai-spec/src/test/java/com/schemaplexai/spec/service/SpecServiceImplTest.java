@@ -9,6 +9,7 @@ import com.schemaplexai.spec.entity.SfSpecVersion;
 import com.schemaplexai.spec.mapper.SfSpecMapper;
 import com.schemaplexai.spec.mapper.SfSpecTemplateMapper;
 import com.schemaplexai.spec.mapper.SfSpecVersionMapper;
+import com.schemaplexai.spec.service.SpecChangeTracker;
 import com.schemaplexai.spec.service.impl.SpecServiceImpl;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,6 +27,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,6 +42,9 @@ class SpecServiceImplTest {
 
     @Mock
     private SfSpecTemplateMapper specTemplateMapper;
+
+    @Mock
+    private SpecChangeTracker changeTracker;
 
     @InjectMocks
     private SpecServiceImpl specService;
@@ -77,6 +83,7 @@ class SpecServiceImplTest {
 
         assertThat(result.getStatus()).isEqualTo("draft");
         verify(specMapper).insert(input);
+        verify(changeTracker).recordCreation(input);
     }
 
     // ------------------------------------------------------------------
@@ -135,6 +142,7 @@ class SpecServiceImplTest {
         assertThat(existing.getContent()).isEqualTo("old content");
         assertThat(existing.getUpdatedAt()).isNotNull();
         verify(specMapper).updateById(existing);
+        verify(changeTracker).recordUpdate(any(SfSpec.class), eq(existing), isNull());
     }
 
     @Test
@@ -522,6 +530,62 @@ class SpecServiceImplTest {
     }
 
     // ------------------------------------------------------------------
+    // deleteSpec (tracked deletion)
+    // ------------------------------------------------------------------
+
+    @Test
+    void deleteSpec_nullId_throwsParamErrorWithoutLookup() {
+        assertThatThrownBy(() -> specService.deleteSpec(null))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.PARAM_ERROR.getCode());
+
+        verify(specMapper, never()).selectById(any());
+        verify(specMapper, never()).deleteById(any());
+    }
+
+    @Test
+    void deleteSpec_specNotFound_throwsSpecNotFound() {
+        when(specMapper.selectById(1L)).thenReturn(null);
+
+        assertThatThrownBy(() -> specService.deleteSpec(1L))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.SPEC_NOT_FOUND.getCode());
+
+        verify(specMapper, never()).deleteById(any());
+        verify(changeTracker, never()).recordDeletion(any());
+    }
+
+    @Test
+    void deleteSpec_success_recordsDeleteTrail() {
+        SfSpec existing = new SfSpec();
+        existing.setId(1L);
+        existing.setTitle("Doomed spec");
+        when(specMapper.selectById(1L)).thenReturn(existing);
+        when(specMapper.deleteById(1L)).thenReturn(1);
+
+        boolean result = specService.deleteSpec(1L);
+
+        assertThat(result).isTrue();
+        verify(specMapper).deleteById(1L);
+        verify(changeTracker).recordDeletion(existing);
+    }
+
+    @Test
+    void deleteSpec_zeroRows_noAuditRow() {
+        SfSpec existing = new SfSpec();
+        existing.setId(1L);
+        when(specMapper.selectById(1L)).thenReturn(existing);
+        when(specMapper.deleteById(1L)).thenReturn(0);
+
+        boolean result = specService.deleteSpec(1L);
+
+        assertThat(result).isFalse();
+        verify(changeTracker, never()).recordDeletion(any());
+    }
+
+    // ------------------------------------------------------------------
     // getLatestVersion
     // ------------------------------------------------------------------
 
@@ -687,5 +751,6 @@ class SpecServiceImplTest {
         assertThat(result.getStatus()).isEqualTo("draft");
         assertThat(result.getContent()).isEqualTo("template content");
         verify(specMapper).insert(any(SfSpec.class));
+        verify(changeTracker).recordCreation(result);
     }
 }

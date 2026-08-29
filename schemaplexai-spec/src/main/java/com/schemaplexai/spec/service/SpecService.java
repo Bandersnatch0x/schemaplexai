@@ -62,6 +62,15 @@ public interface SpecService extends IService<SfSpec> {
     SfSpec rollbackSpec(Long specId, Long versionId);
 
     /**
+     * Delete a spec (logical delete) and record a DELETE row in the change
+     * audit trail (spec-management §4.3, REQ-12).
+     *
+     * @param id the spec id
+     * @return true if a row was deleted
+     */
+    boolean deleteSpec(Long id);
+
+    /**
      * Get the latest version for a spec.
      *
      * @param specId the spec id

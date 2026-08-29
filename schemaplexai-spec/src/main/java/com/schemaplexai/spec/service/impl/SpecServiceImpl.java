@@ -12,6 +12,7 @@ import com.schemaplexai.spec.entity.SfSpecVersion;
 import com.schemaplexai.spec.mapper.SfSpecMapper;
 import com.schemaplexai.spec.mapper.SfSpecTemplateMapper;
 import com.schemaplexai.spec.mapper.SfSpecVersionMapper;
+import com.schemaplexai.spec.service.SpecChangeTracker;
 import com.schemaplexai.spec.service.SpecService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +32,7 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
     private final SfSpecMapper specMapper;
     private final SfSpecVersionMapper specVersionMapper;
     private final SfSpecTemplateMapper specTemplateMapper;
+    private final SpecChangeTracker changeTracker;
 
     @Override
     public SfSpec createSpec(SfSpec spec) {
@@ -41,6 +43,7 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
         // shortcut the draft -> in_review -> approved -> published chain.
         spec.setStatus(SpecStatus.DRAFT);
         specMapper.insert(spec);
+        changeTracker.recordCreation(spec);
         log.info("Created spec {} in status draft", spec.getId());
         return spec;
     }
@@ -69,6 +72,9 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
                     "Spec " + id + " was modified concurrently; expected version "
                             + update.getVersion() + " but found " + existing.getVersion());
         }
+        // Change audit (spec-management §4.3): capture the pre-edit state so
+        // the field-level diff can be recorded once the update succeeds.
+        SfSpec before = SpecChangeTracker.snapshot(existing);
         if (update.getTitle() != null) {
             existing.setTitle(update.getTitle());
         }
@@ -86,6 +92,7 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
             throw new BaseException(ResultCode.CONFLICT,
                     "Spec " + id + " was modified concurrently; reload and retry");
         }
+        changeTracker.recordUpdate(before, existing, null);
         return true;
     }
 
@@ -97,6 +104,7 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
             throw new BaseException(ResultCode.SPEC_NOT_FOUND);
         }
 
+        SfSpec before = SpecChangeTracker.snapshot(spec);
         spec.setStatus(SpecStatus.PUBLISHED);
         spec.setUpdatedAt(LocalDateTime.now());
         int rows = specMapper.updateById(spec);
@@ -130,6 +138,7 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
         version.setContent(spec.getContent());
         version.setChangeLog("Published version " + nextVersion);
         specVersionMapper.insert(version);
+        changeTracker.recordUpdate(before, spec, version.getId());
 
         log.info("Published spec {} with version {}", specId, nextVersion);
         return version;
@@ -138,10 +147,8 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
     @Override
     public boolean archiveSpec(Long specId) {
         validateSpecId(specId);
-        SfSpec spec = specMapper.selectById(specId);
-        if (spec == null) {
-            throw new BaseException(ResultCode.SPEC_NOT_FOUND);
-        }
+        SfSpec spec = selectSpecOrThrow(specId);
+        SfSpec before = SpecChangeTracker.snapshot(spec);
         spec.setStatus(SpecStatus.ARCHIVED);
         spec.setUpdatedAt(LocalDateTime.now());
         int rows = specMapper.updateById(spec);
@@ -149,6 +156,7 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
             throw new BaseException(ResultCode.CONFLICT,
                     "Spec " + specId + " was modified concurrently; reload and retry");
         }
+        changeTracker.recordUpdate(before, spec, null);
         log.info("Archived spec {}", specId);
         return true;
     }
@@ -173,6 +181,7 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
 
         // Restore the historical snapshot as a new editable draft. The
         // snapshot itself is immutable; only the working document moves.
+        SfSpec before = SpecChangeTracker.snapshot(spec);
         spec.setContent(snapshot.getContent());
         spec.setStatus(SpecStatus.DRAFT);
         spec.setUpdatedAt(LocalDateTime.now());
@@ -181,6 +190,7 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
             throw new BaseException(ResultCode.CONFLICT,
                     "Spec " + specId + " was modified concurrently; reload and retry");
         }
+        changeTracker.recordUpdate(before, spec, versionId);
         log.info("Rolled back spec {} to version snapshot {}", specId, versionId);
         return spec;
     }
@@ -230,15 +240,38 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
         spec.setStatus(SpecStatus.DRAFT);
         spec.setContent(template.getContent());
         specMapper.insert(spec);
+        changeTracker.recordCreation(spec);
 
         log.info("Created spec {} from template {}", spec.getId(), templateId);
         return spec;
+    }
+
+    @Override
+    public boolean deleteSpec(Long id) {
+        validateSpecId(id);
+        SfSpec existing = selectSpecOrThrow(id);
+        int rows = specMapper.deleteById(id);
+        if (rows > 0) {
+            // §4.3 DELETE trail: keep the title so the audit row alone says
+            // which document was removed.
+            changeTracker.recordDeletion(existing);
+        }
+        log.info("Deleted spec {}", id);
+        return rows > 0;
     }
 
     private void validateSpecId(Long specId) {
         if (specId == null) {
             throw new BaseException(ResultCode.PARAM_ERROR, "specId is required");
         }
+    }
+
+    private SfSpec selectSpecOrThrow(Long specId) {
+        SfSpec spec = specMapper.selectById(specId);
+        if (spec == null) {
+            throw new BaseException(ResultCode.SPEC_NOT_FOUND);
+        }
+        return spec;
     }
 
     private void validateTemplateId(Long templateId) {

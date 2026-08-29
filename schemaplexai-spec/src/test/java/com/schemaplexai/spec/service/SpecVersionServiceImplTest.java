@@ -7,6 +7,7 @@ import com.schemaplexai.spec.entity.SfSpec;
 import com.schemaplexai.spec.entity.SfSpecVersion;
 import com.schemaplexai.spec.mapper.SfSpecMapper;
 import com.schemaplexai.spec.mapper.SfSpecVersionMapper;
+import com.schemaplexai.spec.service.SpecChangeTracker;
 import com.schemaplexai.spec.service.impl.SpecVersionServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,6 +32,9 @@ class SpecVersionServiceImplTest {
 
     @Mock
     private SfSpecVersionMapper specVersionMapper;
+
+    @Mock
+    private SpecChangeTracker changeTracker;
 
     @InjectMocks
     private SpecVersionServiceImpl specVersionService;
@@ -186,6 +192,7 @@ class SpecVersionServiceImplTest {
         assertThat(spec.getStatus()).isEqualTo("draft");
         verify(specMapper).updateById(spec);
         verify(specVersionMapper).insert(any());
+        verify(changeTracker).recordUpdate(any(SfSpec.class), eq(spec), isNull());
     }
 
     @Test

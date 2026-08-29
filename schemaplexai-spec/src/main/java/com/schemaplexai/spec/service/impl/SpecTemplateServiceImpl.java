@@ -10,6 +10,7 @@ import com.schemaplexai.spec.entity.SfSpec;
 import com.schemaplexai.spec.entity.SfSpecTemplate;
 import com.schemaplexai.spec.mapper.SfSpecMapper;
 import com.schemaplexai.spec.mapper.SfSpecTemplateMapper;
+import com.schemaplexai.spec.service.SpecChangeTracker;
 import com.schemaplexai.spec.service.SpecTemplateService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,7 @@ public class SpecTemplateServiceImpl extends ServiceImpl<SfSpecTemplateMapper, S
 
     private final SfSpecTemplateMapper specTemplateMapper;
     private final SfSpecMapper specMapper;
+    private final SpecChangeTracker changeTracker;
 
     @Override
     public SfSpec applyTemplate(Long templateId, Long specId, String title, String type) {
@@ -52,9 +54,13 @@ public class SpecTemplateServiceImpl extends ServiceImpl<SfSpecTemplateMapper, S
                 throw new BaseException(ResultCode.FORBIDDEN,
                         "Spec " + specId + " is not editable in status " + spec.getStatus());
             }
+            SfSpec before = SpecChangeTracker.snapshot(spec);
             spec.setContent(template.getContent());
             spec.setUpdatedAt(LocalDateTime.now());
-            specMapper.updateById(spec);
+            int rows = specMapper.updateById(spec);
+            if (rows > 0) {
+                changeTracker.recordUpdate(before, spec, null);
+            }
             log.info("Applied template {} to spec {}", templateId, specId);
         } else {
             spec = new SfSpec();
@@ -63,6 +69,7 @@ public class SpecTemplateServiceImpl extends ServiceImpl<SfSpecTemplateMapper, S
             spec.setStatus(SpecStatus.DRAFT);
             spec.setContent(template.getContent());
             specMapper.insert(spec);
+            changeTracker.recordCreation(spec);
             log.info("Created spec {} from template {}", spec.getId(), templateId);
         }
         return spec;

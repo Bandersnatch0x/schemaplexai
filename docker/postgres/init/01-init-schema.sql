@@ -135,7 +135,7 @@ CREATE TABLE sf_spec (
     tenant_id       BIGINT NOT NULL,
     title           VARCHAR(256) NOT NULL,
     type            VARCHAR(32) NOT NULL, -- REQUIREMENT / DESIGN / TASK / STEERING
-    status          VARCHAR(32) NOT NULL DEFAULT 'draft', -- draft / in_review / approved / published / archived
+    status          VARCHAR(32) NOT NULL DEFAULT 'draft', -- draft / in_review / approved / published / archived / rejected (rejected = terminal review-rejection outcome)
     content         TEXT,
     version         INT NOT NULL DEFAULT 1,
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -205,8 +205,28 @@ CREATE TABLE sf_spec_review (
     deleted         INT NOT NULL DEFAULT 0
 );
 
+-- Field-level spec change audit (spec-management §4.3, issue 925)
+CREATE TABLE sf_spec_change (
+    id              BIGSERIAL PRIMARY KEY,
+    tenant_id       BIGINT NOT NULL,
+    spec_id         BIGINT NOT NULL,
+    version_id      BIGINT,
+    change_type     VARCHAR(16) NOT NULL, -- ADD / MODIFY / DELETE
+    field_name      VARCHAR(64) NOT NULL, -- title / type / status / content / *(whole document)
+    old_value       TEXT,
+    new_value       TEXT,
+    changed_by      BIGINT,
+    changed_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by      BIGINT,
+    updated_by      BIGINT,
+    deleted         INT NOT NULL DEFAULT 0
+);
+
 -- Indexes
 CREATE INDEX idx_user_tenant ON sf_user(tenant_id);
 CREATE INDEX idx_role_tenant ON sf_role(tenant_id);
 CREATE INDEX idx_spec_tenant ON sf_spec(tenant_id);
 CREATE INDEX idx_model_tenant ON sf_ai_model(tenant_id);
+CREATE INDEX idx_spec_change_spec ON sf_spec_change(spec_id);

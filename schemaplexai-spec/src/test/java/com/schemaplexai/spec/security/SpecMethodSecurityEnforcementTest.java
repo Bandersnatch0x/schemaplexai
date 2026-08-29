@@ -92,11 +92,11 @@ class SpecMethodSecurityEnforcementTest {
 
     @Test
     void delete_allowedWithDeleteAuthority() {
-        when(specService.removeById(anyLong())).thenReturn(true);
+        when(specService.deleteSpec(anyLong())).thenReturn(true);
         authenticate(SpecAuthorities.DELETE);
 
         assertThatCode(() -> controller.delete(1L)).doesNotThrowAnyException();
-        verify(specService).removeById(1L);
+        verify(specService).deleteSpec(1L);
     }
 
     @Test
