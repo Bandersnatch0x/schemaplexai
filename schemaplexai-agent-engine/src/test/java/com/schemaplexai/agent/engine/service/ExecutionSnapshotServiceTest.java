@@ -115,4 +115,17 @@ class ExecutionSnapshotServiceTest {
         verify(redisTemplate).delete(REDIS_KEY);
         verify(snapshotMapper).delete(any(LambdaQueryWrapper.class));
     }
+
+    @Test
+    @DisplayName("NEW-02: saveSnapshot dispatches persistence through the proxy, not this")
+    void saveSnapshotDispatchesPersistenceThroughSelfProxy() {
+        ExecutionSnapshotService proxy = mock(ExecutionSnapshotService.class);
+        org.springframework.test.util.ReflectionTestUtils.setField(executionSnapshotService, "self", proxy);
+
+        executionSnapshotService.saveSnapshot(EXECUTION_ID, STATE_JSON, VERSION);
+
+        verify(proxy).persistToDatabase(EXECUTION_ID, STATE_JSON, VERSION);
+        // Direct mapper insert would mean the this.-path ran synchronously instead.
+        verify(snapshotMapper, never()).insert(any(ExecutionSnapshot.class));
+    }
 }

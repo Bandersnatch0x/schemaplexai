@@ -31,6 +31,18 @@ public class ExecutionSnapshotService {
     private final ExecutionSnapshotMapper snapshotMapper;
 
     /**
+     * Self-reference through the Spring proxy so {@link Async} on
+     * {@link #persistToDatabase} is honored. A direct {@code this.} call
+     * would bypass the proxy and persist synchronously on the caller thread
+     * (review NEW-02). {@code @Lazy} breaks the self-injection cycle; in
+     * plain unit tests without a container this stays null and the call
+     * falls back to a direct (synchronous) invocation.
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @org.springframework.context.annotation.Lazy
+    private ExecutionSnapshotService self;
+
+    /**
      * Save execution snapshot to Redis (synchronous) and PostgreSQL (asynchronous).
      *
      * @param executionId the execution identifier
@@ -40,7 +52,11 @@ public class ExecutionSnapshotService {
     public void saveSnapshot(Long executionId, String stateJson, Integer version) {
         String key = buildRedisKey(executionId);
         redisTemplate.opsForValue().set(key, stateJson, REDIS_TTL);
-        persistToDatabase(executionId, stateJson, version);
+        if (self != null) {
+            self.persistToDatabase(executionId, stateJson, version);
+        } else {
+            persistToDatabase(executionId, stateJson, version);
+        }
     }
 
     /**
@@ -87,7 +103,7 @@ public class ExecutionSnapshotService {
     }
 
     @Async
-    void persistToDatabase(Long executionId, String stateJson, Integer version) {
+    public void persistToDatabase(Long executionId, String stateJson, Integer version) {
         try {
             ExecutionSnapshot entity = new ExecutionSnapshot();
             entity.setExecutionId(executionId);
