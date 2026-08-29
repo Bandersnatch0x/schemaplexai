@@ -34,7 +34,7 @@ import java.util.UUID;
 
 /**
  * Consumes quality gate verdicts published by the quality module on
- * {@code sf.exchange} / {@code sf.quality.verdict} and applies the
+ * {@code sf.exchange} / {@link CommonConstants#RK_QUALITY_VERDICT} and applies the
  * disposition semantics of spec docs/specs/2026-04-30-v1.0-quality-gate.md §1
  * (ticket 924 / REQ-02 / REQ-18):
  *
@@ -61,8 +61,6 @@ import java.util.UUID;
 public class QualityVerdictConsumer {
 
     static final String QUEUE_NAME = "sf.quality.verdict.queue";
-    /** Must match QualityVerdictPublisher.RK_QUALITY_VERDICT in schemaplexai-quality. */
-    static final String RK_QUALITY_VERDICT = "sf.quality.verdict";
 
     private static final String DISPOSITION_PASS = "PASS";
     private static final String DISPOSITION_WARN = "WARN";
@@ -80,7 +78,7 @@ public class QualityVerdictConsumer {
             bindings = @QueueBinding(
                     value = @Queue(value = QUEUE_NAME, durable = "true"),
                     exchange = @Exchange(value = CommonConstants.EXCHANGE_SCHEMAPLEXAI, type = "direct"),
-                    key = RK_QUALITY_VERDICT
+                    key = CommonConstants.RK_QUALITY_VERDICT
             )
     )
     public void onMessage(Message message, Channel channel) throws IOException {

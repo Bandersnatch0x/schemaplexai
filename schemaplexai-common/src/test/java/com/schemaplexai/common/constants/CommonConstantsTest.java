@@ -60,6 +60,15 @@ class CommonConstantsTest {
         assertThat(CommonConstants.RK_AGENT_EXEC_EVENT).startsWith("sf.");
         assertThat(CommonConstants.RK_WORKFLOW_TRIGGER).startsWith("sf.");
         assertThat(CommonConstants.RK_NOTIFICATION).startsWith("sf.");
+        assertThat(CommonConstants.RK_QUALITY_VERDICT).startsWith("sf.");
+    }
+
+    @Test
+    void qualityRoutingKeys_haveExpectedValues() {
+        // Review ST-03: the verdict routing key is the cross-module contract between
+        // the quality publisher and the agent-engine consumer; pin its exact value.
+        assertThat(CommonConstants.RK_QUALITY).isEqualTo("sf.quality");
+        assertThat(CommonConstants.RK_QUALITY_VERDICT).isEqualTo("sf.quality.verdict");
     }
 
     @Test

@@ -59,7 +59,7 @@ class QualityVerdictPublisherTest {
         verify(rabbitTemplate).convertAndSend(exchange.capture(), routingKey.capture(), body.capture());
 
         assertThat(exchange.getValue()).isEqualTo(CommonConstants.EXCHANGE_SCHEMAPLEXAI);
-        assertThat(routingKey.getValue()).isEqualTo(QualityVerdictPublisher.RK_QUALITY_VERDICT);
+        assertThat(routingKey.getValue()).isEqualTo(CommonConstants.RK_QUALITY_VERDICT);
 
         JsonNode payload = objectMapper.readTree(body.getValue());
         assertThat(payload.get("eventType").asText()).isEqualTo(QualityVerdictPublisher.EVENT_TYPE_VERDICT);
@@ -85,7 +85,7 @@ class QualityVerdictPublisherTest {
 
         ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
         verify(rabbitTemplate).convertAndSend(eq(CommonConstants.EXCHANGE_SCHEMAPLEXAI),
-                eq(QualityVerdictPublisher.RK_QUALITY_VERDICT), body.capture());
+                eq(CommonConstants.RK_QUALITY_VERDICT), body.capture());
         JsonNode payload = objectMapper.readTree(body.getValue());
         assertThat(payload.get("disposition").asText()).isEqualTo("PASS");
         assertThat(payload.get("allPassed").asBoolean()).isTrue();

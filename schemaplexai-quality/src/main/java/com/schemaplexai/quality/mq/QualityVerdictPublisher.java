@@ -22,8 +22,9 @@ import java.util.UUID;
  * Publishes structured quality gate verdicts back to the execution side.
  *
  * <p>Verdicts travel on {@code sf.exchange} with routing key
- * {@code sf.quality.verdict}; the Agent engine's QualityVerdictConsumer binds
- * a dedicated queue and applies the disposition semantics (spec §1):
+ * {@link CommonConstants#RK_QUALITY_VERDICT}; the Agent engine's
+ * QualityVerdictConsumer binds a dedicated queue and applies the disposition
+ * semantics (spec §1):
  * PASS continue / WARN alert-and-continue / BLOCK pause for manual
  * confirmation (GATE_BLOCKED) / FAIL terminate.
  */
@@ -32,8 +33,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class QualityVerdictPublisher {
 
-    /** Routing key for gate verdicts (consumer: agent-engine QualityVerdictConsumer). */
-    public static final String RK_QUALITY_VERDICT = "sf.quality.verdict";
+    /** Notification chain marker for verdict payloads. */
     public static final String EVENT_TYPE_VERDICT = "QUALITY_GATE_VERDICT";
 
     private final RabbitTemplate rabbitTemplate;
@@ -64,7 +64,8 @@ public class QualityVerdictPublisher {
             payload.put("timestamp", System.currentTimeMillis());
 
             String message = objectMapper.writeValueAsString(payload);
-            rabbitTemplate.convertAndSend(CommonConstants.EXCHANGE_SCHEMAPLEXAI, RK_QUALITY_VERDICT, message);
+            rabbitTemplate.convertAndSend(CommonConstants.EXCHANGE_SCHEMAPLEXAI,
+                    CommonConstants.RK_QUALITY_VERDICT, message);
             log.info("Published quality verdict for execution {}: disposition={}",
                     executionId, payload.get("disposition"));
             return true;

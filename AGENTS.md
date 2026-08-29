@@ -318,6 +318,7 @@ Exchange 统一为 `sf.exchange`：
 | `sf.notification` | 通知 |
 | `sf.cost` | 成本同步 |
 | `sf.quality` | 质量事件 |
+| `sf.quality.verdict` | 质量门禁裁决（quality → agent-engine） |
 | `sf.milvus.sync` | Milvus 同步 |
 | `sf.agent.config.shadow` | 影子配置更新 |
 
