@@ -113,10 +113,12 @@ class IntegrationCredentialEncryptorTest {
     }
 
     @Test
-    void blankMasterSecret_fallsBackToDevSecret_stillFunctional() {
-        IntegrationCredentialEncryptor fallback = new IntegrationCredentialEncryptor("");
-        String cipher = fallback.encrypt("secret", 7L);
-        assertThat(fallback.decrypt(cipher, 7L)).isEqualTo("secret");
+    void blankMasterSecret_failsFastAtStartup() {
+        assertThatThrownBy(() -> new IntegrationCredentialEncryptor(""))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("INTEGRATION_MASTER_SECRET");
+        assertThatThrownBy(() -> new IntegrationCredentialEncryptor(null))
+                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test

@@ -54,13 +54,18 @@ public class IntegrationCredentialEncryptor {
     @Autowired
     public IntegrationCredentialEncryptor(
             @Value("${integration.encryption.master-secret:}") String masterSecret) {
+        // Review ST-04: fail fast instead of falling back to a public dev literal.
+        // The master key protects Git access tokens / OAuth tokens (AES-256-GCM,
+        // tenant-derived keys); a fallback key shared by every deployment would make
+        // the tenant key isolation meaningless. Mirrors the JwtSecretStartupValidator
+        // contract: missing secret => startup failure.
         if (masterSecret == null || masterSecret.isBlank()) {
-            log.warn("No integration master secret configured — using fallback (DEV ONLY). "
-                    + "Set INTEGRATION_MASTER_SECRET in production.");
-            this.masterSecret = "dev-only-integration-fallback-secret-do-not-use-in-prod!";
-        } else {
-            this.masterSecret = masterSecret;
+            throw new IllegalStateException(
+                    "Integration master secret is not configured. "
+                            + "Set the INTEGRATION_MASTER_SECRET environment variable or the "
+                            + "integration.encryption.master-secret property.");
         }
+        this.masterSecret = masterSecret;
     }
 
     /**
