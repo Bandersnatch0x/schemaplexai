@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-08-29T20:04:28Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-08-30T00:24:16Z -->
 
 ---
 title: Wiki Operation Log
@@ -14,6 +14,8 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
+## 2026-08-30 — docs: final verification report for spec compliance fix batch
+0123bc1
 ## 2026-08-30 — fix(integration): fail fast when master secret is unset (review ST-04)
 66c4c87
 ## 2026-08-30 — docs(quality): update javadoc after legacy consumer retirement (NEW-03)
@@ -52,8 +54,6 @@ d40eb89
 a6a08ec
 ## 2026-08-30 — fix(quality): wire gate evaluation with default policy and disposition verdicts (issue 924)
 91cdfd9
-## 2026-08-30 — fix(spec): restore rejected review semantics, add change audit trail and steering prompt fragment (issue 925)
-c462839
 
 ---
 

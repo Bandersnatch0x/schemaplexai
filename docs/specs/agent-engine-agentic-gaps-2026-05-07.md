@@ -44,6 +44,7 @@ The `architecture-gap-analysis.md` identified 21 Agentic Design Patterns with si
 
 **Solution**:
 - `AgentExecutionState.PLANNING`: new state between `READY` and `THINKING`.
+  - **Retired 2026-08-30 (issue 931)**: the state never gained an entry path; removed from the enum together with PlanningStateHandler and the sub-task plan machinery. This item is no longer a delivery commitment.
 - `PlanningStateHandler`: LLM-based task decomposition into `SubTaskPlan`; stores plan JSON in execution metadata; transitions to `THINKING`.
 - `SubTask` / `SubTaskPlan`: models with dependency resolution, next-ready selection, all-completed check.
 - `ThinkingStateHandler`: `resolveNextStateForPlan()` advances sub-tasks on direct-answer completion.
