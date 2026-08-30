@@ -29,5 +29,5 @@ public class SfUser extends BaseEntity {
     private String phone;
 
     @TableField("status")
-    private Integer status;
+    private String status;
 }

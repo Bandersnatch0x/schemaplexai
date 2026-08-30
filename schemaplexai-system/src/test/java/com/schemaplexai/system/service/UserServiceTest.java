@@ -41,7 +41,7 @@ class UserServiceTest {
         sampleUser.setPassword("$2a$10$encodedPassword");
         sampleUser.setEmail("test@example.com");
         sampleUser.setTenantId("tenant-1");
-        sampleUser.setStatus(1);
+        sampleUser.setStatus("ACTIVE");
     }
 
     @Test
@@ -85,7 +85,7 @@ class UserServiceTest {
 
         assertThat(id).isEqualTo(200L);
         assertThat(newUser.getPassword()).isEqualTo("$2a$10$encodedNew");
-        assertThat(newUser.getStatus()).isEqualTo(1);
+        assertThat(newUser.getStatus()).isEqualTo("ACTIVE");
     }
 
     @Test
@@ -128,7 +128,7 @@ class UserServiceTest {
         SfUser newUser = new SfUser();
         newUser.setUsername("statususer");
         newUser.setPassword("rawPassword");
-        newUser.setStatus(0);
+        newUser.setStatus("DISABLED");
 
         when(userMapper.selectByUsername("statususer")).thenReturn(null);
         when(passwordEncoder.encode("rawPassword")).thenReturn("$2a$10$encoded");
@@ -140,6 +140,6 @@ class UserServiceTest {
 
         userService.register(newUser);
 
-        assertThat(newUser.getStatus()).isEqualTo(0);
+        assertThat(newUser.getStatus()).isEqualTo("DISABLED");
     }
 }

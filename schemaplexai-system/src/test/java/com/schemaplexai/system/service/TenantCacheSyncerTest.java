@@ -35,7 +35,7 @@ class TenantCacheSyncerTest {
         syncer = new TenantCacheSyncer(stringRedisTemplate);
     }
 
-    private SfTenant tenant(String code, Integer status) {
+    private SfTenant tenant(String code, String status) {
         SfTenant tenant = new SfTenant();
         tenant.setId(1L);
         tenant.setCode(code);
@@ -45,14 +45,14 @@ class TenantCacheSyncerTest {
 
     @Test
     void sync_activeTenant_writesActiveToStatusKey() {
-        syncer.sync(tenant("acme", 1));
+        syncer.sync(tenant("acme", "ACTIVE"));
 
         verify(valueOperations).set("sf:global:cache:tenant:acme", "ACTIVE");
     }
 
     @Test
     void sync_disabledTenant_writesDisabledToStatusKey() {
-        syncer.sync(tenant("acme", 0));
+        syncer.sync(tenant("acme", "DISABLED"));
 
         verify(valueOperations).set("sf:global:cache:tenant:acme", "DISABLED");
     }
@@ -66,7 +66,7 @@ class TenantCacheSyncerTest {
 
     @Test
     void sync_tenantWithoutCode_skipsRedis() {
-        syncer.sync(tenant(null, 1));
+        syncer.sync(tenant(null, "ACTIVE"));
 
         verifyNoInteractions(stringRedisTemplate);
     }
@@ -86,7 +86,7 @@ class TenantCacheSyncerTest {
         doThrow(new RuntimeException("Redis down"))
                 .when(valueOperations).set(anyString(), anyString());
 
-        assertThatCode(() -> syncer.sync(tenant("acme", 1)))
+        assertThatCode(() -> syncer.sync(tenant("acme", "ACTIVE")))
                 .doesNotThrowAnyException();
     }
 
@@ -106,8 +106,8 @@ class TenantCacheSyncerTest {
 
     @Test
     void statusOf_mapsStatusConvention() {
-        assertThat(TenantCacheSyncer.statusOf(tenant("t", 1))).isEqualTo("ACTIVE");
+        assertThat(TenantCacheSyncer.statusOf(tenant("t", "ACTIVE"))).isEqualTo("ACTIVE");
         assertThat(TenantCacheSyncer.statusOf(tenant("t", null))).isEqualTo("ACTIVE");
-        assertThat(TenantCacheSyncer.statusOf(tenant("t", 0))).isEqualTo("DISABLED");
+        assertThat(TenantCacheSyncer.statusOf(tenant("t", "DISABLED"))).isEqualTo("DISABLED");
     }
 }

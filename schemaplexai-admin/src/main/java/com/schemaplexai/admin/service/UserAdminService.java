@@ -71,7 +71,7 @@ public class UserAdminService {
         if (user == null) {
             throw new BaseException(ResultCode.USER_NOT_FOUND);
         }
-        user.setStatus(0);
+        user.setStatus(com.schemaplexai.common.redis.TenantRedisKeyResolver.TENANT_STATUS_DISABLED);
         userMapper.updateById(user);
         log.info("User disabled: id={}, username={}", userId, user.getUsername());
     }
@@ -82,7 +82,7 @@ public class UserAdminService {
         if (user == null) {
             throw new BaseException(ResultCode.USER_NOT_FOUND);
         }
-        user.setStatus(1);
+        user.setStatus(com.schemaplexai.common.redis.TenantRedisKeyResolver.TENANT_STATUS_ACTIVE);
         userMapper.updateById(user);
         log.info("User enabled: id={}, username={}", userId, user.getUsername());
     }

@@ -24,7 +24,7 @@ public class UserCreateRequest {
     @Size(max = 20, message = "phone must not exceed 20 characters")
     private String phone;
 
-    private Integer status;
+    private String status;
 
     private String tenantId;
 }

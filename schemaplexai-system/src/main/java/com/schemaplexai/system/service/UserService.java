@@ -29,7 +29,7 @@ public class UserService extends ServiceImpl<SfUserMapper, SfUser> {
         }
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         if (user.getStatus() == null) {
-            user.setStatus(1);
+            user.setStatus(com.schemaplexai.common.redis.TenantRedisKeyResolver.TENANT_STATUS_ACTIVE);
         }
         boolean saved = save(user);
         if (!saved) {

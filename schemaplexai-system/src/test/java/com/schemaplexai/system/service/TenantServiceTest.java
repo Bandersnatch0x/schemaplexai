@@ -39,7 +39,7 @@ class TenantServiceTest {
         sampleTenant.setId(1L);
         sampleTenant.setName("Test Tenant");
         sampleTenant.setCode("TEST");
-        sampleTenant.setStatus(1);
+        sampleTenant.setStatus("ACTIVE");
         sampleTenant.setConfigJson("{}");
     }
 
@@ -52,7 +52,7 @@ class TenantServiceTest {
         assertThat(result).isNotNull();
         assertThat(result.getName()).isEqualTo("Test Tenant");
         assertThat(result.getCode()).isEqualTo("TEST");
-        assertThat(result.getStatus()).isEqualTo(1);
+        assertThat(result.getStatus()).isEqualTo("ACTIVE");
     }
 
     @Test
@@ -67,7 +67,7 @@ class TenantServiceTest {
 
     @Test
     void getValidTenant_disabledTenant_throwsTenantDisabled() {
-        sampleTenant.setStatus(0);
+        sampleTenant.setStatus("DISABLED");
         when(tenantMapper.selectById(1L)).thenReturn(sampleTenant);
 
         assertThatThrownBy(() -> tenantService.getValidTenant(1L))

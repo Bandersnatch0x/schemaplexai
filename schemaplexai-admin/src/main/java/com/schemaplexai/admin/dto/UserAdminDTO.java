@@ -13,7 +13,7 @@ public class UserAdminDTO {
     private String username;
     private String email;
     private String phone;
-    private Integer status;
+    private String status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

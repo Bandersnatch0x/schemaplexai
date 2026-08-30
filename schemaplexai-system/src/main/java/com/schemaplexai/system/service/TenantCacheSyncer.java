@@ -60,9 +60,9 @@ public class TenantCacheSyncer {
         }
     }
 
-    /** Map the sf_tenant.status convention (0 = disabled, null/other = enabled). */
+    /** Map the sf_tenant.status convention (DISABLED = disabled, ACTIVE/null/other = enabled). */
     public static String statusOf(SfTenant tenant) {
-        boolean disabled = tenant.getStatus() != null && tenant.getStatus() == 0;
+        boolean disabled = TenantRedisKeyResolver.TENANT_STATUS_DISABLED.equals(tenant.getStatus());
         return disabled
                 ? TenantRedisKeyResolver.TENANT_STATUS_DISABLED
                 : TenantRedisKeyResolver.TENANT_STATUS_ACTIVE;

@@ -60,7 +60,7 @@ class AuthServiceTest {
         sampleUser.setUsername("testuser");
         sampleUser.setPassword("$2a$10$encodedPassword");
         sampleUser.setTenantId("tenant-1");
-        sampleUser.setStatus(1);
+        sampleUser.setStatus("ACTIVE");
     }
 
     // ==================== Login ====================

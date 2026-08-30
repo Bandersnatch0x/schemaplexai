@@ -116,12 +116,12 @@ class TenantAdminServiceTest {
         SfTenant tenant = new SfTenant();
         tenant.setId(1L);
         tenant.setCode("acme");
-        tenant.setStatus(1);
+        tenant.setStatus("ACTIVE");
         when(tenantMapper.selectById(1L)).thenReturn(tenant);
 
         tenantAdminService.disableTenant(1L);
 
-        assertThat(tenant.getStatus()).isEqualTo(0);
+        assertThat(tenant.getStatus()).isEqualTo("DISABLED");
         verify(tenantMapper).updateById(tenant);
         verify(tenantCacheSyncer).sync(tenant);
     }
@@ -145,12 +145,12 @@ class TenantAdminServiceTest {
         SfTenant tenant = new SfTenant();
         tenant.setId(1L);
         tenant.setCode("acme");
-        tenant.setStatus(0);
+        tenant.setStatus("DISABLED");
         when(tenantMapper.selectById(1L)).thenReturn(tenant);
 
         tenantAdminService.enableTenant(1L);
 
-        assertThat(tenant.getStatus()).isEqualTo(1);
+        assertThat(tenant.getStatus()).isEqualTo("ACTIVE");
         verify(tenantMapper).updateById(tenant);
         verify(tenantCacheSyncer).sync(tenant);
     }

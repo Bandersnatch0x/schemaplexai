@@ -28,7 +28,7 @@ public class TenantService extends ServiceImpl<SfTenantMapper, SfTenant> {
         if (tenant == null) {
             throw new BaseException(ResultCode.TENANT_NOT_FOUND);
         }
-        if (tenant.getStatus() != null && tenant.getStatus() == 0) {
+        if (com.schemaplexai.common.redis.TenantRedisKeyResolver.TENANT_STATUS_DISABLED.equals(tenant.getStatus())) {
             throw new BaseException(ResultCode.TENANT_DISABLED);
         }
         return tenant;

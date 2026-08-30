@@ -89,12 +89,12 @@ class UserAdminServiceTest {
     void disableUser_success_setsStatusZero() {
         SfUser user = new SfUser();
         user.setId(1L);
-        user.setStatus(1);
+        user.setStatus("ACTIVE");
         when(userMapper.selectById(1L)).thenReturn(user);
 
         userAdminService.disableUser(1L);
 
-        assertThat(user.getStatus()).isEqualTo(0);
+        assertThat(user.getStatus()).isEqualTo("DISABLED");
         verify(userMapper).updateById(user);
     }
 
@@ -116,12 +116,12 @@ class UserAdminServiceTest {
     void enableUser_success_setsStatusOne() {
         SfUser user = new SfUser();
         user.setId(1L);
-        user.setStatus(0);
+        user.setStatus("DISABLED");
         when(userMapper.selectById(1L)).thenReturn(user);
 
         userAdminService.enableUser(1L);
 
-        assertThat(user.getStatus()).isEqualTo(1);
+        assertThat(user.getStatus()).isEqualTo("ACTIVE");
         verify(userMapper).updateById(user);
     }
 

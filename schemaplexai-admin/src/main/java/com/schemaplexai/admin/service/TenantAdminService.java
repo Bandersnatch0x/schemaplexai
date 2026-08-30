@@ -76,7 +76,7 @@ public class TenantAdminService extends ServiceImpl<SfTenantMapper, SfTenant> {
         if (tenant == null) {
             throw new BaseException(ResultCode.TENANT_NOT_FOUND);
         }
-        tenant.setStatus(0);
+        tenant.setStatus(com.schemaplexai.common.redis.TenantRedisKeyResolver.TENANT_STATUS_DISABLED);
         updateById(tenant);
         tenantCacheSyncer.sync(tenant);
         log.info("Tenant disabled: id={}, code={}", tenantId, tenant.getCode());
@@ -87,7 +87,7 @@ public class TenantAdminService extends ServiceImpl<SfTenantMapper, SfTenant> {
         if (tenant == null) {
             throw new BaseException(ResultCode.TENANT_NOT_FOUND);
         }
-        tenant.setStatus(1);
+        tenant.setStatus(com.schemaplexai.common.redis.TenantRedisKeyResolver.TENANT_STATUS_ACTIVE);
         updateById(tenant);
         tenantCacheSyncer.sync(tenant);
         log.info("Tenant enabled: id={}, code={}", tenantId, tenant.getCode());
