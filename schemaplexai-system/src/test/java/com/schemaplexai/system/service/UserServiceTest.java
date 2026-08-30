@@ -46,24 +46,35 @@ class UserServiceTest {
 
     @Test
     void getByUsernameAndTenantId_returnsUser() {
-        when(userMapper.selectByUsernameAndTenantId("testuser", "tenant-1"))
+        when(userMapper.selectByUsernameAndTenantId("testuser", 7L))
                 .thenReturn(sampleUser);
 
-        SfUser result = userService.getByUsernameAndTenantId("testuser", "tenant-1");
+        SfUser result = userService.getByUsernameAndTenantId("testuser", "7");
 
         assertThat(result).isNotNull();
         assertThat(result.getUsername()).isEqualTo("testuser");
-        assertThat(result.getTenantId()).isEqualTo("tenant-1");
     }
 
     @Test
     void getByUsernameAndTenantId_returnsNullWhenNotFound() {
-        when(userMapper.selectByUsernameAndTenantId("nonexistent", "tenant-1"))
+        when(userMapper.selectByUsernameAndTenantId("nonexistent", 7L))
                 .thenReturn(null);
 
-        SfUser result = userService.getByUsernameAndTenantId("nonexistent", "tenant-1");
+        SfUser result = userService.getByUsernameAndTenantId("nonexistent", "7");
 
         assertThat(result).isNull();
+    }
+
+    @Test
+    void getByUsernameAndTenantId_nonNumericTenant_returnsNullWithoutQuery() {
+        // Live defect regression: tenant_id is BIGINT; a non-numeric tenant id
+        // must not reach the database as a varchar parameter.
+        SfUser result = userService.getByUsernameAndTenantId("testuser", "tenant-x");
+
+        assertThat(result).isNull();
+        org.mockito.Mockito.verify(userMapper, org.mockito.Mockito.never())
+                .selectByUsernameAndTenantId(org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.anyLong());
     }
 
     @Test

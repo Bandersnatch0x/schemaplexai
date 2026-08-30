@@ -19,7 +19,15 @@ public class UserService extends ServiceImpl<SfUserMapper, SfUser> {
     private final PasswordEncoder passwordEncoder;
 
     public SfUser getByUsernameAndTenantId(String username, String tenantId) {
-        return baseMapper.selectByUsernameAndTenantId(username, tenantId);
+        // sf_user.tenant_id is BIGINT — bind a numeric value (live defect:
+        // a varchar parameter fails with "operator does not exist: bigint = varchar").
+        Long tenantIdNumeric;
+        try {
+            tenantIdNumeric = Long.valueOf(tenantId);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+        return baseMapper.selectByUsernameAndTenantId(username, tenantIdNumeric);
     }
 
     public Long register(SfUser user) {
