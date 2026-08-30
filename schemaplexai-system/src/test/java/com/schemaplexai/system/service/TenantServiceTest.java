@@ -135,6 +135,6 @@ class TenantServiceTest {
         boolean deleted = tenantService.deleteTenant(1L);
 
         assertThat(deleted).isTrue();
-        verify(tenantCacheSyncer).evict("TEST");
+        verify(tenantCacheSyncer).evict(org.mockito.ArgumentMatchers.any(SfTenant.class));
     }
 }

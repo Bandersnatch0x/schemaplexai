@@ -40,11 +40,29 @@ public class TenantCacheSyncer {
             return;
         }
         try {
+            String status = statusOf(tenant);
             stringRedisTemplate.opsForValue().set(
-                    TenantRedisKeyResolver.tenantStatus(tenant.getCode()),
-                    statusOf(tenant));
+                    TenantRedisKeyResolver.tenantStatus(tenant.getCode()), status);
+            // The gateway resolves the tenant from the JWT claim, which carries
+            // the numeric id (inbound X-Tenant-Id headers are stripped as a
+            // spoofing defence) — publish the id key too so both lookups hit.
+            if (tenant.getId() != null) {
+                stringRedisTemplate.opsForValue().set(
+                        TenantRedisKeyResolver.tenantStatus(String.valueOf(tenant.getId())), status);
+            }
         } catch (Exception e) {
             log.warn("Failed to sync tenant cache for '{}': {}", tenant.getCode(), e.getMessage());
+        }
+    }
+
+    /** Remove the tenant from the shared channel (deleted tenants become unknown). */
+    public void evict(SfTenant tenant) {
+        if (tenant == null) {
+            return;
+        }
+        evict(tenant.getCode());
+        if (tenant.getId() != null) {
+            evict(String.valueOf(tenant.getId()));
         }
     }
 

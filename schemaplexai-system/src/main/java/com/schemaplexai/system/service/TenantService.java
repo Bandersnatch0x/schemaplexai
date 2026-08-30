@@ -64,7 +64,7 @@ public class TenantService extends ServiceImpl<SfTenantMapper, SfTenant> {
         SfTenant existing = getById(id);
         boolean deleted = removeById(id);
         if (deleted && existing != null) {
-            tenantCacheSyncer.evict(existing.getCode());
+            tenantCacheSyncer.evict(existing);
         }
         return deleted;
     }
