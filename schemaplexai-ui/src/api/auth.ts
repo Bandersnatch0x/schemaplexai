@@ -5,6 +5,7 @@ import type { UserInfo, Tenant } from '@/types'
 export interface LoginPayload {
   username: string
   password: string
+  tenantId?: string
 }
 
 export interface LoginResult {

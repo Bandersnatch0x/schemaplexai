@@ -232,7 +232,7 @@ export default function Login() {
 
     setLoading(true)
     try {
-      const result = await login({ username: trimmedUser, password })
+      const result = await login({ username: trimmedUser, password, tenantId: tenantHint.id })
       saveAuth(result, tenantHint.id)
 
       const tenants = await getTenantList()
