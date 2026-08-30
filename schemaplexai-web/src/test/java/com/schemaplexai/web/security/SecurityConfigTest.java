@@ -14,7 +14,7 @@ class SecurityConfigTest {
 
     @Test
     void securityFilterChainBeanExists() throws Exception {
-        SecurityConfig config = new SecurityConfig();
+        SecurityConfig config = new SecurityConfig(org.mockito.Mockito.mock(GatewayHeaderAuthenticationFilter.class));
         HttpSecurity httpSecurity = mock(HttpSecurity.class, RETURNS_SELF);
         DefaultSecurityFilterChain expectedChain = new DefaultSecurityFilterChain(
                 request -> true,
