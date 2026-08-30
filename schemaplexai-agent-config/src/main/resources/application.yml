@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: schemaplexai-agent-config
+  flyway:
+    # No migrations in this module; baseline so an existing schema (created by
+    # docker/postgres/init) never fails startup (live defect, browser round 2).
+    baseline-on-migrate: true
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/schemaplexai
     username: ${DB_USERNAME:?required}
