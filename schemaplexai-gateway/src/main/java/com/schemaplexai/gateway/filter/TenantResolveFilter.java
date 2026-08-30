@@ -94,6 +94,13 @@ public class TenantResolveFilter implements GlobalFilter, Ordered {
 
         final String resolvedTenantId = tenantId;
         return tenantValidator.validate(resolvedTenantId)
+                .onErrorMap(e -> {
+                    // Fail-closed: if the validation channel itself fails, do not
+                    // let unvalidated tenants through. Marked so downstream errors
+                    // are not misreported as validation failures.
+                    log.error("Tenant validation failed for tenant '{}' — denying request", resolvedTenantId, e);
+                    return new ValidationChannelException(e);
+                })
                 .flatMap(status -> {
                     switch (status) {
                         case ACTIVE:
@@ -111,13 +118,21 @@ public class TenantResolveFilter implements GlobalFilter, Ordered {
                                     ResultCode.TENANT_NOT_FOUND.getMessage());
                     }
                 })
+                .onErrorResume(ValidationChannelException.class, e ->
+                        reject(exchange.getResponse(), HttpStatus.SERVICE_UNAVAILABLE,
+                                "tenant validation unavailable"))
                 .onErrorResume(e -> {
-                    // Fail-closed: if the validation channel itself fails, do not
-                    // let unvalidated tenants through.
-                    log.error("Tenant validation failed for tenant '{}' — denying request", resolvedTenantId, e);
+                    log.error("Downstream service error for tenant '{}' on {} {}",
+                            resolvedTenantId, request.getMethod(), path, e);
                     return reject(exchange.getResponse(), HttpStatus.SERVICE_UNAVAILABLE,
-                            "tenant validation unavailable");
+                            "downstream service unavailable");
                 });
+    }
+
+    private static final class ValidationChannelException extends RuntimeException {
+        ValidationChannelException(Throwable cause) {
+            super(cause);
+        }
     }
 
     private boolean isWhiteListed(String path) {
