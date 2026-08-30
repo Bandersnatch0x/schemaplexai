@@ -10,7 +10,7 @@ class SecurityConfigTest {
 
     @Test
     void passwordEncoder_returnsBCryptEncoder() {
-        SecurityConfig config = new SecurityConfig();
+        SecurityConfig config = new SecurityConfig(org.mockito.Mockito.mock(JwtAuthenticationFilter.class));
 
         PasswordEncoder encoder = config.passwordEncoder();
 
@@ -19,7 +19,7 @@ class SecurityConfigTest {
 
     @Test
     void passwordEncoder_encodesAndMatches() {
-        SecurityConfig config = new SecurityConfig();
+        SecurityConfig config = new SecurityConfig(org.mockito.Mockito.mock(JwtAuthenticationFilter.class));
         PasswordEncoder encoder = config.passwordEncoder();
 
         String encoded = encoder.encode("password123");
