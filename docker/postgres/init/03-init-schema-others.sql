@@ -418,3 +418,42 @@ CREATE INDEX idx_notification_tenant_user ON sf_notification(tenant_id, user_id)
 CREATE INDEX idx_notification_tenant_user_read ON sf_notification(tenant_id, user_id, read);
 CREATE INDEX idx_notification_created_at ON sf_notification(created_at);
 CREATE INDEX idx_message_fail_log_status ON sf_message_fail_log(status, created_at);
+
+-- Task board (schemaplexai-task REST layer: /task/tasks, /task/tasks/{id}/comments)
+CREATE TABLE sf_task (
+    id                  BIGSERIAL PRIMARY KEY,
+    tenant_id           BIGINT NOT NULL,
+    title               VARCHAR(255) NOT NULL,
+    description         TEXT,
+    skill_tags          TEXT DEFAULT '[]',
+    priority            VARCHAR(8) NOT NULL DEFAULT 'P2',
+    status              VARCHAR(32) NOT NULL DEFAULT 'BACKLOG',
+    assigned_runtime_id VARCHAR(128),
+    assigned_agent_id   BIGINT,
+    assignment_type     VARCHAR(16) NOT NULL DEFAULT 'MANUAL',
+    spec_id             BIGINT,
+    blocker_reason      TEXT,
+    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by          BIGINT,
+    updated_by          BIGINT,
+    deleted             INT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE sf_task_comment (
+    id              BIGSERIAL PRIMARY KEY,
+    tenant_id       BIGINT NOT NULL,
+    task_id         BIGINT NOT NULL,
+    content         TEXT NOT NULL,
+    author_id       BIGINT NOT NULL,
+    author_name     VARCHAR(64),
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by      BIGINT,
+    updated_by      BIGINT,
+    deleted         INT NOT NULL DEFAULT 0
+);
+
+CREATE INDEX idx_task_tenant_status ON sf_task(tenant_id, status);
+CREATE INDEX idx_task_tenant_priority ON sf_task(tenant_id, priority);
+CREATE INDEX idx_task_comment_task ON sf_task_comment(task_id, created_at);
