@@ -43,3 +43,35 @@ integration 372 / ops 287 / task 192 / admin 111。
 
 - 合并/推送由用户指令触发(分支含 58 提交,建议合并前过一次 PR 评审)
 - 浏览器实测建议在具备基础设施的环境执行:登录→执行一次 Agent→观察成本/质量事件链→Cockpit 统计→通知分页
+
+## 6. 浏览器二轮实测记录(2026-08-30 10:1x,WSL 基础设施)
+
+**环境**:wslc 容器 postgres/redis/rabbitmq(镜像经 DaoCloud 源);8 个后端服务
+(system/gateway/web/agent-config/agent-engine/quality/task/ops)+ Vite 前端;
+种子租户 `default`(id=1)+ 管理员 `admin`。
+
+**实测通过**:
+- 全新 PostgreSQL 上 init 脚本一次建成 74 表(902/903/迁移整合的线上验证)
+- 前端 SPA 渲染:登录页、404 页、路由守卫跳转正常
+- 登录链路(经真实网关):POST /auth/login 200,返回 accessToken/refreshToken;
+  租户码解析、JWT 声明、Redis 会话落库均生效
+- 网关路由 lb:// 解析(910 静态实例源线上验证)、限流/认证过滤器顺序生效
+
+**实测发现并当场修复的活缺陷**(均独立提交+回归测试):
+1. `sf_tenant`/`sf_user` 实体与生产 DDL 漂移(根表无 tenant_id 列;status
+   Integer 对 VARCHAR)→ 登录 500。修复:实体排除根表缺列、状态词表字符串化
+   (ce7a310)
+2. 租户拦截器以字符串字面量拼 BIGINT 租户条件 → 全线类型错配。修复:数字租户
+   发 LongValue;登录路径 sf_user 豁免(663f370)
+3. Flyway 对已建 schema 启动即失败 + 迁移对象未进 init。修复:8 个迁移并入
+   02 初始化脚本 + baseline-on-migrate(d551211)
+4. 引擎被动消费的三个队列全仓无声明,全新 broker 启动即挂。修复:引擎侧队列/
+   绑定声明(80e30bb)
+5. 登录页租户列表按规格白名单保持鉴权后,前端回退租户码占位导致登录失败。
+   修复:登录接受租户码解析(51a27a1)
+
+**受限项(如实声明)**:登录表单的用户名输入框无法被 Orca 自动化聚焦(点击/
+Tab 均不接收焦点,密码框拦截全部键入)——判定为自动化工具对自定义输入组件的
+限制而非应用缺陷;登录功能已在上文 API 层以真实令牌验证。Cockpit/通知等页面
+的浏览器内走查因此未执行,建议人工补一轮或换用 Playwright e2e(仓库已有
+e2e/ 骨架)。

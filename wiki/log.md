@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-08-30T00:24:16Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-08-30T02:16:40Z -->
 
 ---
 title: Wiki Operation Log
@@ -14,6 +14,18 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
+## 2026-08-30 — fix(system): login accepts tenant code when id unknown (live defect)
+51a27a1
+## 2026-08-30 — fix(agent-engine): declare passively consumed queues (live defect)
+80e30bb
+## 2026-08-30 — fix(db): consolidate engine migrations into init scripts, baseline flyway (live defect)
+d551211
+## 2026-08-30 — fix(dao): emit numeric tenant ids for BIGINT columns, exempt login path (live defect)
+663f370
+## 2026-08-30 — fix(system): align sf_tenant/sf_user entities with production DDL (live defect)
+ce7a310
+## 2026-08-30 — refactor(agent-engine): retire dead PLANNING/OBSERVATION states (issue 931)
+c446f84
 ## 2026-08-30 — docs: final verification report for spec compliance fix batch
 0123bc1
 ## 2026-08-30 — fix(integration): fail fast when master secret is unset (review ST-04)
@@ -42,18 +54,6 @@ eb2da55
 75f45ff
 ## 2026-08-30 — fix(integration): implement real MCP client and wire tool discovery into execution chain (issue 930)
 811d673
-## 2026-08-30 — fix(agent-config): rename cockpit read-only mapper to avoid bean name clash
-d40eb89
-## 2026-08-30 — fix(task): consume sf.cost cost events and persist to sf_cost_record (issue 919)
-1eb82ac
-## 2026-08-30 — fix(agent-engine): capture LLM tokenUsage and publish CostRecordedEvent on sf.cost (issue 919)
-56d8648
-## 2026-08-30 — fix(agent-engine): wire post-execution quality gate trigger and verdict handling (issue 924)
-5135dcd
-## 2026-08-30 — fix(workflow): instance cancel/approve/reject control plane and Flowable bridge audit (issue 923)
-a6a08ec
-## 2026-08-30 — fix(quality): wire gate evaluation with default policy and disposition verdicts (issue 924)
-91cdfd9
 
 ---
 
