@@ -4,6 +4,7 @@ import com.schemaplexai.common.constants.CommonConstants;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.redis.TenantRedisKeyResolver;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.system.entity.SfTenant;
 import com.schemaplexai.system.entity.SfUser;
 import com.schemaplexai.system.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ import java.util.Map;
 public class AuthService {
 
     private final UserService userService;
+    private final TenantService tenantService;
     private final StringRedisTemplate stringRedisTemplate;
     private final JwtTokenProvider jwtTokenProvider;
 
@@ -52,7 +54,22 @@ public class AuthService {
             throw new BaseException(ResultCode.PARAM_ERROR, "tenant id is empty");
         }
 
-        SfUser user = userService.getByUsernameAndTenantId(username, tenantId);
+        // The pre-auth login page may only know the tenant CODE (the gateway
+        // whitelist keeps /system/tenants authenticated per spec), so accept
+        // either a numeric id or a code and resolve to the numeric id.
+        Long tenantNumeric;
+        try {
+            tenantNumeric = Long.valueOf(tenantId.trim());
+        } catch (NumberFormatException e) {
+            SfTenant tenant = tenantService.getByCode(tenantId.trim());
+            if (tenant == null) {
+                throw new BaseException(ResultCode.TENANT_NOT_FOUND);
+            }
+            tenantNumeric = tenant.getId();
+        }
+        String tenantKey = String.valueOf(tenantNumeric);
+
+        SfUser user = userService.getByUsernameAndTenantId(username, tenantKey);
         if (user == null) {
             throw new BaseException(ResultCode.USER_NOT_FOUND);
         }
@@ -63,8 +80,8 @@ public class AuthService {
 
         // Delegate to JwtTokenProvider which includes the username claim
         String accessToken = jwtTokenProvider.generateToken(
-                user.getId().toString(), tenantId, user.getUsername());
-        String refreshToken = generateRefreshToken(user.getId().toString(), tenantId);
+                user.getId().toString(), tenantKey, user.getUsername());
+        String refreshToken = generateRefreshToken(user.getId().toString(), tenantKey);
 
         stringRedisTemplate.opsForValue().set(
                 TenantRedisKeyResolver.tokenSession(user.getId().toString()),

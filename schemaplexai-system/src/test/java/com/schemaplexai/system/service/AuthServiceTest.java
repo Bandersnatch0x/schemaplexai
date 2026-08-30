@@ -2,6 +2,7 @@ package com.schemaplexai.system.service;
 
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.system.entity.SfTenant;
 import com.schemaplexai.system.entity.SfUser;
 import com.schemaplexai.system.security.JwtTokenProvider;
 import io.jsonwebtoken.Claims;
@@ -44,14 +45,26 @@ class AuthServiceTest {
     @Mock
     private JwtTokenProvider jwtTokenProvider;
 
+    @Mock
+    private TenantService tenantService;
+
     @InjectMocks
     private AuthService authService;
 
     private SfUser sampleUser;
+
+    private SfTenant tenantForLogin() {
+        SfTenant tenant = new SfTenant();
+        tenant.setId(1L);
+        tenant.setCode("tenant-1");
+        return tenant;
+    }
     private static final String SECRET = "a]B@cD3fG6hI9kL2mN5oP8rS1tU4vW7xY0zA3bC6dE9fG2hI5kL8mN1oP4rS7tU0vW";
 
     @BeforeEach
     void setUp() {
+        lenient().when(tenantService.getByCode("tenant-1"))
+                .thenReturn(tenantForLogin());
         ReflectionTestUtils.setField(authService, "jwtExpiration", 86400000L);
         ReflectionTestUtils.setField(authService, "jwtRefreshExpiration", 604800000L);
 
@@ -67,11 +80,11 @@ class AuthServiceTest {
 
     @Test
     void login_validCredentials_delegatesToJwtTokenProvider() {
-        when(userService.getByUsernameAndTenantId("testuser", "tenant-1")).thenReturn(sampleUser);
+        when(userService.getByUsernameAndTenantId("testuser", "1")).thenReturn(sampleUser);
         when(stringRedisTemplate.opsForValue()).thenReturn(valueOps);
         sampleUser.setPassword(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode("rawPassword"));
-        when(jwtTokenProvider.generateToken("100", "tenant-1", "testuser")).thenReturn("access-token");
-        when(jwtTokenProvider.generateToken("100", "tenant-1", 604800000L)).thenReturn("refresh-token");
+        when(jwtTokenProvider.generateToken("100", "1", "testuser")).thenReturn("access-token");
+        when(jwtTokenProvider.generateToken("100", "1", 604800000L)).thenReturn("refresh-token");
 
         Map<String, String> result = authService.login("testuser", "rawPassword", "tenant-1");
 
@@ -79,7 +92,7 @@ class AuthServiceTest {
         assertThat(result.get("accessToken")).isEqualTo("access-token");
         assertThat(result.get("refreshToken")).isEqualTo("refresh-token");
         assertThat(result.get("tokenType")).isEqualTo("Bearer");
-        verify(jwtTokenProvider).generateToken("100", "tenant-1", "testuser");
+        verify(jwtTokenProvider).generateToken("100", "1", "testuser");
     }
 
     @Test
@@ -110,7 +123,7 @@ class AuthServiceTest {
 
     @Test
     void login_userNotFound_throwsUserNotFound() {
-        when(userService.getByUsernameAndTenantId("nonexistent", "tenant-1")).thenReturn(null);
+        when(userService.getByUsernameAndTenantId("nonexistent", "1")).thenReturn(null);
 
         assertThatThrownBy(() -> authService.login("nonexistent", "password", "tenant-1"))
                 .isInstanceOf(BaseException.class)
@@ -120,7 +133,7 @@ class AuthServiceTest {
 
     @Test
     void login_wrongPassword_throwsPasswordError() {
-        when(userService.getByUsernameAndTenantId("testuser", "tenant-1")).thenReturn(sampleUser);
+        when(userService.getByUsernameAndTenantId("testuser", "1")).thenReturn(sampleUser);
 
         assertThatThrownBy(() -> authService.login("testuser", "wrongPassword", "tenant-1"))
                 .isInstanceOf(BaseException.class)
@@ -137,7 +150,7 @@ class AuthServiceTest {
         String refreshToken = Jwts.builder()
                 .id(UUID.randomUUID().toString())
                 .subject("100")
-                .claim("tenantId", "tenant-1")
+                .claim("tenantId", "1")
                 .claim("username", "testuser")
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 604800_000))
@@ -152,15 +165,15 @@ class AuthServiceTest {
                 .getPayload();
 
         when(jwtTokenProvider.parseToken(refreshToken)).thenReturn(claims);
-        when(jwtTokenProvider.generateToken("100", "tenant-1", "testuser")).thenReturn("new-access");
-        when(jwtTokenProvider.generateToken("100", "tenant-1", 604800000L)).thenReturn("new-refresh");
+        when(jwtTokenProvider.generateToken("100", "1", "testuser")).thenReturn("new-access");
+        when(jwtTokenProvider.generateToken("100", "1", 604800000L)).thenReturn("new-refresh");
 
         Map<String, String> result = authService.refreshToken(refreshToken);
 
         assertThat(result).containsKeys("accessToken", "refreshToken", "tokenType");
         assertThat(result.get("accessToken")).isEqualTo("new-access");
         assertThat(result.get("refreshToken")).isEqualTo("new-refresh");
-        verify(jwtTokenProvider).generateToken("100", "tenant-1", "testuser");
+        verify(jwtTokenProvider).generateToken("100", "1", "testuser");
     }
 
     @Test
@@ -311,7 +324,7 @@ class AuthServiceTest {
         return Jwts.builder()
                 .id(UUID.randomUUID().toString())
                 .subject("100")
-                .claim("tenantId", "tenant-1")
+                .claim("tenantId", "1")
                 .issuedAt(new Date())
                 .expiration(expiration)
                 .signWith(key)
