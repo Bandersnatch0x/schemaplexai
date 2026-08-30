@@ -94,7 +94,7 @@ class NotificationServiceImplTest {
         assertThat(result.getType()).isEqualTo("info");
         assertThat(result.getTitle()).isEqualTo("Hello");
         assertThat(result.getContent()).isEqualTo("World");
-        assertThat(result.getStatus()).isEqualTo(0);
+        assertThat(result.getRead()).isFalse();
         verify(notificationMapper).insert(any(SfNotification.class));
     }
 
@@ -139,40 +139,40 @@ class NotificationServiceImplTest {
     void markAsRead_alreadyRead_returnsWithoutUpdate() {
         SfNotification notification = new SfNotification();
         notification.setId(1L);
-        notification.setStatus(1);
+        notification.setRead(true);
         when(notificationMapper.selectById(1L)).thenReturn(notification);
 
         SfNotification result = notificationService.markAsRead(1L);
 
-        assertThat(result.getStatus()).isEqualTo(1);
+        assertThat(result.getRead()).isTrue();
         verify(notificationMapper, never()).updateById(any(SfNotification.class));
     }
 
     @Test
-    void markAsRead_unread_setsStatusToRead() {
+    void markAsRead_unread_setsReadToTrue() {
         SfNotification notification = new SfNotification();
         notification.setId(1L);
         notification.setUserId(10L);
-        notification.setStatus(0);
+        notification.setRead(false);
         when(notificationMapper.selectById(1L)).thenReturn(notification);
 
         SfNotification result = notificationService.markAsRead(1L);
 
-        assertThat(result.getStatus()).isEqualTo(1);
+        assertThat(result.getRead()).isTrue();
         assertThat(result.getUpdatedAt()).isNotNull();
         verify(notificationMapper).updateById(notification);
     }
 
     @Test
-    void markAsRead_nullStatus_setsStatusToRead() {
+    void markAsRead_nullRead_setsReadToTrue() {
         SfNotification notification = new SfNotification();
         notification.setId(1L);
-        notification.setStatus(null);
+        notification.setRead(null);
         when(notificationMapper.selectById(1L)).thenReturn(notification);
 
         SfNotification result = notificationService.markAsRead(1L);
 
-        assertThat(result.getStatus()).isEqualTo(1);
+        assertThat(result.getRead()).isTrue();
         verify(notificationMapper).updateById(notification);
     }
 
@@ -191,7 +191,7 @@ class NotificationServiceImplTest {
     @Test
     void listUnread_returnsUnreadNotifications() {
         SfNotification n1 = new SfNotification();
-        n1.setStatus(0);
+        n1.setRead(false);
         when(notificationMapper.selectList(any())).thenReturn(List.of(n1));
 
         List<SfNotification> result = notificationService.listUnread(1L);
@@ -237,26 +237,26 @@ class NotificationServiceImplTest {
     }
 
     @Test
-    void batchMarkAsRead_mixedStatuses_countsOnlyUpdated() {
+    void batchMarkAsRead_mixedReadStates_countsOnlyUpdated() {
         SfNotification unread = new SfNotification();
         unread.setId(1L);
-        unread.setStatus(0);
+        unread.setRead(false);
         SfNotification read = new SfNotification();
         read.setId(2L);
-        read.setStatus(1);
-        SfNotification nullStatus = new SfNotification();
-        nullStatus.setId(3L);
-        nullStatus.setStatus(null);
+        read.setRead(true);
+        SfNotification nullRead = new SfNotification();
+        nullRead.setId(3L);
+        nullRead.setRead(null);
         when(notificationMapper.selectById(1L)).thenReturn(unread);
         when(notificationMapper.selectById(2L)).thenReturn(read);
-        when(notificationMapper.selectById(3L)).thenReturn(nullStatus);
+        when(notificationMapper.selectById(3L)).thenReturn(nullRead);
 
         int result = notificationService.batchMarkAsRead(List.of(1L, 2L, 3L));
 
         assertThat(result).isEqualTo(2);
         verify(notificationMapper).updateById(unread);
         verify(notificationMapper, never()).updateById(read);
-        verify(notificationMapper).updateById(nullStatus);
+        verify(notificationMapper).updateById(nullRead);
     }
 
     @Test
@@ -272,12 +272,48 @@ class NotificationServiceImplTest {
     void batchMarkAsRead_allAlreadyRead_returnsZero() {
         SfNotification read = new SfNotification();
         read.setId(1L);
-        read.setStatus(1);
+        read.setRead(true);
         when(notificationMapper.selectById(1L)).thenReturn(read);
 
         int result = notificationService.batchMarkAsRead(List.of(1L));
 
         assertThat(result).isEqualTo(0);
         verify(notificationMapper, never()).updateById(any(SfNotification.class));
+    }
+
+    // ------------------------------------------------------------------
+    // listBudgetAlerts (issue 921, tenant-scoped by review ST-01)
+    // ------------------------------------------------------------------
+
+    @Test
+    void listBudgetAlerts_filtersByTypeAndTenant() {
+        SfNotification alert = new SfNotification();
+        alert.setType(BudgetAlertNotifier.ALERT_NOTIFICATION_TYPE);
+        when(notificationMapper.selectList(any())).thenReturn(List.of(alert));
+
+        List<SfNotification> result = notificationService.listBudgetAlerts("tenant-1");
+
+        assertThat(result).hasSize(1);
+        verify(notificationMapper).selectList(any());
+    }
+
+    @Test
+    void listBudgetAlerts_blankTenant_failsClosed() {
+        // Review ST-01: a blank tenant must be rejected, never produce an
+        // unfiltered cross-tenant listing.
+        assertThatThrownBy(() -> notificationService.listBudgetAlerts("   "))
+                .isInstanceOf(BaseException.class)
+                .satisfies(ex -> assertThat(((BaseException) ex).getCode())
+                        .isEqualTo(ResultCode.PARAM_ERROR.getCode()));
+
+        verify(notificationMapper, never()).selectList(any());
+    }
+
+    @Test
+    void listBudgetAlerts_nullTenant_failsClosed() {
+        assertThatThrownBy(() -> notificationService.listBudgetAlerts(null))
+                .isInstanceOf(BaseException.class);
+
+        verify(notificationMapper, never()).selectList(any());
     }
 }

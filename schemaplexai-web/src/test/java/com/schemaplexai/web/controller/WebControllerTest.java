@@ -2,12 +2,9 @@ package com.schemaplexai.web.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.schemaplexai.agent.config.service.AgentShadowConfigService;
 import com.schemaplexai.agent.config.service.TenantEnvironmentConfigService;
 import com.schemaplexai.common.result.Result;
-import com.schemaplexai.model.entity.agent.SfAgentShadowConfig;
 import com.schemaplexai.model.entity.config.TenantEnvironmentConfig;
-import com.schemaplexai.web.controller.agent.AgentShadowConfigController;
 import com.schemaplexai.web.controller.config.TenantEnvironmentConfigController;
 import com.schemaplexai.web.controller.notification.NotificationController;
 import com.schemaplexai.web.service.notification.NotificationService;
@@ -27,11 +24,6 @@ import static org.mockito.Mockito.*;
 class WebControllerTest {
 
     @Mock
-    private AgentShadowConfigService agentShadowConfigService;
-    @InjectMocks
-    private AgentShadowConfigController agentShadowConfigController;
-
-    @Mock
     private TenantEnvironmentConfigService tenantEnvironmentConfigService;
     @InjectMocks
     private TenantEnvironmentConfigController tenantEnvironmentConfigController;
@@ -45,60 +37,6 @@ class WebControllerTest {
     private AgentSseEmitter agentSseEmitter;
     @InjectMocks
     private SseController sseController;
-
-    // AgentShadowConfigController tests
-    @Test
-    void agentShadow_pageList() {
-        IPage<SfAgentShadowConfig> page = new Page<>();
-        when(agentShadowConfigService.pageList(any())).thenReturn(page);
-        Result<IPage<SfAgentShadowConfig>> result = agentShadowConfigController.pageList(1, 20);
-        assertThat(result.getCode()).isEqualTo(200);
-    }
-
-    @Test
-    void agentShadow_getById() {
-        SfAgentShadowConfig config = new SfAgentShadowConfig();
-        when(agentShadowConfigService.getById(1L)).thenReturn(config);
-        Result<SfAgentShadowConfig> result = agentShadowConfigController.getById(1L);
-        assertThat(result.getCode()).isEqualTo(200);
-    }
-
-    @Test
-    void agentShadow_getByAgentId() {
-        SfAgentShadowConfig config = new SfAgentShadowConfig();
-        when(agentShadowConfigService.getByAgentId(1L)).thenReturn(config);
-        Result<SfAgentShadowConfig> result = agentShadowConfigController.getByAgentId(1L);
-        assertThat(result.getCode()).isEqualTo(200);
-    }
-
-    @Test
-    void agentShadow_create() {
-        SfAgentShadowConfig config = new SfAgentShadowConfig();
-        when(agentShadowConfigService.save(config)).thenReturn(true);
-        Result<Boolean> result = agentShadowConfigController.create(config);
-        assertThat(result.getCode()).isEqualTo(200);
-    }
-
-    @Test
-    void agentShadow_update() {
-        SfAgentShadowConfig config = new SfAgentShadowConfig();
-        when(agentShadowConfigService.updateById(config)).thenReturn(true);
-        Result<Boolean> result = agentShadowConfigController.update(1L, config);
-        assertThat(result.getData()).isTrue();
-    }
-
-    @Test
-    void agentShadow_toggleEnabled() {
-        Result<Void> result = agentShadowConfigController.toggleEnabled(1L, true);
-        assertThat(result.getCode()).isEqualTo(200);
-    }
-
-    @Test
-    void agentShadow_delete() {
-        when(agentShadowConfigService.removeById(1L)).thenReturn(true);
-        Result<Boolean> result = agentShadowConfigController.delete(1L);
-        assertThat(result.getData()).isTrue();
-    }
 
     // TenantEnvironmentConfigController tests
     @Test

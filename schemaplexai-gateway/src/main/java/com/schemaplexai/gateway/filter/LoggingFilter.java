@@ -11,10 +11,26 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import java.util.UUID;
+import java.util.regex.Pattern;
 
+/**
+ * Access-log filter (request/response line per exchange).
+ *
+ * <p>Order note: this filter intentionally keeps {@link Ordered#HIGHEST_PRECEDENCE}
+ * so <b>every</b> request — including ones later rejected with 429/401 — is logged
+ * for audit and observability. Spec §2 lists the access log as step 4 (after JWT /
+ * tenant resolution); placing it last would drop log lines for all rejected traffic.
+ * The relative order Logging &lt; TracePropagation is also preserved so trace context
+ * generation happens after the log attributes are written.
+ * See {@link RateLimitFilter} Javadoc for the full chain order table.
+ */
 @Slf4j
 @Component
 public class LoggingFilter implements GlobalFilter, Ordered {
+
+    /** Query parameter names that must never appear with their value in access logs. */
+    private static final Pattern SENSITIVE_PARAM_PATTERN = Pattern.compile(
+            "(?i)^(token|access[_-]?token|refresh[_-]?token|password|passwd|secret|api[_-]?key|authorization|credential)s?$");
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -27,7 +43,7 @@ public class LoggingFilter implements GlobalFilter, Ordered {
 
         String method = request.getMethod() != null ? request.getMethod().name() : "UNKNOWN";
         String uri = request.getURI().getPath();
-        String query = request.getURI().getQuery();
+        String query = maskQuery(request.getURI().getQuery());
         String clientIp = request.getRemoteAddress() != null
                 ? request.getRemoteAddress().getAddress().getHostAddress()
                 : "unknown";
@@ -40,6 +56,31 @@ public class LoggingFilter implements GlobalFilter, Ordered {
             int statusCode = response.getStatusCode() != null ? response.getStatusCode().value() : 0;
             log.info("[{}] {} {} {} {} {}ms", traceId, "RESPONSE", method, uri, statusCode, duration);
         });
+    }
+
+    /**
+     * Masks values of sensitive query parameters (e.g. {@code token}, {@code password})
+     * so credentials never reach the access log in plaintext. Package-private for testing.
+     */
+    static String maskQuery(String query) {
+        if (query == null || query.isEmpty()) {
+            return query;
+        }
+        String[] pairs = query.split("&");
+        StringBuilder masked = new StringBuilder(query.length());
+        for (int i = 0; i < pairs.length; i++) {
+            if (i > 0) {
+                masked.append('&');
+            }
+            String pair = pairs[i];
+            int eq = pair.indexOf('=');
+            if (eq > 0 && SENSITIVE_PARAM_PATTERN.matcher(pair.substring(0, eq)).matches()) {
+                masked.append(pair, 0, eq).append("=***");
+            } else {
+                masked.append(pair);
+            }
+        }
+        return masked.toString();
     }
 
     @Override

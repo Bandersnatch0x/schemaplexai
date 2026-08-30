@@ -118,6 +118,40 @@ public class SpecSteeringServiceImpl extends ServiceImpl<SfSpecSteeringMapper, S
         return valid;
     }
 
+    /**
+     * Phase 1 of the §5 agent binding (issue 925): the spec module renders the
+     * injectable System-Prompt fragment. Phase 2 — SfAgentConfig.steeringId in
+     * schemaplexai-agent-config and injection by the engine's prompt builder —
+     * is tracked separately because it spans two other services.
+     */
+    @Override
+    public String buildPromptFragment(Long steeringId) {
+        validateSteeringId(steeringId);
+        SfSpecSteering steering = specSteeringMapper.selectById(steeringId);
+        if (steering == null) {
+            throw new BaseException(ResultCode.NOT_FOUND, "Steering not found");
+        }
+        boolean hasDirection = StringUtils.hasText(steering.getDirection());
+        boolean hasConstraints = StringUtils.hasText(steering.getConstraints());
+        boolean hasCriteria = StringUtils.hasText(steering.getAcceptanceCriteria());
+        if (!hasDirection && !hasConstraints && !hasCriteria) {
+            throw new BaseException(ResultCode.PARAM_ERROR,
+                    "Steering " + steeringId + " has no injectable content");
+        }
+        StringBuilder fragment = new StringBuilder("## Steering Constraints\n");
+        if (hasDirection) {
+            fragment.append("\n### Direction\n").append(steering.getDirection().trim()).append('\n');
+        }
+        if (hasConstraints) {
+            fragment.append("\n### Constraints\n").append(steering.getConstraints().trim()).append('\n');
+        }
+        if (hasCriteria) {
+            fragment.append("\n### Acceptance Criteria\n").append(steering.getAcceptanceCriteria().trim()).append('\n');
+        }
+        log.info("Built system-prompt fragment for steering {}", steeringId);
+        return fragment.toString();
+    }
+
     private void validateSpecId(Long specId) {
         if (specId == null) {
             throw new BaseException(ResultCode.PARAM_ERROR, "specId is required");

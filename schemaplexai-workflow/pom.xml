@@ -4,6 +4,12 @@
     <modelVersion>4.0.0</modelVersion>
     <parent><groupId>com.schemaplexai</groupId><artifactId>schemaplexai</artifactId><version>1.0.0-SNAPSHOT</version></parent>
     <artifactId>schemaplexai-workflow</artifactId><name>SchemaPlexAI Workflow</name>
+    <properties>
+        <!-- Script engines for SCRIPT workflow nodes (spec §3.4). Pinned locally to
+             avoid touching the shared parent POM. -->
+        <groovy.version>4.0.21</groovy.version>
+        <nashorn.version>15.4</nashorn.version>
+    </properties>
     <dependencies>
         <dependency><groupId>com.schemaplexai</groupId><artifactId>schemaplexai-common</artifactId></dependency>
         <dependency><groupId>com.schemaplexai</groupId><artifactId>schemaplexai-model</artifactId></dependency>
@@ -14,6 +20,10 @@
         <dependency><groupId>org.projectlombok</groupId><artifactId>lombok</artifactId><optional>true</optional></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-validation</artifactId></dependency>
         <dependency><groupId>com.github.xiaoymin</groupId><artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId></dependency>
+        <!-- SCRIPT node runtimes: Groovy for language=groovy, standalone Nashorn for
+             language=javascript (the JDK no longer ships a JS engine). -->
+        <dependency><groupId>org.apache.groovy</groupId><artifactId>groovy</artifactId><version>${groovy.version}</version></dependency>
+        <dependency><groupId>org.openjdk.nashorn</groupId><artifactId>nashorn-core</artifactId><version>${nashorn.version}</version></dependency>
     
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -39,8 +49,8 @@
                                 <rule>
                                     <element>BUNDLE</element>
                                     <limits>
-                                        <limit><counter>INSTRUCTION</counter><value>COVEREDRATIO</value><minimum>0.00</minimum></limit>
-                                        <limit><counter>BRANCH</counter><value>COVEREDRATIO</value><minimum>0.00</minimum></limit>
+                                        <limit><counter>INSTRUCTION</counter><value>COVEREDRATIO</value><minimum>0.40</minimum></limit>
+                                        <limit><counter>BRANCH</counter><value>COVEREDRATIO</value><minimum>0.20</minimum></limit>
                                     </limits>
                                 </rule>
                             </rules>

@@ -19,6 +19,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,7 +54,7 @@ class SpecControllerTest {
 
     @Test
     void create_returnsId() {
-        when(specService.save(any())).thenReturn(true);
+        when(specService.createSpec(any())).thenReturn(spec);
 
         Result<Long> result = specController.create(spec);
 
@@ -63,7 +64,7 @@ class SpecControllerTest {
 
     @Test
     void update_returnsBoolean() {
-        when(specService.updateById(any())).thenReturn(true);
+        when(specService.updateSpec(eq(1L), any())).thenReturn(true);
 
         Result<Boolean> result = specController.update(1L, spec);
 
@@ -73,7 +74,7 @@ class SpecControllerTest {
 
     @Test
     void delete_returnsBoolean() {
-        when(specService.removeById(1L)).thenReturn(true);
+        when(specService.deleteSpec(1L)).thenReturn(true);
 
         Result<Boolean> result = specController.delete(1L);
 
@@ -138,6 +139,21 @@ class SpecControllerTest {
 
         assertThat(result.getCode()).isEqualTo(200);
         assertThat(result.getData()).isTrue();
+    }
+
+    @Test
+    void rollbackSpec_returnsRestoredSpec() {
+        SfSpec restored = new SfSpec();
+        restored.setId(1L);
+        restored.setStatus("draft");
+        restored.setContent("known good content");
+        when(specService.rollbackSpec(1L, 5L)).thenReturn(restored);
+
+        Result<SfSpec> result = specController.rollbackSpec(1L, 5L);
+
+        assertThat(result.getCode()).isEqualTo(200);
+        assertThat(result.getData().getStatus()).isEqualTo("draft");
+        assertThat(result.getData().getContent()).isEqualTo("known good content");
     }
 
     @Test

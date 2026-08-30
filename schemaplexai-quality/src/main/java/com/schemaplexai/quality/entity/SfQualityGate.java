@@ -12,5 +12,11 @@ public class SfQualityGate extends BaseEntity {
 
     private String name;
     private String rulesJson;
-    private Integer status;
+
+    /**
+     * Gate lifecycle status, stored as VARCHAR(32) in sf_quality_gate
+     * (DDL default 'ACTIVE'). Allowed values: ACTIVE / INACTIVE / DEPRECATED.
+     * Only ACTIVE gates participate in quality evaluation.
+     */
+    private String status;
 }

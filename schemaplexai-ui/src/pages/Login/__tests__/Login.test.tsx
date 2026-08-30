@@ -227,6 +227,7 @@ describe('Login component', () => {
       expect(authApi.login).toHaveBeenCalledWith({
         username: 'aurora.han@aerolabs.cn',
         password: 'P@ssw0rd!',
+        tenantId: 'default',
       })
       expect(authApi.saveAuth).toHaveBeenCalledWith(loginResult, 'default')
       expect(authApi.getTenantList).toHaveBeenCalled()

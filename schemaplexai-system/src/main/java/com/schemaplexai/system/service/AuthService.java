@@ -4,10 +4,9 @@ import com.schemaplexai.common.constants.CommonConstants;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.redis.TenantRedisKeyResolver;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.system.entity.SfTenant;
 import com.schemaplexai.system.entity.SfUser;
 import com.schemaplexai.system.security.JwtTokenProvider;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,13 +17,10 @@ import org.springframework.util.StringUtils;
 
 import jakarta.annotation.PostConstruct;
 
-import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 @Slf4j
 @Service
@@ -32,25 +28,23 @@ import java.util.UUID;
 public class AuthService {
 
     private final UserService userService;
+    private final TenantService tenantService;
     private final StringRedisTemplate stringRedisTemplate;
     private final JwtTokenProvider jwtTokenProvider;
+
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-
-    @Value("${jwt.secret}")
-    private String jwtSecret;
-
-    @PostConstruct
-    public void validateJwtSecret() {
-        if (!StringUtils.hasText(jwtSecret) || jwtSecret.getBytes(StandardCharsets.UTF_8).length < 32) {
-            throw new IllegalStateException("JWT secret must be at least 32 bytes long. Please set the JWT_SECRET environment variable.");
-        }
-    }
 
     @Value("${jwt.expiration:86400000}")
     private Long jwtExpiration;
 
     @Value("${jwt.refresh-expiration:604800000}")
     private Long jwtRefreshExpiration;
+
+    @PostConstruct
+    public void validateDependencies() {
+        log.debug("AuthService initialized with jwtExpiration={}, jwtRefreshExpiration={}",
+                jwtExpiration, jwtRefreshExpiration);
+    }
 
     public Map<String, String> login(String username, String password, String tenantId) {
         if (!StringUtils.hasText(username) || !StringUtils.hasText(password)) {
@@ -60,7 +54,22 @@ public class AuthService {
             throw new BaseException(ResultCode.PARAM_ERROR, "tenant id is empty");
         }
 
-        SfUser user = userService.getByUsernameAndTenantId(username, tenantId);
+        // The pre-auth login page may only know the tenant CODE (the gateway
+        // whitelist keeps /system/tenants authenticated per spec), so accept
+        // either a numeric id or a code and resolve to the numeric id.
+        Long tenantNumeric;
+        try {
+            tenantNumeric = Long.valueOf(tenantId.trim());
+        } catch (NumberFormatException e) {
+            SfTenant tenant = tenantService.getByCode(tenantId.trim());
+            if (tenant == null) {
+                throw new BaseException(ResultCode.TENANT_NOT_FOUND);
+            }
+            tenantNumeric = tenant.getId();
+        }
+        String tenantKey = String.valueOf(tenantNumeric);
+
+        SfUser user = userService.getByUsernameAndTenantId(username, tenantKey);
         if (user == null) {
             throw new BaseException(ResultCode.USER_NOT_FOUND);
         }
@@ -69,8 +78,10 @@ public class AuthService {
             throw new BaseException(ResultCode.PASSWORD_ERROR);
         }
 
-        String accessToken = generateToken(user.getId().toString(), tenantId, jwtExpiration);
-        String refreshToken = generateToken(user.getId().toString(), tenantId, jwtRefreshExpiration);
+        // Delegate to JwtTokenProvider which includes the username claim
+        String accessToken = jwtTokenProvider.generateToken(
+                user.getId().toString(), tenantKey, user.getUsername());
+        String refreshToken = generateRefreshToken(user.getId().toString(), tenantKey);
 
         stringRedisTemplate.opsForValue().set(
                 TenantRedisKeyResolver.tokenSession(user.getId().toString()),
@@ -95,14 +106,18 @@ public class AuthService {
         }
 
         try {
-            SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
-            io.jsonwebtoken.Claims claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(refreshToken).getPayload();
+            io.jsonwebtoken.Claims claims = jwtTokenProvider.parseToken(refreshToken);
 
             String userId = claims.getSubject();
             String tenantId = claims.get("tenantId", String.class);
+            String username = claims.get("username", String.class);
 
-            String newAccessToken = generateToken(userId, tenantId, jwtExpiration);
-            String newRefreshToken = generateToken(userId, tenantId, jwtRefreshExpiration);
+            if (username == null) {
+                username = "unknown";
+            }
+
+            String newAccessToken = jwtTokenProvider.generateToken(userId, tenantId, username);
+            String newRefreshToken = generateRefreshToken(userId, tenantId);
 
             Map<String, String> result = new HashMap<>();
             result.put("accessToken", newAccessToken);
@@ -113,6 +128,31 @@ public class AuthService {
             log.warn("Refresh token invalid: {}", e.getMessage());
             throw new BaseException(ResultCode.TOKEN_INVALID);
         }
+    }
+
+    /**
+     * Changes the password for the given user. Validates the old password
+     * before applying the new one.
+     */
+    public void changePassword(Long userId, String oldPassword, String newPassword) {
+        SfUser user = userService.getById(userId);
+        if (user == null) {
+            throw new BaseException(ResultCode.USER_NOT_FOUND);
+        }
+
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new BaseException(ResultCode.PASSWORD_ERROR, "old password is incorrect");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        boolean updated = userService.updateById(user);
+        if (!updated) {
+            throw new BaseException(ResultCode.INTERNAL_ERROR, "failed to update password");
+        }
+
+        // Invalidate existing sessions — force re-login after password change
+        stringRedisTemplate.delete(TenantRedisKeyResolver.tokenSession(user.getId().toString()));
+        log.info("Password changed for userId={}", userId);
     }
 
     public void logout(String userId) {
@@ -150,18 +190,11 @@ public class AuthService {
         }
     }
 
-    private String generateToken(String userId, String tenantId, long expiration) {
-        SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
-        Date now = new Date();
-        Date expiry = new Date(now.getTime() + expiration);
-
-        return Jwts.builder()
-                .id(UUID.randomUUID().toString())
-                .subject(userId)
-                .claim("tenantId", tenantId)
-                .issuedAt(now)
-                .expiration(expiry)
-                .signWith(key)
-                .compact();
+    /**
+     * Generates a refresh token. Delegates to JwtTokenProvider for the
+     * actual JWT construction, using the longer refresh expiration.
+     */
+    private String generateRefreshToken(String userId, String tenantId) {
+        return jwtTokenProvider.generateToken(userId, tenantId, jwtRefreshExpiration);
     }
 }

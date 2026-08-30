@@ -1,6 +1,8 @@
 package com.schemaplexai.quality.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
 import com.schemaplexai.quality.entity.SfQualityGate;
@@ -9,9 +11,12 @@ import com.schemaplexai.quality.gate.QualityContext;
 import com.schemaplexai.quality.gate.QualityReport;
 import com.schemaplexai.quality.mapper.QualityGateMapper;
 import com.schemaplexai.quality.mapper.QualityIssueMapper;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -39,6 +44,13 @@ class QualityGateServiceImplTest {
 
     @InjectMocks
     private QualityGateServiceImpl qualityGateService;
+
+    @BeforeAll
+    static void initTableInfo() {
+        // Enables LambdaQueryWrapper column resolution in pure unit tests
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(new MybatisConfiguration(), ""), SfQualityGate.class);
+    }
 
     @BeforeEach
     void setUp() {
@@ -90,7 +102,7 @@ class QualityGateServiceImplTest {
         boolean result = qualityGateService.save(gate);
 
         assertThat(result).isTrue();
-        assertThat(gate.getStatus()).isEqualTo(0);
+        assertThat(gate.getStatus()).isEqualTo("INACTIVE");
     }
 
     @Test
@@ -184,7 +196,7 @@ class QualityGateServiceImplTest {
     void activateGate_deprecated_throwsParamError() {
         SfQualityGate gate = new SfQualityGate();
         gate.setId(1L);
-        gate.setStatus(2);
+        gate.setStatus("DEPRECATED");
         when(qualityGateMapper.selectById(1L)).thenReturn(gate);
 
         assertThatThrownBy(() -> qualityGateService.activateGate(1L))
@@ -197,12 +209,12 @@ class QualityGateServiceImplTest {
     void activateGate_success_setsActive() {
         SfQualityGate gate = new SfQualityGate();
         gate.setId(1L);
-        gate.setStatus(0);
+        gate.setStatus("INACTIVE");
         when(qualityGateMapper.selectById(1L)).thenReturn(gate);
 
         qualityGateService.activateGate(1L);
 
-        assertThat(gate.getStatus()).isEqualTo(1);
+        assertThat(gate.getStatus()).isEqualTo("ACTIVE");
         verify(qualityGateMapper).updateById(gate);
     }
 
@@ -224,12 +236,12 @@ class QualityGateServiceImplTest {
     void deactivateGate_success_setsInactive() {
         SfQualityGate gate = new SfQualityGate();
         gate.setId(1L);
-        gate.setStatus(1);
+        gate.setStatus("ACTIVE");
         when(qualityGateMapper.selectById(1L)).thenReturn(gate);
 
         qualityGateService.deactivateGate(1L);
 
-        assertThat(gate.getStatus()).isEqualTo(0);
+        assertThat(gate.getStatus()).isEqualTo("INACTIVE");
         verify(qualityGateMapper).updateById(gate);
     }
 
@@ -255,7 +267,7 @@ class QualityGateServiceImplTest {
 
         qualityGateService.deprecateGate(1L);
 
-        assertThat(gate.getStatus()).isEqualTo(2);
+        assertThat(gate.getStatus()).isEqualTo("DEPRECATED");
         verify(qualityGateMapper).updateById(gate);
     }
 
@@ -277,7 +289,7 @@ class QualityGateServiceImplTest {
     void evaluateGate_success_returnsReport() {
         SfQualityGate gate = new SfQualityGate();
         gate.setName("Security");
-        gate.setStatus(1);
+        gate.setStatus("ACTIVE");
         when(qualityGateMapper.selectOne(any())).thenReturn(gate);
         QualityReport report = new QualityReport(1L, true, List.of());
         when(qualityOrchestrator.evaluate(any(), any())).thenReturn(report);
@@ -287,6 +299,23 @@ class QualityGateServiceImplTest {
         assertThat(result.isAllPassed()).isTrue();
     }
 
+    @Test
+    void evaluateGate_filtersByActiveStatus() {
+        when(qualityGateMapper.selectOne(any())).thenReturn(null);
+
+        assertThatThrownBy(() -> qualityGateService.evaluateGate(1L, "Security"))
+                .isInstanceOf(BaseException.class);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<LambdaQueryWrapper<SfQualityGate>> captor =
+                ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        verify(qualityGateMapper).selectOne(captor.capture());
+        LambdaQueryWrapper<SfQualityGate> wrapper = captor.getValue();
+        assertThat(wrapper.getSqlSegment()).contains("status");
+        assertThat(wrapper.getParamNameValuePairs().values())
+                .contains("Security", "ACTIVE");
+    }
+
     // ------------------------------------------------------------------
     // listActiveGates
     // ------------------------------------------------------------------
@@ -294,12 +323,28 @@ class QualityGateServiceImplTest {
     @Test
     void listActiveGates_returnsActiveGates() {
         SfQualityGate gate = new SfQualityGate();
-        gate.setStatus(1);
+        gate.setStatus("ACTIVE");
         when(qualityGateMapper.selectList(any())).thenReturn(List.of(gate));
 
         List<SfQualityGate> result = qualityGateService.listActiveGates();
 
         assertThat(result).hasSize(1);
+    }
+
+    @Test
+    void listActiveGates_filtersByActiveStatus() {
+        when(qualityGateMapper.selectList(any())).thenReturn(Collections.emptyList());
+
+        qualityGateService.listActiveGates();
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<LambdaQueryWrapper<SfQualityGate>> captor =
+                ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        verify(qualityGateMapper).selectList(captor.capture());
+        LambdaQueryWrapper<SfQualityGate> wrapper = captor.getValue();
+        assertThat(wrapper.getSqlSegment()).contains("status");
+        assertThat(wrapper.getParamNameValuePairs().values())
+                .containsExactly("ACTIVE");
     }
 
     // ------------------------------------------------------------------
@@ -310,10 +355,10 @@ class QualityGateServiceImplTest {
     void getGateSummary_returnsCorrectCounts() {
         SfQualityIssue i1 = new SfQualityIssue();
         i1.setSeverity("CRITICAL");
-        i1.setStatus(0);
+        i1.setStatus("OPEN");
         SfQualityIssue i2 = new SfQualityIssue();
         i2.setSeverity("HIGH");
-        i2.setStatus(1);
+        i2.setStatus("RESOLVED");
         when(qualityIssueMapper.selectList(any())).thenReturn(List.of(i1, i2));
 
         QualityGateServiceImpl.GateSummary result = qualityGateService.getGateSummary(1L);

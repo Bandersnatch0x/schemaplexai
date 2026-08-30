@@ -1,5 +1,6 @@
 package com.schemaplexai.model.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -11,6 +12,7 @@ public class PageResult<T> implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
+    @JsonAlias("list")
     private List<T> records = Collections.emptyList();
     private Long total = 0L;
     private Long current = 1L;

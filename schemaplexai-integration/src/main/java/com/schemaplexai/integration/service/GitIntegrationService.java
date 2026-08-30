@@ -4,26 +4,38 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.integration.config.IntegrationOAuthProperties;
+import com.schemaplexai.integration.security.IntegrationCredentialEncryptor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -32,58 +44,78 @@ public class GitIntegrationService {
 
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
+    private final IntegrationCredentialEncryptor credentialEncryptor;
+    private final IntegrationOAuthProperties oauthProperties;
 
-    // In-memory repository metadata store (key: repoId)
-    private final Map<Long, Map<String, Object>> repoStore = new ConcurrentHashMap<>();
-    private final Map<String, Map<String, Object>> webhookStore = new ConcurrentHashMap<>();
+    // In-memory repository metadata store, tenant-scoped (key: tenantId -> repoId).
+    // Access tokens are stored ONLY as AES-256-GCM ciphertext ("accessTokenCipher");
+    // plaintext tokens never reside in this store. Every read path requires the
+    // owning tenant context — repositories are invisible across tenants.
+    private final Map<Long, Map<Long, Map<String, Object>>> repoStore = new ConcurrentHashMap<>();
+    private final Map<Long, Map<String, Map<String, Object>>> webhookStore = new ConcurrentHashMap<>();
+    // OAuth access tokens per tenant/provider — ciphertext only (key: tenantId -> provider).
+    private final Map<Long, Map<String, Map<String, Object>>> oauthTokenStore = new ConcurrentHashMap<>();
     private long repoIdSequence = 1;
+
+    /** Upper bound for a single git CLI invocation; the process is destroyed on expiry. */
+    @Value("${integration.git.command-timeout:30s}")
+    private Duration gitCommandTimeout = Duration.ofSeconds(30);
 
     // --- Repository CRUD ---
 
-    public synchronized Long registerRepository(String provider, String owner, String repoName,
+    public synchronized Long registerRepository(Long tenantId, String provider, String owner, String repoName,
                                                   String cloneUrl, String defaultBranch, String accessToken) {
+        requireTenant(tenantId);
         if (provider == null || provider.isBlank() || cloneUrl == null || cloneUrl.isBlank()) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Provider and clone URL are required");
         }
         long repoId = repoIdSequence++;
         Map<String, Object> repo = new ConcurrentHashMap<>();
         repo.put("id", repoId);
+        repo.put("tenantId", tenantId);
         repo.put("provider", provider.toLowerCase());
         repo.put("owner", owner);
         repo.put("repoName", repoName);
         repo.put("cloneUrl", cloneUrl);
         repo.put("defaultBranch", defaultBranch != null ? defaultBranch : "main");
-        repo.put("accessToken", accessToken != null ? accessToken : "");
+        if (accessToken != null && !accessToken.isBlank()) {
+            // Encrypt with the tenant-scoped key; plaintext is confined to this call frame.
+            repo.put("accessTokenCipher", credentialEncryptor.encrypt(accessToken, tenantId));
+        }
         repo.put("createdAt", Instant.now().toString());
         repo.put("status", "active");
-        repoStore.put(repoId, repo);
+        repoStore.computeIfAbsent(tenantId, k -> new ConcurrentHashMap<>()).put(repoId, repo);
         log.info("Repository registered: id={}, provider={}, repo={}/{}", repoId, provider, owner, repoName);
         return repoId;
     }
 
-    public Map<String, Object> getRepository(Long repoId) {
-        Map<String, Object> repo = repoStore.get(repoId);
+    public Map<String, Object> getRepository(Long tenantId, Long repoId) {
+        Map<String, Object> repo = findRepository(tenantId, repoId);
         if (repo == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
         }
-        // Return without exposing token
+        // Return without exposing any credential material (ciphertext included)
         Map<String, Object> safe = new ConcurrentHashMap<>(repo);
-        safe.remove("accessToken");
+        safe.remove("accessTokenCipher");
         return safe;
     }
 
-    public List<Map<String, Object>> listRepositories() {
+    public List<Map<String, Object>> listRepositories(Long tenantId) {
+        requireTenant(tenantId);
         List<Map<String, Object>> result = new ArrayList<>();
-        for (Map<String, Object> repo : repoStore.values()) {
+        for (Map<String, Object> repo : repoStore.getOrDefault(tenantId, Map.of()).values()) {
             Map<String, Object> safe = new ConcurrentHashMap<>(repo);
-            safe.remove("accessToken");
+            safe.remove("accessTokenCipher");
             result.add(safe);
         }
         return result;
     }
 
-    public void deleteRepository(Long repoId) {
-        if (repoStore.remove(repoId) == null) {
+    public void deleteRepository(Long tenantId, Long repoId) {
+        requireTenant(tenantId);
+        Map<Long, Map<String, Object>> tenantRepos = repoStore.get(tenantId);
+        Map<String, Object> removed = tenantRepos != null ? tenantRepos.remove(repoId) : null;
+        if (removed == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
         }
         log.info("Repository deleted: {}", repoId);
@@ -93,34 +125,149 @@ public class GitIntegrationService {
     public void clearStore() {
         repoStore.clear();
         webhookStore.clear();
+        oauthTokenStore.clear();
         repoIdSequence = 1;
+    }
+
+    private void requireTenant(Long tenantId) {
+        if (tenantId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "Tenant ID is required");
+        }
+    }
+
+    /**
+     * Tenant-scoped repository lookup. Returns null when the repository does not
+     * exist within the given tenant's scope — cross-tenant access is indistinguishable
+     * from a missing repository.
+     */
+    private Map<String, Object> findRepository(Long tenantId, Long repoId) {
+        requireTenant(tenantId);
+        if (repoId == null) {
+            return null;
+        }
+        Map<Long, Map<String, Object>> tenantRepos = repoStore.get(tenantId);
+        return tenantRepos != null ? tenantRepos.get(repoId) : null;
     }
 
     // --- Git Operations ---
 
-    public String cloneRepository(Long repoId, String targetDir) {
-        Map<String, Object> repo = repoStore.get(repoId);
+    public String cloneRepository(Long tenantId, Long repoId, String targetDir) {
+        Map<String, Object> repo = findRepository(tenantId, repoId);
         if (repo == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
         }
         String cloneUrl = (String) repo.get("cloneUrl");
-        String accessToken = (String) repo.get("accessToken");
-        String authUrl = injectToken(cloneUrl, accessToken);
 
         Path dest = targetDir != null ? Path.of(targetDir) : Path.of(System.getProperty("java.io.tmpdir"), "git-repos", repoId + "-" + UUID.randomUUID());
         try {
             Files.createDirectories(dest);
-            executeGitCommandInDir(dest.getParent().toString(), "clone", authUrl, dest.getFileName().toString());
+            List<String> cloneArgs = buildCloneArguments(repo, cloneUrl, dest.getFileName().toString());
+            executeGitCommandInDir(dest.getParent().toString(), cloneArgs);
             log.info("Repository {} cloned to {}", repoId, dest);
             return dest.toString();
+        } catch (BaseException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to clone repository {}", repoId, e);
             throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED, "Clone failed: " + e.getMessage());
         }
     }
 
-    public String pullRepository(Long repoId, String localPath) {
-        Map<String, Object> repo = repoStore.get(repoId);
+    /**
+     * Build the git clone argument list with credential injection.
+     *
+     * <p>The stored ciphertext is decrypted only here, at the moment of use, and the
+     * token is injected through git's {@code http.extraHeader} configuration (Basic
+     * auth header) instead of being embedded in the clone URL. This keeps the URL —
+     * which git persists as the {@code origin} remote and may surface in logs and
+     * error messages — free of any credential material.
+     */
+    List<String> buildCloneArguments(Map<String, Object> repo, String cloneUrl, String destName) {
+        List<String> args = new ArrayList<>(credentialArguments(repo));
+        args.add("clone");
+        args.add(cloneUrl);
+        args.add(destName);
+        return args;
+    }
+
+    /**
+     * Build the git pull argument list with credential injection.
+     *
+     * <p>Clone stores a credential-free {@code origin} URL, so every subsequent
+     * remote operation must re-inject credentials the same way: with
+     * {@code GIT_TERMINAL_PROMPT=0} a bare {@code git pull} against a private
+     * remote can never prompt and would fail authentication every time. The
+     * {@code http.extraHeader} configuration applies to every HTTP(S) request
+     * the command makes, so pull/fetch/push authenticate exactly like clone
+     * without touching the persisted remote URL.
+     */
+    List<String> buildPullArguments(Map<String, Object> repo) {
+        List<String> args = new ArrayList<>(credentialArguments(repo));
+        args.add("pull");
+        return args;
+    }
+
+    /** Build the git fetch argument list with credential injection (see {@link #buildPullArguments}). */
+    List<String> buildFetchArguments(Map<String, Object> repo) {
+        List<String> args = new ArrayList<>(credentialArguments(repo));
+        args.add("fetch");
+        args.add("origin");
+        return args;
+    }
+
+    /** Build the git push argument list with credential injection (see {@link #buildPullArguments}). */
+    List<String> buildPushArguments(Map<String, Object> repo, String branch) {
+        List<String> args = new ArrayList<>(credentialArguments(repo));
+        args.add("push");
+        args.add("origin");
+        args.add(branch);
+        return args;
+    }
+
+    /**
+     * Credential configuration arguments ({@code -c http.extraHeader=...}) shared
+     * by every remote-touching git command (clone/pull/fetch/push). Returns an
+     * empty list when the repository has no stored token — the command then runs
+     * unauthenticated and, with terminal prompts disabled, a private remote fails
+     * fast with a non-zero exit (surfaced as a structured {@link BaseException})
+     * instead of hanging on an interactive credential prompt.
+     */
+    private List<String> credentialArguments(Map<String, Object> repo) {
+        String token = resolveAccessToken(repo);
+        if (token == null || token.isBlank()) {
+            return List.of();
+        }
+        String provider = String.valueOf(repo.getOrDefault("provider", ""));
+        String basicAuth = basicAuthUsername(provider) + ":" + token;
+        String header = "Authorization: Basic "
+                + Base64.getEncoder().encodeToString(basicAuth.getBytes(StandardCharsets.UTF_8));
+        return List.of("-c", "http.extraHeader=" + header);
+    }
+
+    /** Username portion of HTTP Basic auth per provider (tokens act as the password). */
+    private String basicAuthUsername(String provider) {
+        return switch (provider) {
+            case "github" -> "x-access-token";
+            case "gitlab" -> "oauth2";
+            default -> "git";
+        };
+    }
+
+    /**
+     * Decrypt the stored access token on demand. The plaintext exists only within
+     * the calling frame and is never persisted or logged.
+     */
+    private String resolveAccessToken(Map<String, Object> repo) {
+        Object cipher = repo.get("accessTokenCipher");
+        if (cipher == null) {
+            return null;
+        }
+        Long tenantId = (Long) repo.get("tenantId");
+        return credentialEncryptor.decrypt((String) cipher, tenantId);
+    }
+
+    public String pullRepository(Long tenantId, Long repoId, String localPath) {
+        Map<String, Object> repo = findRepository(tenantId, repoId);
         if (repo == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
         }
@@ -128,17 +275,43 @@ public class GitIntegrationService {
             throw new BaseException(ResultCode.PARAM_ERROR, "Local path is required");
         }
         try {
-            executeGitCommandInDir(localPath, "pull");
+            executeGitCommandInDir(localPath, buildPullArguments(repo));
             log.info("Repository {} pulled at {}", repoId, localPath);
             return localPath;
+        } catch (BaseException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to pull repository {}", repoId, e);
             throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED, "Pull failed: " + e.getMessage());
         }
     }
 
-    public String pushRepository(Long repoId, String localPath, String branch) {
-        Map<String, Object> repo = repoStore.get(repoId);
+    /**
+     * Fetch from {@code origin} with credential injection (same mechanism as
+     * clone/pull/push — the persisted remote URL carries no credentials).
+     */
+    public String fetchRepository(Long tenantId, Long repoId, String localPath) {
+        Map<String, Object> repo = findRepository(tenantId, repoId);
+        if (repo == null) {
+            throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
+        }
+        if (localPath == null || localPath.isBlank()) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "Local path is required");
+        }
+        try {
+            executeGitCommandInDir(localPath, buildFetchArguments(repo));
+            log.info("Repository {} fetched at {}", repoId, localPath);
+            return localPath;
+        } catch (BaseException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to fetch repository {}", repoId, e);
+            throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED, "Fetch failed: " + e.getMessage());
+        }
+    }
+
+    public String pushRepository(Long tenantId, Long repoId, String localPath, String branch) {
+        Map<String, Object> repo = findRepository(tenantId, repoId);
         if (repo == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
         }
@@ -147,9 +320,11 @@ public class GitIntegrationService {
         }
         String targetBranch = branch != null ? branch : (String) repo.get("defaultBranch");
         try {
-            executeGitCommandInDir(localPath, "push", "origin", targetBranch);
+            executeGitCommandInDir(localPath, buildPushArguments(repo, targetBranch));
             log.info("Repository {} pushed to branch {}", repoId, targetBranch);
             return localPath;
+        } catch (BaseException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to push repository {}", repoId, e);
             throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED, "Push failed: " + e.getMessage());
@@ -158,7 +333,8 @@ public class GitIntegrationService {
 
     // --- Branch Management ---
 
-    public List<String> listBranches(Long repoId, String localPath) {
+    public List<String> listBranches(Long tenantId, Long repoId, String localPath) {
+        requireTenant(tenantId);
         if (localPath == null || localPath.isBlank()) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Local path is required");
         }
@@ -172,13 +348,16 @@ public class GitIntegrationService {
                 }
             }
             return branches;
+        } catch (BaseException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to list branches for repo {}", repoId, e);
             throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED, "List branches failed: " + e.getMessage());
         }
     }
 
-    public void createBranch(Long repoId, String localPath, String branchName, String baseBranch) {
+    public void createBranch(Long tenantId, Long repoId, String localPath, String branchName, String baseBranch) {
+        requireTenant(tenantId);
         if (branchName == null || branchName.isBlank()) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Branch name is required");
         }
@@ -188,13 +367,16 @@ public class GitIntegrationService {
             }
             executeGitCommandInDir(localPath, "checkout", "-b", branchName);
             log.info("Branch {} created for repo {}", branchName, repoId);
+        } catch (BaseException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to create branch for repo {}", repoId, e);
             throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED, "Create branch failed: " + e.getMessage());
         }
     }
 
-    public void deleteBranch(Long repoId, String localPath, String branchName, boolean force) {
+    public void deleteBranch(Long tenantId, Long repoId, String localPath, String branchName, boolean force) {
+        requireTenant(tenantId);
         if (branchName == null || branchName.isBlank()) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Branch name is required");
         }
@@ -202,6 +384,8 @@ public class GitIntegrationService {
             String flag = force ? "-D" : "-d";
             executeGitCommandInDir(localPath, "branch", flag, branchName);
             log.info("Branch {} deleted for repo {}", branchName, repoId);
+        } catch (BaseException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to delete branch for repo {}", repoId, e);
             throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED, "Delete branch failed: " + e.getMessage());
@@ -210,18 +394,114 @@ public class GitIntegrationService {
 
     // --- Webhook Handling ---
 
-    public void handleOAuthCallback(String provider, String code) {
-        log.info("Handle OAuth callback for provider: {}, code: {}", provider, code);
-        // Phase 1: Store authorization code, exchange for access token via provider API
-        // Phase 2: Persist token securely for subsequent API calls
-        // For now, log the callback and acknowledge receipt
+    /**
+     * Handle the OAuth authorization callback: exchange the authorization code for
+     * an access token at the provider's token endpoint, then persist the token
+     * encrypted (AES-256-GCM, tenant-scoped key). The plaintext token exists only
+     * inside this call frame; failures degrade to structured {@link BaseException}s
+     * and nothing is stored.
+     *
+     * @return connection status (provider, status, connectedAt) — never token material
+     */
+    public Map<String, Object> handleOAuthCallback(Long tenantId, String provider, String code) {
+        log.info("Handle OAuth callback for provider: {}", provider);
+        if (tenantId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "Tenant ID is required");
+        }
         if (provider == null || provider.isBlank() || code == null || code.isBlank()) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Provider and authorization code are required");
         }
-        log.info("OAuth callback acknowledged for provider: {}", provider);
+
+        String providerKey = provider.toLowerCase();
+        IntegrationOAuthProperties.Provider providerConfig = oauthProperties.provider(providerKey);
+        if (providerConfig == null
+                || providerConfig.getClientId() == null || providerConfig.getClientId().isBlank()
+                || providerConfig.getClientSecret() == null || providerConfig.getClientSecret().isBlank()
+                || providerConfig.getTokenUrl() == null || providerConfig.getTokenUrl().isBlank()) {
+            log.warn("OAuth callback received for unconfigured provider: {}", providerKey);
+            throw new BaseException(ResultCode.ERROR, "OAuth is not configured for provider: " + providerKey);
+        }
+
+        String accessToken = exchangeAuthorizationCode(providerConfig, providerKey, code);
+
+        // Encrypt before persisting; only ciphertext enters the store.
+        Map<String, Object> record = new ConcurrentHashMap<>();
+        record.put("provider", providerKey);
+        record.put("tokenCipher", credentialEncryptor.encrypt(accessToken, tenantId));
+        record.put("status", "connected");
+        record.put("connectedAt", Instant.now().toString());
+        oauthTokenStore.computeIfAbsent(tenantId, k -> new ConcurrentHashMap<>()).put(providerKey, record);
+        log.info("OAuth access token stored (encrypted) for provider: {}", providerKey);
+
+        Map<String, Object> result = new ConcurrentHashMap<>();
+        result.put("provider", providerKey);
+        result.put("status", "connected");
+        result.put("connectedAt", record.get("connectedAt"));
+        return result;
     }
 
-    public void handleWebhook(String provider, String payload) {
+    /**
+     * Connection status + stored ciphertext for a tenant/provider, or null when the
+     * tenant has no OAuth connection for that provider. Plaintext is never returned.
+     */
+    public Map<String, Object> getOAuthConnection(Long tenantId, String provider) {
+        if (tenantId == null || provider == null) {
+            return null;
+        }
+        Map<String, Map<String, Object>> byProvider = oauthTokenStore.get(tenantId);
+        if (byProvider == null) {
+            return null;
+        }
+        Map<String, Object> record = byProvider.get(provider.toLowerCase());
+        return record != null ? new ConcurrentHashMap<>(record) : null;
+    }
+
+    /** Exchange the authorization code for an access token at the provider endpoint. */
+    private String exchangeAuthorizationCode(IntegrationOAuthProperties.Provider config,
+                                             String providerKey, String code) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+        headers.set("Accept", "application/json");
+
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("grant_type", "authorization_code");
+        form.add("code", code);
+        form.add("client_id", config.getClientId());
+        form.add("client_secret", config.getClientSecret());
+        if (config.getRedirectUri() != null && !config.getRedirectUri().isBlank()) {
+            form.add("redirect_uri", config.getRedirectUri());
+        }
+
+        try {
+            HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(form, headers);
+            ResponseEntity<String> response = restTemplate.exchange(
+                    config.getTokenUrl(), HttpMethod.POST, request, String.class);
+
+            JsonNode root = objectMapper.readTree(response.getBody() != null ? response.getBody() : "{}");
+            if (root.hasNonNull("error")) {
+                String description = root.path("error_description").asText(root.path("error").asText());
+                log.warn("OAuth token exchange rejected by provider {}: {}", providerKey, description);
+                throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED,
+                        "OAuth token exchange rejected: " + description);
+            }
+            String accessToken = root.path("access_token").asText("");
+            if (accessToken.isBlank()) {
+                log.warn("OAuth token exchange returned no access_token for provider {}", providerKey);
+                throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED,
+                        "OAuth token exchange returned no access token");
+            }
+            return accessToken;
+        } catch (BaseException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("OAuth token exchange failed for provider {}", providerKey, e);
+            throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED,
+                    "OAuth token exchange failed: " + e.getMessage());
+        }
+    }
+
+    public void handleWebhook(Long tenantId, String provider, String payload) {
+        requireTenant(tenantId);
         log.info("Handle webhook for provider: {}", provider);
         if (provider == null || provider.isBlank() || payload == null || payload.isBlank()) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Provider and payload are required");
@@ -237,6 +517,7 @@ public class GitIntegrationService {
             String webhookId = UUID.randomUUID().toString();
             Map<String, Object> record = new ConcurrentHashMap<>();
             record.put("id", webhookId);
+            record.put("tenantId", tenantId);
             record.put("provider", provider);
             record.put("eventType", eventType);
             record.put("repository", repository);
@@ -244,7 +525,7 @@ public class GitIntegrationService {
             record.put("commitSha", commitSha);
             record.put("receivedAt", Instant.now().toString());
             record.put("payload", payload);
-            webhookStore.put(webhookId, record);
+            webhookStore.computeIfAbsent(tenantId, k -> new ConcurrentHashMap<>()).put(webhookId, record);
 
             log.info("Webhook {} received: event={}, repo={}, branch={}", webhookId, eventType, repository, branch);
 
@@ -258,12 +539,13 @@ public class GitIntegrationService {
         }
     }
 
-    public List<Map<String, Object>> listWebhookEvents(String repository, String eventType, int limit) {
+    public List<Map<String, Object>> listWebhookEvents(Long tenantId, String repository, String eventType, int limit) {
+        requireTenant(tenantId);
         if (limit <= 0) {
             return List.of();
         }
         List<Map<String, Object>> result = new ArrayList<>();
-        for (Map<String, Object> event : webhookStore.values()) {
+        for (Map<String, Object> event : webhookStore.getOrDefault(tenantId, Map.of()).values()) {
             if (repository != null && !repository.equals(event.get("repository"))) {
                 continue;
             }
@@ -280,15 +562,15 @@ public class GitIntegrationService {
 
     // --- GitHub/GitLab REST API helpers ---
 
-    public String fetchRepositoryInfo(Long repoId) {
-        Map<String, Object> repo = repoStore.get(repoId);
+    public String fetchRepositoryInfo(Long tenantId, Long repoId) {
+        Map<String, Object> repo = findRepository(tenantId, repoId);
         if (repo == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
         }
         String provider = (String) repo.get("provider");
         String owner = (String) repo.get("owner");
         String repoName = (String) repo.get("repoName");
-        String accessToken = (String) repo.get("accessToken");
+        String accessToken = resolveAccessToken(repo);
 
         if ("github".equals(provider)) {
             return callGitHubApi("/repos/" + owner + "/" + repoName, accessToken);
@@ -298,15 +580,15 @@ public class GitIntegrationService {
         throw new BaseException(ResultCode.PARAM_ERROR, "Unsupported provider: " + provider);
     }
 
-    public String fetchBranchesViaApi(Long repoId) {
-        Map<String, Object> repo = repoStore.get(repoId);
+    public String fetchBranchesViaApi(Long tenantId, Long repoId) {
+        Map<String, Object> repo = findRepository(tenantId, repoId);
         if (repo == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
         }
         String provider = (String) repo.get("provider");
         String owner = (String) repo.get("owner");
         String repoName = (String) repo.get("repoName");
-        String accessToken = (String) repo.get("accessToken");
+        String accessToken = resolveAccessToken(repo);
 
         if ("github".equals(provider)) {
             return callGitHubApi("/repos/" + owner + "/" + repoName + "/branches", accessToken);
@@ -318,37 +600,83 @@ public class GitIntegrationService {
 
     // --- Private helpers ---
 
-    private String injectToken(String cloneUrl, String token) {
-        if (token == null || token.isBlank()) {
-            return cloneUrl;
-        }
-        if (cloneUrl.startsWith("https://")) {
-            return cloneUrl.replaceFirst("https://", "https://" + token + "@");
-        }
-        return cloneUrl;
+    String executeGitCommandInDir(String workingDir, String... args) throws Exception {
+        return executeGitCommandInDir(workingDir, List.of(args));
     }
 
-    private String executeGitCommandInDir(String workingDir, String... args) throws Exception {
+    String executeGitCommandInDir(String workingDir, List<String> args) throws Exception {
         List<String> command = new ArrayList<>();
         command.add("git");
-        command.addAll(List.of(args));
-        ProcessBuilder pb = new ProcessBuilder(command);
-        pb.directory(new File(workingDir));
-        pb.redirectErrorStream(true);
-        Process process = pb.start();
+        command.addAll(args);
+        Process process = startProcess(command, new File(workingDir));
 
+        // Drain output concurrently so pipe buffering cannot stall the timeout wait.
         StringBuilder output = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+        Thread reader = new Thread(() -> drainStream(process.getInputStream(), output));
+        reader.setDaemon(true);
+        reader.start();
+
+        boolean finished = process.waitFor(gitCommandTimeout.toSeconds(), TimeUnit.SECONDS);
+        if (!finished) {
+            process.destroyForcibly();
+            reader.join(1000);
+            log.warn("Git command timed out after {}s and was destroyed", gitCommandTimeout.toSeconds());
+            throw new BaseException(ResultCode.REQUEST_TIMEOUT,
+                    "Git command timed out after " + gitCommandTimeout.toSeconds() + "s");
+        }
+        reader.join(1000);
+        int exitCode = process.exitValue();
+        if (exitCode != 0) {
+            // Surface a bounded tail of git's output so failures are explicit and
+            // diagnosable (e.g. "terminal prompts disabled" on auth failure). The
+            // URL is always credential-free and tokens ride http.extraHeader only,
+            // so git's output carries no secret material.
+            String detail;
+            synchronized (output) {
+                String text = output.toString().trim();
+                detail = text.length() > 500 ? text.substring(text.length() - 500) : text;
+            }
+            throw new BaseException(ResultCode.TOOL_EXECUTION_FAILED,
+                    "Git command failed with exit code " + exitCode
+                            + (detail.isEmpty() ? "" : ": " + detail));
+        }
+        synchronized (output) {
+            return output.toString();
+        }
+    }
+
+    private void drainStream(InputStream stream, StringBuilder sink) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");
+                synchronized (sink) {
+                    sink.append(line).append("\n");
+                }
             }
+        } catch (IOException e) {
+            // Stream closed when the process is destroyed on timeout — nothing to report.
         }
-        int exitCode = process.waitFor();
-        if (exitCode != 0) {
-            throw new RuntimeException("Git command failed with exit code " + exitCode + ": " + output);
-        }
-        return output.toString();
+    }
+
+    /** Visible for testing: create and start the git process. */
+    Process startProcess(List<String> command, File workingDir) throws IOException {
+        ProcessBuilder pb = new ProcessBuilder(command);
+        configureProcessBuilder(pb, workingDir);
+        return pb.start();
+    }
+
+    /**
+     * Configure the git process before launch. Visible for testing so the
+     * no-prompt guarantee can be asserted without spawning a process.
+     */
+    void configureProcessBuilder(ProcessBuilder pb, File workingDir) {
+        pb.directory(workingDir);
+        pb.redirectErrorStream(true);
+        // Never block on interactive credential prompts; credentials arrive via
+        // http.extraHeader. With prompts disabled, a missing or rejected token on
+        // a private remote fails fast (non-zero exit -> structured BaseException)
+        // instead of hanging until the command timeout.
+        pb.environment().put("GIT_TERMINAL_PROMPT", "0");
     }
 
     private String extractEventType(JsonNode root, String provider) {

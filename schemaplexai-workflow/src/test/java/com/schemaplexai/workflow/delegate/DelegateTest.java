@@ -3,6 +3,7 @@ package com.schemaplexai.workflow.delegate;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schemaplexai.common.constants.CommonConstants;
 import com.schemaplexai.common.context.TenantContextHolder;
+import com.schemaplexai.workflow.entity.SfWorkflowNodeExecution;
 import com.schemaplexai.workflow.node.NodeExecutionResult;
 import com.schemaplexai.workflow.service.WorkflowNodeEngine;
 import org.flowable.engine.delegate.DelegateExecution;
@@ -418,6 +419,37 @@ class DelegateTest {
 
         assertThatThrownBy(() -> aiAgentExecutionDelegate.execute(execution))
                 .isInstanceOf(com.schemaplexai.common.exception.BaseException.class);
+    }
+
+    @Test
+    void aiAgentExecution_registersAsAiModelAndComposesPrompt() throws Exception {
+        when(execution.getProcessInstanceId()).thenReturn("proc-1");
+        when(execution.getCurrentActivityId()).thenReturn("act-1");
+        when(execution.getVariable("tenantId")).thenReturn("t1");
+        when(execution.getVariable("agentId")).thenReturn("agent-1");
+        when(execution.getVariable("taskDescription")).thenReturn("Summarize the spec");
+        when(execution.getVariable("executionTrackingId")).thenReturn("track-1");
+        when(execution.getVariable("retryCount")).thenReturn(null);
+        when(execution.getVariable("humanFeedback")).thenReturn("Make it shorter");
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(nodeEngine.executeNode(any())).thenReturn(NodeExecutionResult.success(Map.of()));
+
+        aiAgentExecutionDelegate.execute(execution);
+
+        // The node type must be one the engine has an executor for (AI_MODEL, not AI_AGENT).
+        ArgumentCaptor<SfWorkflowNodeExecution> nodeCaptor =
+                ArgumentCaptor.forClass(SfWorkflowNodeExecution.class);
+        verify(nodeEngine).executeNode(nodeCaptor.capture());
+        assertThat(nodeCaptor.getValue().getNodeType()).isEqualTo("AI_MODEL");
+        assertThat(nodeCaptor.getValue().getTenantId()).isEqualTo("t1");
+
+        // The executor requires a prompt, composed from task description + human feedback.
+        ArgumentCaptor<Map> inputCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(objectMapper).writeValueAsString(inputCaptor.capture());
+        Object prompt = inputCaptor.getValue().get("prompt");
+        assertThat(prompt.toString())
+                .contains("Summarize the spec")
+                .contains("Human feedback: Make it shorter");
     }
 
     // ========== AiAgentResultProcessorDelegate ==========

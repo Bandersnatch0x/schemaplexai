@@ -4,9 +4,44 @@ server:
 spring:
   application:
     name: schemaplexai-integration
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/schemaplexai
+    username: ${DB_USERNAME:?required}
+    password: ${DB_PASSWORD:?required}
+    driver-class-name: org.postgresql.Driver
 
 management:
   otlp:
     tracing:
       endpoint: http://jaeger:4318/v1/traces
       enabled: true
+
+logging:
+  level:
+    com.schemaplexai.integration: info
+    root: INFO
+
+integration:
+  encryption:
+    # AES-256-GCM master secret for tenant-scoped credential encryption.
+    # Must be provided via environment variable in production.
+    master-secret: ${INTEGRATION_MASTER_SECRET:}
+  oauth:
+    providers:
+      github:
+        client-id: ${GITHUB_OAUTH_CLIENT_ID:}
+        client-secret: ${GITHUB_OAUTH_CLIENT_SECRET:}
+        token-url: ${GITHUB_OAUTH_TOKEN_URL:https://github.com/login/oauth/access_token}
+        redirect-uri: ${GITHUB_OAUTH_REDIRECT_URI:}
+      gitlab:
+        client-id: ${GITLAB_OAUTH_CLIENT_ID:}
+        client-secret: ${GITLAB_OAUTH_CLIENT_SECRET:}
+        token-url: ${GITLAB_OAUTH_TOKEN_URL:https://gitlab.com/oauth/token}
+        redirect-uri: ${GITLAB_OAUTH_REDIRECT_URI:}
+  http:
+    # Outbound HTTP budget for RestTemplate-based external calls (SPEC-INT §7: 30s).
+    connect-timeout: ${INTEGRATION_HTTP_CONNECT_TIMEOUT:30s}
+    read-timeout: ${INTEGRATION_HTTP_READ_TIMEOUT:30s}
+  git:
+    # Upper bound for a single git CLI invocation; the process is destroyed on expiry.
+    command-timeout: ${INTEGRATION_GIT_COMMAND_TIMEOUT:30s}

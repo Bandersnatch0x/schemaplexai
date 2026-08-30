@@ -10,7 +10,7 @@ import org.apache.ibatis.annotations.Select;
 public interface SfUserMapper extends BaseMapperX<SfUser> {
 
     @Select("SELECT * FROM sf_user WHERE username = #{username} AND tenant_id = #{tenantId} AND deleted = 0 LIMIT 1")
-    SfUser selectByUsernameAndTenantId(@Param("username") String username, @Param("tenantId") String tenantId);
+    SfUser selectByUsernameAndTenantId(@Param("username") String username, @Param("tenantId") Long tenantId);
 
     @Select("SELECT * FROM sf_user WHERE username = #{username} AND deleted = 0 LIMIT 1")
     SfUser selectByUsername(@Param("username") String username);

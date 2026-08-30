@@ -3,12 +3,14 @@ package com.schemaplexai.spec.service.impl;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.spec.domain.SpecStatus;
 import com.schemaplexai.spec.dto.DiffHunk;
 import com.schemaplexai.spec.dto.SpecDiffResult;
 import com.schemaplexai.spec.entity.SfSpec;
 import com.schemaplexai.spec.entity.SfSpecVersion;
 import com.schemaplexai.spec.mapper.SfSpecMapper;
 import com.schemaplexai.spec.mapper.SfSpecVersionMapper;
+import com.schemaplexai.spec.service.SpecChangeTracker;
 import com.schemaplexai.spec.service.SpecVersionService;
 import com.schemaplexai.spec.util.SpecDiffUtil;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ import java.util.List;
 public class SpecVersionServiceImpl extends ServiceImpl<SfSpecVersionMapper, SfSpecVersion> implements SpecVersionService {
 
     private final SfSpecMapper specMapper;
+    private final SpecChangeTracker changeTracker;
 
     @Override
     public SpecDiffResult diff(Long versionAId, Long versionBId) {
@@ -69,12 +72,30 @@ public class SpecVersionServiceImpl extends ServiceImpl<SfSpecVersionMapper, SfS
         specVersion.setChangeLog(changeLog);
         baseMapper.insert(specVersion);
 
-        // Update spec content and status
+        // Update spec content and status: a new version means the spec's
+        // current content diverges from any published snapshot -> draft.
+        SfSpec before = SpecChangeTracker.snapshot(spec);
         spec.setContent(content);
-        spec.setStatus("ACTIVE");
-        specMapper.updateById(spec);
+        spec.setStatus(SpecStatus.DRAFT);
+        int rows = specMapper.updateById(spec);
+        if (rows == 0) {
+            // @Version guard matched nothing: concurrent modification. The
+            // surrounding transaction also rolls back the snapshot insert.
+            throw new BaseException(ResultCode.CONFLICT,
+                    "Spec " + specId + " was modified concurrently; reload and retry");
+        }
+        changeTracker.recordUpdate(before, spec, specVersion.getId());
 
         log.info("Created version {} for spec {}", version, specId);
         return specVersion;
+    }
+
+    @Override
+    public boolean updateVersion(Long id, SfSpecVersion version) {
+        // Version snapshots are immutable audit records (spec-management §3).
+        // A historical snapshot must never be overwritten in place; create a
+        // new version instead.
+        throw new BaseException(ResultCode.FORBIDDEN,
+                "Spec version snapshots are immutable; create a new version instead of editing version " + id);
     }
 }

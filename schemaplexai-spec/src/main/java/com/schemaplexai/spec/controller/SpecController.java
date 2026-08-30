@@ -10,6 +10,7 @@ import com.schemaplexai.spec.service.SpecService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,22 +26,23 @@ public class SpecController {
 
     @Operation(summary = "创建需求规格")
     @PostMapping
+    @PreAuthorize("hasAuthority('spec:write')")
     public Result<Long> create(@RequestBody SfSpec spec) {
-        specService.save(spec);
-        return Result.success(spec.getId());
+        return Result.success(specService.createSpec(spec).getId());
     }
 
     @Operation(summary = "更新需求规格")
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('spec:write')")
     public Result<Boolean> update(@PathVariable Long id, @RequestBody SfSpec spec) {
-        spec.setId(id);
-        return Result.success(specService.updateById(spec));
+        return Result.success(specService.updateSpec(id, spec));
     }
 
     @Operation(summary = "删除需求规格")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('spec:delete')")
     public Result<Boolean> delete(@PathVariable Long id) {
-        return Result.success(specService.removeById(id));
+        return Result.success(specService.deleteSpec(id));
     }
 
     @Operation(summary = "获取需求规格详情")
@@ -63,14 +65,23 @@ public class SpecController {
 
     @Operation(summary = "发布需求规格")
     @PostMapping("/{id}/publish")
+    @PreAuthorize("hasAuthority('spec:publish')")
     public Result<SfSpecVersion> publishSpec(@PathVariable Long id) {
         return Result.success(specService.publishSpec(id));
     }
 
     @Operation(summary = "归档需求规格")
     @PostMapping("/{id}/archive")
+    @PreAuthorize("hasAuthority('spec:delete')")
     public Result<Boolean> archiveSpec(@PathVariable Long id) {
         return Result.success(specService.archiveSpec(id));
+    }
+
+    @Operation(summary = "回滚到指定历史版本")
+    @PostMapping("/{id}/rollback")
+    @PreAuthorize("hasAuthority('spec:rollback')")
+    public Result<SfSpec> rollbackSpec(@PathVariable Long id, @RequestParam Long versionId) {
+        return Result.success(specService.rollbackSpec(id, versionId));
     }
 
     @Operation(summary = "获取最新版本")
@@ -90,6 +101,7 @@ public class SpecController {
 
     @Operation(summary = "从模板创建需求规格")
     @PostMapping("/from-template")
+    @PreAuthorize("hasAuthority('spec:write')")
     public Result<SfSpec> createFromTemplate(@RequestParam Long templateId,
                                               @RequestParam String title,
                                               @RequestParam String type) {

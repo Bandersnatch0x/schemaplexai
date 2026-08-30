@@ -41,4 +41,19 @@ public interface SpecSteeringService extends IService<SfSpecSteering> {
      * @return true if valid
      */
     boolean validateSteeringConfig(Long steeringId);
+
+    /**
+     * Render the steering as a Markdown System-Prompt fragment
+     * (spec-management §5: "执行时，Steering 内容作为 System Prompt 的一部分注入").
+     * <p>
+     * Phase 1 of the REQ-14 binding (issue 925): the spec module provides the
+     * injectable fragment. The agent-side half — {@code SfAgentConfig.steeringId}
+     * and the engine-side prompt injection — crosses into
+     * schemaplexai-agent-config / schemaplexai-agent-engine and is tracked as
+     * phase 2.
+     *
+     * @param steeringId the steering id
+     * @return Markdown fragment ready to be appended to a system prompt
+     */
+    String buildPromptFragment(Long steeringId);
 }

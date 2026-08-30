@@ -162,4 +162,14 @@ class SpecSteeringControllerTest {
         assertThat(result.getCode()).isEqualTo(200);
         assertThat(result.getData()).isFalse();
     }
+
+    @Test
+    void buildPromptFragment_returnsFragment() {
+        when(specSteeringService.buildPromptFragment(1L)).thenReturn("## Steering Constraints\n");
+
+        Result<String> result = specSteeringController.buildPromptFragment(1L);
+
+        assertThat(result.getCode()).isEqualTo(200);
+        assertThat(result.getData()).contains("Steering Constraints");
+    }
 }

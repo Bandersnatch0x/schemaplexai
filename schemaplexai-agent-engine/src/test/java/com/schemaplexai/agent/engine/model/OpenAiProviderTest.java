@@ -3,6 +3,7 @@ package com.schemaplexai.agent.engine.model;
 import com.schemaplexai.agent.engine.config.LlmProviderProperties;
 import com.schemaplexai.common.exception.BaseException;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.BeforeEach;
@@ -88,12 +89,13 @@ class OpenAiProviderTest {
     void generateShouldUseInjectedMockModel() throws Exception {
         // Inject a mock model directly into the cache to avoid real API calls
         injectMockModel("gpt-4@0.7", chatLanguageModel);
-        when(chatLanguageModel.generate(anyString())).thenReturn("Hello from OpenAI");
+        when(chatLanguageModel.generate(any(ChatMessage.class)))
+                .thenReturn(Response.from(new AiMessage("Hello from OpenAI")));
 
         String result = openAiProvider.generate("prompt", "gpt-4", 0.7);
 
         assertEquals("Hello from OpenAI", result);
-        verify(chatLanguageModel).generate("prompt");
+        verify(chatLanguageModel).generate(any(ChatMessage.class));
     }
 
     @Test
@@ -115,7 +117,7 @@ class OpenAiProviderTest {
     @Test
     void generateShouldHandleModelFailure() throws Exception {
         injectMockModel("gpt-4@0.7", chatLanguageModel);
-        when(chatLanguageModel.generate(anyString()))
+        when(chatLanguageModel.generate(any(ChatMessage.class)))
                 .thenThrow(new RuntimeException("API rate limit exceeded"));
 
         BaseException ex = assertThrows(BaseException.class,
@@ -148,7 +150,7 @@ class OpenAiProviderTest {
     @Test
     void generateShouldReturnEmptyStringWhenModelReturnsNull() throws Exception {
         injectMockModel("gpt-4@0.7", chatLanguageModel);
-        when(chatLanguageModel.generate(anyString())).thenReturn(null);
+        when(chatLanguageModel.generate(any(ChatMessage.class))).thenReturn(null);
 
         String result = openAiProvider.generate("prompt", "gpt-4", 0.7);
         assertEquals("", result);
@@ -173,21 +175,23 @@ class OpenAiProviderTest {
     @Test
     void generateShouldCacheModelForSameConfig() throws Exception {
         injectMockModel("gpt-4@0.7", chatLanguageModel);
-        when(chatLanguageModel.generate(anyString())).thenReturn("response");
+        when(chatLanguageModel.generate(any(ChatMessage.class)))
+                .thenReturn(Response.from(new AiMessage("response")));
 
         openAiProvider.generate("prompt1", "gpt-4", 0.7);
         openAiProvider.generate("prompt2", "gpt-4", 0.7);
 
         // Should reuse the same cached model, so only one generate call on the mock
         // Wait - the provider calls generate on the model each time, so 2 calls is correct
-        verify(chatLanguageModel, times(2)).generate(anyString());
+        verify(chatLanguageModel, times(2)).generate(any(ChatMessage.class));
     }
 
     @Test
     void generateShouldUseDefaultModelWhenModelIdBlank() throws Exception {
         ChatLanguageModel defaultModel = mock(ChatLanguageModel.class);
         injectMockModel("gpt-4o@0.7", defaultModel);
-        when(defaultModel.generate(anyString())).thenReturn("default model response");
+        when(defaultModel.generate(any(ChatMessage.class)))
+                .thenReturn(Response.from(new AiMessage("default model response")));
 
         String result = openAiProvider.generate("prompt", "", 0.7);
         assertEquals("default model response", result);
@@ -197,21 +201,23 @@ class OpenAiProviderTest {
     void generateShouldClampTemperatureAboveMax() throws Exception {
         ChatLanguageModel hotModel = mock(ChatLanguageModel.class);
         injectMockModel("gpt-4@2.0", hotModel);
-        when(hotModel.generate(anyString())).thenReturn("hot");
+        when(hotModel.generate(any(ChatMessage.class)))
+                .thenReturn(Response.from(new AiMessage("hot")));
 
         openAiProvider.generate("prompt", "gpt-4", 5.0);
         // Temperature should be clamped to 2.0, so cache key is gpt-4@2.0
-        verify(hotModel).generate(anyString());
+        verify(hotModel).generate(any(ChatMessage.class));
     }
 
     @Test
     void generateShouldClampTemperatureBelowMin() throws Exception {
         ChatLanguageModel coldModel = mock(ChatLanguageModel.class);
         injectMockModel("gpt-4@0.0", coldModel);
-        when(coldModel.generate(anyString())).thenReturn("cold");
+        when(coldModel.generate(any(ChatMessage.class)))
+                .thenReturn(Response.from(new AiMessage("cold")));
 
         openAiProvider.generate("prompt", "gpt-4", -1.0);
-        verify(coldModel).generate(anyString());
+        verify(coldModel).generate(any(ChatMessage.class));
     }
 
     @Test

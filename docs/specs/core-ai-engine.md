@@ -186,6 +186,7 @@ GET  /agents/execution/{id}          // 查询完整状态 + 当前 token 消耗
 ### 4.2 新增/变更
 
 - `sf_agent_execution.state` 枚举值: `INITIALIZING` → `READY` → `THINKING` → `TOOL_CALLING` → `OBSERVATION` → `COMPLETED` / `FAILED` / `CANCELLED` / `PAUSED` / `GATE_BLOCKED`
+  - 注:`OBSERVATION` 与 `PLANNING` 已于 2026-08-30 退役删除(票 931,从未有进入路径);下文涉及二者的内容为草案历史文本,不再代表实现承诺。
 - `token_budget_json` 当前为逗号分隔字符串（`maxInput,maxOutput,consumedInput,consumedOutput`），Phase 2 计划改为结构化 JSON
 - Phase 2 新增 `sf_agent_execution_log` 表记录状态转换历史
 

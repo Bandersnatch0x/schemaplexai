@@ -7,52 +7,45 @@ spring:
   application:
     name: schemaplexai-gateway
   cloud:
+    # Static service-instance source for the LoadBalancer used by the lb:// routes
+    # in GatewayConfig.java. Without an instance source (no Eureka/Nacos/Consul in
+    # this repo) every routed request would fail with 503 (empty instance list).
+    # SimpleDiscoveryClient (spring-cloud-commons) reads these properties; override
+    # per environment via spring.cloud.discovery.client.simple.instances.* or
+    # replace with a real discovery backend when deploying to K8s etc.
+    # Ports must match each service's server.port (spec §3).
+    discovery:
+      client:
+        simple:
+          instances:
+            schemaplexai-system:
+              - uri: http://localhost:8081
+            schemaplexai-web:
+              - uri: http://localhost:8082
+            schemaplexai-agent-config:
+              - uri: http://localhost:8083
+            schemaplexai-agent-engine:
+              - uri: http://localhost:8084
+            schemaplexai-context:
+              - uri: http://localhost:8085
+            schemaplexai-spec:
+              - uri: http://localhost:8086
+            schemaplexai-workflow:
+              - uri: http://localhost:8087
+            schemaplexai-integration:
+              - uri: http://localhost:8088
+            schemaplexai-ops:
+              - uri: http://localhost:8089
+            schemaplexai-quality:
+              - uri: http://localhost:8090
+            schemaplexai-task:
+              - uri: http://localhost:8091
+            schemaplexai-admin:
+              - uri: http://localhost:8092
     gateway:
-      routes:
-        - id: system-route
-          uri: http://localhost:8081
-          predicates:
-            - Path=/system/**,/auth/**
-        - id: web-route
-          uri: http://localhost:8082
-          predicates:
-            - Path=/web/**
-        - id: agent-config-route
-          uri: http://localhost:8083
-          predicates:
-            - Path=/agent-config/**
-        - id: agent-engine-route
-          uri: http://localhost:8084
-          predicates:
-            - Path=/agents/**,/agent-engine/**
-        - id: context-route
-          uri: http://localhost:8085
-          predicates:
-            - Path=/context/**
-        - id: spec-route
-          uri: http://localhost:8086
-          predicates:
-            - Path=/spec/**
-        - id: workflow-route
-          uri: http://localhost:8087
-          predicates:
-            - Path=/workflow/**
-        - id: integration-route
-          uri: http://localhost:8088
-          predicates:
-            - Path=/integration/**
-        - id: ops-route
-          uri: http://localhost:8089
-          predicates:
-            - Path=/ops/**
-        - id: quality-route
-          uri: http://localhost:8090
-          predicates:
-            - Path=/quality/**
-        - id: task-route
-          uri: http://localhost:8091
-          predicates:
-            - Path=/task/**
+      # Routes are defined in GatewayConfig.java (Java DSL with lb:// scheme).
+      # YAML route definitions are intentionally omitted to avoid duplicate/conflicting
+      # routes. Only Java DSL routes are active.
       globalcors:
         cors-configurations:
           '[/**]':
@@ -72,8 +65,9 @@ spring:
 
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
       database: 0
       timeout: 5s
       lettuce:
@@ -86,14 +80,46 @@ jwt:
   secret: ${JWT_SECRET}
   expiration: 86400000
 
+# Unauthenticated surface (spec §4.2, issue 912) — shared by JwtAuthFilter and
+# TenantResolveFilter. Paths here bypass JWT auth AND tenant validation, so keep
+# the list minimal. See JwtAuthFilter Javadoc for the rationale of each entry.
+gateway:
+  whitelist:
+    paths:
+      - /auth/login
+      - /auth/refresh
+      - /doc.html
+      - /v3/api-docs/**
+      - /swagger-ui/**
+      - /webjars/**
+
+# Tenant existence validation (spec §4.3, issue 913). The gateway has no DB
+# access, so it validates against a shared cache: Caffeine L1 in-process, Redis
+# L2 (key sf:global:cache:tenant:{tenantCode} -> ACTIVE|DISABLED) written by the
+# tenant-owning services (system/admin) on mutation and backfilled at startup.
+# Missing/unknown tenant -> 401, disabled -> 403, no tenant at all -> 400,
+# validation-channel failure -> 503 (fail-closed).
+tenant:
+  validation:
+    enabled: true
+    cache-max-size: 10000
+    cache-ttl: 5m
+
+# Rate limiting (spec §4.1). Runs BEFORE JWT auth (RateLimitFilter order -150 <
+# JwtAuthFilter -100), so anonymous and invalid-token traffic is throttled too.
+# whitelist-paths is intentionally empty: exempting /auth/** previously left the
+# login endpoint with zero brute-force throttling at the edge. Paths can still be
+# exempted here per deployment, but the default is full coverage.
 rate-limit:
   enabled: true
   default-limit: 100
   window-size: 60
+  whitelist-paths: []
 
 logging:
   level:
     org.springframework.cloud.gateway: DEBUG
+    root: INFO
 
 management:
   otlp:

@@ -1,8 +1,14 @@
 package com.schemaplexai.workflow.node;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -13,15 +19,8 @@ import java.util.Map;
 @Component
 public class HttpNodeExecutor implements NodeExecutor {
 
-    private final RestTemplate restTemplate;
-
-    public HttpNodeExecutor() {
-        org.springframework.http.client.SimpleClientHttpRequestFactory factory =
-                new org.springframework.http.client.SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(Duration.ofSeconds(5));
-        factory.setReadTimeout(Duration.ofSeconds(30));
-        this.restTemplate = new RestTemplate(factory);
-    }
+    private static final int DEFAULT_TIMEOUT_SECONDS = 30;
+    private static final int CONNECT_TIMEOUT_SECONDS = 5;
 
     @Override
     public String getNodeType() {
@@ -44,6 +43,9 @@ public class HttpNodeExecutor implements NodeExecutor {
             return NodeExecutionResult.failure("Unsupported HTTP method: " + method);
         }
 
+        int timeoutSeconds = readTimeoutSeconds(input);
+        RestTemplate restTemplate = buildRestTemplate(timeoutSeconds);
+
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -60,17 +62,43 @@ public class HttpNodeExecutor implements NodeExecutor {
             );
             return NodeExecutionResult.success(output);
 
+        } catch (ResourceAccessException e) {
+            // Connect/read timeout or connection failure: transient -> engine retries
+            // with exponential backoff (spec §8).
+            log.error("HTTP node request failed (transient): {} {} after {}s - {}",
+                    method, url, timeoutSeconds, e.getMessage());
+            return NodeExecutionResult.retryableFailure("HTTP request failed: " + e.getMessage());
         } catch (RestClientException e) {
             log.error("HTTP node request failed: {} {} - {}", method, url, e.getMessage());
-            return NodeExecutionResult.failure("HTTP request failed: " + e.getMessage());
+            return NodeExecutionResult.retryableFailure("HTTP request failed: " + e.getMessage());
         }
     }
 
+    private int readTimeoutSeconds(Map<String, Object> input) {
+        Object raw = input.get("timeoutSeconds");
+        if (raw instanceof Number number) {
+            int value = number.intValue();
+            if (value > 0) {
+                return value;
+            }
+        }
+        return DEFAULT_TIMEOUT_SECONDS;
+    }
+
+    private RestTemplate buildRestTemplate(int timeoutSeconds) {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(Math.min(CONNECT_TIMEOUT_SECONDS, timeoutSeconds)));
+        factory.setReadTimeout(Duration.ofSeconds(timeoutSeconds));
+        return new RestTemplate(factory);
+    }
+
     private HttpMethod parseMethod(String method) {
-        try {
-            return HttpMethod.valueOf(method.toUpperCase());
-        } catch (IllegalArgumentException e) {
+        if (method == null) {
             return null;
         }
+        return switch (method.toUpperCase()) {
+            case "GET", "POST", "PUT", "DELETE" -> HttpMethod.valueOf(method.toUpperCase());
+            default -> null;
+        };
     }
 }

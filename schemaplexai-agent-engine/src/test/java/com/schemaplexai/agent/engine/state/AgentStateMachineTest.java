@@ -2,6 +2,7 @@ package com.schemaplexai.agent.engine.state;
 
 import com.schemaplexai.agent.engine.entity.SfAgentExecution;
 import com.schemaplexai.agent.engine.mapper.SfAgentExecutionMapper;
+import com.schemaplexai.agent.engine.service.ExecutionConcurrencyService;
 import com.schemaplexai.agent.engine.sse.ExecutionEventBus;
 import com.schemaplexai.agent.engine.state.middleware.MiddlewarePipeline;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +31,9 @@ class AgentStateMachineTest {
     @Mock
     private AgentStateHandler handler;
 
+    @Mock
+    private ExecutionConcurrencyService concurrencyService;
+
     private MiddlewarePipeline pipeline;
 
     private AgentStateMachine stateMachine;
@@ -40,7 +44,7 @@ class AgentStateMachineTest {
     void setUp() {
         when(handler.getState()).thenReturn(AgentExecutionState.THINKING);
         pipeline = new MiddlewarePipeline(List.of());
-        stateMachine = new AgentStateMachine(executionMapper, eventBus, List.of(handler), pipeline);
+        stateMachine = new AgentStateMachine(executionMapper, eventBus, List.of(handler), pipeline, concurrencyService);
 
         execution = new SfAgentExecution();
         execution.setId(1L);
@@ -68,7 +72,7 @@ class AgentStateMachineTest {
         // Register a handler for COMPLETED so handler.handle() is actually called
         AgentStateHandler completedHandler = mock(AgentStateHandler.class);
         when(completedHandler.getState()).thenReturn(AgentExecutionState.COMPLETED);
-        stateMachine = new AgentStateMachine(executionMapper, eventBus, List.of(completedHandler), pipeline);
+        stateMachine = new AgentStateMachine(executionMapper, eventBus, List.of(completedHandler), pipeline, concurrencyService);
 
         doAnswer(inv -> {
             // Verify that at this point, complete() has NOT been called yet
@@ -106,7 +110,7 @@ class AgentStateMachineTest {
     void handlerExceptionWithTerminalStateDoesNotPublishCompletedBeforeFailed() {
         AgentStateHandler completedHandler = mock(AgentStateHandler.class);
         when(completedHandler.getState()).thenReturn(AgentExecutionState.COMPLETED);
-        stateMachine = new AgentStateMachine(executionMapper, eventBus, List.of(completedHandler), pipeline);
+        stateMachine = new AgentStateMachine(executionMapper, eventBus, List.of(completedHandler), pipeline, concurrencyService);
 
         doThrow(new RuntimeException("boom")).when(completedHandler).handle(any(AgentStateMachine.class), any(SfAgentExecution.class));
 
@@ -150,7 +154,7 @@ class AgentStateMachineTest {
         // We can achieve this by using a handler that throws for COMPLETED:
         AgentStateHandler completedHandler = mock(AgentStateHandler.class);
         when(completedHandler.getState()).thenReturn(AgentExecutionState.COMPLETED);
-        stateMachine = new AgentStateMachine(executionMapper, eventBus, List.of(completedHandler), pipeline);
+        stateMachine = new AgentStateMachine(executionMapper, eventBus, List.of(completedHandler), pipeline, concurrencyService);
 
         doThrow(new RuntimeException("boom")).when(completedHandler).handle(any(), any());
         stateMachine.transition(AgentExecutionState.COMPLETED, execution);
@@ -169,6 +173,38 @@ class AgentStateMachineTest {
         stateMachine.transition(AgentExecutionState.THINKING, execution);
         // This succeeds because previous FAILED transition removed the execution
         verify(eventBus).publishStateTransition(eq(1L), eq((AgentExecutionState) null), eq(AgentExecutionState.THINKING));
+    }
+
+    @Test
+    void handlerRunsInsideBoundLlmCallContext() {
+        execution.setTenantId("10");
+
+        java.util.concurrent.atomic.AtomicReference<com.schemaplexai.agent.engine.cost.LlmCallContext> seen =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        doAnswer(inv -> {
+            seen.set(com.schemaplexai.agent.engine.cost.LlmCallContext.current());
+            return null;
+        }).when(handler).handle(any(AgentStateMachine.class), any(SfAgentExecution.class));
+
+        stateMachine.transition(AgentExecutionState.THINKING, execution);
+
+        assertNotNull(seen.get(), "LLM calls inside a handler must see the bound execution context");
+        assertEquals(1L, seen.get().executionId());
+        assertEquals("10", seen.get().tenantId());
+        assertEquals(42L, seen.get().agentId());
+        // Context must not leak beyond the handler dispatch
+        assertNull(com.schemaplexai.agent.engine.cost.LlmCallContext.current());
+    }
+
+    @Test
+    void llmCallContextIsClearedEvenWhenHandlerThrows() {
+        execution.setTenantId("10");
+        doThrow(new RuntimeException("boom")).when(handler)
+                .handle(any(AgentStateMachine.class), any(SfAgentExecution.class));
+
+        stateMachine.transition(AgentExecutionState.THINKING, execution);
+
+        assertNull(com.schemaplexai.agent.engine.cost.LlmCallContext.current());
     }
 
     @Test
@@ -198,7 +234,7 @@ class AgentStateMachineTest {
                 .when(failedHandler).handle(any(AgentStateMachine.class), any(SfAgentExecution.class));
 
         stateMachine = new AgentStateMachine(
-                executionMapper, eventBus, List.of(thinkingHandler, failedHandler), pipeline);
+                executionMapper, eventBus, List.of(thinkingHandler, failedHandler), pipeline, concurrencyService);
 
         assertDoesNotThrow(() ->
                 stateMachine.transition(AgentExecutionState.THINKING, execution));

@@ -3,6 +3,8 @@ package com.schemaplexai.web.service.approval;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.quality.entity.ApprovalTicket;
 import com.schemaplexai.quality.service.ApprovalTicketService;
+import com.schemaplexai.web.mapper.ApprovalMapper;
+import com.schemaplexai.web.vo.ApprovalVO;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,7 +15,6 @@ import org.springframework.beans.factory.ObjectProvider;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,12 +32,15 @@ class QualityApprovalWorkflowPortTest {
     @Mock
     private ApprovalTicketService approvalTicketService;
 
+    @Mock
+    private ApprovalMapper approvalMapper;
+
     @InjectMocks
     private QualityApprovalWorkflowPort port;
 
     @Test
-    @DisplayName("list pending approvals delegates to quality service and maps ticket fields")
-    void listPendingApprovals_delegatesAndMapsTicketFields() {
+    @DisplayName("list pending approvals delegates to quality service and maps via ApprovalMapper")
+    void listPendingApprovals_delegatesAndMapsViaMapper() {
         UUID ticketId = UUID.randomUUID();
         Instant createdAt = Instant.parse("2026-05-20T10:15:30Z");
         Instant updatedAt = Instant.parse("2026-05-20T10:16:30Z");
@@ -52,25 +56,33 @@ class QualityApprovalWorkflowPortTest {
         ticket.setTriggeringSeq(3);
         ticket.setCreatedAt(createdAt);
         ticket.setUpdatedAt(updatedAt);
+
+        ApprovalVO expected = new ApprovalVO();
+        expected.setTicketId(ticketId.toString());
+        expected.setExecutionId(101L);
+        expected.setAgentId(20L);
+        expected.setStage("PENDING_FAST");
+        expected.setHandler("FAST");
+        expected.setRiskLevel("HIGH");
+        expected.setActionDescription("Deploy production workflow");
+        expected.setTriggeringSeq(3);
+        expected.setCreatedAt(createdAt);
+        expected.setUpdatedAt(updatedAt);
+
         when(approvalTicketServiceProvider.getIfAvailable()).thenReturn(approvalTicketService);
         when(approvalTicketService.listPendingByTenant(10L)).thenReturn(List.of(ticket));
+        when(approvalMapper.toApprovalVO(ticket)).thenReturn(expected);
 
-        List<Map<String, Object>> approvals = port.listPendingApprovals("10");
+        List<ApprovalVO> approvals = port.listPendingApprovals("10");
 
         assertThat(approvals).hasSize(1);
-        assertThat(approvals.getFirst())
-                .containsEntry("ticketId", ticketId.toString())
-                .containsEntry("executionId", 101L)
-                .containsEntry("tenantId", 10L)
-                .containsEntry("agentId", 20L)
-                .containsEntry("stage", "PENDING_FAST")
-                .containsEntry("handler", "FAST")
-                .containsEntry("riskLevel", "HIGH")
-                .containsEntry("actionDescription", "Deploy production workflow")
-                .containsEntry("triggeringSeq", 3)
-                .containsEntry("createdAt", createdAt)
-                .containsEntry("updatedAt", updatedAt);
-        verify(approvalTicketService).listPendingByTenant(10L);
+        ApprovalVO vo = approvals.getFirst();
+        assertThat(vo.getTicketId()).isEqualTo(ticketId.toString());
+        assertThat(vo.getExecutionId()).isEqualTo(101L);
+        assertThat(vo.getAgentId()).isEqualTo(20L);
+        assertThat(vo.getStage()).isEqualTo("PENDING_FAST");
+        assertThat(vo.getRiskLevel()).isEqualTo("HIGH");
+        assertThat(vo.getCreatedAt()).isEqualTo(createdAt);
     }
 
     @Test

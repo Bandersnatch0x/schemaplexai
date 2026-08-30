@@ -16,6 +16,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class TaskBranchManagerTest {
 
+    private static final Long TENANT_ID = 1L;
+
     @Mock
     private GitIntegrationService gitIntegrationService;
 
@@ -33,9 +35,9 @@ class TaskBranchManagerTest {
         Long taskId = 42L;
         String baseBranch = "main";
 
-        taskBranchManager.createBranch(taskId, baseBranch);
+        taskBranchManager.createBranch(TENANT_ID, taskId, baseBranch);
 
-        verify(gitIntegrationService).createBranch(taskId, null, "task/42", baseBranch);
+        verify(gitIntegrationService).createBranch(TENANT_ID, taskId, null, "task/42", baseBranch);
     }
 
     @Test
@@ -44,20 +46,28 @@ class TaskBranchManagerTest {
         String baseBranch = "main";
 
         // Soft delete first
-        taskBranchManager.deleteBranch(taskId);
+        taskBranchManager.deleteBranch(TENANT_ID, taskId);
         assertTrue(taskBranchManager.isSoftDeleted(taskId));
 
         // Create again — should remove from soft-delete registry
-        taskBranchManager.createBranch(taskId, baseBranch);
+        taskBranchManager.createBranch(TENANT_ID, taskId, baseBranch);
         assertFalse(taskBranchManager.isSoftDeleted(taskId));
 
-        verify(gitIntegrationService, times(1)).createBranch(taskId, null, "task/42", baseBranch);
+        verify(gitIntegrationService, times(1)).createBranch(TENANT_ID, taskId, null, "task/42", baseBranch);
+    }
+
+    @Test
+    void createBranch_shouldThrowWhenTenantIdIsNull() {
+        BaseException ex = assertThrows(BaseException.class,
+                () -> taskBranchManager.createBranch(null, 42L, "main"));
+        assertEquals(ResultCode.PARAM_ERROR.getCode(), ex.getCode());
+        verifyNoInteractions(gitIntegrationService);
     }
 
     @Test
     void createBranch_shouldThrowWhenTaskIdIsNull() {
         BaseException ex = assertThrows(BaseException.class,
-                () -> taskBranchManager.createBranch(null, "main"));
+                () -> taskBranchManager.createBranch(TENANT_ID, null, "main"));
         assertEquals(ResultCode.PARAM_ERROR.getCode(), ex.getCode());
         verifyNoInteractions(gitIntegrationService);
     }
@@ -66,9 +76,9 @@ class TaskBranchManagerTest {
     void deleteBranch_shouldCallGitServiceWithTaskBranchName() {
         Long taskId = 99L;
 
-        taskBranchManager.deleteBranch(taskId);
+        taskBranchManager.deleteBranch(TENANT_ID, taskId);
 
-        verify(gitIntegrationService).deleteBranch(taskId, null, "task/99", false);
+        verify(gitIntegrationService).deleteBranch(TENANT_ID, taskId, null, "task/99", false);
     }
 
     @Test
@@ -76,14 +86,22 @@ class TaskBranchManagerTest {
         Long taskId = 77L;
 
         assertFalse(taskBranchManager.isSoftDeleted(taskId));
-        taskBranchManager.deleteBranch(taskId);
+        taskBranchManager.deleteBranch(TENANT_ID, taskId);
         assertTrue(taskBranchManager.isSoftDeleted(taskId));
+    }
+
+    @Test
+    void deleteBranch_shouldThrowWhenTenantIdIsNull() {
+        BaseException ex = assertThrows(BaseException.class,
+                () -> taskBranchManager.deleteBranch(null, 99L));
+        assertEquals(ResultCode.PARAM_ERROR.getCode(), ex.getCode());
+        verifyNoInteractions(gitIntegrationService);
     }
 
     @Test
     void deleteBranch_shouldThrowWhenTaskIdIsNull() {
         BaseException ex = assertThrows(BaseException.class,
-                () -> taskBranchManager.deleteBranch(null));
+                () -> taskBranchManager.deleteBranch(TENANT_ID, null));
         assertEquals(ResultCode.PARAM_ERROR.getCode(), ex.getCode());
         verifyNoInteractions(gitIntegrationService);
     }
@@ -92,26 +110,34 @@ class TaskBranchManagerTest {
     void hardDeleteBranch_shouldCallGitServiceWithForce() {
         Long taskId = 55L;
 
-        taskBranchManager.hardDeleteBranch(taskId);
+        taskBranchManager.hardDeleteBranch(TENANT_ID, taskId);
 
-        verify(gitIntegrationService).deleteBranch(taskId, null, "task/55", true);
+        verify(gitIntegrationService).deleteBranch(TENANT_ID, taskId, null, "task/55", true);
     }
 
     @Test
     void hardDeleteBranch_shouldRemoveFromSoftDeleteRegistry() {
         Long taskId = 55L;
 
-        taskBranchManager.deleteBranch(taskId);
+        taskBranchManager.deleteBranch(TENANT_ID, taskId);
         assertTrue(taskBranchManager.isSoftDeleted(taskId));
 
-        taskBranchManager.hardDeleteBranch(taskId);
+        taskBranchManager.hardDeleteBranch(TENANT_ID, taskId);
         assertFalse(taskBranchManager.isSoftDeleted(taskId));
+    }
+
+    @Test
+    void hardDeleteBranch_shouldThrowWhenTenantIdIsNull() {
+        BaseException ex = assertThrows(BaseException.class,
+                () -> taskBranchManager.hardDeleteBranch(null, 55L));
+        assertEquals(ResultCode.PARAM_ERROR.getCode(), ex.getCode());
+        verifyNoInteractions(gitIntegrationService);
     }
 
     @Test
     void hardDeleteBranch_shouldThrowWhenTaskIdIsNull() {
         BaseException ex = assertThrows(BaseException.class,
-                () -> taskBranchManager.hardDeleteBranch(null));
+                () -> taskBranchManager.hardDeleteBranch(TENANT_ID, null));
         assertEquals(ResultCode.PARAM_ERROR.getCode(), ex.getCode());
         verifyNoInteractions(gitIntegrationService);
     }
@@ -131,13 +157,13 @@ class TaskBranchManagerTest {
         Long taskId = 88L;
         String baseBranch = "develop";
 
-        taskBranchManager.deleteBranch(taskId);
+        taskBranchManager.deleteBranch(TENANT_ID, taskId);
         assertTrue(taskBranchManager.isSoftDeleted(taskId));
 
-        taskBranchManager.recoverBranch(taskId, baseBranch);
+        taskBranchManager.recoverBranch(TENANT_ID, taskId, baseBranch);
 
         assertFalse(taskBranchManager.isSoftDeleted(taskId));
-        verify(gitIntegrationService).createBranch(taskId, null, "task/88", baseBranch);
+        verify(gitIntegrationService).createBranch(TENANT_ID, taskId, null, "task/88", baseBranch);
     }
 
     @Test
@@ -145,14 +171,21 @@ class TaskBranchManagerTest {
         Long taskId = 66L;
 
         BaseException ex = assertThrows(BaseException.class,
-                () -> taskBranchManager.recoverBranch(taskId, "main"));
+                () -> taskBranchManager.recoverBranch(TENANT_ID, taskId, "main"));
         assertEquals(ResultCode.NOT_FOUND.getCode(), ex.getCode());
+    }
+
+    @Test
+    void recoverBranch_shouldThrowWhenTenantIdIsNull() {
+        BaseException ex = assertThrows(BaseException.class,
+                () -> taskBranchManager.recoverBranch(null, 88L, "main"));
+        assertEquals(ResultCode.PARAM_ERROR.getCode(), ex.getCode());
     }
 
     @Test
     void recoverBranch_shouldThrowWhenTaskIdIsNull() {
         BaseException ex = assertThrows(BaseException.class,
-                () -> taskBranchManager.recoverBranch(null, "main"));
+                () -> taskBranchManager.recoverBranch(TENANT_ID, null, "main"));
         assertEquals(ResultCode.PARAM_ERROR.getCode(), ex.getCode());
     }
 
@@ -160,7 +193,7 @@ class TaskBranchManagerTest {
     void purgeExpiredRecords_shouldRemoveExpiredEntries() {
         Long taskId = 111L;
 
-        taskBranchManager.deleteBranch(taskId);
+        taskBranchManager.deleteBranch(TENANT_ID, taskId);
         assertTrue(taskBranchManager.isSoftDeleted(taskId));
 
         // Immediately purging won't remove it (not expired yet)

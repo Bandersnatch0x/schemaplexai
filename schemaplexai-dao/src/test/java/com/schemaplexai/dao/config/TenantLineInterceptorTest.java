@@ -44,6 +44,16 @@ class TenantLineInterceptorTest {
     }
 
     @Test
+    void getTenantId_returnsLongValue_forNumericTenant() {
+        // Live defect regression (browser round 2): BIGINT tenant columns reject
+        // string literals ("operator does not exist: bigint = character varying").
+        TenantContextHolder.setTenantId("42");
+        Expression expr = interceptor.getTenantId();
+        assertThat(expr).isInstanceOf(net.sf.jsqlparser.expression.LongValue.class);
+        assertThat(((net.sf.jsqlparser.expression.LongValue) expr).getValue()).isEqualTo(42L);
+    }
+
+    @Test
     void getTenantId_returnsNullValue_whenTenantNotSet() {
         Expression expr = interceptor.getTenantId();
         assertThat(expr).isInstanceOf(NullValue.class);
@@ -73,8 +83,13 @@ class TenantLineInterceptorTest {
     }
 
     @Test
+    void ignoreTable_returnsTrue_forLoginPathTables() {
+        // sf_user is queried before a tenant context exists (login/register).
+        assertThat(interceptor.ignoreTable("sf_user")).isTrue();
+    }
+
+    @Test
     void ignoreTable_returnsFalse_forRegularTable() {
-        assertThat(interceptor.ignoreTable("sf_user")).isFalse();
         assertThat(interceptor.ignoreTable("sf_agent")).isFalse();
         assertThat(interceptor.ignoreTable("sf_workflow")).isFalse();
     }

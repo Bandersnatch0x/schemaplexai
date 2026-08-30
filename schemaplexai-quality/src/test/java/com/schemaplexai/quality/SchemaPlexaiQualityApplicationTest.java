@@ -17,6 +17,8 @@ class SchemaPlexaiQualityApplicationTest {
                         "--spring.datasource.driver-class-name=org.h2.Driver",
                         "--spring.datasource.username=sa",
                         "--spring.datasource.password=",
+                        "--spring.rabbitmq.username=test",
+                        "--spring.rabbitmq.password=test",
                         "--spring.rabbitmq.listener.simple.auto-startup=false",
                         "--spring.rabbitmq.listener.direct.auto-startup=false",
                         "--jwt.secret=this-is-a-very-long-test-secret-for-quality"

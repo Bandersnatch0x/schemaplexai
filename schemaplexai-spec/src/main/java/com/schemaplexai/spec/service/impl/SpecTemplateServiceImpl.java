@@ -5,10 +5,12 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.schemaplexai.common.context.TenantContextHolder;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.spec.domain.SpecStatus;
 import com.schemaplexai.spec.entity.SfSpec;
 import com.schemaplexai.spec.entity.SfSpecTemplate;
 import com.schemaplexai.spec.mapper.SfSpecMapper;
 import com.schemaplexai.spec.mapper.SfSpecTemplateMapper;
+import com.schemaplexai.spec.service.SpecChangeTracker;
 import com.schemaplexai.spec.service.SpecTemplateService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +29,7 @@ public class SpecTemplateServiceImpl extends ServiceImpl<SfSpecTemplateMapper, S
 
     private final SfSpecTemplateMapper specTemplateMapper;
     private final SfSpecMapper specMapper;
+    private final SpecChangeTracker changeTracker;
 
     @Override
     public SfSpec applyTemplate(Long templateId, Long specId, String title, String type) {
@@ -46,17 +49,27 @@ public class SpecTemplateServiceImpl extends ServiceImpl<SfSpecTemplateMapper, S
             if (spec == null) {
                 throw new BaseException(ResultCode.SPEC_NOT_FOUND);
             }
+            // Overwriting content is an edit: only drafts are editable (§3.1).
+            if (!SpecStatus.isEditable(spec.getStatus())) {
+                throw new BaseException(ResultCode.FORBIDDEN,
+                        "Spec " + specId + " is not editable in status " + spec.getStatus());
+            }
+            SfSpec before = SpecChangeTracker.snapshot(spec);
             spec.setContent(template.getContent());
             spec.setUpdatedAt(LocalDateTime.now());
-            specMapper.updateById(spec);
+            int rows = specMapper.updateById(spec);
+            if (rows > 0) {
+                changeTracker.recordUpdate(before, spec, null);
+            }
             log.info("Applied template {} to spec {}", templateId, specId);
         } else {
             spec = new SfSpec();
             spec.setTitle(title);
             spec.setType(type);
-            spec.setStatus("draft");
+            spec.setStatus(SpecStatus.DRAFT);
             spec.setContent(template.getContent());
             specMapper.insert(spec);
+            changeTracker.recordCreation(spec);
             log.info("Created spec {} from template {}", spec.getId(), templateId);
         }
         return spec;

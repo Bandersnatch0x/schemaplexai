@@ -12,6 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.io.Serializable;
 
@@ -44,7 +46,23 @@ public class KnowledgeDocServiceImpl extends ServiceImpl<SfKnowledgeDocMapper, S
         doc.setSyncStatus("PENDING");
         save(doc);
         log.info("Knowledge doc uploaded: {}, triggering vectorization", doc.getId());
-        milvusSyncService.syncToMilvus(doc.getId());
+
+        // Run vectorization only AFTER this insert transaction commits. Otherwise a sync
+        // failure leaves the REQUIRES_NEW FAILED-status writer unable to see the still
+        // uncommitted row, the outer transaction rolls back, and the document disappears
+        // without any visible FAILED state. With the row committed first, failures are
+        // durably marked FAILED and recoverable via reconciliation / DLQ retry.
+        Long docId = doc.getId();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    milvusSyncService.syncToMilvus(docId);
+                }
+            });
+        } else {
+            milvusSyncService.syncToMilvus(docId);
+        }
     }
 
     @Override

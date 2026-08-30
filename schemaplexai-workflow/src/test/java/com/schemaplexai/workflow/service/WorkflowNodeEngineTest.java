@@ -42,6 +42,9 @@ class WorkflowNodeEngineTest {
     void init() {
         when(nodeExecutor.getNodeType()).thenReturn("SCRIPT");
         ReflectionTestUtils.setField(workflowNodeEngine, "executorList", List.of(nodeExecutor));
+        // Keep retry tests instant: no real sleeping, zero backoff.
+        workflowNodeEngine.setRetrySleeper(millis -> { });
+        workflowNodeEngine.setRetryBaseDelayMillis(0);
         workflowNodeEngine.init();
     }
 
@@ -87,6 +90,50 @@ class WorkflowNodeEngineTest {
     }
 
     @Test
+    void executeNode_successPublishesQualityCheck() throws Exception {
+        WorkflowQualityCheckPublisher qualityPublisher = mock(WorkflowQualityCheckPublisher.class);
+        workflowNodeEngine.setQualityCheckPublisher(qualityPublisher);
+
+        SfWorkflowNodeExecution node = new SfWorkflowNodeExecution();
+        node.setId(55L);
+        node.setInstanceId(7L);
+        node.setNodeId("n1");
+        node.setNodeType("SCRIPT");
+        node.setInputJson(null);
+        node.setTenantId("t1");
+
+        when(nodeExecutor.execute(any(), eq("t1")))
+                .thenReturn(NodeExecutionResult.success(Map.of("result", "ok")));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"result\":\"ok\"}");
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        workflowNodeEngine.executeNode(node);
+
+        verify(qualityPublisher).publishPostNodeCheck(eq(55L), eq(7L), eq("n1"), eq("t1"), any());
+    }
+
+    @Test
+    void executeNode_failureDoesNotPublishQualityCheck() throws Exception {
+        WorkflowQualityCheckPublisher qualityPublisher = mock(WorkflowQualityCheckPublisher.class);
+        workflowNodeEngine.setQualityCheckPublisher(qualityPublisher);
+
+        SfWorkflowNodeExecution node = new SfWorkflowNodeExecution();
+        node.setNodeId("n1");
+        node.setNodeType("SCRIPT");
+        node.setInputJson(null);
+        node.setTenantId("t1");
+
+        when(nodeExecutor.execute(any(), eq("t1")))
+                .thenReturn(NodeExecutionResult.failure("Error"));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"error\":\"Error\"}");
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        workflowNodeEngine.executeNode(node);
+
+        verifyNoInteractions(qualityPublisher);
+    }
+
+    @Test
     void executeNode_unknownType_throwsException() {
         SfWorkflowNodeExecution node = new SfWorkflowNodeExecution();
         node.setNodeId("n1");
@@ -118,6 +165,26 @@ class WorkflowNodeEngineTest {
     }
 
     @Test
+    void executeNode_exception_flushesFailedStatusBeforeRethrow() throws Exception {
+        SfWorkflowNodeExecution node = new SfWorkflowNodeExecution();
+        node.setNodeId("n1");
+        node.setNodeType("SCRIPT");
+        node.setInputJson(null);
+        node.setTenantId("t1");
+
+        when(nodeExecutor.execute(any(), eq("t1")))
+                .thenThrow(new RuntimeException("Boom"));
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        assertThatThrownBy(() -> workflowNodeEngine.executeNode(node))
+                .isInstanceOf(BaseException.class);
+
+        // RUNNING update + FAILED update must both reach the mapper (no transaction to roll back)
+        assertThat(node.getStatus()).isEqualTo("FAILED");
+        verify(nodeExecutionMapper, times(2)).updateById(node);
+    }
+
+    @Test
     void executeNode_invalidInputJson_usesEmptyMap() throws Exception {
         SfWorkflowNodeExecution node = new SfWorkflowNodeExecution();
         node.setNodeId("n1");
@@ -135,5 +202,157 @@ class WorkflowNodeEngineTest {
         NodeExecutionResult result = workflowNodeEngine.executeNode(node);
 
         assertThat(result.isSuccess()).isTrue();
+    }
+
+    // ------------------------------------------------------------------
+    // retry policy (spec §8: 3 retries, exponential backoff)
+    // ------------------------------------------------------------------
+
+    private SfWorkflowNodeExecution retryableNode() {
+        SfWorkflowNodeExecution node = new SfWorkflowNodeExecution();
+        node.setNodeId("n1");
+        node.setNodeType("SCRIPT");
+        node.setInputJson(null);
+        node.setTenantId("t1");
+        return node;
+    }
+
+    @Test
+    void executeNode_transientFailure_retriedThenSucceeds() throws Exception {
+        SfWorkflowNodeExecution node = retryableNode();
+        when(nodeExecutor.execute(any(), eq("t1")))
+                .thenReturn(NodeExecutionResult.retryableFailure("flaky"))
+                .thenReturn(NodeExecutionResult.retryableFailure("flaky"))
+                .thenReturn(NodeExecutionResult.success(Map.of("ok", true)));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        NodeExecutionResult result = workflowNodeEngine.executeNode(node);
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(nodeExecutor, times(3)).execute(any(), eq("t1"));
+        assertThat(node.getStatus()).isEqualTo("COMPLETED");
+    }
+
+    @Test
+    void executeNode_transientFailure_exhaustsRetriesThenFails() throws Exception {
+        SfWorkflowNodeExecution node = retryableNode();
+        when(nodeExecutor.execute(any(), eq("t1")))
+                .thenReturn(NodeExecutionResult.retryableFailure("still flaky"));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        NodeExecutionResult result = workflowNodeEngine.executeNode(node);
+
+        assertThat(result.isSuccess()).isFalse();
+        // initial attempt + 3 retries
+        verify(nodeExecutor, times(4)).execute(any(), eq("t1"));
+        assertThat(node.getStatus()).isEqualTo("FAILED");
+    }
+
+    @Test
+    void executeNode_deterministicFailure_notRetried() throws Exception {
+        SfWorkflowNodeExecution node = retryableNode();
+        when(nodeExecutor.execute(any(), eq("t1")))
+                .thenReturn(NodeExecutionResult.failure("bad config"));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        NodeExecutionResult result = workflowNodeEngine.executeNode(node);
+
+        assertThat(result.isSuccess()).isFalse();
+        verify(nodeExecutor, times(1)).execute(any(), eq("t1"));
+        assertThat(node.getStatus()).isEqualTo("FAILED");
+    }
+
+    @Test
+    void executeNode_timeout_notRetriedAndMarkedTimeout() throws Exception {
+        SfWorkflowNodeExecution node = retryableNode();
+        when(nodeExecutor.execute(any(), eq("t1")))
+                .thenReturn(NodeExecutionResult.timeout("exceeded 300s"));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        NodeExecutionResult result = workflowNodeEngine.executeNode(node);
+
+        assertThat(result.isTimeout()).isTrue();
+        verify(nodeExecutor, times(1)).execute(any(), eq("t1"));
+        assertThat(node.getStatus()).isEqualTo("TIMEOUT");
+    }
+
+    @Test
+    void executeNode_thrownException_retriedThenRethrown() throws Exception {
+        SfWorkflowNodeExecution node = retryableNode();
+        when(nodeExecutor.execute(any(), eq("t1")))
+                .thenThrow(new RuntimeException("transient"));
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        assertThatThrownBy(() -> workflowNodeEngine.executeNode(node))
+                .isInstanceOf(BaseException.class)
+                .hasMessageContaining("transient");
+        verify(nodeExecutor, times(4)).execute(any(), eq("t1"));
+        assertThat(node.getStatus()).isEqualTo("FAILED");
+    }
+
+    @Test
+    void executeNode_backoffGrowsExponentially() throws Exception {
+        java.util.List<Long> delays = new java.util.ArrayList<>();
+        workflowNodeEngine.setRetryBaseDelayMillis(100);
+        workflowNodeEngine.setRetrySleeper(delays::add);
+
+        SfWorkflowNodeExecution node = retryableNode();
+        when(nodeExecutor.execute(any(), eq("t1")))
+                .thenReturn(NodeExecutionResult.retryableFailure("flaky"));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        workflowNodeEngine.executeNode(node);
+
+        assertThat(delays).containsExactly(100L, 200L, 400L);
+    }
+
+    // ------------------------------------------------------------------
+    // bridge persistence (spec §7 / REQ-19): Flowable-built records get persisted
+    // ------------------------------------------------------------------
+
+    @Test
+    void executeNode_unpersistedBridgeRecord_isInserted() throws Exception {
+        SfWorkflowNodeExecution node = new SfWorkflowNodeExecution();
+        node.setNodeId("serviceTask1");
+        node.setNodeType("SCRIPT");
+        node.setInputJson(null);
+        node.setTenantId("t1");
+        // id is null -> built by a Flowable delegate, never persisted yet
+
+        when(nodeExecutor.execute(any(), eq("t1")))
+                .thenReturn(NodeExecutionResult.success(Map.of("ok", true)));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(nodeExecutionMapper.insert(any())).thenReturn(1);
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        workflowNodeEngine.executeNode(node);
+
+        verify(nodeExecutionMapper, times(1)).insert(node);
+        assertThat(node.getStatus()).isEqualTo("COMPLETED");
+    }
+
+    @Test
+    void executeNode_persistedRecord_isNotReinserted() throws Exception {
+        SfWorkflowNodeExecution node = new SfWorkflowNodeExecution();
+        node.setId(42L); // already inserted by the orchestration path
+        node.setNodeId("n1");
+        node.setNodeType("SCRIPT");
+        node.setInputJson(null);
+        node.setTenantId("t1");
+
+        when(nodeExecutor.execute(any(), eq("t1")))
+                .thenReturn(NodeExecutionResult.success(Map.of()));
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+        when(nodeExecutionMapper.updateById(any())).thenReturn(1);
+
+        workflowNodeEngine.executeNode(node);
+
+        verify(nodeExecutionMapper, never()).insert(any());
+        assertThat(node.getStatus()).isEqualTo("COMPLETED");
     }
 }

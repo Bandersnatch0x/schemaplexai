@@ -11,6 +11,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -47,6 +49,9 @@ class ResumingStateHandlerTest {
 
         verify(stateMachine).transition(AgentExecutionState.FAILED, execution);
         verify(snapshotMapper, never()).selectById(any());
+        Object reason = execution.getMetadata("failureReason");
+        assertNotNull(reason);
+        assertTrue(reason.toString().contains("no snapshot reference"));
     }
 
     @Test
@@ -57,6 +62,11 @@ class ResumingStateHandlerTest {
         handler.handle(stateMachine, execution);
 
         verify(stateMachine).transition(AgentExecutionState.FAILED, execution);
+        Object reason = execution.getMetadata("failureReason");
+        assertNotNull(reason);
+        assertTrue(reason.toString().contains("Resume failed"));
+        assertTrue(reason.toString().contains("not found"));
+        assertTrue(reason.toString().contains("100"));
     }
 
     @Test

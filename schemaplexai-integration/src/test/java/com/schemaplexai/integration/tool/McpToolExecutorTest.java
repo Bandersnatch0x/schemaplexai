@@ -53,7 +53,7 @@ class McpToolExecutorTest {
     void execute_serverInactive_throwsNotFound() {
         SfMcpServer server = new SfMcpServer();
         server.setId(1L);
-        server.setStatus(0);
+        server.setStatus("INACTIVE");
         when(mcpServerService.getById(1L)).thenReturn(server);
 
         Map<String, Object> params = Map.of("serverId", 1, "method", "test");
@@ -81,7 +81,7 @@ class McpToolExecutorTest {
     void execute_success_returnsResponse() {
         SfMcpServer server = new SfMcpServer();
         server.setId(1L);
-        server.setStatus(1);
+        server.setStatus("ACTIVE");
         server.setEndpoint("http://localhost:3000");
         when(mcpServerService.getById(1L)).thenReturn(server);
         when(restTemplate.postForObject(eq("http://localhost:3000/test"), any(HttpEntity.class), eq(String.class)))
@@ -97,7 +97,7 @@ class McpToolExecutorTest {
     void execute_nullResponse_returnsEmptyJson() {
         SfMcpServer server = new SfMcpServer();
         server.setId(1L);
-        server.setStatus(1);
+        server.setStatus("ACTIVE");
         server.setEndpoint("http://localhost:3000");
         when(mcpServerService.getById(1L)).thenReturn(server);
         when(restTemplate.postForObject(eq("http://localhost:3000/test"), any(HttpEntity.class), eq(String.class)))
@@ -113,7 +113,7 @@ class McpToolExecutorTest {
     void execute_restTemplateThrows_throwsToolExecutionFailed() {
         SfMcpServer server = new SfMcpServer();
         server.setId(1L);
-        server.setStatus(1);
+        server.setStatus("ACTIVE");
         server.setEndpoint("http://localhost:3000");
         when(mcpServerService.getById(1L)).thenReturn(server);
         when(restTemplate.postForObject(eq("http://localhost:3000/test"), any(HttpEntity.class), eq(String.class)))

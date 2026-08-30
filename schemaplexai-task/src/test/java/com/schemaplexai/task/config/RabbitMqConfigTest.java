@@ -6,6 +6,8 @@ import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -83,17 +85,26 @@ class RabbitMqConfigTest {
     }
 
     @Test
-    void qualityQueue_hasDeadLetterArgs() {
-        Queue queue = config.qualityQueue();
-        assertThat(queue.getName()).isEqualTo("sf.quality.queue");
-        Map<String, Object> args = queue.getArguments();
-        assertThat(args).containsEntry("x-dead-letter-exchange", DeadLetterConfig.DLX_EXCHANGE);
-    }
-
-    @Test
-    void qualityBinding_routingKeyMatches() {
-        Binding binding = config.qualityBinding();
-        assertThat(binding.getRoutingKey()).isEqualTo(CommonConstants.RK_QUALITY);
+    void qualityQueue_retired_taskModuleNoLongerDeclaresQualityQueueOrBinding() throws Exception {
+        // NEW-03: the legacy sf.quality.queue consumer was retired — it was an
+        // always-throwing stub that duplicated every quality event into the
+        // dead-letter queue. Routing key sf.quality is owned by the quality
+        // module's QualityCheckEventConsumer (ticket 924). Guard against the
+        // dead-end being re-introduced in this module.
+        List<String> queueNames = new ArrayList<>();
+        List<String> bindingRoutingKeys = new ArrayList<>();
+        for (java.lang.reflect.Method method : RabbitMqConfig.class.getDeclaredMethods()) {
+            if (method.getParameterCount() != 0) {
+                continue;
+            }
+            if (Queue.class.isAssignableFrom(method.getReturnType())) {
+                queueNames.add(((Queue) method.invoke(config)).getName());
+            } else if (Binding.class.isAssignableFrom(method.getReturnType())) {
+                bindingRoutingKeys.add(((Binding) method.invoke(config)).getRoutingKey());
+            }
+        }
+        assertThat(queueNames).doesNotContain("sf.quality.queue");
+        assertThat(bindingRoutingKeys).doesNotContain(CommonConstants.RK_QUALITY);
     }
 
     @Test

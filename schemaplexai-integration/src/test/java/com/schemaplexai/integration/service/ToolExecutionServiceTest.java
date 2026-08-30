@@ -97,4 +97,67 @@ class ToolExecutionServiceTest {
                 .extracting("code")
                 .isEqualTo(ResultCode.TOOL_EXECUTION_FAILED.getCode());
     }
+
+    // --- dynamic registration (issue 930: discovery → execution-chain registry) ---
+
+    @Test
+    void register_runtimeExecutor_becomesResolvableAndExecutable() {
+        ToolExecutor dynamic = new ToolExecutor() {
+            @Override
+            public String getToolName() {
+                return "mcp:1:calculator";
+            }
+
+            @Override
+            public String execute(Map<String, Object> parameters) {
+                return "dynamic:" + parameters.get("x");
+            }
+        };
+
+        toolExecutionService.register(dynamic);
+
+        assertThat(toolExecutionService.exists("mcp:1:calculator")).isTrue();
+        assertThat(toolExecutionService.getExecutor("mcp:1:calculator")).isSameAs(dynamic);
+        assertThat(toolExecutionService.getRegisteredToolNames())
+                .containsExactlyInAnyOrder("local", "mcp:1:calculator");
+        assertThat(toolExecutionService.executeTool("mcp:1:calculator", "{\"x\":7}"))
+                .isEqualTo("dynamic:7");
+    }
+
+    @Test
+    void exists_unknownTool_returnsFalse() {
+        assertThat(toolExecutionService.exists("mcp:99:ghost")).isFalse();
+        assertThat(toolExecutionService.getExecutor("mcp:99:ghost")).isNull();
+    }
+
+    @Test
+    void register_replacesExecutorUnderSameName() {
+        ToolExecutor first = new ToolExecutor() {
+            @Override
+            public String getToolName() {
+                return "dup";
+            }
+
+            @Override
+            public String execute(Map<String, Object> parameters) {
+                return "first";
+            }
+        };
+        ToolExecutor second = new ToolExecutor() {
+            @Override
+            public String getToolName() {
+                return "dup";
+            }
+
+            @Override
+            public String execute(Map<String, Object> parameters) {
+                return "second";
+            }
+        };
+
+        toolExecutionService.register(first);
+        toolExecutionService.register(second);
+
+        assertThat(toolExecutionService.executeTool("dup", "{}")).isEqualTo("second");
+    }
 }

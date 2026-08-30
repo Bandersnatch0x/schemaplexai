@@ -20,16 +20,10 @@ public final class CommonConstants {
     /** @deprecated Use {@link com.schemaplexai.common.redis.TenantRedisKeyResolver#chatMemory} */
     @Deprecated
     public static final String REDIS_KEY_CHAT_MEMORY = "sf:memory:chat:%s";
-    /** @deprecated Use {@link com.schemaplexai.common.redis.TenantRedisKeyResolver} */
-    @Deprecated
-    public static final String REDIS_KEY_TEAM_CONTEXT = "sf:context:team:%s";
-    /** @deprecated Use {@link com.schemaplexai.common.redis.TenantRedisKeyResolver#idempotency} */
+/** @deprecated Use {@link com.schemaplexai.common.redis.TenantRedisKeyResolver#idempotency} */
     @Deprecated
     public static final String REDIS_KEY_IDEMPOTENCY = "sf:idempotency:%s";
-    /** @deprecated Use {@link com.schemaplexai.common.redis.TenantRedisKeyResolver#rateLimit} */
-    @Deprecated
-    public static final String REDIS_KEY_RATE_LIMIT = "sf:rate:%s:%s";
-    /** @deprecated Use {@link com.schemaplexai.common.redis.TenantRedisKeyResolver#executionPaused} */
+/** @deprecated Use {@link com.schemaplexai.common.redis.TenantRedisKeyResolver#executionPaused} */
     @Deprecated
     public static final String REDIS_KEY_EXECUTION_PAUSED = "sf:execution:paused:%s";
     /** @deprecated Use {@link com.schemaplexai.common.redis.TenantRedisKeyResolver#modelCooldown} */
@@ -45,6 +39,7 @@ public final class CommonConstants {
     public static final String RK_NOTIFICATION = "sf.notification";
     public static final String RK_COST = "sf.cost";
     public static final String RK_QUALITY = "sf.quality";
+    public static final String RK_QUALITY_VERDICT = "sf.quality.verdict";
     public static final String RK_MILVUS_SYNC = "sf.milvus.sync";
     public static final String RK_AGENT_CONFIG_SHADOW = "sf.agent.config.shadow";
     public static final String RK_TENANT_POLICY_UPDATED = "tenant.policy.updated";

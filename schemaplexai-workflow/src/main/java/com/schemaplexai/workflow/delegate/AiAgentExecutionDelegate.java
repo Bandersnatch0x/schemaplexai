@@ -51,8 +51,22 @@ public class AiAgentExecutionDelegate implements JavaDelegate {
                 processInstanceId, activityId, agentId, retryCount);
 
         try {
-            // Build node execution input
+            // Build node execution input. The AI_MODEL executor requires a `prompt`;
+            // compose it from the task description and any human feedback from a prior
+            // quality-gate loop, and carry agentId through for the executor.
+            StringBuilder prompt = new StringBuilder();
+            if (taskDescription != null && !taskDescription.isBlank()) {
+                prompt.append(taskDescription);
+            }
+            if (humanFeedback != null && !humanFeedback.isBlank()) {
+                if (prompt.length() > 0) {
+                    prompt.append("\n\n");
+                }
+                prompt.append("Human feedback: ").append(humanFeedback);
+            }
+
             Map<String, Object> input = new HashMap<>();
+            input.put("prompt", prompt.toString());
             input.put("agentId", agentId);
             input.put("taskDescription", taskDescription);
             input.put("executionTrackingId", executionTrackingId);
@@ -62,10 +76,11 @@ public class AiAgentExecutionDelegate implements JavaDelegate {
                 input.put("humanFeedback", humanFeedback);
             }
 
-            // Build node execution record
+            // Build node execution record. The node type must be one registered in the
+            // WorkflowNodeEngine; AI_MODEL is the AI executor (there is no AI_AGENT type).
             SfWorkflowNodeExecution nodeExecution = new SfWorkflowNodeExecution();
             nodeExecution.setNodeId(activityId);
-            nodeExecution.setNodeType("AI_AGENT");
+            nodeExecution.setNodeType("AI_MODEL");
             nodeExecution.setInputJson(objectMapper.writeValueAsString(input));
             nodeExecution.setTenantId(tenantId);
 

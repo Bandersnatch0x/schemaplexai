@@ -35,11 +35,15 @@ public class TaskBranchManager {
     /**
      * Create a new task branch from the given base branch.
      *
+     * @param tenantId   the tenant scope for Git operations
      * @param taskId     the task identifier (used in branch name)
      * @param baseBranch the base branch to fork from (e.g. "main")
-     * @throws BaseException if taskId is null or branch creation fails
+     * @throws BaseException if tenantId/taskId is null or branch creation fails
      */
-    public void createBranch(Long taskId, String baseBranch) {
+    public void createBranch(Long tenantId, Long taskId, String baseBranch) {
+        if (tenantId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "tenantId must not be null");
+        }
         if (taskId == null) {
             throw new BaseException(ResultCode.PARAM_ERROR, "taskId must not be null");
         }
@@ -51,7 +55,7 @@ public class TaskBranchManager {
             log.info("Reactivating previously soft-deleted branch: {}", branchName);
         }
 
-        gitIntegrationService.createBranch(taskId, null, branchName, baseBranch);
+        gitIntegrationService.createBranch(tenantId, taskId, null, branchName, baseBranch);
         log.info("Task branch created: {} from base: {}", branchName, baseBranch);
     }
 
@@ -59,16 +63,20 @@ public class TaskBranchManager {
      * Soft-delete a task branch. The branch is removed from the remote but kept
      * in a registry for {@value #SOFT_DELETE_DAYS} days for potential recovery.
      *
-     * @param taskId the task identifier
-     * @throws BaseException if taskId is null or deletion fails
+     * @param tenantId the tenant scope for Git operations
+     * @param taskId   the task identifier
+     * @throws BaseException if tenantId/taskId is null or deletion fails
      */
-    public void deleteBranch(Long taskId) {
+    public void deleteBranch(Long tenantId, Long taskId) {
+        if (tenantId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "tenantId must not be null");
+        }
         if (taskId == null) {
             throw new BaseException(ResultCode.PARAM_ERROR, "taskId must not be null");
         }
         String branchName = BRANCH_PREFIX + taskId;
 
-        gitIntegrationService.deleteBranch(taskId, null, branchName, false);
+        gitIntegrationService.deleteBranch(tenantId, taskId, null, branchName, false);
 
         Instant deletedAt = Instant.now();
         Instant expiresAt = deletedAt.plus(SOFT_DELETE_DAYS, ChronoUnit.DAYS);
@@ -81,16 +89,20 @@ public class TaskBranchManager {
      * Hard-delete a task branch, bypassing the soft-delete registry.
      * Use with caution — no recovery possible.
      *
-     * @param taskId the task identifier
-     * @throws BaseException if taskId is null or deletion fails
+     * @param tenantId the tenant scope for Git operations
+     * @param taskId   the task identifier
+     * @throws BaseException if tenantId/taskId is null or deletion fails
      */
-    public void hardDeleteBranch(Long taskId) {
+    public void hardDeleteBranch(Long tenantId, Long taskId) {
+        if (tenantId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "tenantId must not be null");
+        }
         if (taskId == null) {
             throw new BaseException(ResultCode.PARAM_ERROR, "taskId must not be null");
         }
         String branchName = BRANCH_PREFIX + taskId;
 
-        gitIntegrationService.deleteBranch(taskId, null, branchName, true);
+        gitIntegrationService.deleteBranch(tenantId, taskId, null, branchName, true);
         softDeleteRegistry.remove(branchName);
 
         log.info("Task branch hard-deleted: {}", branchName);
@@ -121,11 +133,15 @@ public class TaskBranchManager {
     /**
      * Recover a soft-deleted branch by recreating it from the default base.
      *
+     * @param tenantId   the tenant scope for Git operations
      * @param taskId     the task identifier
      * @param baseBranch the base branch to recreate from
-     * @throws BaseException if the branch is not soft-deleted or recovery fails
+     * @throws BaseException if tenantId/taskId is null or the branch is not recoverable
      */
-    public void recoverBranch(Long taskId, String baseBranch) {
+    public void recoverBranch(Long tenantId, Long taskId, String baseBranch) {
+        if (tenantId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "tenantId must not be null");
+        }
         if (taskId == null) {
             throw new BaseException(ResultCode.PARAM_ERROR, "taskId must not be null");
         }
@@ -137,7 +153,7 @@ public class TaskBranchManager {
         }
 
         softDeleteRegistry.remove(branchName);
-        gitIntegrationService.createBranch(taskId, null, branchName, baseBranch);
+        gitIntegrationService.createBranch(tenantId, taskId, null, branchName, baseBranch);
         log.info("Task branch recovered: {} from base: {}", branchName, baseBranch);
     }
 

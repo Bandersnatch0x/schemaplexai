@@ -21,9 +21,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, SfNotification> implements NotificationService {
 
-    private static final int STATUS_UNREAD = 0;
-    private static final int STATUS_READ = 1;
-
     @Override
     public SfNotification sendNotification(Long userId, String type, String title, String content) {
         if (userId == null) {
@@ -41,7 +38,7 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, SfN
         notification.setType(type);
         notification.setTitle(title);
         notification.setContent(content);
-        notification.setStatus(STATUS_UNREAD);
+        notification.setRead(false);
         String tenantId = TenantContextHolder.getTenantId();
         if (tenantId != null) {
             notification.setTenantId(tenantId);
@@ -58,10 +55,10 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, SfN
         if (notification == null) {
             throw new BaseException(ResultCode.NOT_FOUND, "Notification not found: " + notificationId);
         }
-        if (notification.getStatus() != null && notification.getStatus() == STATUS_READ) {
+        if (Boolean.TRUE.equals(notification.getRead())) {
             return notification;
         }
-        notification.setStatus(STATUS_READ);
+        notification.setRead(true);
         notification.setUpdatedAt(LocalDateTime.now());
         baseMapper.updateById(notification);
         log.info("Marked notification as read: id={}, userId={}", notificationId, notification.getUserId());
@@ -76,7 +73,7 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, SfN
         String tenantId = TenantContextHolder.getTenantId();
         LambdaQueryWrapper<SfNotification> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SfNotification::getUserId, userId);
-        wrapper.eq(SfNotification::getStatus, STATUS_UNREAD);
+        wrapper.eq(SfNotification::getRead, false);
         if (tenantId != null) {
             wrapper.eq(SfNotification::getTenantId, tenantId);
         }
@@ -92,8 +89,8 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, SfN
         int count = 0;
         for (Long id : notificationIds) {
             SfNotification notification = baseMapper.selectById(id);
-            if (notification != null && (notification.getStatus() == null || notification.getStatus() != STATUS_READ)) {
-                notification.setStatus(STATUS_READ);
+            if (notification != null && !Boolean.TRUE.equals(notification.getRead())) {
+                notification.setRead(true);
                 notification.setUpdatedAt(LocalDateTime.now());
                 baseMapper.updateById(notification);
                 count++;
@@ -101,5 +98,20 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, SfN
         }
         log.info("Batch marked {} notifications as read", count);
         return count;
+    }
+
+    @Override
+    public List<SfNotification> listBudgetAlerts(String tenantId) {
+        // Review ST-01: fail closed. A blank tenant must never produce an
+        // unfiltered cross-tenant alert listing.
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new BaseException(ResultCode.PARAM_ERROR,
+                    "Tenant ID is required for budget alert queries");
+        }
+        LambdaQueryWrapper<SfNotification> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SfNotification::getType, BudgetAlertNotifier.ALERT_NOTIFICATION_TYPE);
+        wrapper.eq(SfNotification::getTenantId, tenantId);
+        wrapper.orderByDesc(SfNotification::getCreatedAt);
+        return baseMapper.selectList(wrapper);
     }
 }

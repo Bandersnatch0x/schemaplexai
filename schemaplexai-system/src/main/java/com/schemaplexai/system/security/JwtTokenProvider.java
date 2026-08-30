@@ -29,10 +29,28 @@ public class JwtTokenProvider {
         }
     }
 
+    /**
+     * Generates an access token with the default expiration.
+     */
     public String generateToken(String userId, String tenantId, String username) {
+        return generateToken(userId, tenantId, username, jwtExpiration);
+    }
+
+    /**
+     * Generates a token with an explicit expiration duration (in milliseconds).
+     * Used by AuthService for refresh tokens.
+     */
+    public String generateToken(String userId, String tenantId, long expirationMs) {
+        return buildToken(userId, tenantId, expirationMs);
+    }
+
+    /**
+     * Generates a token with an explicit expiration duration and username claim.
+     */
+    public String generateToken(String userId, String tenantId, String username, long expirationMs) {
         String jti = UUID.randomUUID().toString();
         Date now = new Date();
-        Date expiry = new Date(now.getTime() + jwtExpiration);
+        Date expiry = new Date(now.getTime() + expirationMs);
         SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
 
         return Jwts.builder()
@@ -40,6 +58,22 @@ public class JwtTokenProvider {
                 .subject(userId)
                 .claim("tenantId", tenantId)
                 .claim("username", username)
+                .issuedAt(now)
+                .expiration(expiry)
+                .signWith(key)
+                .compact();
+    }
+
+    private String buildToken(String userId, String tenantId, long expirationMs) {
+        String jti = UUID.randomUUID().toString();
+        Date now = new Date();
+        Date expiry = new Date(now.getTime() + expirationMs);
+        SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+
+        return Jwts.builder()
+                .id(jti)
+                .subject(userId)
+                .claim("tenantId", tenantId)
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(key)

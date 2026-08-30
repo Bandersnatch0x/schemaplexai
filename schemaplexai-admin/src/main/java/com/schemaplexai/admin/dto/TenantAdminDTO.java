@@ -10,7 +10,7 @@ public class TenantAdminDTO {
     private Long id;
     private String name;
     private String code;
-    private Integer status;
+    private String status;
     private String configJson;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

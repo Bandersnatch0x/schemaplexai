@@ -5,12 +5,14 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.schemaplexai.common.context.TenantContextHolder;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.spec.domain.SpecStatus;
 import com.schemaplexai.spec.entity.SfSpec;
 import com.schemaplexai.spec.entity.SfSpecTemplate;
 import com.schemaplexai.spec.entity.SfSpecVersion;
 import com.schemaplexai.spec.mapper.SfSpecMapper;
 import com.schemaplexai.spec.mapper.SfSpecTemplateMapper;
 import com.schemaplexai.spec.mapper.SfSpecVersionMapper;
+import com.schemaplexai.spec.service.SpecChangeTracker;
 import com.schemaplexai.spec.service.SpecService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +32,69 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
     private final SfSpecMapper specMapper;
     private final SfSpecVersionMapper specVersionMapper;
     private final SfSpecTemplateMapper specTemplateMapper;
+    private final SpecChangeTracker changeTracker;
+
+    @Override
+    public SfSpec createSpec(SfSpec spec) {
+        if (spec == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "spec is required");
+        }
+        // Lifecycle always starts in draft; a client-supplied status cannot
+        // shortcut the draft -> in_review -> approved -> published chain.
+        spec.setStatus(SpecStatus.DRAFT);
+        specMapper.insert(spec);
+        changeTracker.recordCreation(spec);
+        log.info("Created spec {} in status draft", spec.getId());
+        return spec;
+    }
+
+    @Override
+    public boolean updateSpec(Long id, SfSpec update) {
+        if (id == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "specId is required");
+        }
+        if (update == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "spec is required");
+        }
+        SfSpec existing = specMapper.selectById(id);
+        if (existing == null) {
+            throw new BaseException(ResultCode.SPEC_NOT_FOUND);
+        }
+        // Edit guard (spec-management §3.1): only drafts are editable.
+        if (!SpecStatus.isEditable(existing.getStatus())) {
+            throw new BaseException(ResultCode.FORBIDDEN,
+                    "Spec " + id + " is not editable in status " + existing.getStatus());
+        }
+        // Optimistic lock (spec-management §7): a client editing from an older
+        // revision must not silently overwrite newer content.
+        if (update.getVersion() != null && !update.getVersion().equals(existing.getVersion())) {
+            throw new BaseException(ResultCode.CONFLICT,
+                    "Spec " + id + " was modified concurrently; expected version "
+                            + update.getVersion() + " but found " + existing.getVersion());
+        }
+        // Change audit (spec-management §4.3): capture the pre-edit state so
+        // the field-level diff can be recorded once the update succeeds.
+        SfSpec before = SpecChangeTracker.snapshot(existing);
+        if (update.getTitle() != null) {
+            existing.setTitle(update.getTitle());
+        }
+        if (update.getType() != null) {
+            existing.setType(update.getType());
+        }
+        if (update.getContent() != null) {
+            existing.setContent(update.getContent());
+        }
+        // status is a lifecycle field: never rewritten by a plain update.
+        existing.setUpdatedAt(LocalDateTime.now());
+        int rows = specMapper.updateById(existing);
+        if (rows == 0) {
+            // @Version WHERE-clause matched nothing: a concurrent writer won.
+            throw new BaseException(ResultCode.CONFLICT,
+                    "Spec " + id + " was modified concurrently; reload and retry");
+        }
+        changeTracker.recordUpdate(before, existing, null);
+        return true;
+    }
 
     @Override
     public SfSpecVersion publishSpec(Long specId) {
@@ -39,9 +104,23 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
             throw new BaseException(ResultCode.SPEC_NOT_FOUND);
         }
 
-        spec.setStatus("published");
+        // Review NEW-06: publishing requires an approved review decision —
+        // draft/in_review/rejected/archived specs must not go straight to
+        // published, which would bypass the review workflow.
+        if (!SpecStatus.APPROVED.equals(spec.getStatus())) {
+            throw new BaseException(ResultCode.FORBIDDEN,
+                    "Spec " + specId + " cannot be published from status '"
+                            + spec.getStatus() + "'; it must be approved first");
+        }
+
+        SfSpec before = SpecChangeTracker.snapshot(spec);
+        spec.setStatus(SpecStatus.PUBLISHED);
         spec.setUpdatedAt(LocalDateTime.now());
-        specMapper.updateById(spec);
+        int rows = specMapper.updateById(spec);
+        if (rows == 0) {
+            throw new BaseException(ResultCode.CONFLICT,
+                    "Spec " + specId + " was modified concurrently; reload and retry");
+        }
 
         String tenantId = TenantContextHolder.getTenantId();
         LambdaQueryWrapper<SfSpecVersion> wrapper = new LambdaQueryWrapper<>();
@@ -68,6 +147,7 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
         version.setContent(spec.getContent());
         version.setChangeLog("Published version " + nextVersion);
         specVersionMapper.insert(version);
+        changeTracker.recordUpdate(before, spec, version.getId());
 
         log.info("Published spec {} with version {}", specId, nextVersion);
         return version;
@@ -76,15 +156,52 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
     @Override
     public boolean archiveSpec(Long specId) {
         validateSpecId(specId);
+        SfSpec spec = selectSpecOrThrow(specId);
+        SfSpec before = SpecChangeTracker.snapshot(spec);
+        spec.setStatus(SpecStatus.ARCHIVED);
+        spec.setUpdatedAt(LocalDateTime.now());
+        int rows = specMapper.updateById(spec);
+        if (rows == 0) {
+            throw new BaseException(ResultCode.CONFLICT,
+                    "Spec " + specId + " was modified concurrently; reload and retry");
+        }
+        changeTracker.recordUpdate(before, spec, null);
+        log.info("Archived spec {}", specId);
+        return true;
+    }
+
+    @Override
+    public SfSpec rollbackSpec(Long specId, Long versionId) {
+        validateSpecId(specId);
+        if (versionId == null) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "versionId is required");
+        }
         SfSpec spec = specMapper.selectById(specId);
         if (spec == null) {
             throw new BaseException(ResultCode.SPEC_NOT_FOUND);
         }
-        spec.setStatus("archived");
+        SfSpecVersion snapshot = specVersionMapper.selectById(versionId);
+        if (snapshot == null) {
+            throw new BaseException(ResultCode.SPEC_NOT_FOUND, "Spec version not found: " + versionId);
+        }
+        if (!specId.equals(snapshot.getSpecId())) {
+            throw new BaseException(ResultCode.PARAM_ERROR, "Version " + versionId + " belongs to a different spec");
+        }
+
+        // Restore the historical snapshot as a new editable draft. The
+        // snapshot itself is immutable; only the working document moves.
+        SfSpec before = SpecChangeTracker.snapshot(spec);
+        spec.setContent(snapshot.getContent());
+        spec.setStatus(SpecStatus.DRAFT);
         spec.setUpdatedAt(LocalDateTime.now());
         int rows = specMapper.updateById(spec);
-        log.info("Archived spec {}", specId);
-        return rows > 0;
+        if (rows == 0) {
+            throw new BaseException(ResultCode.CONFLICT,
+                    "Spec " + specId + " was modified concurrently; reload and retry");
+        }
+        changeTracker.recordUpdate(before, spec, versionId);
+        log.info("Rolled back spec {} to version snapshot {}", specId, versionId);
+        return spec;
     }
 
     @Override
@@ -129,18 +246,41 @@ public class SpecServiceImpl extends ServiceImpl<SfSpecMapper, SfSpec> implement
         SfSpec spec = new SfSpec();
         spec.setTitle(title);
         spec.setType(type);
-        spec.setStatus("draft");
+        spec.setStatus(SpecStatus.DRAFT);
         spec.setContent(template.getContent());
         specMapper.insert(spec);
+        changeTracker.recordCreation(spec);
 
         log.info("Created spec {} from template {}", spec.getId(), templateId);
         return spec;
+    }
+
+    @Override
+    public boolean deleteSpec(Long id) {
+        validateSpecId(id);
+        SfSpec existing = selectSpecOrThrow(id);
+        int rows = specMapper.deleteById(id);
+        if (rows > 0) {
+            // §4.3 DELETE trail: keep the title so the audit row alone says
+            // which document was removed.
+            changeTracker.recordDeletion(existing);
+        }
+        log.info("Deleted spec {}", id);
+        return rows > 0;
     }
 
     private void validateSpecId(Long specId) {
         if (specId == null) {
             throw new BaseException(ResultCode.PARAM_ERROR, "specId is required");
         }
+    }
+
+    private SfSpec selectSpecOrThrow(Long specId) {
+        SfSpec spec = specMapper.selectById(specId);
+        if (spec == null) {
+            throw new BaseException(ResultCode.SPEC_NOT_FOUND);
+        }
+        return spec;
     }
 
     private void validateTemplateId(Long templateId) {

@@ -4,6 +4,12 @@ server:
 spring:
   application:
     name: schemaplexai-agent-engine
+  flyway:
+    # Schema is owned by docker/postgres/init for fresh deployments; baseline
+    # past the consolidated migrations so startup never fails on an existing
+    # schema (live defect from browser verification round 2).
+    baseline-on-migrate: true
+    baseline-version: '2026_05_10_2'
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/schemaplexai
     username: ${DB_USERNAME:?required}
@@ -15,10 +21,12 @@ spring:
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
-  redis:
-    host: localhost
-    port: 6379
-    database: 0
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: 0
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
@@ -32,11 +40,11 @@ spring:
         max-concurrency: 10
   jackson:
     default-property-inclusion: non_null
-    date-format: yyyy-MM-dd HH:mm:ss
-    time-zone: GMT+8
+    date-format: yyyy-MM-dd'T'HH:mm:ss
+    time-zone: Asia/Shanghai
 
 mybatis-plus:
-  mapper-locations: classpath*:/mapper/**/*.xml
+  mapper-locations: classpath*:mapper/**/*.xml
   type-aliases-package: com.schemaplexai.agent.engine.entity
   global-config:
     db-config:
@@ -76,3 +84,4 @@ management:
 logging:
   level:
     com.schemaplexai.agent.engine: info
+    root: INFO

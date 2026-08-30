@@ -39,7 +39,7 @@ public class TenantController {
     @Operation(summary = "创建租户")
     @PostMapping
     public Result<Long> create(@RequestBody SfTenant tenant) {
-        tenantService.save(tenant);
+        tenantService.createTenant(tenant);
         return Result.success(tenant.getId());
     }
 
@@ -47,12 +47,12 @@ public class TenantController {
     @PutMapping("/{id}")
     public Result<Boolean> update(@PathVariable Long id, @RequestBody SfTenant tenant) {
         tenant.setId(id);
-        return Result.success(tenantService.updateById(tenant));
+        return Result.success(tenantService.updateTenant(tenant));
     }
 
     @Operation(summary = "删除租户")
     @DeleteMapping("/{id}")
     public Result<Boolean> delete(@PathVariable Long id) {
-        return Result.success(tenantService.removeById(id));
+        return Result.success(tenantService.deleteTenant(id));
     }
 }

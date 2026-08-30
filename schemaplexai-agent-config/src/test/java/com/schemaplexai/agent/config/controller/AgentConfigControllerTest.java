@@ -1,9 +1,11 @@
 package com.schemaplexai.agent.config.controller;
 
+import com.schemaplexai.agent.config.dto.AgentStatsVO;
 import com.schemaplexai.agent.config.entity.SfAgent;
 import com.schemaplexai.agent.config.entity.SfAgentConfig;
 import com.schemaplexai.agent.config.entity.SfAgentToolBinding;
 import com.schemaplexai.agent.config.service.AgentConfigService;
+import com.schemaplexai.agent.config.service.AgentStatsService;
 import com.schemaplexai.agent.config.service.ShadowConfigService;
 import com.schemaplexai.common.result.Result;
 import com.schemaplexai.model.entity.agent.SfAgentShadowConfig;
@@ -27,8 +29,38 @@ class AgentConfigControllerTest {
     @Mock
     private ShadowConfigService shadowConfigService;
 
+    @Mock
+    private AgentStatsService agentStatsService;
+
     @InjectMocks
     private AgentConfigController agentConfigController;
+
+    // ========== Agent Stats (issue 927) ==========
+
+    @Test
+    void getAgentStats_returnsTenantStats() {
+        AgentStatsVO stats = AgentStatsVO.builder()
+                .totalAgents(7)
+                .activeAgents(5)
+                .runningExecutions(3)
+                .totalExecutions(120)
+                .todayExecutions(9)
+                .totalTokens(12345)
+                .pendingApprovals(2)
+                .build();
+        when(agentStatsService.getStats()).thenReturn(stats);
+
+        Result<AgentStatsVO> result = agentConfigController.getAgentStats();
+
+        assertThat(result.getCode()).isEqualTo(200);
+        assertThat(result.getData().getTotalAgents()).isEqualTo(7);
+        assertThat(result.getData().getActiveAgents()).isEqualTo(5);
+        assertThat(result.getData().getRunningExecutions()).isEqualTo(3);
+        assertThat(result.getData().getTotalExecutions()).isEqualTo(120);
+        assertThat(result.getData().getTodayExecutions()).isEqualTo(9);
+        assertThat(result.getData().getTotalTokens()).isEqualTo(12345);
+        assertThat(result.getData().getPendingApprovals()).isEqualTo(2);
+    }
 
     // ========== Agent CRUD ==========
 

@@ -1,16 +1,16 @@
 package com.schemaplexai.web.controller;
 
 import com.schemaplexai.common.result.Result;
+import com.schemaplexai.web.service.execution.EngineExecutionQueryPort;
 import com.schemaplexai.web.service.execution.ExecutionLifecyclePort;
 import com.schemaplexai.web.service.execution.ExecutionStatusPort;
+import com.schemaplexai.web.vo.ExecutionStatusVO;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
@@ -26,22 +26,25 @@ class ExecutionWebControllerTest {
     @Mock
     private ExecutionStatusPort statusPort;
 
+    @Mock
+    private EngineExecutionQueryPort queryPort;
+
     @InjectMocks
     private ExecutionWebController controller;
 
     @Test
-    @DisplayName("GET /web/executions/{id} delegates to status query port")
+    @DisplayName("GET /web/executions/{id} delegates to status query port and returns typed VO")
     void getExecutionStatus_delegatesToStatusPort() {
-        Map<String, Object> status = Map.of(
-                "executionId", 1L,
-                "status", "PAUSED",
-                "snapshotId", 100L);
+        ExecutionStatusVO status = new ExecutionStatusVO();
+        status.setExecutionId(1L);
+        status.setState("PAUSED");
         when(statusPort.getExecutionStatus(1L)).thenReturn(status);
 
-        Result<Map<String, Object>> result = controller.getExecutionStatus(1L);
+        Result<ExecutionStatusVO> result = controller.getExecutionStatus(1L);
 
         assertThat(result.getCode()).isEqualTo(200);
-        assertThat(result.getData()).isEqualTo(status);
+        assertThat(result.getData().getExecutionId()).isEqualTo(1L);
+        assertThat(result.getData().getState()).isEqualTo("PAUSED");
         verify(statusPort).getExecutionStatus(1L);
     }
 
@@ -70,5 +73,17 @@ class ExecutionWebControllerTest {
 
         assertThat(result.getCode()).isEqualTo(200);
         verify(lifecyclePort).cancelExecution(1L);
+    }
+
+    @Test
+    @DisplayName("GET /web/executions delegates to query port")
+    void listExecutions_delegatesToQueryPort() {
+        long page = 1;
+        long size = 20;
+
+        Result<?> result = controller.listExecutions(page, size, null, null);
+
+        assertThat(result.getCode()).isEqualTo(200);
+        verify(queryPort).listExecutions(page, size, null, null);
     }
 }

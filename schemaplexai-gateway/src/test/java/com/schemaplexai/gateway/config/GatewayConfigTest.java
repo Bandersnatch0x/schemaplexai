@@ -36,7 +36,7 @@ class GatewayConfigTest {
 
         assertThat(result).isNotNull();
         verify(builder).routes();
-        verify(routeBuilder, times(11)).route(anyString(), any());
+        verify(routeBuilder, times(12)).route(anyString(), any());
         verify(routeBuilder).build();
     }
 }

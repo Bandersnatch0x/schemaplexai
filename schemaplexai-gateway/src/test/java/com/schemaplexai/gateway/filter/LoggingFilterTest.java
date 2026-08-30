@@ -101,4 +101,43 @@ class LoggingFilterTest {
     void getOrder_returnsHighestPrecedence() {
         assertThat(filter.getOrder()).isEqualTo(Ordered.HIGHEST_PRECEDENCE);
     }
+
+    @Test
+    void maskQuery_masksSensitiveParamValues() {
+        assertThat(LoggingFilter.maskQuery("token=abc123")).isEqualTo("token=***");
+        assertThat(LoggingFilter.maskQuery("PASSWORD=p%40ss")).isEqualTo("PASSWORD=***");
+        assertThat(LoggingFilter.maskQuery("refresh_token=xyz")).isEqualTo("refresh_token=***");
+        assertThat(LoggingFilter.maskQuery("api-key=k")).isEqualTo("api-key=***");
+        assertThat(LoggingFilter.maskQuery("authorization=Bearer.t")).isEqualTo("authorization=***");
+    }
+
+    @Test
+    void maskQuery_masksPluralFormsAndPreservesOthers() {
+        assertThat(LoggingFilter.maskQuery("current=1&size=10")).isEqualTo("current=1&size=10");
+        assertThat(LoggingFilter.maskQuery("tokens=not-sensitive-name")).isEqualTo("tokens=***");
+        assertThat(LoggingFilter.maskQuery("tokenizer=keepme")).isEqualTo("tokenizer=keepme");
+        assertThat(LoggingFilter.maskQuery("flag")).isEqualTo("flag");
+    }
+
+    @Test
+    void maskQuery_handlesMixedQuery() {
+        assertThat(LoggingFilter.maskQuery("page=2&token=secret&sort=desc"))
+                .isEqualTo("page=2&token=***&sort=desc");
+    }
+
+    @Test
+    void maskQuery_handlesNullAndEmpty() {
+        assertThat(LoggingFilter.maskQuery(null)).isNull();
+        assertThat(LoggingFilter.maskQuery("")).isEmpty();
+    }
+
+    @Test
+    void filter_withSensitiveQuery_passesThrough() {
+        when(request.getURI()).thenReturn(URI.create("http://localhost/api/test?token=abc&foo=bar"));
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        verify(chain).filter(exchange);
+    }
 }

@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import Composer from '../index'
 import * as uploadApi from '@/api/upload'
-import type { ComposerValue } from '../types'
 
 vi.mock('@/api/upload', async () => {
   const actual = await vi.importActual<typeof import('@/api/upload')>('@/api/upload')
@@ -11,6 +10,49 @@ vi.mock('@/api/upload', async () => {
     uploadFile: vi.fn(),
     getScanStatus: vi.fn(),
   }
+})
+
+// The real useMentions hook intentionally ships an empty candidate source
+// (production code carries no demo data; candidates will come from a backend
+// search endpoint). To keep the dropdown-rendering and mention-insertion
+// behavior of the Composer itself covered, the hook is replaced here with a
+// fixture-driven fake honoring the same contract.
+vi.mock('../useMentions', async () => {
+  const { useState, useCallback } = await import('react')
+  type Candidate = { id: string; type: 'file' | 'session' | 'skill' | 'agent'; name: string }
+  const FIXTURE_CANDIDATES: Candidate[] = [
+    { id: 'sk2', type: 'skill', name: 'code-review' },
+  ]
+  function useFakeMentions() {
+    const [query, setQuery] = useState('')
+    const [candidates, setCandidates] = useState<Candidate[]>([])
+    const [active, setActive] = useState(false)
+    const onInputChange = useCallback((text: string, cursorPos: number) => {
+      const beforeCursor = text.slice(0, cursorPos)
+      const lastAt = beforeCursor.lastIndexOf('@')
+      if (lastAt === -1 || beforeCursor.slice(lastAt + 1).includes(' ')) {
+        setActive(false)
+        setQuery('')
+        setCandidates([])
+        return
+      }
+      const q = beforeCursor.slice(lastAt + 1).toLowerCase()
+      setQuery(q)
+      setCandidates(FIXTURE_CANDIDATES.filter((c) => c.name.toLowerCase().includes(q)))
+      setActive(true)
+    }, [])
+    const onSelect = useCallback(
+      (candidate: Candidate) => `[@${candidate.name}](${candidate.type}:${candidate.id}) `,
+      []
+    )
+    const reset = useCallback(() => {
+      setActive(false)
+      setQuery('')
+      setCandidates([])
+    }, [])
+    return { query, candidates, active, onInputChange, onSelect, reset }
+  }
+  return { useMentions: useFakeMentions }
 })
 
 describe('Composer', () => {

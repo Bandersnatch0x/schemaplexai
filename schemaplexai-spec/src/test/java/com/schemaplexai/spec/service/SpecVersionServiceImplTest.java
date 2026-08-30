@@ -7,6 +7,7 @@ import com.schemaplexai.spec.entity.SfSpec;
 import com.schemaplexai.spec.entity.SfSpecVersion;
 import com.schemaplexai.spec.mapper.SfSpecMapper;
 import com.schemaplexai.spec.mapper.SfSpecVersionMapper;
+import com.schemaplexai.spec.service.SpecChangeTracker;
 import com.schemaplexai.spec.service.impl.SpecVersionServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,6 +32,9 @@ class SpecVersionServiceImplTest {
 
     @Mock
     private SfSpecVersionMapper specVersionMapper;
+
+    @Mock
+    private SpecChangeTracker changeTracker;
 
     @InjectMocks
     private SpecVersionServiceImpl specVersionService;
@@ -171,9 +177,10 @@ class SpecVersionServiceImplTest {
     void createVersion_success_createsVersionAndUpdatesSpec() {
         SfSpec spec = new SfSpec();
         spec.setId(1L);
-        spec.setStatus("DRAFT");
+        spec.setStatus("draft");
         when(specMapper.selectById(1L)).thenReturn(spec);
         when(specVersionMapper.insert(any())).thenReturn(1);
+        when(specMapper.updateById(spec)).thenReturn(1);
 
         SfSpecVersion result = specVersionService.createVersion(1L, "v1", "new content", "first version");
 
@@ -182,8 +189,41 @@ class SpecVersionServiceImplTest {
         assertThat(result.getContent()).isEqualTo("new content");
         assertThat(result.getChangeLog()).isEqualTo("first version");
         assertThat(spec.getContent()).isEqualTo("new content");
-        assertThat(spec.getStatus()).isEqualTo("ACTIVE");
+        assertThat(spec.getStatus()).isEqualTo("draft");
         verify(specMapper).updateById(spec);
         verify(specVersionMapper).insert(any());
+        verify(changeTracker).recordUpdate(any(SfSpec.class), eq(spec), isNull());
+    }
+
+    @Test
+    void createVersion_concurrentModification_throwsConflict() {
+        SfSpec spec = new SfSpec();
+        spec.setId(1L);
+        spec.setStatus("draft");
+        when(specMapper.selectById(1L)).thenReturn(spec);
+        when(specVersionMapper.insert(any())).thenReturn(1);
+        when(specMapper.updateById(spec)).thenReturn(0);
+
+        assertThatThrownBy(() -> specVersionService.createVersion(1L, "v1", "new content", "first version"))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.CONFLICT.getCode());
+    }
+
+    // ------------------------------------------------------------------
+    // updateVersion (immutability)
+    // ------------------------------------------------------------------
+
+    @Test
+    void updateVersion_alwaysThrowsForbidden_snapshotsImmutable() {
+        SfSpecVersion attempt = new SfSpecVersion();
+        attempt.setContent("tampered");
+
+        assertThatThrownBy(() -> specVersionService.updateVersion(1L, attempt))
+                .isInstanceOf(BaseException.class)
+                .extracting("code")
+                .isEqualTo(ResultCode.FORBIDDEN.getCode());
+
+        verify(specVersionMapper, never()).updateById(any());
     }
 }

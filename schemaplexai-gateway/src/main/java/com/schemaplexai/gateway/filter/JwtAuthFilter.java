@@ -2,6 +2,7 @@ package com.schemaplexai.gateway.filter;
 
 import com.schemaplexai.common.constants.CommonConstants;
 import com.schemaplexai.common.result.ResultCode;
+import com.schemaplexai.gateway.config.GatewayWhitelistProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
@@ -29,7 +30,6 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -51,14 +51,33 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
-    private final List<String> whiteList = List.of(
-            "/auth/**",
-            "/system/tenants/**",
-            "/v3/api-docs/**",
-            "/swagger-ui/**",
-            "/webjars/**",
-            "/doc.html"
-    );
+    /**
+     * Authentication whitelist — paths reachable without a token (issue 912, spec §4.2).
+     * Shared with {@link TenantResolveFilter} via {@link GatewayWhitelistProperties}
+     * (single source of truth; whitelisted paths are also exempt from tenant
+     * validation because they legitimately carry no tenant).
+     * <p>Deliberately converged from the previous 6-entry list:
+     * <ul>
+     *   <li>{@code /auth/**} wildcard removed: it exempted {@code /auth/logout} and
+     *       {@code /auth/change-password}, and the whitelist branch strips identity
+     *       headers — so change-password always got a 401 and logout saw a null
+     *       userId. Both now go through JWT validation, which injects
+     *       {@code X-User-Id}/{@code X-Tenant-Id} from the validated token.</li>
+     *   <li>{@code /system/tenants/**} removed: business data path never listed in
+     *       the spec; anonymous access past the gateway trust boundary is rejected.</li>
+     *   <li>{@code /auth/register} dropped: the system service has no register
+     *       endpoint (spec/code drift), so nothing exists to whitelist.</li>
+     * </ul>
+     * Retained beyond the literal spec set (documented deviations):
+     * <ul>
+     *   <li>{@code /auth/refresh}: the refresh token is sent in the request body and
+     *       the expired access token cannot authenticate the call — exempting it is a
+     *       functional necessity (spec amendment candidate).</li>
+     *   <li>{@code /swagger-ui/**}, {@code /webjars/**}: static assets required by the
+     *       whitelisted doc UI ({@code /doc.html}, {@code /v3/api-docs/**}).</li>
+     * </ul>
+     */
+    private final GatewayWhitelistProperties whitelistProperties;
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -112,7 +131,8 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
     }
 
     private boolean isWhiteListed(String path) {
-        return whiteList.stream().anyMatch(pattern -> pathMatcher.match(pattern, path));
+        return whitelistProperties.getPaths().stream()
+                .anyMatch(pattern -> pathMatcher.match(pattern, path));
     }
 
     private String resolveToken(ServerHttpRequest request) {

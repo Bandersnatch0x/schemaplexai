@@ -1,10 +1,12 @@
 package com.schemaplexai.agent.engine.model;
 
 import com.schemaplexai.agent.engine.config.LlmProviderProperties;
+import com.schemaplexai.agent.engine.cost.LlmUsageDispatch;
 import com.schemaplexai.agent.engine.tool.ToolDefinition;
 import com.schemaplexai.common.exception.BaseException;
 import com.schemaplexai.common.result.ResultCode;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import lombok.extern.slf4j.Slf4j;
@@ -53,10 +55,15 @@ public abstract class LlmProviderAdapter implements LlmProvider {
 
         ChatLanguageModel model = getOrCreateModel(modelId, temperature);
         try {
-            String response = model.generate(prompt);
+            // Use the Response-returning overload so the provider-reported
+            // tokenUsage is captured for cost collection instead of being
+            // discarded by the String convenience overload.
+            Response<AiMessage> response = model.generate(UserMessage.from(prompt));
+            String text = LlmMessageConverter.extractText(response);
+            reportTokenUsage(modelId, response);
             log.debug("{} generate success: model={}, responseLength={}", getProviderName(), modelId,
-                    response != null ? response.length() : 0);
-            return response != null ? response : "";
+                    text.length());
+            return text;
         } catch (Exception e) {
             log.error("{} generate failed: model={}, error={}", getProviderName(), modelId, e.getMessage(), e);
             throw new BaseException(ResultCode.AGENT_EXECUTION_FAILED,
@@ -80,6 +87,7 @@ public abstract class LlmProviderAdapter implements LlmProvider {
         try {
             Response<AiMessage> response = model.generate(chatMessages);
             String text = LlmMessageConverter.extractText(response);
+            reportTokenUsage(modelId, response);
             log.debug("{} chat completion success: model={}, responseLength={}",
                     getProviderName(), modelId, text.length());
             return text;
@@ -148,6 +156,21 @@ public abstract class LlmProviderAdapter implements LlmProvider {
     public abstract boolean isHealthy();
 
     // --- Shared helper methods ---
+
+    /**
+     * Forwards the LLM response's token usage to the cost-collection dispatch
+     * so every completed call is recorded (cost-analytics spec §1). Usage is
+     * attributed to the resolved model id actually served by this provider.
+     *
+     * @param modelId  the requested model id (resolved to the effective one)
+     * @param response the LLM response (may be null or carry no usage)
+     */
+    protected void reportTokenUsage(String modelId, Response<AiMessage> response) {
+        if (response == null || response.tokenUsage() == null) {
+            return;
+        }
+        LlmUsageDispatch.report(getProviderName(), resolveModelId(modelId), response.tokenUsage());
+    }
 
     /**
      * Returns an existing cached model, or creates a new one.

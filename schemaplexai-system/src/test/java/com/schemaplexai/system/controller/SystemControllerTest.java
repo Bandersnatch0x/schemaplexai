@@ -4,15 +4,23 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.schemaplexai.common.constants.CommonConstants;
 import com.schemaplexai.common.page.PageParam;
 import com.schemaplexai.common.result.Result;
+import com.schemaplexai.model.dto.PageResult;
+import com.schemaplexai.system.dto.*;
 import com.schemaplexai.system.entity.*;
+import com.schemaplexai.system.mapper.SfRolePermissionMapper;
+import com.schemaplexai.system.mapper.SfUserRoleMapper;
+import com.schemaplexai.system.security.RbacService;
 import com.schemaplexai.system.service.*;
+import com.schemaplexai.system.vo.UserVO;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockHttpServletRequest;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,7 +53,16 @@ class SystemControllerTest {
     @Mock private ModelProviderService modelProviderService;
     @InjectMocks private ModelProviderController modelProviderController;
 
-    // AuthController
+    @Mock private TenantPolicyService tenantPolicyService;
+    @InjectMocks private TenantPolicyController tenantPolicyController;
+
+    @Mock private SfUserRoleMapper userRoleMapper;
+    @Mock private SfRolePermissionMapper rolePermissionMapper;
+    @Mock private RbacService rbacService;
+    @InjectMocks private RoleAssignmentController roleAssignmentController;
+
+    // ==================== AuthController ====================
+
     @Test
     void auth_login() {
         HttpServletRequest req = mock(HttpServletRequest.class);
@@ -82,7 +99,35 @@ class SystemControllerTest {
         verify(authService).logout("1", "raw-token");
     }
 
-    // TenantController
+    @Test
+    void auth_changePassword() {
+        MockHttpServletRequest req = new MockHttpServletRequest();
+        req.addHeader(CommonConstants.HEADER_USER_ID, "1");
+        ChangePasswordRequest body = new ChangePasswordRequest();
+        body.setOldPassword("oldPass");
+        body.setNewPassword("newPass");
+
+        Result<Void> result = authController.changePassword(body, req);
+
+        assertThat(result.getCode()).isEqualTo(200);
+        verify(authService).changePassword(1L, "oldPass", "newPass");
+    }
+
+    @Test
+    void auth_changePassword_missingUserId_returnsUnauthorized() {
+        MockHttpServletRequest req = new MockHttpServletRequest();
+        ChangePasswordRequest body = new ChangePasswordRequest();
+        body.setOldPassword("oldPass");
+        body.setNewPassword("newPass");
+
+        Result<Void> result = authController.changePassword(body, req);
+
+        assertThat(result.getCode()).isEqualTo(401);
+        verify(authService, never()).changePassword(any(), any(), any());
+    }
+
+    // ==================== TenantController ====================
+
     @Test
     void tenant_page() {
         PageParam pp = new PageParam();
@@ -117,56 +162,81 @@ class SystemControllerTest {
     @Test
     void tenant_update() {
         SfTenant t = new SfTenant();
-        when(tenantService.updateById(any())).thenReturn(true);
+        when(tenantService.updateTenant(any())).thenReturn(true);
         Result<Boolean> result = tenantController.update(1L, t);
         assertThat(result.getData()).isTrue();
     }
 
     @Test
     void tenant_delete() {
-        when(tenantService.removeById(1L)).thenReturn(true);
+        when(tenantService.deleteTenant(1L)).thenReturn(true);
         Result<Boolean> result = tenantController.delete(1L);
         assertThat(result.getData()).isTrue();
     }
 
-    // UserController
+    // ==================== UserController ====================
+
     @Test
     void user_page() {
         PageParam pp = new PageParam();
         pp.setCurrent(1L); pp.setSize(20L);
         when(userService.page(any())).thenReturn(new Page<>());
-        Result<?> result = userController.page(pp);
+        Result<PageResult<UserVO>> result = userController.page(pp);
         assertThat(result.getCode()).isEqualTo(200);
     }
 
     @Test
     void user_getById_found() {
-        SfUser u = new SfUser(); u.setId(1L);
+        SfUser u = new SfUser(); u.setId(1L); u.setUsername("u");
         when(userService.getById(1L)).thenReturn(u);
-        Result<SfUser> result = userController.getById(1L);
+        Result<UserVO> result = userController.getById(1L);
         assertThat(result.getCode()).isEqualTo(200);
+        assertThat(result.getData().getUsername()).isEqualTo("u");
     }
 
     @Test
     void user_getById_notFound() {
         when(userService.getById(1L)).thenReturn(null);
-        Result<SfUser> result = userController.getById(1L);
+        Result<UserVO> result = userController.getById(1L);
         assertThat(result.getCode()).isEqualTo(404);
     }
 
     @Test
     void user_create() {
-        SfUser u = new SfUser(); u.setId(1L);
-        Result<Long> result = userController.create(u);
-        assertThat(result.getData()).isEqualTo(1L);
+        UserCreateRequest req = new UserCreateRequest();
+        req.setUsername("newuser");
+        req.setPassword("password123");
+        req.setEmail("e@e.com");
+
+        when(userService.register(any(SfUser.class))).thenAnswer(invocation -> {
+            SfUser saved = invocation.getArgument(0);
+            saved.setId(100L);
+            return 100L;
+        });
+
+        Result<Long> result = userController.create(req);
+        assertThat(result.getData()).isEqualTo(100L);
     }
 
     @Test
-    void user_update() {
-        SfUser u = new SfUser();
+    void user_update_found() {
+        when(userService.getById(1L)).thenReturn(new SfUser());
         when(userService.updateById(any())).thenReturn(true);
-        Result<Boolean> result = userController.update(1L, u);
+
+        UserUpdateRequest req = new UserUpdateRequest();
+        req.setEmail("new@e.com");
+
+        Result<Boolean> result = userController.update(1L, req);
         assertThat(result.getData()).isTrue();
+    }
+
+    @Test
+    void user_update_notFound() {
+        when(userService.getById(99L)).thenReturn(null);
+
+        UserUpdateRequest req = new UserUpdateRequest();
+        Result<Boolean> result = userController.update(99L, req);
+        assertThat(result.getCode()).isEqualTo(404);
     }
 
     @Test
@@ -176,7 +246,25 @@ class SystemControllerTest {
         assertThat(result.getData()).isTrue();
     }
 
-    // RoleController
+    @Test
+    void toVO_excludesPassword() {
+        SfUser u = new SfUser();
+        u.setId(1L);
+        u.setUsername("test");
+        u.setPassword("$2a$10$shouldNotBeExposed");
+        u.setEmail("e@e.com");
+        u.setTenantId("t1");
+
+        UserVO vo = UserController.toVO(u);
+
+        assertThat(vo.getUsername()).isEqualTo("test");
+        assertThat(vo).hasFieldOrPropertyWithValue("id", 1L);
+        // Verify the VO does NOT have a password field via class introspection
+        assertThat(vo).isExactlyInstanceOf(UserVO.class);
+    }
+
+    // ==================== RoleController ====================
+
     @Test
     void role_page() {
         PageParam pp = new PageParam();
@@ -223,7 +311,8 @@ class SystemControllerTest {
         assertThat(result.getData()).isTrue();
     }
 
-    // PermissionController
+    // ==================== PermissionController ====================
+
     @Test
     void permission_page() {
         PageParam pp = new PageParam();
@@ -270,7 +359,8 @@ class SystemControllerTest {
         assertThat(result.getData()).isTrue();
     }
 
-    // ConfigController
+    // ==================== ConfigController ====================
+
     @Test
     void config_page() {
         PageParam pp = new PageParam();
@@ -317,7 +407,8 @@ class SystemControllerTest {
         assertThat(result.getData()).isTrue();
     }
 
-    // AiModelController
+    // ==================== AiModelController ====================
+
     @Test
     void aiModel_page() {
         PageParam pp = new PageParam();
@@ -364,7 +455,8 @@ class SystemControllerTest {
         assertThat(result.getData()).isTrue();
     }
 
-    // ModelProviderController
+    // ==================== ModelProviderController ====================
+
     @Test
     void modelProvider_page() {
         PageParam pp = new PageParam();
@@ -409,5 +501,125 @@ class SystemControllerTest {
         when(modelProviderService.removeById(1L)).thenReturn(true);
         Result<Boolean> result = modelProviderController.delete(1L);
         assertThat(result.getData()).isTrue();
+    }
+
+    // ==================== TenantPolicyController ====================
+
+    @Test
+    void tenantPolicy_listPolicies() {
+        HttpServletRequest req = mock(HttpServletRequest.class);
+        when(req.getHeader(CommonConstants.HEADER_TENANT_ID)).thenReturn("t1");
+        when(tenantPolicyService.getPoliciesByTenant("t1")).thenReturn(List.of());
+
+        Result<List<TenantPolicy>> result = tenantPolicyController.listPolicies(req);
+        assertThat(result.getCode()).isEqualTo(200);
+    }
+
+    @Test
+    void tenantPolicy_getPolicy_found() {
+        HttpServletRequest req = mock(HttpServletRequest.class);
+        when(req.getHeader(CommonConstants.HEADER_TENANT_ID)).thenReturn("t1");
+        TenantPolicy policy = new TenantPolicy();
+        policy.setPolicyType("RATE_LIMIT");
+        when(tenantPolicyService.getPolicy("t1", "RATE_LIMIT")).thenReturn(policy);
+
+        Result<TenantPolicy> result = tenantPolicyController.getPolicy("RATE_LIMIT", req);
+        assertThat(result.getCode()).isEqualTo(200);
+        assertThat(result.getData().getPolicyType()).isEqualTo("RATE_LIMIT");
+    }
+
+    @Test
+    void tenantPolicy_getPolicy_notFound() {
+        HttpServletRequest req = mock(HttpServletRequest.class);
+        when(req.getHeader(CommonConstants.HEADER_TENANT_ID)).thenReturn("t1");
+        when(tenantPolicyService.getPolicy("t1", "MISSING")).thenReturn(null);
+
+        Result<TenantPolicy> result = tenantPolicyController.getPolicy("MISSING", req);
+        assertThat(result.getCode()).isEqualTo(404);
+    }
+
+    @Test
+    void tenantPolicy_saveOrUpdatePolicy() {
+        HttpServletRequest req = mock(HttpServletRequest.class);
+        when(req.getHeader(CommonConstants.HEADER_TENANT_ID)).thenReturn("t1");
+        TenantPolicyRequest body = new TenantPolicyRequest();
+        body.setConfigJson("{\"rpm\": 100}");
+
+        Result<Void> result = tenantPolicyController.saveOrUpdatePolicy("RATE_LIMIT", body, req);
+
+        assertThat(result.getCode()).isEqualTo(200);
+        verify(tenantPolicyService).saveOrUpdatePolicy("t1", "RATE_LIMIT", "{\"rpm\": 100}");
+    }
+
+    // ==================== RoleAssignmentController ====================
+
+    @Test
+    void roleAssignment_assignRoleToUser() {
+        RoleAssignmentRequest req = new RoleAssignmentRequest();
+        req.setUserId(1L);
+        req.setRoleId(10L);
+        when(userRoleMapper.selectCount(any())).thenReturn(0L);
+        when(userRoleMapper.insert(any(SfUserRole.class))).thenReturn(1);
+
+        Result<Long> result = roleAssignmentController.assignRoleToUser(req);
+
+        assertThat(result.getCode()).isEqualTo(200);
+        verify(rbacService).evictUser(1L);
+    }
+
+    @Test
+    void roleAssignment_assignRoleToUser_alreadyAssigned() {
+        RoleAssignmentRequest req = new RoleAssignmentRequest();
+        req.setUserId(1L);
+        req.setRoleId(10L);
+        when(userRoleMapper.selectCount(any())).thenReturn(1L);
+
+        Result<Long> result = roleAssignmentController.assignRoleToUser(req);
+
+        assertThat(result.getCode()).isEqualTo(409);
+        verify(rbacService, never()).evictUser(any());
+    }
+
+    @Test
+    void roleAssignment_removeRoleFromUser() {
+        when(userRoleMapper.delete(any())).thenReturn(1);
+
+        Result<Void> result = roleAssignmentController.removeRoleFromUser(1L, 10L);
+
+        assertThat(result.getCode()).isEqualTo(200);
+        verify(rbacService).evictUser(1L);
+    }
+
+    @Test
+    void roleAssignment_removeRoleFromUser_notFound() {
+        when(userRoleMapper.delete(any())).thenReturn(0);
+
+        Result<Void> result = roleAssignmentController.removeRoleFromUser(1L, 99L);
+
+        assertThat(result.getCode()).isEqualTo(404);
+    }
+
+    @Test
+    void roleAssignment_assignPermissionToRole() {
+        PermissionAssignmentRequest req = new PermissionAssignmentRequest();
+        req.setRoleId(10L);
+        req.setPermissionId(100L);
+        when(rolePermissionMapper.selectCount(any())).thenReturn(0L);
+        when(rolePermissionMapper.insert(any(SfRolePermission.class))).thenReturn(1);
+
+        Result<Long> result = roleAssignmentController.assignPermissionToRole(req);
+
+        assertThat(result.getCode()).isEqualTo(200);
+        verify(rbacService).evictAll();
+    }
+
+    @Test
+    void roleAssignment_removePermissionFromRole() {
+        when(rolePermissionMapper.delete(any())).thenReturn(1);
+
+        Result<Void> result = roleAssignmentController.removePermissionFromRole(10L, 100L);
+
+        assertThat(result.getCode()).isEqualTo(200);
+        verify(rbacService).evictAll();
     }
 }

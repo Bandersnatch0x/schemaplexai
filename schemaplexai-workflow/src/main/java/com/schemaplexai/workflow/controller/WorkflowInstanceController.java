@@ -11,6 +11,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/workflow/instances")
 @RequiredArgsConstructor
@@ -61,6 +63,29 @@ public class WorkflowInstanceController {
     @PostMapping("/{id}/trigger")
     public Result<Boolean> trigger(@PathVariable Long id) {
         workflowInstanceService.trigger(id);
+        return Result.success(true);
+    }
+
+    @Operation(summary = "取消工作流实例", description = "仅 PENDING / RUNNING / WAITING_APPROVAL 状态可取消（规格 §6.2）")
+    @PostMapping("/{id}/cancel")
+    public Result<Boolean> cancel(@PathVariable Long id) {
+        workflowInstanceService.cancel(id);
+        return Result.success(true);
+    }
+
+    @Operation(summary = "人工审批通过", description = "恢复等待审批的实例并继续执行（规格 §6.2）")
+    @PostMapping("/{id}/approve")
+    public Result<Boolean> approve(@PathVariable Long id,
+                                   @RequestBody(required = false) Map<String, String> body) {
+        workflowInstanceService.approve(id, body != null ? body.get("comment") : null);
+        return Result.success(true);
+    }
+
+    @Operation(summary = "人工审批拒绝", description = "拒绝等待审批的实例，实例进入 FAILED（规格 §6.2）")
+    @PostMapping("/{id}/reject")
+    public Result<Boolean> reject(@PathVariable Long id,
+                                  @RequestBody(required = false) Map<String, String> body) {
+        workflowInstanceService.reject(id, body != null ? body.get("reason") : null);
         return Result.success(true);
     }
 }

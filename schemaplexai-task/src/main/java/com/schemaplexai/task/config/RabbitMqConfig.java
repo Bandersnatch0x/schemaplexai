@@ -95,20 +95,14 @@ public class RabbitMqConfig {
                 .with(CommonConstants.RK_COST);
     }
 
-    @Bean
-    public Queue qualityQueue() {
-        Map<String, Object> args = new HashMap<>();
-        args.put("x-dead-letter-exchange", DeadLetterConfig.DLX_EXCHANGE);
-        args.put("x-dead-letter-routing-key", DeadLetterConfig.DLX_ROUTING_KEY);
-        return new Queue("sf.quality.queue", true, false, false, args);
-    }
-
-    @Bean
-    public Binding qualityBinding() {
-        return BindingBuilder.bind(qualityQueue())
-                .to(schemaplexaiExchange())
-                .with(CommonConstants.RK_QUALITY);
-    }
+    // Note (NEW-03): the legacy sf.quality.queue / qualityBinding were retired.
+    // Quality events on routing key sf.quality are owned by the quality module's
+    // QualityCheckEventConsumer (queue sf.quality.gate.check.queue, ticket 924).
+    // The former task-side consumer was an always-throwing stub that duplicated
+    // every quality event into the dead-letter queue and wrote a fail log per
+    // event, masking real failures — it is deliberately not re-declared here.
+    // Any pre-existing broker copy of sf.quality.queue must be removed
+    // operationally (nothing consumes or re-declares it from this service).
 
     @Bean
     public Queue milvusSyncQueue() {

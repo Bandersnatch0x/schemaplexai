@@ -10,7 +10,7 @@ CREATE TABLE sf_workflow_template (
     name            VARCHAR(128) NOT NULL,
     description     TEXT,
     node_config_json TEXT NOT NULL,
-    status          VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
+    status          VARCHAR(32) NOT NULL DEFAULT 'draft', -- draft / deployed / inactive; only deployed templates are executable (spec §4)
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by      BIGINT,
@@ -22,9 +22,11 @@ CREATE TABLE sf_workflow_instance (
     id              BIGSERIAL PRIMARY KEY,
     tenant_id       BIGINT NOT NULL,
     template_id     BIGINT NOT NULL,
-    status          VARCHAR(32) NOT NULL DEFAULT 'RUNNING',
+    status          VARCHAR(32) NOT NULL DEFAULT 'RUNNING', -- RUNNING / WAITING_APPROVAL / COMPLETED / FAILED / CANCELLED (spec §4)
     trigger_type    VARCHAR(32) NOT NULL, -- MANUAL / SCHEDULED / EVENT
     trigger_config  TEXT,
+    input_data      TEXT, -- instance-level input parameters seeding the ${input.xxx} substitution context (spec §5.2)
+    output_data     TEXT, -- merged node outputs once the instance completes (spec §5.2)
     started_at      TIMESTAMP,
     completed_at    TIMESTAMP,
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -35,9 +37,9 @@ CREATE TABLE sf_workflow_instance (
 CREATE TABLE sf_workflow_node_execution (
     id              BIGSERIAL PRIMARY KEY,
     tenant_id       BIGINT NOT NULL,
-    instance_id     BIGINT NOT NULL,
+    instance_id     BIGINT, -- nullable: Flowable-bridge (BPMN) executions have no sf_workflow_instance
     node_id         VARCHAR(64) NOT NULL,
-    node_type       VARCHAR(32) NOT NULL, -- TRIGGER / DOCUMENT / AGENT / APPROVAL / QUALITY / NOTIFICATION / ARTIFACT
+    node_type       VARCHAR(32) NOT NULL, -- START / END / CONDITION / JOIN / CONCURRENT / AI_MODEL / HTTP / SCRIPT / TOOL_CALL / HUMAN_APPROVAL
     status          VARCHAR(32) NOT NULL DEFAULT 'PENDING',
     input_json      TEXT,
     output_json     TEXT,
@@ -136,7 +138,7 @@ CREATE TABLE sf_quality_gate (
     tenant_id       BIGINT NOT NULL,
     name            VARCHAR(128) NOT NULL,
     rules_json      TEXT,
-    status          VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
+    status          VARCHAR(32) NOT NULL DEFAULT 'ACTIVE', -- ACTIVE / INACTIVE / DEPRECATED; only ACTIVE gates are evaluated
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted         INT NOT NULL DEFAULT 0
@@ -149,7 +151,7 @@ CREATE TABLE sf_quality_issue (
     issue_type      VARCHAR(32) NOT NULL, -- HALLUCINATION / TOOL_MISUSE / SPEC_DEVIATION
     severity        VARCHAR(32) NOT NULL, -- LOW / MEDIUM / HIGH / CRITICAL
     description     TEXT,
-    status          VARCHAR(32) NOT NULL DEFAULT 'OPEN',
+    status          VARCHAR(32) NOT NULL DEFAULT 'OPEN', -- OPEN / IN_PROGRESS / RESOLVED / CLOSED / WONT_FIX
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted         INT NOT NULL DEFAULT 0
@@ -241,7 +243,7 @@ CREATE TABLE sf_mcp_server (
     name            VARCHAR(128) NOT NULL,
     endpoint        VARCHAR(512) NOT NULL,
     transport       VARCHAR(32) NOT NULL DEFAULT 'HTTP',
-    status          VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
+    status          VARCHAR(32) NOT NULL DEFAULT 'ACTIVE', -- ACTIVE / INACTIVE; only ACTIVE servers are discovered/invoked
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted         INT NOT NULL DEFAULT 0
@@ -278,26 +280,32 @@ CREATE TABLE sf_delivery_record (
     deleted         INT NOT NULL DEFAULT 0
 );
 
+-- Authoritative notification table definition (single source of truth).
+-- Read/write contract: schemaplexai-model Notification entity (read BOOLEAN),
+-- schemaplexai-dao NotificationMapper (SET read = TRUE), schemaplexai-ops SfNotification.
 CREATE TABLE sf_notification (
     id              BIGSERIAL PRIMARY KEY,
     tenant_id       BIGINT NOT NULL,
     user_id         BIGINT NOT NULL,
-    type            VARCHAR(32) NOT NULL, -- IN_APP / EMAIL / IM
     title           VARCHAR(256) NOT NULL,
     content         TEXT,
-    status          VARCHAR(32) NOT NULL DEFAULT 'UNREAD',
+    type            VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    read            BOOLEAN NOT NULL DEFAULT FALSE,
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by      BIGINT,
+    updated_by      BIGINT,
     deleted         INT NOT NULL DEFAULT 0
 );
 
 CREATE TABLE sf_budget (
     id              BIGSERIAL PRIMARY KEY,
     tenant_id       BIGINT NOT NULL,
-    budget_type     VARCHAR(32) NOT NULL, -- MONTHLY / PROJECT
-    limit_amount    DECIMAL(18,4) NOT NULL,
-    used_amount     DECIMAL(18,4) NOT NULL DEFAULT 0,
-    alert_threshold DECIMAL(5,2) DEFAULT 80.00,
+    budget_type     VARCHAR(32) NOT NULL, -- MONTHLY / AGENT / MODEL
+    limit_amount    DECIMAL(18,6) NOT NULL,
+    used_amount     DECIMAL(18,6) NOT NULL DEFAULT 0,
+    -- 阈值语义统一为小数（规格 §3.3：0.8 = 80%）；历史百分数行由服务端归一化兼容。
+    alert_threshold DECIMAL(3,2) DEFAULT 0.80,
     currency        VARCHAR(8) DEFAULT 'USD',
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -406,5 +414,46 @@ CREATE INDEX idx_node_execution_instance ON sf_workflow_node_execution(instance_
 CREATE INDEX idx_knowledge_doc_tenant ON sf_knowledge_doc(tenant_id);
 CREATE INDEX idx_quality_issue_execution ON sf_quality_issue(execution_id);
 CREATE INDEX idx_audit_event_tenant ON sf_audit_event(tenant_id, created_at);
-CREATE INDEX idx_notification_user ON sf_notification(user_id, status);
+CREATE INDEX idx_notification_tenant_user ON sf_notification(tenant_id, user_id);
+CREATE INDEX idx_notification_tenant_user_read ON sf_notification(tenant_id, user_id, read);
+CREATE INDEX idx_notification_created_at ON sf_notification(created_at);
 CREATE INDEX idx_message_fail_log_status ON sf_message_fail_log(status, created_at);
+
+-- Task board (schemaplexai-task REST layer: /task/tasks, /task/tasks/{id}/comments)
+CREATE TABLE sf_task (
+    id                  BIGSERIAL PRIMARY KEY,
+    tenant_id           BIGINT NOT NULL,
+    title               VARCHAR(255) NOT NULL,
+    description         TEXT,
+    skill_tags          TEXT DEFAULT '[]',
+    priority            VARCHAR(8) NOT NULL DEFAULT 'P2',
+    status              VARCHAR(32) NOT NULL DEFAULT 'BACKLOG',
+    assigned_runtime_id VARCHAR(128),
+    assigned_agent_id   BIGINT,
+    assignment_type     VARCHAR(16) NOT NULL DEFAULT 'MANUAL',
+    spec_id             BIGINT,
+    blocker_reason      TEXT,
+    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by          BIGINT,
+    updated_by          BIGINT,
+    deleted             INT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE sf_task_comment (
+    id              BIGSERIAL PRIMARY KEY,
+    tenant_id       BIGINT NOT NULL,
+    task_id         BIGINT NOT NULL,
+    content         TEXT NOT NULL,
+    author_id       BIGINT NOT NULL,
+    author_name     VARCHAR(64),
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by      BIGINT,
+    updated_by      BIGINT,
+    deleted         INT NOT NULL DEFAULT 0
+);
+
+CREATE INDEX idx_task_tenant_status ON sf_task(tenant_id, status);
+CREATE INDEX idx_task_tenant_priority ON sf_task(tenant_id, priority);
+CREATE INDEX idx_task_comment_task ON sf_task_comment(task_id, created_at);

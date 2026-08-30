@@ -1,21 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getAgentStats } from '@/api/agent-engine'
+import { getAgentStats, type AgentStats } from '@/api/agent-engine'
 import { HexIcon, StatCard } from '@/components/Hive'
 import './Cockpit.css'
 
-interface CockpitStats {
-  totalAgents: number
-  totalExecutions: number
-  totalTokens: number
-  pendingApprovals: number
-}
-
 export default function Cockpit() {
   const { t } = useTranslation()
-  const [stats, setStats] = useState<CockpitStats>({
+  const [stats, setStats] = useState<AgentStats>({
     totalAgents: 0,
+    activeAgents: 0,
+    runningExecutions: 0,
     totalExecutions: 0,
+    todayExecutions: 0,
     totalTokens: 0,
     pendingApprovals: 0,
   })
@@ -43,7 +39,7 @@ export default function Cockpit() {
 
   const statCards = [
     {
-      value: loading ? '—' : stats.totalAgents.toString(),
+      value: loading ? '—' : stats.activeAgents.toString(),
       label: t('cockpit.activeAgents'),
       unit: '+3 this week',
       color: 'cyan' as const,
@@ -76,7 +72,7 @@ export default function Cockpit() {
           {apiStatus === 'connected' ? `● ${t('common.live')}` : `● ${t('common.offline')}`}
         </span>
         <span className="divider">|</span>
-        <span>{stats.totalAgents} {t('cockpit.agentsActive')}</span>
+        <span>{stats.activeAgents} {t('cockpit.agentsActive')}</span>
         <span className="divider">|</span>
         <span>{t('cockpit.lastSync')}: 2{t('cockpit.secondsAgo')}</span>
       </div>
@@ -99,7 +95,7 @@ export default function Cockpit() {
           <div className="cockpit-orbit-center">
             <div className="cockpit-orbit-center-inner">
               <div className="cockpit-orbit-center-value">
-                {loading ? '—' : stats.totalAgents}
+                {loading ? '—' : stats.activeAgents}
               </div>
               <div className="cockpit-orbit-center-label">{t('common.live')}</div>
             </div>

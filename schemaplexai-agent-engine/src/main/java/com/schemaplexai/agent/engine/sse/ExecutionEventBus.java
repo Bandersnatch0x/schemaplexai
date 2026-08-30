@@ -53,12 +53,12 @@ public class ExecutionEventBus {
 
     public void publishStateTransition(Long executionId, AgentExecutionState from, AgentExecutionState to) {
         String id = String.valueOf(executionId);
-        Map<String, Object> payload = Map.of(
-                "executionId", executionId,
-                "fromState", from != null ? from.name() : null,
-                "toState", to.name(),
-                "timestamp", System.currentTimeMillis()
-        );
+        // HashMap: Map.of rejects null values and fromState is null on the first transition
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("executionId", executionId);
+        payload.put("fromState", from != null ? from.name() : null);
+        payload.put("toState", to.name());
+        payload.put("timestamp", System.currentTimeMillis());
         broadcast(id, "state-transition", payload);
         persistEvent(executionId, TimelineEventType.STATE_TRANSITION,
                 "State: " + from + " → " + to, payload, null);

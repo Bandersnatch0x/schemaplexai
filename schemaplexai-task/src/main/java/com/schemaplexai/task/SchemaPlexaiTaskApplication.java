@@ -12,7 +12,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "com.schemaplexai.task.mapper",
         "com.schemaplexai.dao.mapper.notification"
 })
-@SpringBootApplication(scanBasePackages = {"com.schemaplexai.task"})
+@SpringBootApplication(scanBasePackages = {"com.schemaplexai.task", "com.schemaplexai.dao"})
 public class SchemaPlexaiTaskApplication {
 
     public static void main(String[] args) {

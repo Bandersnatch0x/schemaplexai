@@ -11,6 +11,7 @@ import com.schemaplexai.system.entity.SfTenant;
 import com.schemaplexai.system.entity.SfUser;
 import com.schemaplexai.system.mapper.SfTenantMapper;
 import com.schemaplexai.system.mapper.SfUserMapper;
+import com.schemaplexai.system.service.TenantCacheSyncer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ public class TenantAdminService extends ServiceImpl<SfTenantMapper, SfTenant> {
 
     private final SfUserMapper userMapper;
     private final SfAuditLogMapper auditLogMapper;
+    private final TenantCacheSyncer tenantCacheSyncer;
 
     public TenantAdminDTO getTenantAdminDetail(Long tenantId) {
         SfTenant tenant = getById(tenantId);
@@ -74,8 +76,9 @@ public class TenantAdminService extends ServiceImpl<SfTenantMapper, SfTenant> {
         if (tenant == null) {
             throw new BaseException(ResultCode.TENANT_NOT_FOUND);
         }
-        tenant.setStatus(0);
+        tenant.setStatus(com.schemaplexai.common.redis.TenantRedisKeyResolver.TENANT_STATUS_DISABLED);
         updateById(tenant);
+        tenantCacheSyncer.sync(tenant);
         log.info("Tenant disabled: id={}, code={}", tenantId, tenant.getCode());
     }
 
@@ -84,8 +87,9 @@ public class TenantAdminService extends ServiceImpl<SfTenantMapper, SfTenant> {
         if (tenant == null) {
             throw new BaseException(ResultCode.TENANT_NOT_FOUND);
         }
-        tenant.setStatus(1);
+        tenant.setStatus(com.schemaplexai.common.redis.TenantRedisKeyResolver.TENANT_STATUS_ACTIVE);
         updateById(tenant);
+        tenantCacheSyncer.sync(tenant);
         log.info("Tenant enabled: id={}, code={}", tenantId, tenant.getCode());
     }
 
@@ -97,6 +101,7 @@ public class TenantAdminService extends ServiceImpl<SfTenantMapper, SfTenant> {
         }
         tenant.setConfigJson(dto.getConfigJson());
         updateById(tenant);
+        tenantCacheSyncer.sync(tenant);
         log.info("Tenant config updated: id={}, code={}", tenantId, tenant.getCode());
     }
 

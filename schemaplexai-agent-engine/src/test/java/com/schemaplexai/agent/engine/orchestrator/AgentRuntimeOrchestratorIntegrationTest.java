@@ -9,6 +9,7 @@ import com.schemaplexai.agent.engine.observability.ObservabilityRecorder;
 import com.schemaplexai.agent.engine.state.AgentExecutionState;
 import com.schemaplexai.agent.engine.state.AgentStateMachine;
 import com.schemaplexai.model.entity.observability.ObservabilityTrace;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -37,6 +38,15 @@ class AgentRuntimeOrchestratorIntegrationTest {
     @Mock
     private com.schemaplexai.agent.engine.config.AgentEngineProperties engineProperties;
 
+    @Mock
+    private StringRedisTemplate redisTemplate;
+
+    @Mock
+    private org.springframework.data.redis.core.ValueOperations<String, String> valueOps;
+
+    @Mock
+    private com.schemaplexai.agent.engine.lifecycle.AgentExecutionLifecycleService lifecycleService;
+
     @InjectMocks
     private AgentRuntimeOrchestrator orchestrator;
 
@@ -56,6 +66,8 @@ class AgentRuntimeOrchestratorIntegrationTest {
             .thenReturn(mockTrace);
 
         when(engineProperties.getMaxToolCalls()).thenReturn(10);
+
+        when(redisTemplate.opsForValue()).thenReturn(valueOps);
 
         when(admissionService.admit(eq("tenant-1"), eq(1L), any(TokenBudget.class)))
             .thenReturn(AdmissionResult.builder().allowed(true).build());

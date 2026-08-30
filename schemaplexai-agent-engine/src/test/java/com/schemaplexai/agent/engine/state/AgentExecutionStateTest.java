@@ -33,7 +33,6 @@ class AgentExecutionStateTest {
         assertFalse(AgentExecutionState.READY.isTerminal());
         assertFalse(AgentExecutionState.THINKING.isTerminal());
         assertFalse(AgentExecutionState.TOOL_CALLING.isTerminal());
-        assertFalse(AgentExecutionState.OBSERVATION.isTerminal());
         assertFalse(AgentExecutionState.PAUSED.isTerminal());
         assertFalse(AgentExecutionState.RESUMING.isTerminal());
         assertFalse(AgentExecutionState.GATE_BLOCKED.isTerminal());

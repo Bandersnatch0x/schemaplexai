@@ -33,8 +33,12 @@ public class AgentExecutionController {
 
     @PostMapping("/{id}/execute")
     @Operation(summary = "Start agent execution")
-    public Result<SfAgentExecution> execute(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        String tenantId = body.get("tenantId");
+    public Result<SfAgentExecution> execute(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body,
+            @RequestHeader(value = "X-Tenant-Id", required = false) String tenantIdHeader) {
+        // Security: always use tenant from gateway-injected header, never trust client body
+        String tenantId = tenantIdHeader;
         String prompt = body.get("prompt");
         SfAgentExecution execution = executionStarter.startExecution(id, tenantId, prompt);
         return Result.success(execution);
@@ -81,7 +85,9 @@ public class AgentExecutionController {
         String executionId = String.valueOf(execId);
         ValidationResult result = sseTokenValidator.validate(token, executionId);
         if (!result.isValid()) {
-            throw new SecurityException("Unauthorized SSE access: " + result.errorMessage());
+            throw new com.schemaplexai.common.exception.BaseException(
+                    com.schemaplexai.common.result.ResultCode.UNAUTHORIZED,
+                    "Unauthorized SSE access: " + result.errorMessage());
         }
 
         SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);

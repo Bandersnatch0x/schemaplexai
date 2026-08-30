@@ -10,6 +10,7 @@ import com.schemaplexai.spec.service.SpecVersionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,6 +23,7 @@ public class SpecVersionController {
 
     @Operation(summary = "创建规格版本")
     @PostMapping
+    @PreAuthorize("hasAuthority('spec:write')")
     public Result<Long> create(@RequestBody SfSpecVersion version) {
         specVersionService.save(version);
         return Result.success(version.getId());
@@ -29,13 +31,14 @@ public class SpecVersionController {
 
     @Operation(summary = "更新规格版本")
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('spec:write')")
     public Result<Boolean> update(@PathVariable Long id, @RequestBody SfSpecVersion version) {
-        version.setId(id);
-        return Result.success(specVersionService.updateById(version));
+        return Result.success(specVersionService.updateVersion(id, version));
     }
 
     @Operation(summary = "删除规格版本")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('spec:delete')")
     public Result<Boolean> delete(@PathVariable Long id) {
         return Result.success(specVersionService.removeById(id));
     }
@@ -66,6 +69,7 @@ public class SpecVersionController {
 
     @Operation(summary = "发布规格版本")
     @PostMapping("/publish")
+    @PreAuthorize("hasAuthority('spec:write')")
     public Result<SfSpecVersion> publish(@RequestParam Long specId,
                                           @RequestParam String version,
                                           @RequestParam String content,

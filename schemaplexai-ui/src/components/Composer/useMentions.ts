@@ -1,15 +1,17 @@
 import { useState, useCallback, useRef } from 'react'
 import type { MentionCandidate } from './types'
 
-const MOCK_CANDIDATES: MentionCandidate[] = [
-  { id: 'f1', type: 'file', name: 'design-spec.md' },
-  { id: 'f2', type: 'file', name: 'api-contract.yaml' },
-  { id: 's1', type: 'session', name: 'Session #42' },
-  { id: 'sk1', type: 'skill', name: 'code-review' },
-  { id: 'sk2', type: 'skill', name: 'security-audit' },
-  { id: 'a1', type: 'agent', name: 'planner' },
-  { id: 'a2', type: 'agent', name: 'code-reviewer' },
-]
+/**
+ * Mention candidate source.
+ *
+ * Candidates are meant to come from backend search (files, sessions, skills,
+ * agents). Until that endpoint exists the source is intentionally empty —
+ * the Composer simply offers no mention suggestions, and the dropdown stays
+ * hidden (it only renders when candidates are present). The spec quality
+ * gate forbids hardcoded demo/placeholder constants in production code, so
+ * no fixture data lives here.
+ */
+const CANDIDATE_SOURCE: MentionCandidate[] = []
 
 interface UseMentionsReturn {
   query: string
@@ -49,7 +51,7 @@ export function useMentions(): UseMentionsReturn {
     const q = afterAt.toLowerCase()
     setQuery(q)
     setCandidates(
-      MOCK_CANDIDATES.filter((c) => c.name.toLowerCase().includes(q)).slice(0, 6)
+      CANDIDATE_SOURCE.filter((c) => c.name.toLowerCase().includes(q)).slice(0, 6)
     )
     setActive(true)
   }, [])

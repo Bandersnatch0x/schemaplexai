@@ -103,8 +103,14 @@ CREATE TABLE sf_ai_model (
     model_code      VARCHAR(128) NOT NULL,
     status          VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
     config_json     TEXT,
+    -- 模型价格配置（成本分析 spec §3.1）：每 1K Token 单价，未配置时计费走兜底费率并告警
+    input_price_per_1k  NUMERIC(18,8),
+    output_price_per_1k NUMERIC(18,8),
+    currency            VARCHAR(8) NOT NULL DEFAULT 'USD',
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by      BIGINT,
+    updated_by      BIGINT,
     deleted         INT NOT NULL DEFAULT 0
 );
 
@@ -129,9 +135,9 @@ CREATE TABLE sf_spec (
     tenant_id       BIGINT NOT NULL,
     title           VARCHAR(256) NOT NULL,
     type            VARCHAR(32) NOT NULL, -- REQUIREMENT / DESIGN / TASK / STEERING
-    status          VARCHAR(32) NOT NULL DEFAULT 'DRAFT',
+    status          VARCHAR(32) NOT NULL DEFAULT 'draft', -- draft / in_review / approved / published / archived / rejected (rejected = terminal review-rejection outcome)
     content         TEXT,
-    version         INT NOT NULL DEFAULT 1,
+    version         INT NOT NULL DEFAULT 1, -- optimistic-lock counter (@Version, ticket 925); NOT the "current published version pointer" of the spec text — published versions live in sf_spec_version
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by      BIGINT,
@@ -199,8 +205,28 @@ CREATE TABLE sf_spec_review (
     deleted         INT NOT NULL DEFAULT 0
 );
 
+-- Field-level spec change audit (spec-management §4.3, issue 925)
+CREATE TABLE sf_spec_change (
+    id              BIGSERIAL PRIMARY KEY,
+    tenant_id       BIGINT NOT NULL,
+    spec_id         BIGINT NOT NULL,
+    version_id      BIGINT,
+    change_type     VARCHAR(16) NOT NULL, -- ADD / MODIFY / DELETE
+    field_name      VARCHAR(64) NOT NULL, -- title / type / status / content / *(whole document)
+    old_value       TEXT,
+    new_value       TEXT,
+    changed_by      BIGINT,
+    changed_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by      BIGINT,
+    updated_by      BIGINT,
+    deleted         INT NOT NULL DEFAULT 0
+);
+
 -- Indexes
 CREATE INDEX idx_user_tenant ON sf_user(tenant_id);
 CREATE INDEX idx_role_tenant ON sf_role(tenant_id);
 CREATE INDEX idx_spec_tenant ON sf_spec(tenant_id);
 CREATE INDEX idx_model_tenant ON sf_ai_model(tenant_id);
+CREATE INDEX idx_spec_change_spec ON sf_spec_change(spec_id);

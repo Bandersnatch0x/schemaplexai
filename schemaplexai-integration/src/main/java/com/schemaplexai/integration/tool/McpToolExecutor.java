@@ -24,6 +24,9 @@ public class McpToolExecutor implements ToolExecutor {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
+    /** sf_mcp_server.status value required for a server to be invocable. */
+    private static final String STATUS_ACTIVE = "ACTIVE";
+
     @Override
     public String getToolName() {
         return "mcp";
@@ -38,7 +41,7 @@ public class McpToolExecutor implements ToolExecutor {
         if (server == null) {
             throw new BaseException(ResultCode.INTEGRATION_NOT_FOUND, "MCP server not found: " + serverId);
         }
-        if (server.getStatus() == null || server.getStatus() != 1) {
+        if (!STATUS_ACTIVE.equals(server.getStatus())) {
             throw new BaseException(ResultCode.INTEGRATION_NOT_FOUND, "MCP server is not active: " + serverId);
         }
 

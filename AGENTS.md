@@ -6,7 +6,7 @@ SchemaPlexAI 是一个面向企业级 AI 研发的协作平台，覆盖需求定
 
 本项目采用多模块 Maven 工程结构，后端基于 Spring Boot 3.2 + Java 21，前端基于 React 18 + TypeScript + Vite。各业务域按微服务拆分，通过 API Gateway 统一接入，使用 RabbitMQ 进行跨服务异步通信。
 
-**当前状态说明**：项目已完成基础脚手架搭建（Gateway 路由、认证鉴权、全局过滤器、公共基类、数据库初始化脚本、前端框架），但大量业务模块仍处于待填充状态；`schemaplexai-admin` 模块目前为占位桩，无实际代码。
+**当前状态说明**：项目已完成基础脚手架搭建（Gateway 路由、认证鉴权、全局过滤器、公共基类、数据库初始化脚本、前端框架），各业务模块已大量填充；`schemaplexai-admin` 模块已实现（6 个管理服务 + 111 个测试，截至 2026-08-30 实测口径，详见下文）。全部 16 个 Maven 模块均已建立测试套件。Spec 合规修复批（来源：`docs/reviews/spec-compliance-2026-08-29/REPORT.md`）正在进行中，逐票完成状态以 `.scratch/spec-compliance-fix/issues/REGISTRY.md` 台账为准；本文档中的数字类内容均为**截至 2026-08-30 的实测/台账口径**，修复批推进后请以最新运行产物为准。
 
 ---
 
@@ -52,7 +52,7 @@ schemaplexai/
 ├── schemaplexai-dao              # 数据访问层（MyBatis-Plus + 租户隔离）
 ├── schemaplexai-model            # 模型层（Entity / DTO / VO / 枚举）
 ├── schemaplexai-common           # 公共组件（异常 / 常量 / 结果封装 / 工具类）
-├── schemaplexai-admin            # 管理后台聚合（占位桩，暂无代码）
+├── schemaplexai-admin            # 管理后台聚合（端口 8092）— 租户/用户/角色/审计日志/系统配置/平台健康管理
 └── schemaplexai-ui               # 前端工程（端口 3000）
 ```
 
@@ -163,29 +163,47 @@ npm run lint     # ESLint 检查
 | Grafana | http://localhost:3000 |
 | Prometheus | http://localhost:9090 |
 | MinIO 控制台 | http://localhost:9001 |
+| Jaeger UI | http://localhost:16686 |
 
 ---
 
 ## 测试策略
 
-### 当前状态（重要）
+### 当前状态（截至 2026-08-30 实测/台账口径）
 
-**项目中目前没有任何自动化测试。**
+**全部 16 个 Maven 模块均已建立测试套件**，`pom.xml` 已引入 `spring-boot-starter-test`（16 模块）与 Testcontainers 依赖。以下为各模块实测测试数（聚合自各模块 `target/surefire-reports`，本 worktree 运行时间 2026-08-30 00:09–01:26；统计日期 2026-08-30）：
 
-- 后端：全部 16 个 Maven 模块均无 `src/test/` 目录，无任何 `*Test*.java` 文件
-- `pom.xml` 中未引入任何测试依赖（`spring-boot-starter-test`、`junit`、`mockito`、`testcontainers` 等）
-- 前端：`schemaplexai-ui` 中无测试框架（Vitest / Jest / Cypress / Playwright），无 `.test.*` 或 `.spec.*` 文件
+| 模块 | 实测测试数 | 失败/错误 | 跳过 |
+|------|-----------|----------|------|
+| schemaplexai-agent-engine | 1,874 | 0 / 0 | 4（Docker 容器沙箱类） |
+| schemaplexai-integration | 300 | 0 / 0 | 0 |
+| schemaplexai-quality | 279 | 0 / 0 | 0 |
+| schemaplexai-ops | 269 | 0 / 0 | 0 |
+| schemaplexai-system | 174 | 0 / 0 | 0 |
+| schemaplexai-spec | 150 | 0 / 0 | 0 |
+| schemaplexai-web | 147 | 0 / 0 | 0 |
+| schemaplexai-common | 129 | 0 / 0 | 0 |
+| schemaplexai-admin | 111 | 0 / 0 | 0 |
+| schemaplexai-model | 27 | 0 / 0 | 0 |
+| schemaplexai-dao | 20 | 0 / 0 | 0 |
+| schemaplexai-task | 15 | 0 / 0 | 0 |
+| schemaplexai-gateway | 86 | 0 / 0 | 0 |
+| **小计（13 模块，2026-08-30 运行）** | **3,581** | **0 / 0** | **4** |
+
+- `schemaplexai-agent-config`（103）、`schemaplexai-context`（242）、`schemaplexai-workflow`（210）：本次运行未覆盖（本 worktree 无 2026-08-30 运行产物），最近一次记录运行（2026-07-02）均为全绿；按台账口径计入后 16 模块合计约 **4,136**。
+- 前端：`schemaplexai-ui` 已配置 Vitest + React Testing Library（22 个 `*.test.*` 文件、146 个单元用例，静态计数口径）与 Playwright（`e2e/` 下 3 个 spec）；`vitest.config.ts` 仍保留 `passWithNoTests: true`。
+- 修复批在途，测试数随并行工作持续变化；引用时请以最新 `target/surefire-reports` 为准。
 
 ### CI 中的测试环节
 
-GitHub Actions 工作流 `.github/workflows/ci.yml` 包含 `mvn test` 步骤，并上传 Surefire 报告，但由于没有实际测试，该步骤仅产生空报告。
+GitHub Actions 工作流 `.github/workflows/ci.yml` 的 `backend` job 执行 `mvn test`（全模块）并上传 Surefire 测试报告与 JaCoCo 覆盖率报告；`frontend` job 执行 `npm run lint`、`npm test -- --run`、`npx tsc --noEmit` 与 Playwright e2e smoke（`e2e/smoke.spec.ts`）。
 
 ### 建议补充的测试体系
 
-- **后端单元测试**：JUnit 5 + Mockito + AssertJ
-- **后端集成测试**：`@SpringBootTest` + Testcontainers（PostgreSQL、Redis、RabbitMQ）
-- **前端单元测试**：Vitest + React Testing Library
-- **前端 E2E**：Playwright 或 Cypress
+- **后端单元测试**：JUnit 5 + Mockito + AssertJ（`spring-boot-starter-test` 已就位，16 模块均有测试）
+- **后端集成测试**：`@SpringBootTest` + Testcontainers（PostgreSQL、Redis、RabbitMQ）——Testcontainers 依赖已声明，集成覆盖面待扩展
+- **前端单元测试**：Vitest + React Testing Library（已就位）
+- **前端 E2E**：Playwright（已就位，`e2e/` 下 smoke/screenshots/figma-regression 三个 spec）
 
 ---
 
@@ -195,11 +213,13 @@ GitHub Actions 工作流 `.github/workflows/ci.yml` 包含 `mvn test` 步骤，�
 
 | Job | 说明 |
 |-----|------|
-| `build-backend` | JDK 21 (Temurin) → `mvn clean compile -DskipTests` → `mvn test` → 上传 Surefire XML 报告 |
-| `build-frontend` | Node 20 → `npm ci` → `npm run lint \|\| true` → `npm run build` |
-| `code-quality` | `mvn spotbugs:check \|\| true` → `mvn checkstyle:check \|\| true` |
+| `security-trivy` | Trivy 漏洞扫描（repo 模式，SARIF 上传） |
+| `security-dependency-check` | OWASP Dependency-Check 依赖漏洞扫描 |
+| `security-gitleaks` | Gitleaks 密钥泄露扫描 |
+| `backend` | 依赖三条安全轨 → JDK 21 → `mvn compile` → `mvn test`（全模块）→ `mvn jacoco:check`（全 16 模块）→ SpotBugs / Checkstyle → 安全敏感文件变更检测 → 上传测试/覆盖率报告 + JaCoCo badge |
+| `frontend` | 依赖三条安全轨 → Node → `npm ci` → lint / vitest / `tsc --noEmit` → Playwright e2e smoke |
 
-**注意**：`lint`、`spotbugs`、`checkstyle` 均使用 `|| true` 允许失败，因此不会阻塞合并。
+**注意**：`spotbugs`、`checkstyle` 与 `dependency-check` 使用 `continue-on-error: true` 允许失败；`jacoco:check` 覆盖全部 16 模块且为硬门禁；Trivy 无 fail 条件，安全扫描非硬阻断。
 
 ---
 
@@ -207,7 +227,7 @@ GitHub Actions 工作流 `.github/workflows/ci.yml` 包含 `mvn test` 步骤，�
 
 ### Docker Compose（`docker/docker-compose.yml`）
 
-定义了 10 个服务，运行在自定义桥接网络 `sf-network`：
+定义了 12 个服务，运行在自定义桥接网络 `sf-network`（另声明内部网络 `sf-internal`）；所有宿主机端口均绑定 `127.0.0.1`：
 
 | 服务 | 镜像 | 端口 | 说明 |
 |------|------|------|------|
@@ -217,16 +237,18 @@ GitHub Actions 工作流 `.github/workflows/ci.yml` 包含 `mvn test` 步骤，�
 | minio | minio/minio:latest | 9000, 9001 | 对象存储 |
 | milvus-standalone | milvusdb/milvus:v2.3.5 | 19530, 9091 | 向量库 |
 | etcd | quay.io/coreos/etcd:v3.5.5 | 2379 | Milvus 依赖 |
-| clickhouse | clickhouse/clickhouse-server:24.3 | 8123, **9000** | 分析仓库 |
+| clickhouse | clickhouse/clickhouse-server:24.3 | 8123, **9004**→容器 9000 | 分析仓库 |
 | elasticsearch | elasticsearch:8.12.0 | 9200 | 日志检索 |
 | prometheus | prom/prometheus:v2.50.0 | 9090 | 指标采集 |
-| grafana *(拼写为 gafana)* | grafana/grafana:10.3.0 | 3000 | 可视化 |
+| grafana | grafana/grafana:10.3.0 | 3000 | 可视化 |
+| jaeger | jaegertracing/all-in-one:1.52 | 16686, 4317, 4318 | 分布式追踪 |
+| clamav | clamav/clamav:1.3 | 3310 | 病毒扫描 |
 
-**已知问题**：
-- **端口冲突**：MinIO API 与 ClickHouse Native 协议同时绑定了宿主机 `9000`
-- **服务名拼写**：Grafana 服务在 compose 中被命名为 `gafana`
-- **应用配置与 Docker 不匹配**：Docker 提供的是 **PostgreSQL**（库名 `schemaplexai`，用户 `sf_user`），但绝大多数 `application.yml` 仍硬编码为 **MySQL**（`localhost:3306`，用户 `root`）；RabbitMQ 配置也与 Docker 中的 `sf_user` / `sf_password` 不一致
-- **无健康检查与重启策略**
+**现状说明（截至 2026-08-30）**：
+- **端口冲突已解决**：ClickHouse Native 协议改映射为 `127.0.0.1:9004:9000`，不再与 MinIO API（9000）冲突
+- **服务名拼写已修正**：Grafana 服务名为 `grafana`（容器名 `sf-grafana`）
+- **应用配置与 Docker 已对齐**：各服务 `application.yml` 统一为 **PostgreSQL**（`jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/schemaplexai`），用户名/密码经 `${DB_USERNAME:?required}` / `${DB_PASSWORD:?required}` 等环境变量注入；RabbitMQ 凭据同样为必填环境变量（`RABBITMQ_USERNAME` / `RABBITMQ_PASSWORD`）。本地启动前需提供这些环境变量（如 `POSTGRES_PASSWORD`、`RABBITMQ_DEFAULT_PASS`、`MINIO_ROOT_PASSWORD`、`GRAFANA_ADMIN_PASSWORD` 均为 `:?required`）
+- **健康检查与重启策略**：12 个服务中 7 个配置了 `healthcheck`（postgres / redis / rabbitmq / minio / clickhouse / grafana / clamav），全部服务配置 `restart: unless-stopped`；milvus / etcd / elasticsearch / prometheus / jaeger 暂无健康检查
 
 ### 数据库初始化
 
@@ -237,6 +259,7 @@ GitHub Actions 工作流 `.github/workflows/ci.yml` 包含 `mvn test` 步骤，�
 | `01-init-schema.sql` | 核心治理 + Spec（`sf_tenant`、`sf_user`、`sf_role`、`sf_spec`…） |
 | `02-init-schema-agent.sql` | Agent + 对话（`sf_agent`、`sf_chat_message` 16 个 Hash 分区、`sf_agent_memory`…） |
 | `03-init-schema-others.sql` | 工作流、上下文、质量、集成、运营（`sf_workflow_template`、`sf_knowledge_doc`、`sf_quality_gate`…） |
+| `009_observability.sql` | 可观测性（`sf_observability_trace` 等） |
 
 设计特点：启用 UUID 扩展；统一软删除（`deleted` INT，逻辑删除值 = 1）；`sf_chat_message` 按 `conversation_id` 做 16 个 Hash 分区；存在归档表做冷数据存储。
 
@@ -295,13 +318,16 @@ Exchange 统一为 `sf.exchange`：
 | `sf.notification` | 通知 |
 | `sf.cost` | 成本同步 |
 | `sf.quality` | 质量事件 |
+| `sf.quality.verdict` | 质量门禁裁决（quality → agent-engine） |
 | `sf.milvus.sync` | Milvus 同步 |
 | `sf.agent.config.shadow` | 影子配置更新 |
 
 ### 消费者配置差异
 
-- `schemaplexai-agent-engine`：RabbitMQ **自动 ACK**，并发 2–10
-- `schemaplexai-task`：RabbitMQ **手动 ACK**，并发 5–20，prefetch 10，`default-requeue-rejected: false`
+截至 2026-08-30 台账口径，两个消费模块均为 RabbitMQ **手动 ACK**（`acknowledge-mode: manual`），差异在并发与预取参数：
+
+- `schemaplexai-agent-engine`：并发 2–10（未单独配置 prefetch / `default-requeue-rejected`）
+- `schemaplexai-task`：并发 5–20，prefetch 10，`default-requeue-rejected: false`
 
 ---
 
@@ -350,7 +376,8 @@ Exchange 统一为 `sf.exchange`：
 1. **循环依赖**：不要在 `pom.xml` 中引入循环依赖
 2. **跨服务调用**：优先使用 MQ 异步，避免同步调用链路过长
 3. **外部 API 超时**：所有外部调用（LLM、Git、Jenkins 等）必须加超时和降级
-4. **配置一致性**：Docker 提供 PostgreSQL，但多数 `application.yml` 仍指向 MySQL；本地开发时需统一调整数据源配置
-5. **测试缺失**：当前无任何单元/集成/E2E 测试，新增核心业务逻辑时必须同步补充测试
-6. **代码风格**：仓库中未配置 `checkstyle.xml`、Spotless 或 `.editorconfig`，CI 中的 `checkstyle` 与 `spotbugs` 允许失败；建议补充统一的格式化规则
-7. **schemaplexai-admin**：目前为占位模块，无 `Application.java` 和 `application.yml`
+4. **配置一致性**：各服务 `application.yml` 已统一为 PostgreSQL + 环境变量注入（`${VAR:?required}`），与 `docker-compose.yml` 对齐；本地启动前需提供必填环境变量
+5. **测试与覆盖率**：16 个后端模块均已有测试（截至 2026-08-30 实测口径合计约 4,136）；覆盖率门禁（JaCoCo 指令 80% + 分支 60%）下 `schemaplexai-model`、`schemaplexai-dao` 的最近记录值（台账口径：2026-07-02 产物 model 21.0%、2026-05-06 基线 dao 44.6%）仍低于门禁，覆盖率攻坚进行中。新增核心业务逻辑时必须同步补充测试
+6. **代码风格**：仓库中未配置 `checkstyle.xml`、Spotless 或 `.editorconfig`，CI 中的 `checkstyle` 与 `spotbugs` 允许失败（`continue-on-error: true`）；建议补充统一的格式化规则
+7. **schemaplexai-admin**：已实现（`SchemaPlexaiAdminApplication` + `application.yml`，端口 8092），含租户/用户/角色/审计日志/系统配置/平台健康 6 个管理服务与 111 个测试（截至 2026-08-30 实测口径）
+8. **修复批在途**：Spec 合规修复批（2026-08-29 复核报告驱动）正在进行，逐票状态以 `.scratch/spec-compliance-fix/issues/REGISTRY.md` 为准；本 worktree 有并行工作者，提交须显式路径暂存、绝不夹带 `wiki/`

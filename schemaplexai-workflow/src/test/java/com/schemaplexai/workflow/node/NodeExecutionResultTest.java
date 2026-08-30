@@ -55,4 +55,33 @@ class NodeExecutionResultTest {
         assertThat(result.getMessage()).isNull();
         assertThat(result.getOutput()).isNull();
     }
+
+    @Test
+    void failure_isNotRetryableAndNotTimeout() {
+        NodeExecutionResult result = NodeExecutionResult.failure("bad config");
+
+        assertThat(result.isRetryable()).isFalse();
+        assertThat(result.isTimeout()).isFalse();
+    }
+
+    @Test
+    void retryableFailure_marksRetryable() {
+        NodeExecutionResult result = NodeExecutionResult.retryableFailure("connection reset");
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.isRetryable()).isTrue();
+        assertThat(result.isTimeout()).isFalse();
+        assertThat(result.getOutput()).isEmpty();
+    }
+
+    @Test
+    void timeout_marksTimeoutAndNotRetryable() {
+        NodeExecutionResult result = NodeExecutionResult.timeout("exceeded 300s");
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.isTimeout()).isTrue();
+        assertThat(result.isRetryable()).isFalse();
+        assertThat(result.getMessage()).isEqualTo("exceeded 300s");
+        assertThat(result.getOutput()).isEmpty();
+    }
 }

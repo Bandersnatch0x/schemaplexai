@@ -20,21 +20,45 @@ public class ExecutionSnapshotPersistence {
     private final ObjectMapper objectMapper;
     private final ExecutionSnapshotService executionSnapshotService;
 
-    public void saveSnapshot(ExecutionSnapshot snapshot) {
+    /**
+     * Persist the snapshot and return the generated snapshot-row primary key.
+     *
+     * <p>Issue 907 / REQ-07: the resume path must load the snapshot by the actual
+     * row key of {@code sf_agent_execution_snapshot}. MyBatis-Plus back-fills the
+     * {@code ASSIGN_ID} primary key onto the entity during insert; returning it lets
+     * the pause path store the real identifier on the execution. Returning void (the
+     * old behavior) discarded the generated key, so {@code execution.snapshotId} was
+     * left pointing at the executionId — a value the snapshot table's own BIGSERIAL /
+     * snowflake primary-key space never contains, making every resume fail with
+     * "Snapshot not found".</p>
+     *
+     * @return the generated snapshot row id, or null if no id was assigned
+     * @throws IllegalStateException when the snapshot cannot be serialized
+     */
+    public Long saveSnapshot(ExecutionSnapshot snapshot) {
+        String snapshotJson;
         try {
-            String snapshotJson = objectMapper.writeValueAsString(snapshot);
-
-            SfAgentExecutionSnapshot entity = new SfAgentExecutionSnapshot();
-            entity.setExecutionId(snapshot.getExecutionId());
-            entity.setSnapshotJson(snapshotJson);
-            entity.setSnapshotHash(HashUtils.sha256(snapshotJson));
-            entity.setTenantId(null);
-            snapshotMapper.insert(entity);
-
-            executionSnapshotService.saveSnapshot(snapshot.getExecutionId(), snapshotJson, 0);
+            snapshotJson = objectMapper.writeValueAsString(snapshot);
         } catch (JsonProcessingException e) {
-            log.error("Failed to serialize execution snapshot for execution {}", snapshot.getExecutionId(), e);
+            // Fail explicitly: a pause whose snapshot cannot be serialized must not
+            // pretend to be resumable.
+            throw new IllegalStateException(
+                    "Failed to serialize execution snapshot for execution "
+                            + snapshot.getExecutionId(), e);
         }
+
+        SfAgentExecutionSnapshot entity = new SfAgentExecutionSnapshot();
+        entity.setExecutionId(snapshot.getExecutionId());
+        entity.setSnapshotJson(snapshotJson);
+        entity.setSnapshotHash(HashUtils.sha256(snapshotJson));
+        entity.setTenantId(null);
+        snapshotMapper.insert(entity);
+
+        executionSnapshotService.saveSnapshot(snapshot.getExecutionId(), snapshotJson, 0);
+
+        // Generated snapshot-row primary key (ASSIGN_ID) — the identifier that the
+        // RESUMING handler must load by.
+        return entity.getId();
     }
 
     public ExecutionSnapshot getLatestSnapshot(Long executionId) {

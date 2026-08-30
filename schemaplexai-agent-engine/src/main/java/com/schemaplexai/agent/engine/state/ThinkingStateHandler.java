@@ -15,8 +15,6 @@ import com.schemaplexai.agent.engine.memory.compaction.CompactionResult;
 import com.schemaplexai.agent.engine.extractor.FinalAnswerExtractor;
 import com.schemaplexai.agent.engine.model.AiModelRouter;
 import com.schemaplexai.agent.engine.model.LlmMessage;
-import com.schemaplexai.agent.engine.plan.SubTask;
-import com.schemaplexai.agent.engine.plan.SubTaskPlan;
 import com.schemaplexai.agent.engine.reasoning.ReasoningStrategy;
 import com.schemaplexai.agent.engine.reasoning.ThinkingResult;
 import com.schemaplexai.agent.engine.role.RoleOverlay;
@@ -45,7 +43,6 @@ import java.util.List;
 public class ThinkingStateHandler implements AgentStateHandler {
 
     private static final double DEFAULT_TEMPERATURE = 0.7;
-    private static final String METADATA_KEY_PLAN = "subTaskPlan";
 
     private final ContextInjector contextInjector;
     private final CompositeChatMemoryStore chatMemoryStore;
@@ -236,13 +233,13 @@ public class ThinkingStateHandler implements AgentStateHandler {
                 execution.setMetadata("iterationToolCallCount", 0);
                 stateMachine.transition(AgentExecutionState.TOOL_CALLING, execution);
             } else {
-                // Check if there's an active sub-task plan to progress
-                AgentExecutionState nextState = resolveNextStateForPlan(execution);
-                log.info("Execution {} completed with direct answer, transitioning to {}", execution.getId(), nextState);
+                // Ticket 931: the sub-task plan machinery was retired with the
+                // PLANNING state (no writer existed); direct answers complete.
+                log.info("Execution {} completed with direct answer, transitioning to COMPLETED", execution.getId());
                 stateMachine.emitTimelineEvent(execution, "output",
-                        "Direct answer received, transitioning to " + nextState);
+                        "Direct answer received, transitioning to COMPLETED");
                 loopDetection.clearRecords(execution.getId());
-                stateMachine.transition(nextState, execution);
+                stateMachine.transition(AgentExecutionState.COMPLETED, execution);
             }
         } catch (Exception e) {
             log.error("Thinking state failed for execution {}", execution.getId(), e);
@@ -321,11 +318,10 @@ public class ThinkingStateHandler implements AgentStateHandler {
                     String answer = result.finalAnswer();
                     chatMemoryStore.saveMessage(execution.getConversationId(),
                             new LlmMessage("assistant", answer));
-                    AgentExecutionState nextState = resolveNextStateForPlan(execution);
                     loopDetection.clearRecords(execution.getId());
                     stateMachine.emitTimelineEvent(execution, "output",
                             "Strategy " + strategy.getName() + " produced final answer");
-                    stateMachine.transition(nextState, execution);
+                    stateMachine.transition(AgentExecutionState.COMPLETED, execution);
                 }
                 case TOOL_CALL -> {
                     String toolName = result.toolCall().toolName();
@@ -559,68 +555,5 @@ public class ThinkingStateHandler implements AgentStateHandler {
 
     private String resolveModelId(SfAgentExecution execution) {
         return modelResolver.resolve(execution);
-    }
-
-    /**
-     * Checks for an active SubTaskPlan and determines the next state.
-     * If a plan exists, marks the current sub-task as completed and either
-     * stays in THINKING (next sub-task) or transitions to COMPLETED (all done).
-     */
-    private AgentExecutionState resolveNextStateForPlan(SfAgentExecution execution) {
-        Object planMeta = execution.getMetadata(METADATA_KEY_PLAN);
-        if (planMeta == null) {
-            return AgentExecutionState.COMPLETED;
-        }
-
-        SubTaskPlan plan = deserializePlan(planMeta.toString());
-        if (plan == null || plan.getSubTasks().isEmpty()) {
-            return AgentExecutionState.COMPLETED;
-        }
-
-        // Mark current sub-task as completed if there is one
-        if (plan.getCurrentSubTaskId() != null) {
-            SubTask current = plan.getSubTaskById(plan.getCurrentSubTaskId());
-            if (current != null) {
-                current.setStatus(SubTask.STATUS_COMPLETED);
-                log.debug("Marked sub-task {} as COMPLETED for execution {}",
-                        current.getId(), execution.getId());
-            }
-        }
-
-        // Find next ready sub-task
-        SubTask next = plan.findNextReadySubTask();
-        if (next != null) {
-            next.setStatus(SubTask.STATUS_IN_PROGRESS);
-            plan.setCurrentSubTaskId(next.getId());
-            execution.setMetadata(METADATA_KEY_PLAN, serializePlan(plan));
-            log.info("Execution {} advancing to sub-task {}: {}",
-                    execution.getId(), next.getId(), next.getDescription());
-            return AgentExecutionState.THINKING;
-        }
-
-        // All sub-tasks complete or no ready tasks remain
-        if (plan.isAllCompleted()) {
-            log.info("Execution {} all sub-tasks completed", execution.getId());
-        }
-        execution.setMetadata(METADATA_KEY_PLAN, serializePlan(plan));
-        return AgentExecutionState.COMPLETED;
-    }
-
-    private SubTaskPlan deserializePlan(String json) {
-        try {
-            return new ObjectMapper().readValue(json, SubTaskPlan.class);
-        } catch (Exception e) {
-            log.warn("Failed to deserialize SubTaskPlan: {}", e.getMessage());
-            return null;
-        }
-    }
-
-    private String serializePlan(SubTaskPlan plan) {
-        try {
-            return new ObjectMapper().writeValueAsString(plan);
-        } catch (Exception e) {
-            log.warn("Failed to serialize SubTaskPlan: {}", e.getMessage());
-            return "";
-        }
     }
 }

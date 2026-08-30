@@ -11,8 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
@@ -22,12 +21,50 @@ public class ToolExecutionService {
     private final List<ToolExecutor> executors;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Executor registry backing the execution chain. A ConcurrentHashMap since
+     * MCP discovery registers tools dynamically at runtime (issue 930), in
+     * addition to the static bean-derived executors collected in {@link #init()}.
+     */
     private Map<String, ToolExecutor> executorRegistry;
 
     @jakarta.annotation.PostConstruct
     public void init() {
-        this.executorRegistry = executors.stream()
-                .collect(Collectors.toMap(ToolExecutor::getToolName, Function.identity()));
+        this.executorRegistry = new ConcurrentHashMap<>();
+        for (ToolExecutor executor : executors) {
+            executorRegistry.put(executor.getToolName(), executor);
+        }
+    }
+
+    /**
+     * Register (or replace) an executor at runtime. Used by MCP tool discovery
+     * to publish discovered tools into the same registry the execution chain
+     * resolves from, so discovery results are immediately executable.
+     */
+    public void register(ToolExecutor executor) {
+        executorRegistry.put(executor.getToolName(), executor);
+        log.info("Registered tool executor: {}", executor.getToolName());
+    }
+
+    /**
+     * Check whether a tool name is resolvable by the execution chain.
+     */
+    public boolean exists(String toolName) {
+        return executorRegistry.containsKey(toolName);
+    }
+
+    /**
+     * Names of all tools currently resolvable by the execution chain.
+     */
+    public List<String> getRegisteredToolNames() {
+        return List.copyOf(executorRegistry.keySet());
+    }
+
+    /**
+     * Resolve the executor registered under a tool name, or null when absent.
+     */
+    public ToolExecutor getExecutor(String toolName) {
+        return executorRegistry.get(toolName);
     }
 
     public String executeTool(String toolName, String parametersJson) {

@@ -5,6 +5,7 @@ import com.schemaplexai.agent.engine.mq.AgentExecutionEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -52,27 +53,30 @@ public class GateBlockedStateHandler implements AgentStateHandler {
             execution.setState(AgentExecutionState.GATE_BLOCKED.name());
             stateMachine.saveExecution(execution);
 
-            // Publish blocked event for notification/alerting
-            eventPublisher.publishExecutionEvent("AGENT_GATE_BLOCKED", Map.of(
-                    "executionId", execution.getId(),
-                    "agentId", execution.getAgentId(),
-                    "reason", blockedReason,
-                    "retryable", true,
-                    "retryCountdown", DEFAULT_RETRY_COUNTDOWN_SECONDS
-            ));
+            // Publish blocked event for notification/alerting.
+            // The publisher enriches the payload via put(), so the map must be mutable
+            // (Map.of would trigger UnsupportedOperationException and degrade to FAILED).
+            Map<String, Object> retryablePayload = new HashMap<>();
+            retryablePayload.put("executionId", execution.getId());
+            retryablePayload.put("agentId", execution.getAgentId());
+            retryablePayload.put("reason", blockedReason);
+            retryablePayload.put("retryable", true);
+            retryablePayload.put("retryCountdown", DEFAULT_RETRY_COUNTDOWN_SECONDS);
+            eventPublisher.publishExecutionEvent("AGENT_GATE_BLOCKED", retryablePayload);
 
             log.info("Gate blocked retryable for execution {}, transitioning to RETRYING after {}s",
                     execution.getId(), DEFAULT_RETRY_COUNTDOWN_SECONDS);
 
             stateMachine.transition(AgentExecutionState.RETRYING, execution);
         } else {
-            // Non-retryable admission denial — permanent failure
-            eventPublisher.publishExecutionEvent("AGENT_GATE_BLOCKED", Map.of(
-                    "executionId", execution.getId(),
-                    "agentId", execution.getAgentId(),
-                    "reason", blockedReason,
-                    "retryable", false
-            ));
+            // Non-retryable admission denial — permanent failure.
+            // Mutable map required: the publisher enriches the payload via put().
+            Map<String, Object> fatalPayload = new HashMap<>();
+            fatalPayload.put("executionId", execution.getId());
+            fatalPayload.put("agentId", execution.getAgentId());
+            fatalPayload.put("reason", blockedReason);
+            fatalPayload.put("retryable", false);
+            eventPublisher.publishExecutionEvent("AGENT_GATE_BLOCKED", fatalPayload);
 
             log.warn("Gate blocked permanently for execution {}, reason: {}", execution.getId(), blockedReason);
             stateMachine.transition(AgentExecutionState.FAILED, execution);

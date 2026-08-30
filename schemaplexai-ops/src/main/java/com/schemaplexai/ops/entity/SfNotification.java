@@ -14,5 +14,5 @@ public class SfNotification extends BaseEntity {
     private String type;
     private String title;
     private String content;
-    private Integer status;
+    private Boolean read;
 }

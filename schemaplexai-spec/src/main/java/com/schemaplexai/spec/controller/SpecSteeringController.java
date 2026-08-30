@@ -85,4 +85,10 @@ public class SpecSteeringController {
     public Result<Boolean> validateSteeringConfig(@PathVariable Long id) {
         return Result.success(specSteeringService.validateSteeringConfig(id));
     }
+
+    @Operation(summary = "渲染 System Prompt 注入片段（Agent 执行时注入，见 spec-management §5）")
+    @GetMapping("/{id}/prompt-fragment")
+    public Result<String> buildPromptFragment(@PathVariable Long id) {
+        return Result.success(specSteeringService.buildPromptFragment(id));
+    }
 }

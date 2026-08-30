@@ -17,6 +17,9 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: 'http://localhost:8080',
           changeOrigin: true,
+          // Gateway routes are unprefixed (/auth/**, /system/**, ...); the
+          // frontend baseURL is '/api', so the prefix must be stripped here.
+          rewrite: (p) => p.replace(/^\/api/, ''),
         },
       },
     },

@@ -14,5 +14,11 @@ public class SfQualityIssue extends BaseEntity {
     private String issueType;
     private String severity;
     private String description;
-    private Integer status;
+
+    /**
+     * Issue handling status, stored as VARCHAR(32) in sf_quality_issue
+     * (DDL default 'OPEN'). Allowed values:
+     * OPEN / IN_PROGRESS / RESOLVED / CLOSED / WONT_FIX.
+     */
+    private String status;
 }

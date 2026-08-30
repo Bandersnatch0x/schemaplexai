@@ -67,6 +67,16 @@ class ExecutionEventBusTest {
     }
 
     @Test
+    void publishStateTransitionWithNullFromStateDoesNotThrow() throws IOException {
+        eventBus.register("1", emitter);
+
+        assertDoesNotThrow(() ->
+                eventBus.publishStateTransition(1L, null, AgentExecutionState.READY));
+
+        verify(emitter, times(1)).send(any(SseEmitter.SseEventBuilder.class));
+    }
+
+    @Test
     void publishExecutionCompletedBroadcastsCorrectPayload() throws IOException {
         eventBus.register("1", emitter);
 

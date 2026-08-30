@@ -9,12 +9,15 @@ verdict: NOT-READY-FOR-RELEASE
 # SchemaPlexAI v1 上线就绪评审 — Master 报告
 
 > **Day-0 Verdict**：v1 当前状态 **NOT-READY-FOR-RELEASE**。综合得分约 **4.0/10**，7 位专家全票认定存在 release-blocker。本报告是 ralph-loop 持续工作流的 Day-0 基线，距 v1 GA 至少 12 周硬骨头。
+>
+> **2026-08-30 注记（文档漂移修复，票据 928）**：本判定与同日（2026-05-08）`CHANGELOG.md` 宣告发布 `[1.0.0]` 的叙事直接冲突——两者时间戳相同、结论相反。本报告自述为 Day-0 基线快照，未对该发布叙事做就绪性背书；2026-08-29 Spec 合规复核（`docs/reviews/spec-compliance-2026-08-29/REPORT.md`）证实"宣称与实态背离"成立（多条关键执行链路当时为死端，发布叙事领先于实际接线状态）。原判定保留不删；修复批逐票状态见 `.scratch/spec-compliance-fix/issues/REGISTRY.md`。
 
 ## 0. Changelog
 
 - 2026-05-08：Day-0 初始基线建立，7 专家首次评审完成。后续每次 ralph-loop 重 loop 触发新一行。
 - 2026-05-08 [Δ-decision]：用户决策 #1 锁定 → launch 叙事 = 候选 ④ **「企业/团队 AI 编排」**（A+C 组合：单 Agent 内 21 patterns + Workflow BPMN 流程编排，多 Agent 协作明确 Reduce 至 v1.1）。联动调整：21 Agentic Patterns 由 Maintain → Expand（升为 launch 卖点）；Workflow BPMN 前端由 Reduce → Selective Expand（轻量版：导入 XML + react-flow 只读渲染）；brand metaphor 候选锁 **Studio Lab**；W7-W9 魔法时刻由 Drag-Drop RAG 改为 **Drag-Drop BPMN AI 节点编排**。冲突 #2 视觉 vs 叙事 仲裁同步更新（视觉走 Studio Lab）。
 - 2026-05-08 [Δ-decision]：用户决策 #2+#3+#4 全锁 —— Notification v1 仅 in-app（ADR-013）；Cost v1 走 PG 短链路（ADR-012）；JWT 轮转 SLA = **90 天**（ADR-011，W4 落地 Vault 集成）。全部 4 决策已清，W1 启动阻塞归零。
+- 2026-08-30 [注记]：文档漂移修复（票据 928）——为 Day-0 NOT-READY 判定补充与同日 CHANGELOG 1.0.0 发布叙事冲突的注记（原判保留）；§3 Maintain Scope 中 "2,601 后端测试 + 100 前端测试" 为当时 CHANGELOG 口径，该两数已于 2026-08-30 修正为实测口径（后端 ≈4,136 / 前端 146 单元用例，见 `CHANGELOG.md` 修正注记）。
 
 ## 1. 八维度评分矩阵（综合）
 
@@ -120,7 +123,7 @@ DebugMaster 用"调查到根因"的方法把 4 个明面阻塞的预估工作量
 |---|------|
 | 现有 16 个 Maven 模块结构 | 已稳定，v1 期窗内不重构；admin 空着也不动 |
 | Knife4j API Docs（最近 commit e134899 已 100% 覆盖） | 是企业评估加分项不是 launch 卖点 |
-| 2,601 后端测试 + 100 前端测试基础体量 | 维持，不为 launch 加测、也不砍 |
+| 2,601 后端测试 + 100 前端测试基础体量（注：该两数为当时 CHANGELOG 口径，2026-08-30 已修正为实测口径，见 `CHANGELOG.md`） | 维持，不为 launch 加测、也不砍 |
 | 9 个现有 ADR 文档 | 后续追补 ADR-010~014，不改既有 |
 
 ### Reduce / 延 v1.1（必砍，7 项）

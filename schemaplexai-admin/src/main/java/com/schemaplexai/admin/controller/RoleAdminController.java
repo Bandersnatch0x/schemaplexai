@@ -1,5 +1,7 @@
 package com.schemaplexai.admin.controller;
 
+import com.schemaplexai.common.controller.BaseController;
+
 import com.schemaplexai.admin.dto.RoleAdminDTO;
 import com.schemaplexai.admin.service.RoleAdminService;
 import com.schemaplexai.common.result.Result;
@@ -17,7 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/admin/roles")
 @RequiredArgsConstructor
-public class RoleAdminController extends BaseAdminController {
+public class RoleAdminController extends BaseController {
 
     private final RoleAdminService roleAdminService;
 

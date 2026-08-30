@@ -21,9 +21,20 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WorkflowTemplateServiceImpl extends ServiceImpl<SfWorkflowTemplateMapper, SfWorkflowTemplate> implements WorkflowTemplateService {
 
-    private static final String STATUS_DRAFT = "draft";
-    private static final String STATUS_DEPLOYED = "deployed";
-    private static final String STATUS_INACTIVE = "inactive";
+    /** Template status vocabulary (spec §4: DRAFT templates are not executable). */
+    public static final String STATUS_DRAFT = "draft";
+    /** Published/executable state — only templates in this state may be triggered (spec §4 PUBLISHED). */
+    public static final String STATUS_DEPLOYED = "deployed";
+    public static final String STATUS_INACTIVE = "inactive";
+
+    @Override
+    public boolean save(SfWorkflowTemplate template) {
+        // New templates always start as draft; execution requires an explicit deploy (spec §4).
+        if (template.getStatus() == null || template.getStatus().isBlank()) {
+            template.setStatus(STATUS_DRAFT);
+        }
+        return super.save(template);
+    }
 
     @Override
     public SfWorkflowTemplate deployTemplate(Long templateId) {

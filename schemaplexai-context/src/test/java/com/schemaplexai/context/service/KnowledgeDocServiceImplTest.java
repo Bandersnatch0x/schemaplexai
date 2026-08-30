@@ -18,6 +18,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -153,6 +155,48 @@ class KnowledgeDocServiceImplTest {
         assertThat(doc.getStatus()).isEqualTo("UPLOADED");
         assertThat(doc.getSyncStatus()).isEqualTo("PENDING");
         assertThat(doc.getTenantId()).isEqualTo("tenant-1");
+    }
+
+    @Test
+    void uploadAndVectorize_activeTransaction_defersSyncUntilAfterCommit() {
+        // The FAILED-status writer runs in REQUIRES_NEW and can only see the doc row once
+        // the insert transaction committed — sync must not run inside that transaction.
+        TenantContextHolder.setTenantId("tenant-1");
+        SfKnowledgeDoc doc = new SfKnowledgeDoc();
+        doc.setId(77L);
+        doc.setTitle("Deferred Doc");
+        when(knowledgeDocMapper.insert(any())).thenReturn(1);
+
+        try (org.mockito.MockedStatic<TransactionSynchronizationManager> mocked =
+                     org.mockito.Mockito.mockStatic(TransactionSynchronizationManager.class)) {
+            mocked.when(TransactionSynchronizationManager::isSynchronizationActive).thenReturn(true);
+
+            knowledgeDocService.uploadAndVectorize(doc);
+
+            // Not yet — the transaction has not committed.
+            verify(milvusSyncService, never()).syncToMilvus(any());
+
+            org.mockito.ArgumentCaptor<TransactionSynchronization> captor =
+                    org.mockito.ArgumentCaptor.forClass(TransactionSynchronization.class);
+            mocked.verify(() -> TransactionSynchronizationManager.registerSynchronization(captor.capture()));
+
+            // Simulate the commit callback.
+            captor.getValue().afterCommit();
+            verify(milvusSyncService).syncToMilvus(77L);
+        }
+    }
+
+    @Test
+    void uploadAndVectorize_noActiveTransaction_syncsDirectly() {
+        TenantContextHolder.setTenantId("tenant-1");
+        SfKnowledgeDoc doc = new SfKnowledgeDoc();
+        doc.setId(88L);
+        doc.setTitle("Direct Doc");
+        when(knowledgeDocMapper.insert(any())).thenReturn(1);
+
+        knowledgeDocService.uploadAndVectorize(doc);
+
+        verify(milvusSyncService).syncToMilvus(88L);
     }
 
     // ------------------------------------------------------------------

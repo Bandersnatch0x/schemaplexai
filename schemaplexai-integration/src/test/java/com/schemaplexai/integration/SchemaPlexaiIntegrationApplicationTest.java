@@ -17,7 +17,10 @@ class SchemaPlexaiIntegrationApplicationTest {
                         "--spring.datasource.driver-class-name=org.h2.Driver",
                         "--spring.datasource.username=sa",
                         "--spring.datasource.password=",
-                        "--jwt.secret=this-is-a-very-long-test-secret-for-integration"
+                        "--jwt.secret=this-is-a-very-long-test-secret-for-integration",
+                        // ST-04: encryptor fails fast without a master secret; smoke
+                        // contexts must supply an explicit test value.
+                        "--integration.encryption.master-secret=integration-smoke-test-master-secret"
                 )) {
             assertTrue(context.isRunning());
         }

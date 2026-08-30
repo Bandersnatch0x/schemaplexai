@@ -35,7 +35,7 @@ class NotificationControllerTest {
         notification.setType("info");
         notification.setTitle("Test Title");
         notification.setContent("Test Content");
-        notification.setStatus(0);
+        notification.setRead(false);
     }
 
     @Test

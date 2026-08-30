@@ -1,8 +1,8 @@
 package com.schemaplexai.web.service.execution;
 
-import java.util.Map;
+import com.schemaplexai.web.vo.ExecutionStatusVO;
 
 public interface ExecutionStatusPort {
 
-    Map<String, Object> getExecutionStatus(Long executionId);
+    ExecutionStatusVO getExecutionStatus(Long executionId);
 }

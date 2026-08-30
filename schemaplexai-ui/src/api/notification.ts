@@ -2,7 +2,7 @@ import request from './request'
 import type { NotificationPageResult } from '@/types/notification'
 
 export interface NotificationQuery {
-  page?: number
+  current?: number
   size?: number
   read?: boolean
 }

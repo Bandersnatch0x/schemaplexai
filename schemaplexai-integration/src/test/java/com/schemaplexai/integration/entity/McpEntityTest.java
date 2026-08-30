@@ -21,7 +21,7 @@ class McpEntityTest {
         server.setName("github-mcp");
         server.setEndpoint("https://mcp.github.com");
         server.setTransport("sse");
-        server.setStatus(1);
+        server.setStatus("ACTIVE");
         server.setCommand("npx");
         server.setArgs(List.of("-y", "@modelcontextprotocol/server-github"));
         server.setEnvVars(Map.of("GITHUB_TOKEN", "token123"));
@@ -30,6 +30,7 @@ class McpEntityTest {
         server.setToolWhitelist(List.of("search_repos", "get_file"));
 
         assertEquals("github-mcp", server.getName());
+        assertEquals("ACTIVE", server.getStatus());
         assertEquals("npx", server.getCommand());
         assertEquals(List.of("-y", "@modelcontextprotocol/server-github"), server.getArgs());
         assertEquals(Map.of("GITHUB_TOKEN", "token123"), server.getEnvVars());
@@ -44,7 +45,7 @@ class McpEntityTest {
         server.setName("minimal-server");
         server.setEndpoint("http://localhost:3000");
         server.setTransport("stdio");
-        server.setStatus(1);
+        server.setStatus("ACTIVE");
 
         assertNull(server.getCommand());
         assertNull(server.getArgs());
@@ -60,7 +61,7 @@ class McpEntityTest {
         server.setName("github-mcp");
         server.setEndpoint("https://mcp.github.com");
         server.setTransport("sse");
-        server.setStatus(1);
+        server.setStatus("ACTIVE");
         server.setProtocolVersion("2024-11-05");
         server.setToolWhitelist(List.of("search_repos", "get_file", "create_issue"));
 
@@ -74,7 +75,7 @@ class McpEntityTest {
         SfMcpServer server = new SfMcpServer();
         server.setName("filesystem-mcp");
         server.setTransport("stdio");
-        server.setStatus(1);
+        server.setStatus("ACTIVE");
         server.setCommand("npx");
         server.setArgs(List.of("-y", "@modelcontextprotocol/server-filesystem", "/data"));
         server.setEnvVars(Map.of("ALLOWED_DIR", "/data"));

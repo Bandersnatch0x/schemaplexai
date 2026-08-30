@@ -1,11 +1,11 @@
-<!-- AUTO-GENERATED: sync-wiki.sh at 2026-05-28T16:35:42Z -->
+<!-- AUTO-GENERATED: sync-wiki.sh at 2026-08-30T02:16:40Z -->
 
 ---
 title: Wiki Operation Log
 type: log
 source: auto-generated
-creation_date: 2026-05-29
-update_date: 2026-05-29
+creation_date: 2026-08-30
+update_date: 2026-08-30
 tags: [wiki, log, maintenance]
 confidence: high
 ---
@@ -14,46 +14,46 @@ confidence: high
 
 > Auto-generated from git log + docs/ status. Manual edits will be overwritten.
 
-## 2026-05-10 — chore: update wiki sync stamp after M7 plan completion
-b579680
-## 2026-05-10 — feat: M7 Execution Control Plane infrastructure completion
-759d6d8
-## 2026-05-09 — test: M4.5 Cost Projection follow-up — BudgetServiceImpl and RabbitMqConfig tests
-2ff1a80
-## 2026-05-09 — feat: M6 Execution Control Plane infrastructure
-d853f49
-## 2026-05-09 — test(web): M4.2 SseController execution-specific subscription tests
-7dc6e2a
-## 2026-05-09 — feat(agent-engine): M4.3 Event Replay + Gap Recovery, M5.1 Compliance Reporting API
-00c981e
-## 2026-05-09 — feat(agent-engine): M4.2/M4.4/M4.5 SSE Streaming, Audit Trail, and Cost Projection
-9405ee9
-## 2026-05-09 — feat(agent-engine): M4.1 Outbox Publisher with retry, backoff, and DEAD letter handling
-9d6a87f
-## 2026-05-09 — feat(workflow): Phase 3 BPMN approval workflow with escalation and SLA policies
-ad3eabc
-## 2026-05-09 — feat(agent-engine): Phase 0-2 execution control plane — event log, approval, state machine
-01f07df
-## 2026-05-09 — docs: update wiki for MAF Phase 1-3 + Tessera P0-P1 completion
-1871270
-## 2026-05-09 — test: v1 coverage for model, dao, web, integration, context, gateway
-1ceb528
-## 2026-05-09 — feat: Tessera P1 Task Branch Manager
-116d075
-## 2026-05-09 — feat: MAF Phase 3 Group Chat + Tessera P1 External Agent SPI
-2dab4a0
-## 2026-05-09 — test(common): add TenantRedisKeyResolverTest — 24 tests, 91% redis pkg coverage
-27f491c
-## 2026-05-09 — chore: sync development status
-82c36e3
-## 2026-05-09 — refactor: refine HandoffStateHandler, streamline UI component tests
-c00e329
-## 2026-05-08 — fix(workflow): JoinNodeExecutor should skip failed results in join
-a2f1d0a
-## 2026-05-08 — chore: sync wiki from recent commits
-3dc963b
-## 2026-05-08 — test: fix AgentExecutionStateTest for HANDOFF, add HandoffStateHandlerTest
-8843972
+## 2026-08-30 — fix(system): login accepts tenant code when id unknown (live defect)
+51a27a1
+## 2026-08-30 — fix(agent-engine): declare passively consumed queues (live defect)
+80e30bb
+## 2026-08-30 — fix(db): consolidate engine migrations into init scripts, baseline flyway (live defect)
+d551211
+## 2026-08-30 — fix(dao): emit numeric tenant ids for BIGINT columns, exempt login path (live defect)
+663f370
+## 2026-08-30 — fix(system): align sf_tenant/sf_user entities with production DDL (live defect)
+ce7a310
+## 2026-08-30 — refactor(agent-engine): retire dead PLANNING/OBSERVATION states (issue 931)
+c446f84
+## 2026-08-30 — docs: final verification report for spec compliance fix batch
+0123bc1
+## 2026-08-30 — fix(integration): fail fast when master secret is unset (review ST-04)
+66c4c87
+## 2026-08-30 — docs(quality): update javadoc after legacy consumer retirement (NEW-03)
+ae4db78
+## 2026-08-30 — docs(db): clarify sf_spec.version is an optimistic-lock counter (NEW-08)
+132308a
+## 2026-08-30 — fix(spec): require approved status before publish (NEW-06)
+2127a70
+## 2026-08-30 — fix(agent-engine): dispatch snapshot persistence through async proxy (NEW-02)
+6027601
+## 2026-08-30 — fix(workflow): wire post-node quality gate trigger (C4 remainder)
+8f62bd5
+## 2026-08-30 — fix(agent-engine): wire post-tool quality gate trigger (C4 remainder)
+229ef34
+## 2026-08-30 — fix(common): centralize sf.quality.verdict routing key (review ST-03)
+fc5d1af
+## 2026-08-30 — fix(web): align pagination params to API spec current/size defaults (review ST-02)
+5c4112a
+## 2026-08-30 — fix(ops): tenant-isolate budget alert endpoint and register tenant interceptor (review ST-01)
+eb2da55
+## 2026-08-30 — fix(task): retire legacy sf.quality consumer superseded by 924 chain (NEW-03)
+19470cb
+## 2026-08-30 — fix(integration): inject credentials for pull/fetch/push, not just clone (NEW-01)
+75f45ff
+## 2026-08-30 — fix(integration): implement real MCP client and wire tool discovery into execution chain (issue 930)
+811d673
 
 ---
 
