@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout pull request
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           # The repository contains two documentation symlinks whose target
@@ -39,11 +39,10 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: '21'
           distribution: temurin
-          cache: maven
 
       - name: Validate Shadow inputs
         shell: bash
@@ -148,7 +147,7 @@ jobs:
 
       - name: Upload Shadow evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ruleops-shadow-${{ github.run_id }}
           if-no-files-found: warn
