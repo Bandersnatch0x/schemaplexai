@@ -1,0 +1,13 @@
+version: ruleops.config/v1
+language: java
+build_system: maven
+modules: ["schemaplexai-admin", "schemaplexai-agent-config", "schemaplexai-agent-engine", "schemaplexai-common", "schemaplexai-context", "schemaplexai-dao", "schemaplexai-gateway", "schemaplexai-integration", "schemaplexai-model", "schemaplexai-ops", "schemaplexai-quality", "schemaplexai-spec", "schemaplexai-system", "schemaplexai-task", "schemaplexai-web", "schemaplexai-workflow"]
+source_roots: ["schemaplexai-admin/src/main/java", "schemaplexai-agent-config/src/main/java", "schemaplexai-agent-engine/src/main/java", "schemaplexai-common/src/main/java", "schemaplexai-context/src/main/java", "schemaplexai-dao/src/main/java", "schemaplexai-gateway/src/main/java", "schemaplexai-integration/src/main/java", "schemaplexai-model/src/main/java", "schemaplexai-ops/src/main/java", "schemaplexai-quality/src/main/java", "schemaplexai-spec/src/main/java", "schemaplexai-system/src/main/java", "schemaplexai-task/src/main/java", "schemaplexai-web/src/main/java", "schemaplexai-workflow/src/main/java"]
+test_roots: ["schemaplexai-admin/src/test/java", "schemaplexai-agent-config/src/test/java", "schemaplexai-agent-engine/src/test/java", "schemaplexai-common/src/test/java", "schemaplexai-context/src/test/java", "schemaplexai-dao/src/test/java", "schemaplexai-gateway/src/test/java", "schemaplexai-integration/src/test/java", "schemaplexai-model/src/test/java", "schemaplexai-ops/src/test/java", "schemaplexai-quality/src/test/java", "schemaplexai-spec/src/test/java", "schemaplexai-system/src/test/java", "schemaplexai-task/src/test/java", "schemaplexai-web/src/test/java", "schemaplexai-workflow/src/test/java"]
+generated_roots: []
+vendor_roots: ["schemaplexai-agent-engine/src/main/java/com/schemaplexai/agent/engine/external", "schemaplexai-agent-engine/src/test/java/com/schemaplexai/agent/engine/external"]
+include: ["schemaplexai-admin/src/main/java/**", "schemaplexai-agent-config/src/main/java/**", "schemaplexai-agent-engine/src/main/java/**", "schemaplexai-common/src/main/java/**", "schemaplexai-context/src/main/java/**", "schemaplexai-dao/src/main/java/**", "schemaplexai-gateway/src/main/java/**", "schemaplexai-integration/src/main/java/**", "schemaplexai-model/src/main/java/**", "schemaplexai-ops/src/main/java/**", "schemaplexai-quality/src/main/java/**", "schemaplexai-spec/src/main/java/**", "schemaplexai-system/src/main/java/**", "schemaplexai-task/src/main/java/**", "schemaplexai-web/src/main/java/**", "schemaplexai-workflow/src/main/java/**"]
+exclude: ["target/**", "build/**", ".gradle/**", ".ruleops/**"]
+execution_mode: connected
+cache_dir: .ruleops/cache/bundles
+trust_state_path: .ruleops/trust-state
