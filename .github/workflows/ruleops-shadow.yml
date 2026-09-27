@@ -1,0 +1,150 @@
+name: RuleOps Shadow
+
+on:
+  pull_request:
+    branches: [main, master, develop]
+  workflow_dispatch:
+
+# Shadow is deliberately read-only. It does not publish a check, mutate SCM,
+# upload source, or participate in branch protection.
+permissions:
+  contents: read
+
+jobs:
+  ruleops-shadow:
+    name: ruleops-shadow (non-blocking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    env:
+      RULEOPS_SHADOW_ENABLED: ${{ vars.RULEOPS_SHADOW_ENABLED }}
+      RULEOPS_RUNTIME_URL: ${{ vars.RULEOPS_RUNTIME_URL }}
+      RULEOPS_RUNTIME_SHA256: ${{ vars.RULEOPS_RUNTIME_SHA256 }}
+      RULEOPS_RULE_BUNDLE_URL: ${{ vars.RULEOPS_RULE_BUNDLE_URL }}
+      RULEOPS_RULE_BUNDLE_SHA256: ${{ vars.RULEOPS_RULE_BUNDLE_SHA256 }}
+
+    steps:
+      - name: Checkout pull request
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+
+      - name: Validate Shadow inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            RULEOPS_SHADOW_ENABLED
+            RULEOPS_RUNTIME_URL
+            RULEOPS_RUNTIME_SHA256
+            RULEOPS_RULE_BUNDLE_URL
+            RULEOPS_RULE_BUNDLE_SHA256
+          )
+          for name in "${required[@]}"; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error title=HUMAN_INPUT_REQUIRED::Missing repository variable ${name}; run scripts/ruleops-shadow-setup.sh first."
+              exit 2
+            fi
+          done
+          if [[ "$RULEOPS_SHADOW_ENABLED" != "true" ]]; then
+            echo "::error title=HUMAN_INPUT_REQUIRED::Set RULEOPS_SHADOW_ENABLED=true after reviewing the non-blocking boundary."
+            exit 2
+          fi
+
+      - name: Download and verify RuleOps runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime_archive="$RUNNER_TEMP/ruleops-runtime.tar.gz"
+          runtime_home="$RUNNER_TEMP/ruleops-runtime"
+          curl --fail --location --retry 3 --silent --show-error "$RULEOPS_RUNTIME_URL" --output "$runtime_archive"
+          printf '%s  %s\n' "$RULEOPS_RUNTIME_SHA256" "$runtime_archive" | sha256sum --check --strict
+          mkdir -p "$runtime_home"
+          tar --extract --file "$runtime_archive" --directory "$runtime_home" --no-same-owner --no-same-permissions
+          test -x "$runtime_home/rf"
+          test -f "$runtime_home/runtime-manifest.json"
+          {
+            printf 'runtime_home=%s\n' "$runtime_home"
+            printf 'runtime_sha256=%s\n' "$RULEOPS_RUNTIME_SHA256"
+          } >> "$GITHUB_ENV"
+
+      - name: Download and verify RuleBundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle_archive="$RUNNER_TEMP/ruleops-bundle.tar.gz"
+          bundle_home="$RUNNER_TEMP/ruleops-bundle"
+          curl --fail --location --retry 3 --silent --show-error "$RULEOPS_RULE_BUNDLE_URL" --output "$bundle_archive"
+          printf '%s  %s\n' "$RULEOPS_RULE_BUNDLE_SHA256" "$bundle_archive" | sha256sum --check --strict
+          mkdir -p "$bundle_home"
+          tar --extract --file "$bundle_archive" --directory "$bundle_home" --no-same-owner --no-same-permissions
+          if [[ ! -f "$bundle_home/manifest.json" ]]; then
+            mapfile -t roots < <(find "$bundle_home" -mindepth 1 -maxdepth 1 -type d -print)
+            [[ "${#roots[@]}" -eq 1 && -f "${roots[0]}/manifest.json" ]] || {
+              echo "::error title=DELIVERY_INVALID::RuleBundle archive must contain manifest.json at its root."
+              exit 2
+            }
+            bundle_home="${roots[0]}"
+          fi
+          printf 'bundle_home=%s\n' "$bundle_home" >> "$GITHUB_ENV"
+
+      - name: Initialize and validate project scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f "$GITHUB_WORKSPACE/.ruleops/config.yaml" ]]; then
+            "$runtime_home/rf" init \
+              --repo-root "$GITHUB_WORKSPACE" \
+              --non-interactive \
+              --language java \
+              --build-system maven
+          else
+            echo "Using committed .ruleops/config.yaml"
+          fi
+          "$runtime_home/rf" config validate --repo-root "$GITHUB_WORKSPACE"
+
+      - name: Capture doctor and Shadow scan
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p .ruleops
+          doctor_rc=0
+          "$runtime_home/rf" doctor \
+            --repo-root "$GITHUB_WORKSPACE" \
+            --format json \
+            > .ruleops/doctor.json || doctor_rc=$?
+          scan_rc=0
+          "$runtime_home/rf" scan \
+            --repo-root "$GITHUB_WORKSPACE" \
+            --candidate "$bundle_home" \
+            --format json \
+            --progress none \
+            --output .ruleops/scan.json || scan_rc=$?
+          {
+            printf 'doctor_exit=%s\n' "$doctor_rc"
+            printf 'scan_exit=%s\n' "$scan_rc"
+            printf 'authority=LOCAL_UNATTESTED\n'
+            printf 'mode=SHADOW\n'
+          } > .ruleops/shadow-status.txt
+          # The job is non-blocking, but the artifact records incomplete input
+          # and runtime failures instead of hiding them behind a green check.
+          exit 0
+
+      - name: Upload Shadow evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ruleops-shadow-${{ github.run_id }}
+          if-no-files-found: warn
+          path: |
+            .ruleops/config.yaml
+            .ruleops/doctor.json
+            .ruleops/scan.json
+            .ruleops/shadow-status.txt
