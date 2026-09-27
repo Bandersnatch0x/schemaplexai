@@ -33,6 +33,7 @@ jobs:
           # RuleOps inputs, so exclude only those paths from the checkout.
           sparse-checkout: |
             /*
+            !/docs/standards/coding-style.md
             !/docs/standards/feature-workflow.md
             !/docs/standards/review-checklists.md
           sparse-checkout-cone-mode: false
