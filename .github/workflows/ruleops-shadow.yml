@@ -28,6 +28,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # The repository contains two documentation symlinks whose target
+          # names exceed the runner's symlink limit. They are not source or
+          # RuleOps inputs, so exclude only those paths from the checkout.
+          sparse-checkout: |
+            /*
+            !/docs/standards/feature-workflow.md
+            !/docs/standards/review-checklists.md
+          sparse-checkout-cone-mode: false
 
       - name: Set up Java 21
         uses: actions/setup-java@v4
