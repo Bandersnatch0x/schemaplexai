@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-          # The repository contains two documentation symlinks whose target
+          # The repository contains three documentation symlinks whose target
           # names exceed the runner's symlink limit. They are not source or
           # RuleOps inputs, so exclude only those paths from the checkout.
           sparse-checkout: |
@@ -135,11 +135,44 @@ jobs:
             --format json \
             --progress none \
             --output .ruleops/scan.json || scan_rc=$?
+          baseline_status=HUMAN_INPUT_REQUIRED
+          baseline_commit=UNKNOWN
+          baseline_findings=0
+          new_findings=0
+          historical_findings=0
+          : > .ruleops/new-findings.tsv
+          : > .ruleops/historical-findings.tsv
+          if command -v jq >/dev/null 2>&1 &&
+             [[ -f .ruleops/baseline.tsv && -f .ruleops/scan.json ]]; then
+            baseline_format="$(awk -F= '$1 == "format" {print $2; exit}' .ruleops/baseline.tsv)"
+            if [[ "$baseline_format" == "erf-pilot-baseline-v0" ]]; then
+              baseline_commit="$(awk -F= '$1 == "commit" {print $2; exit}' .ruleops/baseline.tsv)"
+              baseline_fingerprints="$RUNNER_TEMP/ruleops-baseline-fingerprints.tsv"
+              current_fingerprints="$RUNNER_TEMP/ruleops-current-fingerprints.tsv"
+              awk -F= '$1 == "fingerprint" && $2 != "" {print $2}' .ruleops/baseline.tsv | sort -u > "$baseline_fingerprints"
+              jq -r '.findingRecords[]?.fingerprint // empty' .ruleops/scan.json | sort -u > "$current_fingerprints"
+              comm -23 "$current_fingerprints" "$baseline_fingerprints" > .ruleops/new-findings.tsv
+              comm -12 "$current_fingerprints" "$baseline_fingerprints" > .ruleops/historical-findings.tsv
+              baseline_findings="$(wc -l < "$baseline_fingerprints" | tr -d ' ')"
+              new_findings="$(wc -l < .ruleops/new-findings.tsv | tr -d ' ')"
+              historical_findings="$(wc -l < .ruleops/historical-findings.tsv | tr -d ' ')"
+              baseline_status=READY
+            else
+              echo "::warning title=HUMAN_INPUT_REQUIRED::Invalid .ruleops/baseline.tsv format; historical/new comparison was not produced."
+            fi
+          else
+            echo "::warning title=HUMAN_INPUT_REQUIRED::Missing scan or baseline input; historical/new comparison was not produced."
+          fi
           {
             printf 'doctor_exit=%s\n' "$doctor_rc"
             printf 'scan_exit=%s\n' "$scan_rc"
             printf 'authority=LOCAL_UNATTESTED\n'
             printf 'mode=SHADOW\n'
+            printf 'baseline_status=%s\n' "$baseline_status"
+            printf 'baseline_commit=%s\n' "$baseline_commit"
+            printf 'baseline_findings=%s\n' "$baseline_findings"
+            printf 'new_findings=%s\n' "$new_findings"
+            printf 'historical_findings=%s\n' "$historical_findings"
           } > .ruleops/shadow-status.txt
           # The job is non-blocking, but the artifact records incomplete input
           # and runtime failures instead of hiding them behind a green check.
@@ -153,6 +186,9 @@ jobs:
           if-no-files-found: warn
           path: |
             .ruleops/config.yaml
+            .ruleops/baseline.tsv
             .ruleops/doctor.json
             .ruleops/scan.json
+            .ruleops/new-findings.tsv
+            .ruleops/historical-findings.tsv
             .ruleops/shadow-status.txt
