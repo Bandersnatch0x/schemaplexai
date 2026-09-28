@@ -23,6 +23,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class QualityGateServiceImpl extends ServiceImpl<QualityGateMapper, SfQualityGate> implements QualityGateService {
 
+    private static final String QUALITY_GATE_NOT_FOUND_PREFIX = "Quality gate not found: ";
     private final QualityIssueMapper qualityIssueMapper;
     private final QualityOrchestrator qualityOrchestrator;
 
@@ -57,7 +58,7 @@ public class QualityGateServiceImpl extends ServiceImpl<QualityGateMapper, SfQua
         }
         SfQualityGate existing = baseMapper.selectById(gate.getId());
         if (existing == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Quality gate not found: " + gate.getId());
+            throw new BaseException(ResultCode.NOT_FOUND, QUALITY_GATE_NOT_FOUND_PREFIX + gate.getId());
         }
         if (gate.getName() != null) {
             validateGate(gate);
@@ -65,7 +66,7 @@ public class QualityGateServiceImpl extends ServiceImpl<QualityGateMapper, SfQua
         log.info("Updating quality gate: id={}, name={}", gate.getId(), gate.getName());
         boolean updated = super.updateById(gate);
         if (!updated) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Quality gate not found: " + gate.getId());
+            throw new BaseException(ResultCode.NOT_FOUND, QUALITY_GATE_NOT_FOUND_PREFIX + gate.getId());
         }
         return true;
     }
@@ -76,7 +77,7 @@ public class QualityGateServiceImpl extends ServiceImpl<QualityGateMapper, SfQua
     public void activateGate(Long gateId) {
         SfQualityGate gate = baseMapper.selectById(gateId);
         if (gate == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Quality gate not found: " + gateId);
+            throw new BaseException(ResultCode.NOT_FOUND, QUALITY_GATE_NOT_FOUND_PREFIX + gateId);
         }
         if (gate.getStatus() != null && gate.getStatus() == STATUS_DEPRECATED) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Cannot activate a deprecated gate");
@@ -92,7 +93,7 @@ public class QualityGateServiceImpl extends ServiceImpl<QualityGateMapper, SfQua
     public void deactivateGate(Long gateId) {
         SfQualityGate gate = baseMapper.selectById(gateId);
         if (gate == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Quality gate not found: " + gateId);
+            throw new BaseException(ResultCode.NOT_FOUND, QUALITY_GATE_NOT_FOUND_PREFIX + gateId);
         }
         gate.setStatus(STATUS_INACTIVE);
         baseMapper.updateById(gate);
@@ -105,7 +106,7 @@ public class QualityGateServiceImpl extends ServiceImpl<QualityGateMapper, SfQua
     public void deprecateGate(Long gateId) {
         SfQualityGate gate = baseMapper.selectById(gateId);
         if (gate == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Quality gate not found: " + gateId);
+            throw new BaseException(ResultCode.NOT_FOUND, QUALITY_GATE_NOT_FOUND_PREFIX + gateId);
         }
         gate.setStatus(STATUS_DEPRECATED);
         baseMapper.updateById(gate);

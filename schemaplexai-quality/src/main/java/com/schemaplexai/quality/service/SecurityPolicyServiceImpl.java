@@ -23,6 +23,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class SecurityPolicyServiceImpl extends ServiceImpl<SecurityPolicyMapper, SfSecurityPolicy> implements SecurityPolicyService {
 
+    private static final String SECURITY_POLICY_NOT_FOUND_PREFIX = "Security policy not found: ";
     private final ObjectMapper objectMapper;
 
     private static final int STATUS_DRAFT = 0;
@@ -56,7 +57,7 @@ public class SecurityPolicyServiceImpl extends ServiceImpl<SecurityPolicyMapper,
         }
         SfSecurityPolicy existing = baseMapper.selectById(policy.getId());
         if (existing == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Security policy not found: " + policy.getId());
+            throw new BaseException(ResultCode.NOT_FOUND, SECURITY_POLICY_NOT_FOUND_PREFIX + policy.getId());
         }
         if (existing.getStatus() != null && existing.getStatus() == STATUS_DEPRECATED) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Cannot modify a deprecated policy");
@@ -67,7 +68,7 @@ public class SecurityPolicyServiceImpl extends ServiceImpl<SecurityPolicyMapper,
         log.info("Updating security policy: id={}", policy.getId());
         boolean updated = super.updateById(policy);
         if (!updated) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Security policy not found: " + policy.getId());
+            throw new BaseException(ResultCode.NOT_FOUND, SECURITY_POLICY_NOT_FOUND_PREFIX + policy.getId());
         }
         return true;
     }
@@ -78,7 +79,7 @@ public class SecurityPolicyServiceImpl extends ServiceImpl<SecurityPolicyMapper,
     public void activatePolicy(Long policyId) {
         SfSecurityPolicy policy = baseMapper.selectById(policyId);
         if (policy == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Security policy not found: " + policyId);
+            throw new BaseException(ResultCode.NOT_FOUND, SECURITY_POLICY_NOT_FOUND_PREFIX + policyId);
         }
         if (policy.getStatus() != null && policy.getStatus() == STATUS_DEPRECATED) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Cannot activate a deprecated policy");
@@ -95,7 +96,7 @@ public class SecurityPolicyServiceImpl extends ServiceImpl<SecurityPolicyMapper,
     public void deprecatePolicy(Long policyId) {
         SfSecurityPolicy policy = baseMapper.selectById(policyId);
         if (policy == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Security policy not found: " + policyId);
+            throw new BaseException(ResultCode.NOT_FOUND, SECURITY_POLICY_NOT_FOUND_PREFIX + policyId);
         }
         policy.setStatus(STATUS_DEPRECATED);
         baseMapper.updateById(policy);

@@ -27,6 +27,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AiAgentExecutionDelegate implements JavaDelegate {
 
+    private static final String RETRY_COUNT_VARIABLE = "retryCount";
+
     private final WorkflowNodeEngine nodeEngine;
     private final ObjectMapper objectMapper;
 
@@ -41,7 +43,7 @@ public class AiAgentExecutionDelegate implements JavaDelegate {
         String executionTrackingId = (String) execution.getVariable("executionTrackingId");
 
         // Get retry count and human feedback if re-executing
-        Integer retryCount = (Integer) execution.getVariable("retryCount");
+        Integer retryCount = (Integer) execution.getVariable(RETRY_COUNT_VARIABLE);
         if (retryCount == null) {
             retryCount = 0;
         }
@@ -57,7 +59,7 @@ public class AiAgentExecutionDelegate implements JavaDelegate {
             input.put("taskDescription", taskDescription);
             input.put("executionTrackingId", executionTrackingId);
             input.put("tenantId", tenantId);
-            input.put("retryCount", retryCount);
+            input.put(RETRY_COUNT_VARIABLE, retryCount);
             if (humanFeedback != null && !humanFeedback.isBlank()) {
                 input.put("humanFeedback", humanFeedback);
             }
@@ -88,10 +90,10 @@ public class AiAgentExecutionDelegate implements JavaDelegate {
             execution.setVariable("lastExecutionSuccess", result.isSuccess());
 
             if (result.isSuccess()) {
-                execution.setVariable("retryCount", retryCount);
+                execution.setVariable(RETRY_COUNT_VARIABLE, retryCount);
                 log.info("[AiAgentExecute] Success process={}, qualityScore={}", processInstanceId, qualityScore);
             } else {
-                execution.setVariable("retryCount", retryCount + 1);
+                execution.setVariable(RETRY_COUNT_VARIABLE, retryCount + 1);
                 log.warn("[AiAgentExecute] Failed process={}, message={}", processInstanceId, result.getMessage());
             }
 

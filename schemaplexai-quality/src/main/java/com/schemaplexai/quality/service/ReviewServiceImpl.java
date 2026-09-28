@@ -19,6 +19,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, SfReviewRecord> implements ReviewService {
 
+    private static final String REVIEW_NOT_FOUND_PREFIX = "Review record not found: ";
+    private static final String REVIEW_COMPLETED_MESSAGE = "Review is already completed";
     private static final int STATUS_PENDING = 0;
     private static final int STATUS_ASSIGNED = 1;
     private static final int STATUS_IN_REVIEW = 2;
@@ -49,7 +51,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, SfReviewR
         }
         SfReviewRecord record = baseMapper.selectById(reviewId);
         if (record == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Review record not found: " + reviewId);
+            throw new BaseException(ResultCode.NOT_FOUND, REVIEW_NOT_FOUND_PREFIX + reviewId);
         }
         if (record.getStatus() != STATUS_PENDING && record.getStatus() != STATUS_ASSIGNED) {
             throw new BaseException(ResultCode.PARAM_ERROR,
@@ -67,7 +69,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, SfReviewR
     public void startReview(Long reviewId) {
         SfReviewRecord record = baseMapper.selectById(reviewId);
         if (record == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Review record not found: " + reviewId);
+            throw new BaseException(ResultCode.NOT_FOUND, REVIEW_NOT_FOUND_PREFIX + reviewId);
         }
         if (record.getReviewerId() == null) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Review must be assigned to a reviewer first");
@@ -77,7 +79,7 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, SfReviewR
         }
         if (record.getStatus() == STATUS_APPROVED || record.getStatus() == STATUS_REJECTED
             || record.getStatus() == STATUS_CHANGES_REQUESTED) {
-            throw new BaseException(ResultCode.PARAM_ERROR, "Review is already completed");
+            throw new BaseException(ResultCode.PARAM_ERROR, REVIEW_COMPLETED_MESSAGE);
         }
         record.setStatus(STATUS_IN_REVIEW);
         baseMapper.updateById(record);
@@ -90,11 +92,11 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, SfReviewR
     public void approveReview(Long reviewId, String comment) {
         SfReviewRecord record = baseMapper.selectById(reviewId);
         if (record == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Review record not found: " + reviewId);
+            throw new BaseException(ResultCode.NOT_FOUND, REVIEW_NOT_FOUND_PREFIX + reviewId);
         }
         if (record.getStatus() == STATUS_APPROVED || record.getStatus() == STATUS_REJECTED
             || record.getStatus() == STATUS_CHANGES_REQUESTED) {
-            throw new BaseException(ResultCode.PARAM_ERROR, "Review is already completed");
+            throw new BaseException(ResultCode.PARAM_ERROR, REVIEW_COMPLETED_MESSAGE);
         }
         record.setStatus(STATUS_APPROVED);
         if (comment != null && !comment.isBlank()) {
@@ -110,11 +112,11 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, SfReviewR
     public void rejectReview(Long reviewId, String reason) {
         SfReviewRecord record = baseMapper.selectById(reviewId);
         if (record == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Review record not found: " + reviewId);
+            throw new BaseException(ResultCode.NOT_FOUND, REVIEW_NOT_FOUND_PREFIX + reviewId);
         }
         if (record.getStatus() == STATUS_APPROVED || record.getStatus() == STATUS_REJECTED
             || record.getStatus() == STATUS_CHANGES_REQUESTED) {
-            throw new BaseException(ResultCode.PARAM_ERROR, "Review is already completed");
+            throw new BaseException(ResultCode.PARAM_ERROR, REVIEW_COMPLETED_MESSAGE);
         }
         record.setStatus(STATUS_REJECTED);
         if (reason != null && !reason.isBlank()) {
@@ -130,11 +132,11 @@ public class ReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, SfReviewR
     public void requestChanges(Long reviewId, String feedback) {
         SfReviewRecord record = baseMapper.selectById(reviewId);
         if (record == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Review record not found: " + reviewId);
+            throw new BaseException(ResultCode.NOT_FOUND, REVIEW_NOT_FOUND_PREFIX + reviewId);
         }
         if (record.getStatus() == STATUS_APPROVED || record.getStatus() == STATUS_REJECTED
             || record.getStatus() == STATUS_CHANGES_REQUESTED) {
-            throw new BaseException(ResultCode.PARAM_ERROR, "Review is already completed");
+            throw new BaseException(ResultCode.PARAM_ERROR, REVIEW_COMPLETED_MESSAGE);
         }
         record.setStatus(STATUS_CHANGES_REQUESTED);
         if (feedback != null && !feedback.isBlank()) {

@@ -30,6 +30,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class JenkinsIntegrationService {
 
+    private static final String RESULT_KEY = "result";
+    private static final String URL_KEY = "url";
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
@@ -77,7 +79,7 @@ public class JenkinsIntegrationService {
         String cacheKey = jobName + "#latest";
         Map<String, Object> status = new ConcurrentHashMap<>();
         status.put("jobName", jobName);
-        status.put("result", buildResult);
+        status.put(RESULT_KEY, buildResult);
         status.put("timestamp", Instant.now().toString());
         status.put("processed", true);
         buildCache.put(cacheKey, status);
@@ -107,11 +109,11 @@ public class JenkinsIntegrationService {
             Map<String, Object> status = new ConcurrentHashMap<>();
             status.put("jobName", jobName);
             status.put("buildNumber", root.path("number").asInt());
-            status.put("result", root.path("result").asText("UNKNOWN"));
+            status.put(RESULT_KEY, root.path(RESULT_KEY).asText("UNKNOWN"));
             status.put("building", root.path("building").asBoolean());
             status.put("duration", root.path("duration").asLong());
             status.put("timestamp", root.path("timestamp").asLong());
-            status.put("url", root.path("url").asText());
+            status.put(URL_KEY, root.path(URL_KEY).asText());
 
             String cacheKey = jobName + "#" + root.path("number").asInt();
             buildCache.put(cacheKey, status);
@@ -149,13 +151,13 @@ public class JenkinsIntegrationService {
                 for (JsonNode job : jobs) {
                     Map<String, Object> jobInfo = new ConcurrentHashMap<>();
                     jobInfo.put("name", job.path("name").asText());
-                    jobInfo.put("url", job.path("url").asText());
+                    jobInfo.put(URL_KEY, job.path(URL_KEY).asText());
                     jobInfo.put("color", job.path("color").asText());
 
                     JsonNode lastBuild = job.path("lastBuild");
                     if (!lastBuild.isMissingNode()) {
                         jobInfo.put("lastBuildNumber", lastBuild.path("number").asInt());
-                        jobInfo.put("lastBuildResult", lastBuild.path("result").asText());
+                        jobInfo.put("lastBuildResult", lastBuild.path(RESULT_KEY).asText());
                     }
                     result.add(jobInfo);
                 }

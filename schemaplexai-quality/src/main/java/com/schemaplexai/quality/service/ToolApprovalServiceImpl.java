@@ -19,6 +19,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ToolApprovalServiceImpl extends ServiceImpl<ToolApprovalAmendmentMapper, SfToolApprovalAmendment> implements ToolApprovalService {
 
+    private static final String TOOL_APPROVAL_NOT_FOUND_PREFIX = "Tool approval not found: ";
     private static final int STATUS_PENDING = 0;
     private static final int STATUS_APPROVED = 1;
     private static final int STATUS_REJECTED = 2;
@@ -53,7 +54,7 @@ public class ToolApprovalServiceImpl extends ServiceImpl<ToolApprovalAmendmentMa
         }
         SfToolApprovalAmendment approval = baseMapper.selectById(approvalId);
         if (approval == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Tool approval not found: " + approvalId);
+            throw new BaseException(ResultCode.NOT_FOUND, TOOL_APPROVAL_NOT_FOUND_PREFIX + approvalId);
         }
         if (approval.getStatus() == STATUS_APPROVED) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Tool is already approved");
@@ -85,7 +86,7 @@ public class ToolApprovalServiceImpl extends ServiceImpl<ToolApprovalAmendmentMa
     public void rejectApproval(Long approvalId, String reason) {
         SfToolApprovalAmendment approval = baseMapper.selectById(approvalId);
         if (approval == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Tool approval not found: " + approvalId);
+            throw new BaseException(ResultCode.NOT_FOUND, TOOL_APPROVAL_NOT_FOUND_PREFIX + approvalId);
         }
         if (approval.getStatus() == STATUS_APPROVED) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Cannot reject an already approved tool");
@@ -104,7 +105,7 @@ public class ToolApprovalServiceImpl extends ServiceImpl<ToolApprovalAmendmentMa
     public void revokeApproval(Long approvalId, String reason) {
         SfToolApprovalAmendment approval = baseMapper.selectById(approvalId);
         if (approval == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Tool approval not found: " + approvalId);
+            throw new BaseException(ResultCode.NOT_FOUND, TOOL_APPROVAL_NOT_FOUND_PREFIX + approvalId);
         }
         if (approval.getStatus() != STATUS_APPROVED) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Only approved tools can be revoked");
@@ -121,7 +122,7 @@ public class ToolApprovalServiceImpl extends ServiceImpl<ToolApprovalAmendmentMa
     public void resetApproval(Long approvalId) {
         SfToolApprovalAmendment approval = baseMapper.selectById(approvalId);
         if (approval == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Tool approval not found: " + approvalId);
+            throw new BaseException(ResultCode.NOT_FOUND, TOOL_APPROVAL_NOT_FOUND_PREFIX + approvalId);
         }
         if (approval.getStatus() == STATUS_PENDING) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Approval is already pending");

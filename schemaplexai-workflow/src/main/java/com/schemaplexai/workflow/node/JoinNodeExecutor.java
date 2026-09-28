@@ -43,6 +43,11 @@ import java.util.Map;
 @Component
 public class JoinNodeExecutor implements NodeExecutor {
 
+    private static final String STRATEGY_KEY = "strategy";
+    private static final String SOURCE_COUNT_KEY = "sourceCount";
+    private static final String SUCCESS_COUNT_KEY = "successCount";
+    private static final String SUCCESS_KEY = "success";
+
     @Override
     public String getNodeType() {
         return "JOIN";
@@ -112,9 +117,9 @@ public class JoinNodeExecutor implements NodeExecutor {
 
         Map<String, Object> output = new HashMap<>();
         output.put("mergedContent", merged.toString());
-        output.put("strategy", "CONCAT");
-        output.put("sourceCount", sourceResults.size());
-        output.put("successCount", successCount);
+        output.put(STRATEGY_KEY, "CONCAT");
+        output.put(SOURCE_COUNT_KEY, sourceResults.size());
+        output.put(SUCCESS_COUNT_KEY, successCount);
 
         log.info("Join concat complete: {} sources merged, {} succeeded, tenantId={}",
                 sourceResults.size(), successCount, tenantId);
@@ -127,10 +132,10 @@ public class JoinNodeExecutor implements NodeExecutor {
             if (text != null) {
                 Map<String, Object> output = new HashMap<>();
                 output.put("mergedContent", text);
-                output.put("strategy", "FIRST_SUCCESS");
+                output.put(STRATEGY_KEY, "FIRST_SUCCESS");
                 output.put("sourceKey", entry.getKey());
-                output.put("sourceCount", sourceResults.size());
-                output.put("successCount", 1);
+                output.put(SOURCE_COUNT_KEY, sourceResults.size());
+                output.put(SUCCESS_COUNT_KEY, 1);
 
                 log.info("Join first-success complete: picked '{}' from {}, tenantId={}",
                         entry.getKey(), sourceResults.size(), tenantId);
@@ -141,9 +146,9 @@ public class JoinNodeExecutor implements NodeExecutor {
         log.warn("Join first-success: no successful source found, tenantId={}", tenantId);
         Map<String, Object> output = new HashMap<>();
         output.put("mergedContent", "");
-        output.put("strategy", "FIRST_SUCCESS");
-        output.put("sourceCount", sourceResults.size());
-        output.put("successCount", 0);
+        output.put(STRATEGY_KEY, "FIRST_SUCCESS");
+        output.put(SOURCE_COUNT_KEY, sourceResults.size());
+        output.put(SUCCESS_COUNT_KEY, 0);
         return output;
     }
 
@@ -155,19 +160,19 @@ public class JoinNodeExecutor implements NodeExecutor {
             Map<String, Object> sourceEntry = new HashMap<>();
             sourceEntry.put("key", entry.getKey());
             sourceEntry.put("output", extractOutputText(entry.getValue()));
-            sourceEntry.put("success", entry.getValue() instanceof Map<?, ?> m
-                    && Boolean.TRUE.equals(m.get("success")));
+            sourceEntry.put(SUCCESS_KEY, entry.getValue() instanceof Map<?, ?> m
+                    && Boolean.TRUE.equals(m.get(SUCCESS_KEY)));
             sources.add(sourceEntry);
-            if (Boolean.TRUE.equals(sourceEntry.get("success"))) {
+            if (Boolean.TRUE.equals(sourceEntry.get(SUCCESS_KEY))) {
                 successCount++;
             }
         }
 
         Map<String, Object> output = new HashMap<>();
         output.put("sources", sources);
-        output.put("strategy", "AGGREGATE");
-        output.put("sourceCount", sourceResults.size());
-        output.put("successCount", successCount);
+        output.put(STRATEGY_KEY, "AGGREGATE");
+        output.put(SOURCE_COUNT_KEY, sourceResults.size());
+        output.put(SUCCESS_COUNT_KEY, successCount);
 
         log.info("Join aggregate complete: {}/{} succeeded, tenantId={}",
                 successCount, sourceResults.size(), tenantId);
@@ -183,7 +188,7 @@ public class JoinNodeExecutor implements NodeExecutor {
         }
         if (value instanceof Map<?, ?> map) {
             // Explicitly failed results should not be treated as valid output
-            if (Boolean.FALSE.equals(map.get("success"))) {
+            if (Boolean.FALSE.equals(map.get(SUCCESS_KEY))) {
                 return null;
             }
             Object output = map.get("output");

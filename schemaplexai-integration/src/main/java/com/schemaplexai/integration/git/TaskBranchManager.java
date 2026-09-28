@@ -25,6 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class TaskBranchManager {
 
     private static final String BRANCH_PREFIX = "task/";
+    private static final String TASK_ID_NULL_MESSAGE = "taskId must not be null";
     private static final int SOFT_DELETE_DAYS = 30;
 
     private final GitIntegrationService gitIntegrationService;
@@ -41,7 +42,7 @@ public class TaskBranchManager {
      */
     public void createBranch(Long taskId, String baseBranch) {
         if (taskId == null) {
-            throw new BaseException(ResultCode.PARAM_ERROR, "taskId must not be null");
+            throw new BaseException(ResultCode.PARAM_ERROR, TASK_ID_NULL_MESSAGE);
         }
         String branchName = BRANCH_PREFIX + taskId;
 
@@ -64,7 +65,7 @@ public class TaskBranchManager {
      */
     public void deleteBranch(Long taskId) {
         if (taskId == null) {
-            throw new BaseException(ResultCode.PARAM_ERROR, "taskId must not be null");
+            throw new BaseException(ResultCode.PARAM_ERROR, TASK_ID_NULL_MESSAGE);
         }
         String branchName = BRANCH_PREFIX + taskId;
 
@@ -86,7 +87,7 @@ public class TaskBranchManager {
      */
     public void hardDeleteBranch(Long taskId) {
         if (taskId == null) {
-            throw new BaseException(ResultCode.PARAM_ERROR, "taskId must not be null");
+            throw new BaseException(ResultCode.PARAM_ERROR, TASK_ID_NULL_MESSAGE);
         }
         String branchName = BRANCH_PREFIX + taskId;
 
@@ -127,7 +128,7 @@ public class TaskBranchManager {
      */
     public void recoverBranch(Long taskId, String baseBranch) {
         if (taskId == null) {
-            throw new BaseException(ResultCode.PARAM_ERROR, "taskId must not be null");
+            throw new BaseException(ResultCode.PARAM_ERROR, TASK_ID_NULL_MESSAGE);
         }
         String branchName = BRANCH_PREFIX + taskId;
         SoftDeleteRecord record = softDeleteRegistry.get(branchName);
