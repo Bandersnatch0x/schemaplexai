@@ -21,6 +21,8 @@ import java.util.List;
  */
 public final class LlmMessageConverter {
 
+    private static final String SYSTEM_ROLE = "system";
+
     private LlmMessageConverter() {
         // utility class
     }
@@ -51,7 +53,7 @@ public final class LlmMessageConverter {
         String role = msg.getRole().toLowerCase();
         String content = msg.getContent() != null ? msg.getContent() : "";
         return switch (role) {
-            case "system" -> new SystemMessage(content);
+            case SYSTEM_ROLE -> new SystemMessage(content);
             case "assistant", "ai" -> new AiMessage(content);
             case "user", "human" -> new UserMessage(content);
             default -> new UserMessage(content);
@@ -87,8 +89,8 @@ public final class LlmMessageConverter {
 
         boolean systemInjected = false;
         for (LlmMessage msg : messages) {
-            if (!systemInjected && "system".equalsIgnoreCase(msg.getRole())) {
-                enriched.add(new LlmMessage("system",
+            if (!systemInjected && SYSTEM_ROLE.equalsIgnoreCase(msg.getRole())) {
+                enriched.add(new LlmMessage(SYSTEM_ROLE,
                         msg.getContent() + "\n\n" + toolSection));
                 systemInjected = true;
             } else {
@@ -97,7 +99,7 @@ public final class LlmMessageConverter {
         }
 
         if (!systemInjected) {
-            enriched.add(0, new LlmMessage("system", toolSection));
+            enriched.add(0, new LlmMessage(SYSTEM_ROLE, toolSection));
         }
 
         return enriched;

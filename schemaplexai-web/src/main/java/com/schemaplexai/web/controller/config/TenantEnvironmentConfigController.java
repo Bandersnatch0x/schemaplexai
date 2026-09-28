@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class TenantEnvironmentConfigController extends BaseController {
 
+    private static final String CONFIG_ID_DESCRIPTION = "Config ID";
+
     private final TenantEnvironmentConfigService tenantEnvironmentConfigService;
 
     @Operation(summary = "Page list tenant environment configs")
@@ -32,7 +34,7 @@ public class TenantEnvironmentConfigController extends BaseController {
     @Operation(summary = "Get tenant environment config by id")
     @GetMapping("/{id}")
     public Result<TenantEnvironmentConfig> getById(
-            @Parameter(description = "Config ID") @PathVariable Long id) {
+            @Parameter(description = CONFIG_ID_DESCRIPTION) @PathVariable Long id) {
         return success(tenantEnvironmentConfigService.getById(id));
     }
 
@@ -52,7 +54,7 @@ public class TenantEnvironmentConfigController extends BaseController {
     @Operation(summary = "Update tenant environment config")
     @PutMapping("/{id}")
     public Result<Boolean> update(
-            @Parameter(description = "Config ID") @PathVariable Long id,
+            @Parameter(description = CONFIG_ID_DESCRIPTION) @PathVariable Long id,
             @RequestBody TenantEnvironmentConfig config) {
         config.setId(id);
         return success(tenantEnvironmentConfigService.updateById(config));
@@ -61,7 +63,7 @@ public class TenantEnvironmentConfigController extends BaseController {
     @Operation(summary = "Refresh tenant environment config cache")
     @PatchMapping("/{id}/refresh")
     public Result<Void> refreshCache(
-            @Parameter(description = "Config ID") @PathVariable Long id) {
+            @Parameter(description = CONFIG_ID_DESCRIPTION) @PathVariable Long id) {
         TenantEnvironmentConfig config = tenantEnvironmentConfigService.getById(id);
         if (config != null && config.getTenantId() != null) {
             tenantEnvironmentConfigService.refreshCache(config.getTenantId());
@@ -72,7 +74,7 @@ public class TenantEnvironmentConfigController extends BaseController {
     @Operation(summary = "Delete tenant environment config")
     @DeleteMapping("/{id}")
     public Result<Boolean> delete(
-            @Parameter(description = "Config ID") @PathVariable Long id) {
+            @Parameter(description = CONFIG_ID_DESCRIPTION) @PathVariable Long id) {
         return success(tenantEnvironmentConfigService.removeById(id));
     }
 }

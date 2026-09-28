@@ -34,6 +34,8 @@ import java.util.Map;
 @Slf4j
 public class CubeSandboxClient {
 
+    private static final String SANDBOXES_PATH = "/sandboxes/";
+
     private final RestTemplate restTemplate;
     private final String apiUrl;
     private final String apiKey;
@@ -74,7 +76,7 @@ public class CubeSandboxClient {
         try {
             HttpEntity<ExecRequest> entity = new HttpEntity<>(request, authHeaders());
             ResponseEntity<ExecResponse> response = restTemplate.postForEntity(
-                    apiUrl + "/sandboxes/" + sandboxId + "/exec", entity, ExecResponse.class);
+                    apiUrl + SANDBOXES_PATH + sandboxId + "/exec", entity, ExecResponse.class);
             return response.getBody();
         } catch (Exception e) {
             throw wrapHttpError("exec", e);
@@ -93,7 +95,7 @@ public class CubeSandboxClient {
             );
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
             restTemplate.postForEntity(
-                    apiUrl + "/sandboxes/" + sandboxId + "/files", entity, Void.class);
+                    apiUrl + SANDBOXES_PATH + sandboxId + "/files", entity, Void.class);
         } catch (Exception e) {
             throw wrapHttpError("writeFile", e);
         }
@@ -106,7 +108,7 @@ public class CubeSandboxClient {
         try {
             HttpEntity<Void> entity = new HttpEntity<>(authHeaders());
             ResponseEntity<FileResponse> response = restTemplate.exchange(
-                    apiUrl + "/sandboxes/" + sandboxId + "/files?path=" + path,
+                    apiUrl + SANDBOXES_PATH + sandboxId + "/files?path=" + path,
                     HttpMethod.GET, entity, FileResponse.class);
             FileResponse body = response.getBody();
             return body != null ? body.content() : new byte[0];
@@ -122,7 +124,7 @@ public class CubeSandboxClient {
         try {
             HttpEntity<Void> entity = new HttpEntity<>(authHeaders());
             restTemplate.exchange(
-                    apiUrl + "/sandboxes/" + sandboxId,
+                    apiUrl + SANDBOXES_PATH + sandboxId,
                     HttpMethod.DELETE, entity, Void.class);
         } catch (Exception e) {
             throw wrapHttpError("destroySandbox", e);
@@ -136,7 +138,7 @@ public class CubeSandboxClient {
         try {
             HttpEntity<Void> entity = new HttpEntity<>(authHeaders());
             restTemplate.postForEntity(
-                    apiUrl + "/sandboxes/" + sandboxId + "/pause", entity, Void.class);
+                    apiUrl + SANDBOXES_PATH + sandboxId + "/pause", entity, Void.class);
         } catch (Exception e) {
             throw wrapHttpError("pauseSandbox", e);
         }
@@ -149,7 +151,7 @@ public class CubeSandboxClient {
         try {
             HttpEntity<Void> entity = new HttpEntity<>(authHeaders());
             restTemplate.postForEntity(
-                    apiUrl + "/sandboxes/" + sandboxId + "/resume", entity, Void.class);
+                    apiUrl + SANDBOXES_PATH + sandboxId + "/resume", entity, Void.class);
         } catch (Exception e) {
             throw wrapHttpError("resumeSandbox", e);
         }
@@ -162,7 +164,7 @@ public class CubeSandboxClient {
         try {
             HttpEntity<Void> entity = new HttpEntity<>(authHeaders());
             ResponseEntity<SandboxInfoResponse> response = restTemplate.exchange(
-                    apiUrl + "/sandboxes/" + sandboxId,
+                    apiUrl + SANDBOXES_PATH + sandboxId,
                     HttpMethod.GET, entity, SandboxInfoResponse.class);
             return response.getBody();
         } catch (Exception e) {

@@ -21,6 +21,7 @@ import java.util.Map;
 @Slf4j
 public class DockerClientAdapter {
 
+    private static final String EXEC_METHOD = "exec";
     private static final boolean DOCKER_JAVA_PRESENT;
     private static final Object DOCKER_CLIENT;
 
@@ -71,7 +72,7 @@ public class DockerClientAdapter {
                     .toArray(String[]::new);
             invoke(createCmd, "withEnv", (Object) envArray);
         }
-        Object response = invoke(createCmd, "exec");
+        Object response = invoke(createCmd, EXEC_METHOD);
         return (String) invoke(response, "getId");
     }
 
@@ -81,7 +82,7 @@ public class DockerClientAdapter {
             throw new IllegalStateException("Docker Java API is not available");
         }
         Object startCmd = invoke(DOCKER_CLIENT, "startContainerCmd", containerId);
-        invoke(startCmd, "exec");
+        invoke(startCmd, EXEC_METHOD);
     }
 
     /** Stops the container with the given ID. */
@@ -92,12 +93,12 @@ public class DockerClientAdapter {
         try {
             Object stopCmd = invoke(DOCKER_CLIENT, "stopContainerCmd", containerId);
             invoke(stopCmd, "withTimeout", 10);
-            invoke(stopCmd, "exec");
+            invoke(stopCmd, EXEC_METHOD);
         } catch (Exception e) {
             log.warn("Failed to stop container {}, attempting kill: {}", containerId, e.getMessage());
             try {
                 Object killCmd = invoke(DOCKER_CLIENT, "killContainerCmd", containerId);
-                invoke(killCmd, "exec");
+                invoke(killCmd, EXEC_METHOD);
             } catch (Exception killEx) {
                 log.warn("Failed to kill container {}: {}", containerId, killEx.getMessage());
             }
@@ -112,7 +113,7 @@ public class DockerClientAdapter {
         try {
             Object removeCmd = invoke(DOCKER_CLIENT, "removeContainerCmd", containerId);
             invoke(removeCmd, "withForce", true);
-            invoke(removeCmd, "exec");
+            invoke(removeCmd, EXEC_METHOD);
         } catch (Exception e) {
             log.warn("Failed to remove container {}: {}", containerId, e.getMessage());
         }
@@ -137,7 +138,7 @@ public class DockerClientAdapter {
         if (workingDir != null) {
             invoke(execCmd, "withWorkingDir", workingDir);
         }
-        Object execResponse = invoke(execCmd, "exec");
+        Object execResponse = invoke(execCmd, EXEC_METHOD);
         String execId = (String) invoke(execResponse, "getId");
 
         Object startCmd = invoke(DOCKER_CLIENT, "execStartCmd", execId);
@@ -146,7 +147,7 @@ public class DockerClientAdapter {
         StringBuilder stderr = new StringBuilder();
 
         Object callback = createExecCallback(stdout, stderr);
-        invoke(startCmd, "exec", callback);
+        invoke(startCmd, EXEC_METHOD, callback);
 
         // Wait for completion with timeout
         boolean finished = waitForExec(execId, timeout);
@@ -257,7 +258,7 @@ public class DockerClientAdapter {
 
     private Integer inspectExecExitCode(String execId) throws Exception {
         Object inspectCmd = invoke(DOCKER_CLIENT, "inspectExecCmd", execId);
-        Object response = invoke(inspectCmd, "exec");
+        Object response = invoke(inspectCmd, EXEC_METHOD);
         return (Integer) invoke(response, "getExitCodeLong");
     }
 

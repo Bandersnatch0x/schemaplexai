@@ -28,6 +28,8 @@ import java.util.Map;
 @ConditionalOnProperty(name = "milvus.enabled", havingValue = "true", matchIfMissing = false)
 public class MilvusCollectionInitializer {
 
+    private static final String PARTITION_KEY_FIELD = "isPartitionKey";
+
     private final MilvusClientV2 milvusClient;
     private final MilvusProperties milvusProperties;
     private final ObjectMapper objectMapper;
@@ -79,7 +81,7 @@ public class MilvusCollectionInitializer {
 
             // Check if any field is a partition key
             for (JsonNode fieldNode : fieldsNode) {
-                if (fieldNode.has("isPartitionKey") && fieldNode.get("isPartitionKey").asBoolean()) {
+                if (fieldNode.has(PARTITION_KEY_FIELD) && fieldNode.get(PARTITION_KEY_FIELD).asBoolean()) {
                     createBuilder.numPartitions(64);
                     break;
                 }
@@ -118,7 +120,7 @@ public class MilvusCollectionInitializer {
             builder.dimension(fieldNode.get("dimension").asInt());
         }
 
-        if (fieldNode.has("isPartitionKey") && fieldNode.get("isPartitionKey").asBoolean()) {
+        if (fieldNode.has(PARTITION_KEY_FIELD) && fieldNode.get(PARTITION_KEY_FIELD).asBoolean()) {
             builder.isPartitionKey(true);
         }
 

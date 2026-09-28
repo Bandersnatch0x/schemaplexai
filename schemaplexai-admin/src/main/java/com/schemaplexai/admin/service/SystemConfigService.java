@@ -21,6 +21,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SystemConfigService extends ServiceImpl<SfConfigMapper, SfConfig> {
 
+    private static final String CONFIG_NOT_FOUND_MESSAGE = "config not found";
+    private static final String TRUE_VALUE = "true";
+
     private static final List<String> RESERVED_KEYS = List.of(
             "system.maintenance.mode",
             "system.rate.limit.global",
@@ -47,7 +50,7 @@ public class SystemConfigService extends ServiceImpl<SfConfigMapper, SfConfig> {
     public SystemConfigDTO getConfigDetail(Long id) {
         SfConfig config = getById(id);
         if (config == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "config not found");
+            throw new BaseException(ResultCode.NOT_FOUND, CONFIG_NOT_FOUND_MESSAGE);
         }
         return toDTO(config);
     }
@@ -55,7 +58,7 @@ public class SystemConfigService extends ServiceImpl<SfConfigMapper, SfConfig> {
     public SystemConfigDTO getConfigByKey(String configKey, String tenantId) {
         SfConfig config = baseMapper.selectByKeyAndTenantId(configKey, tenantId);
         if (config == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "config not found");
+            throw new BaseException(ResultCode.NOT_FOUND, CONFIG_NOT_FOUND_MESSAGE);
         }
         return toDTO(config);
     }
@@ -83,7 +86,7 @@ public class SystemConfigService extends ServiceImpl<SfConfigMapper, SfConfig> {
     public SystemConfigDTO updateConfig(Long id, SystemConfigDTO dto) {
         SfConfig config = getById(id);
         if (config == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "config not found");
+            throw new BaseException(ResultCode.NOT_FOUND, CONFIG_NOT_FOUND_MESSAGE);
         }
 
         config.setConfigValue(dto.getConfigValue());
@@ -97,7 +100,7 @@ public class SystemConfigService extends ServiceImpl<SfConfigMapper, SfConfig> {
     public void deleteConfig(Long id) {
         SfConfig config = getById(id);
         if (config == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "config not found");
+            throw new BaseException(ResultCode.NOT_FOUND, CONFIG_NOT_FOUND_MESSAGE);
         }
         removeById(id);
         log.info("System config deleted: id={}, key={}", id, config.getConfigKey());
@@ -105,26 +108,26 @@ public class SystemConfigService extends ServiceImpl<SfConfigMapper, SfConfig> {
 
     @Transactional
     public void setMaintenanceMode(boolean enabled, String tenantId) {
-        setConfigValue("system.maintenance.mode", enabled ? "true" : "false", tenantId);
+        setConfigValue("system.maintenance.mode", enabled ? TRUE_VALUE : "false", tenantId);
         log.info("Maintenance mode set to {} for tenantId={}", enabled, tenantId);
     }
 
     @Transactional
     public void setFeatureFlag(String featureKey, boolean enabled, String tenantId) {
         String configKey = "system.feature." + featureKey + ".enabled";
-        setConfigValue(configKey, enabled ? "true" : "false", tenantId);
+        setConfigValue(configKey, enabled ? TRUE_VALUE : "false", tenantId);
         log.info("Feature flag {} set to {} for tenantId={}", featureKey, enabled, tenantId);
     }
 
     public boolean isMaintenanceMode(String tenantId) {
         SfConfig config = baseMapper.selectByKeyAndTenantId("system.maintenance.mode", tenantId);
-        return config != null && "true".equalsIgnoreCase(config.getConfigValue());
+        return config != null && TRUE_VALUE.equalsIgnoreCase(config.getConfigValue());
     }
 
     public boolean isFeatureEnabled(String featureKey, String tenantId) {
         String configKey = "system.feature." + featureKey + ".enabled";
         SfConfig config = baseMapper.selectByKeyAndTenantId(configKey, tenantId);
-        return config == null || "true".equalsIgnoreCase(config.getConfigValue());
+        return config == null || TRUE_VALUE.equalsIgnoreCase(config.getConfigValue());
     }
 
     private void setConfigValue(String configKey, String configValue, String tenantId) {

@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class AgentShadowConfigController extends BaseController {
 
+    private static final String CONFIG_ID_DESCRIPTION = "Config ID";
+
     private final AgentShadowConfigService agentShadowConfigService;
 
     @Operation(summary = "Page list shadow configs")
@@ -32,7 +34,7 @@ public class AgentShadowConfigController extends BaseController {
     @Operation(summary = "Get shadow config by id")
     @GetMapping("/{id}")
     public Result<SfAgentShadowConfig> getById(
-            @Parameter(description = "Config ID") @PathVariable Long id) {
+            @Parameter(description = CONFIG_ID_DESCRIPTION) @PathVariable Long id) {
         return success(agentShadowConfigService.getById(id));
     }
 
@@ -52,7 +54,7 @@ public class AgentShadowConfigController extends BaseController {
     @Operation(summary = "Update shadow config")
     @PutMapping("/{id}")
     public Result<Boolean> update(
-            @Parameter(description = "Config ID") @PathVariable Long id,
+            @Parameter(description = CONFIG_ID_DESCRIPTION) @PathVariable Long id,
             @RequestBody SfAgentShadowConfig config) {
         config.setId(id);
         return success(agentShadowConfigService.updateById(config));
@@ -61,7 +63,7 @@ public class AgentShadowConfigController extends BaseController {
     @Operation(summary = "Toggle enabled status")
     @PatchMapping("/{id}/toggle")
     public Result<Void> toggleEnabled(
-            @Parameter(description = "Config ID") @PathVariable Long id,
+            @Parameter(description = CONFIG_ID_DESCRIPTION) @PathVariable Long id,
             @RequestParam boolean enabled) {
         agentShadowConfigService.toggleEnabled(id, enabled);
         return success();
@@ -70,7 +72,7 @@ public class AgentShadowConfigController extends BaseController {
     @Operation(summary = "Delete shadow config")
     @DeleteMapping("/{id}")
     public Result<Boolean> delete(
-            @Parameter(description = "Config ID") @PathVariable Long id) {
+            @Parameter(description = CONFIG_ID_DESCRIPTION) @PathVariable Long id) {
         return success(agentShadowConfigService.removeById(id));
     }
 }

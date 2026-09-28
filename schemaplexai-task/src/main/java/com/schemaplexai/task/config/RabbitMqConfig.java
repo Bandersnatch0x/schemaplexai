@@ -19,6 +19,9 @@ import java.util.Map;
 @Configuration
 public class RabbitMqConfig {
 
+    private static final String DEAD_LETTER_EXCHANGE_ARGUMENT = "x-dead-letter-exchange";
+    private static final String DEAD_LETTER_ROUTING_KEY_ARGUMENT = "x-dead-letter-routing-key";
+
     @Bean
     public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
             SimpleRabbitListenerContainerFactoryConfigurer configurer,
@@ -38,8 +41,8 @@ public class RabbitMqConfig {
     @Bean
     public Queue agentExecuteQueue() {
         Map<String, Object> args = new HashMap<>();
-        args.put("x-dead-letter-exchange", DeadLetterConfig.DLX_EXCHANGE);
-        args.put("x-dead-letter-routing-key", DeadLetterConfig.DLX_ROUTING_KEY);
+        args.put(DEAD_LETTER_EXCHANGE_ARGUMENT, DeadLetterConfig.DLX_EXCHANGE);
+        args.put(DEAD_LETTER_ROUTING_KEY_ARGUMENT, DeadLetterConfig.DLX_ROUTING_KEY);
         return new Queue("sf.agent.execute.queue", true, false, false, args);
     }
 
@@ -53,8 +56,8 @@ public class RabbitMqConfig {
     @Bean
     public Queue workflowTriggerQueue() {
         Map<String, Object> args = new HashMap<>();
-        args.put("x-dead-letter-exchange", DeadLetterConfig.DLX_EXCHANGE);
-        args.put("x-dead-letter-routing-key", DeadLetterConfig.DLX_ROUTING_KEY);
+        args.put(DEAD_LETTER_EXCHANGE_ARGUMENT, DeadLetterConfig.DLX_EXCHANGE);
+        args.put(DEAD_LETTER_ROUTING_KEY_ARGUMENT, DeadLetterConfig.DLX_ROUTING_KEY);
         return new Queue("sf.workflow.trigger.queue", true, false, false, args);
     }
 
@@ -68,8 +71,8 @@ public class RabbitMqConfig {
     @Bean
     public Queue notificationQueue() {
         Map<String, Object> args = new HashMap<>();
-        args.put("x-dead-letter-exchange", DeadLetterConfig.DLX_EXCHANGE);
-        args.put("x-dead-letter-routing-key", DeadLetterConfig.DLX_ROUTING_KEY);
+        args.put(DEAD_LETTER_EXCHANGE_ARGUMENT, DeadLetterConfig.DLX_EXCHANGE);
+        args.put(DEAD_LETTER_ROUTING_KEY_ARGUMENT, DeadLetterConfig.DLX_ROUTING_KEY);
         return new Queue("sf.notification.queue", true, false, false, args);
     }
 
@@ -83,8 +86,8 @@ public class RabbitMqConfig {
     @Bean
     public Queue costQueue() {
         Map<String, Object> args = new HashMap<>();
-        args.put("x-dead-letter-exchange", DeadLetterConfig.DLX_EXCHANGE);
-        args.put("x-dead-letter-routing-key", DeadLetterConfig.DLX_ROUTING_KEY);
+        args.put(DEAD_LETTER_EXCHANGE_ARGUMENT, DeadLetterConfig.DLX_EXCHANGE);
+        args.put(DEAD_LETTER_ROUTING_KEY_ARGUMENT, DeadLetterConfig.DLX_ROUTING_KEY);
         return new Queue("sf.cost.queue", true, false, false, args);
     }
 
@@ -98,8 +101,8 @@ public class RabbitMqConfig {
     @Bean
     public Queue qualityQueue() {
         Map<String, Object> args = new HashMap<>();
-        args.put("x-dead-letter-exchange", DeadLetterConfig.DLX_EXCHANGE);
-        args.put("x-dead-letter-routing-key", DeadLetterConfig.DLX_ROUTING_KEY);
+        args.put(DEAD_LETTER_EXCHANGE_ARGUMENT, DeadLetterConfig.DLX_EXCHANGE);
+        args.put(DEAD_LETTER_ROUTING_KEY_ARGUMENT, DeadLetterConfig.DLX_ROUTING_KEY);
         return new Queue("sf.quality.queue", true, false, false, args);
     }
 
@@ -113,8 +116,8 @@ public class RabbitMqConfig {
     @Bean
     public Queue milvusSyncQueue() {
         Map<String, Object> args = new HashMap<>();
-        args.put("x-dead-letter-exchange", DeadLetterConfig.DLX_EXCHANGE);
-        args.put("x-dead-letter-routing-key", DeadLetterConfig.DLX_ROUTING_KEY);
+        args.put(DEAD_LETTER_EXCHANGE_ARGUMENT, DeadLetterConfig.DLX_EXCHANGE);
+        args.put(DEAD_LETTER_ROUTING_KEY_ARGUMENT, DeadLetterConfig.DLX_ROUTING_KEY);
         return new Queue("sf.milvus.sync.queue", true, false, false, args);
     }
 
@@ -128,8 +131,8 @@ public class RabbitMqConfig {
     @Bean
     public Queue executionEventQueue() {
         Map<String, Object> args = new HashMap<>();
-        args.put("x-dead-letter-exchange", DeadLetterConfig.DLX_EXCHANGE);
-        args.put("x-dead-letter-routing-key", DeadLetterConfig.DLX_ROUTING_KEY);
+        args.put(DEAD_LETTER_EXCHANGE_ARGUMENT, DeadLetterConfig.DLX_EXCHANGE);
+        args.put(DEAD_LETTER_ROUTING_KEY_ARGUMENT, DeadLetterConfig.DLX_ROUTING_KEY);
         return new Queue("sf.execution.event.queue", true, false, false, args);
     }
 

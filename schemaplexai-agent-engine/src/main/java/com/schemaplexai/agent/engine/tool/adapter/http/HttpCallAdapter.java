@@ -40,8 +40,9 @@ import java.util.Set;
 public class HttpCallAdapter implements ToolAdapter {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final String HTTP_GET_METHOD = "GET";
     private static final Set<String> BLOCKED_SCHEMES = Set.of("file", "gopher", "ftp", "jar");
-    private static final Set<String> ALLOWED_METHODS = Set.of("GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS");
+    private static final Set<String> ALLOWED_METHODS = Set.of(HTTP_GET_METHOD, "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS");
     private static final Set<String> BODY_METHODS = Set.of("POST", "PUT", "PATCH");
     private static final int MAX_REDIRECTS = 3;
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
@@ -70,7 +71,7 @@ public class HttpCallAdapter implements ToolAdapter {
             throw new ToolExecutionException(ToolErrorCategory.INVALID_ARGUMENT, "URL is required");
         }
 
-        String method = call.parameters().getOrDefault("method", "GET").toString().toUpperCase();
+        String method = call.parameters().getOrDefault("method", HTTP_GET_METHOD).toString().toUpperCase();
 
         // Validate HTTP method against whitelist (prevent TRACE, CONNECT, etc.)
         if (!ALLOWED_METHODS.contains(method)) {
@@ -175,7 +176,7 @@ public class HttpCallAdapter implements ToolAdapter {
                     .timeout(READ_TIMEOUT);
 
             switch (method) {
-                case "GET" -> requestBuilder.GET();
+                case HTTP_GET_METHOD -> requestBuilder.GET();
                 case "DELETE" -> requestBuilder.DELETE();
                 default -> {
                     HttpRequest.BodyPublisher bodyPublisher = buildBodyPublisher(method, parameters);
@@ -202,7 +203,7 @@ public class HttpCallAdapter implements ToolAdapter {
                                 "Invalid redirect URL: " + location);
                     }
                     log.info("Following redirect ({} of {}): {} -> {}", redirectCount + 1, MAX_REDIRECTS, urlStr, redirectUri);
-                    return executeWithRedirectProtection(redirectUri.toString(), "GET", parameters, allowedHosts, redirectCount + 1);
+                    return executeWithRedirectProtection(redirectUri.toString(), HTTP_GET_METHOD, parameters, allowedHosts, redirectCount + 1);
                 }
             }
 
