@@ -22,6 +22,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AiAgentResultProcessorDelegate implements JavaDelegate, ExecutionListener {
 
+    private static final String AGENT_RESULT_VARIABLE = "agentResult";
+    private static final String FINAL_STATUS_VARIABLE = "finalStatus";
+
     private final ObjectMapper objectMapper;
 
     @Override
@@ -31,7 +34,7 @@ public class AiAgentResultProcessorDelegate implements JavaDelegate, ExecutionLi
         String tenantId = resolveTenantId(execution);
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> agentResult = (Map<String, Object>) execution.getVariable("agentResult");
+        Map<String, Object> agentResult = (Map<String, Object>) execution.getVariable(AGENT_RESULT_VARIABLE);
         if (agentResult == null) {
             agentResult = new HashMap<>();
             agentResult.put("status", "UNKNOWN");
@@ -45,16 +48,16 @@ public class AiAgentResultProcessorDelegate implements JavaDelegate, ExecutionLi
                 // Intermediate result processing
                 agentResult.put("processedAt", Instant.now().toString());
                 agentResult.put("processInstanceId", processInstanceId);
-                execution.setVariable("agentResult", agentResult);
+                execution.setVariable(AGENT_RESULT_VARIABLE, agentResult);
                 log.info("[AiAgentResult] Processed result process={}, agentId={}, trackingId={}",
                         processInstanceId, agentId, executionTrackingId);
             }
             case "finalizeTask" -> {
                 // Final result processing
                 agentResult.put("finalizedAt", Instant.now().toString());
-                agentResult.put("finalStatus", "COMPLETED");
-                execution.setVariable("agentResult", agentResult);
-                execution.setVariable("finalStatus", "COMPLETED");
+                agentResult.put(FINAL_STATUS_VARIABLE, "COMPLETED");
+                execution.setVariable(AGENT_RESULT_VARIABLE, agentResult);
+                execution.setVariable(FINAL_STATUS_VARIABLE, "COMPLETED");
                 execution.setVariable("completedAt", Instant.now().toString());
                 log.info("[AiAgentResult] Finalized process={}, agentId={}, trackingId={}",
                         processInstanceId, agentId, executionTrackingId);
@@ -80,10 +83,10 @@ public class AiAgentResultProcessorDelegate implements JavaDelegate, ExecutionLi
         if ("end".equals(eventName)) {
             String processInstanceId = execution.getProcessInstanceId();
             String tenantId = resolveTenantId(execution);
-            String finalStatus = (String) execution.getVariable("finalStatus");
+            String finalStatus = (String) execution.getVariable(FINAL_STATUS_VARIABLE);
             if (finalStatus == null) {
                 finalStatus = "TERMINATED";
-                execution.setVariable("finalStatus", finalStatus);
+                execution.setVariable(FINAL_STATUS_VARIABLE, finalStatus);
             }
             log.info("[AiAgentResult] Workflow ended process={}, tenantId={}, finalStatus={}",
                     processInstanceId, tenantId, finalStatus);
@@ -98,14 +101,14 @@ public class AiAgentResultProcessorDelegate implements JavaDelegate, ExecutionLi
         summary.put("agentId", execution.getVariable("agentId"));
         summary.put("taskDescription", execution.getVariable("taskDescription"));
         summary.put("executionTrackingId", execution.getVariable("executionTrackingId"));
-        summary.put("finalStatus", execution.getVariable("finalStatus"));
+        summary.put(FINAL_STATUS_VARIABLE, execution.getVariable(FINAL_STATUS_VARIABLE));
         summary.put("startedAt", execution.getVariable("startedAt"));
         summary.put("completedAt", execution.getVariable("completedAt"));
         summary.put("retryCount", execution.getVariable("retryCount"));
         summary.put("humanApproved", execution.getVariable("humanApproved"));
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> agentResult = (Map<String, Object>) execution.getVariable("agentResult");
+        Map<String, Object> agentResult = (Map<String, Object>) execution.getVariable(AGENT_RESULT_VARIABLE);
         if (agentResult != null) {
             summary.put("qualityScore", agentResult.get("qualityScore"));
             summary.put("agentSuccess", agentResult.get("success"));

@@ -30,6 +30,14 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class GitIntegrationService {
 
+    private static final String PROVIDER_KEY = "provider";
+    private static final String ACCESS_TOKEN_KEY = "accessToken";
+    private static final String REPOSITORY_KEY = "repository";
+    private static final String UNKNOWN_VALUE = "unknown";
+    private static final String GITHUB_PROVIDER = "github";
+    private static final String GITLAB_PROVIDER = "gitlab";
+    private static final String REPOSITORY_NOT_FOUND_PREFIX = "Repository not found: ";
+
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
 
@@ -48,12 +56,12 @@ public class GitIntegrationService {
         long repoId = repoIdSequence++;
         Map<String, Object> repo = new ConcurrentHashMap<>();
         repo.put("id", repoId);
-        repo.put("provider", provider.toLowerCase());
+        repo.put(PROVIDER_KEY, provider.toLowerCase());
         repo.put("owner", owner);
         repo.put("repoName", repoName);
         repo.put("cloneUrl", cloneUrl);
         repo.put("defaultBranch", defaultBranch != null ? defaultBranch : "main");
-        repo.put("accessToken", accessToken != null ? accessToken : "");
+        repo.put(ACCESS_TOKEN_KEY, accessToken != null ? accessToken : "");
         repo.put("createdAt", Instant.now().toString());
         repo.put("status", "active");
         repoStore.put(repoId, repo);
@@ -64,11 +72,11 @@ public class GitIntegrationService {
     public Map<String, Object> getRepository(Long repoId) {
         Map<String, Object> repo = repoStore.get(repoId);
         if (repo == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
+            throw new BaseException(ResultCode.NOT_FOUND, REPOSITORY_NOT_FOUND_PREFIX + repoId);
         }
         // Return without exposing token
         Map<String, Object> safe = new ConcurrentHashMap<>(repo);
-        safe.remove("accessToken");
+        safe.remove(ACCESS_TOKEN_KEY);
         return safe;
     }
 
@@ -76,7 +84,7 @@ public class GitIntegrationService {
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map<String, Object> repo : repoStore.values()) {
             Map<String, Object> safe = new ConcurrentHashMap<>(repo);
-            safe.remove("accessToken");
+            safe.remove(ACCESS_TOKEN_KEY);
             result.add(safe);
         }
         return result;
@@ -84,7 +92,7 @@ public class GitIntegrationService {
 
     public void deleteRepository(Long repoId) {
         if (repoStore.remove(repoId) == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
+            throw new BaseException(ResultCode.NOT_FOUND, REPOSITORY_NOT_FOUND_PREFIX + repoId);
         }
         log.info("Repository deleted: {}", repoId);
     }
@@ -101,10 +109,10 @@ public class GitIntegrationService {
     public String cloneRepository(Long repoId, String targetDir) {
         Map<String, Object> repo = repoStore.get(repoId);
         if (repo == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
+            throw new BaseException(ResultCode.NOT_FOUND, REPOSITORY_NOT_FOUND_PREFIX + repoId);
         }
         String cloneUrl = (String) repo.get("cloneUrl");
-        String accessToken = (String) repo.get("accessToken");
+        String accessToken = (String) repo.get(ACCESS_TOKEN_KEY);
         String authUrl = injectToken(cloneUrl, accessToken);
 
         Path dest = targetDir != null ? Path.of(targetDir) : Path.of(System.getProperty("java.io.tmpdir"), "git-repos", repoId + "-" + UUID.randomUUID());
@@ -122,7 +130,7 @@ public class GitIntegrationService {
     public String pullRepository(Long repoId, String localPath) {
         Map<String, Object> repo = repoStore.get(repoId);
         if (repo == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
+            throw new BaseException(ResultCode.NOT_FOUND, REPOSITORY_NOT_FOUND_PREFIX + repoId);
         }
         if (localPath == null || localPath.isBlank()) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Local path is required");
@@ -140,7 +148,7 @@ public class GitIntegrationService {
     public String pushRepository(Long repoId, String localPath, String branch) {
         Map<String, Object> repo = repoStore.get(repoId);
         if (repo == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
+            throw new BaseException(ResultCode.NOT_FOUND, REPOSITORY_NOT_FOUND_PREFIX + repoId);
         }
         if (localPath == null || localPath.isBlank()) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Local path is required");
@@ -237,9 +245,9 @@ public class GitIntegrationService {
             String webhookId = UUID.randomUUID().toString();
             Map<String, Object> record = new ConcurrentHashMap<>();
             record.put("id", webhookId);
-            record.put("provider", provider);
+            record.put(PROVIDER_KEY, provider);
             record.put("eventType", eventType);
-            record.put("repository", repository);
+            record.put(REPOSITORY_KEY, repository);
             record.put("branch", branch);
             record.put("commitSha", commitSha);
             record.put("receivedAt", Instant.now().toString());
@@ -264,7 +272,7 @@ public class GitIntegrationService {
         }
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map<String, Object> event : webhookStore.values()) {
-            if (repository != null && !repository.equals(event.get("repository"))) {
+            if (repository != null && !repository.equals(event.get(REPOSITORY_KEY))) {
                 continue;
             }
             if (eventType != null && !eventType.equals(event.get("eventType"))) {
@@ -283,16 +291,16 @@ public class GitIntegrationService {
     public String fetchRepositoryInfo(Long repoId) {
         Map<String, Object> repo = repoStore.get(repoId);
         if (repo == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
+            throw new BaseException(ResultCode.NOT_FOUND, REPOSITORY_NOT_FOUND_PREFIX + repoId);
         }
-        String provider = (String) repo.get("provider");
+        String provider = (String) repo.get(PROVIDER_KEY);
         String owner = (String) repo.get("owner");
         String repoName = (String) repo.get("repoName");
-        String accessToken = (String) repo.get("accessToken");
+        String accessToken = (String) repo.get(ACCESS_TOKEN_KEY);
 
-        if ("github".equals(provider)) {
+        if (GITHUB_PROVIDER.equals(provider)) {
             return callGitHubApi("/repos/" + owner + "/" + repoName, accessToken);
-        } else if ("gitlab".equals(provider)) {
+        } else if (GITLAB_PROVIDER.equals(provider)) {
             return callGitLabApi("/projects/" + owner + "%2F" + repoName, accessToken);
         }
         throw new BaseException(ResultCode.PARAM_ERROR, "Unsupported provider: " + provider);
@@ -301,16 +309,16 @@ public class GitIntegrationService {
     public String fetchBranchesViaApi(Long repoId) {
         Map<String, Object> repo = repoStore.get(repoId);
         if (repo == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "Repository not found: " + repoId);
+            throw new BaseException(ResultCode.NOT_FOUND, REPOSITORY_NOT_FOUND_PREFIX + repoId);
         }
-        String provider = (String) repo.get("provider");
+        String provider = (String) repo.get(PROVIDER_KEY);
         String owner = (String) repo.get("owner");
         String repoName = (String) repo.get("repoName");
-        String accessToken = (String) repo.get("accessToken");
+        String accessToken = (String) repo.get(ACCESS_TOKEN_KEY);
 
-        if ("github".equals(provider)) {
+        if (GITHUB_PROVIDER.equals(provider)) {
             return callGitHubApi("/repos/" + owner + "/" + repoName + "/branches", accessToken);
-        } else if ("gitlab".equals(provider)) {
+        } else if (GITLAB_PROVIDER.equals(provider)) {
             return callGitLabApi("/projects/" + owner + "%2F" + repoName + "/repository/branches", accessToken);
         }
         throw new BaseException(ResultCode.PARAM_ERROR, "Unsupported provider: " + provider);
@@ -353,38 +361,38 @@ public class GitIntegrationService {
 
     private String extractEventType(JsonNode root, String provider) {
         return switch (provider.toLowerCase()) {
-            case "github" -> root.path("action").asText(root.path("event").asText("unknown"));
-            case "gitlab" -> root.path("object_kind").asText("unknown");
-            default -> root.path("event_type").asText("unknown");
+            case GITHUB_PROVIDER -> root.path("action").asText(root.path("event").asText(UNKNOWN_VALUE));
+            case GITLAB_PROVIDER -> root.path("object_kind").asText(UNKNOWN_VALUE);
+            default -> root.path("event_type").asText(UNKNOWN_VALUE);
         };
     }
 
     private String extractRepository(JsonNode root, String provider) {
         return switch (provider.toLowerCase()) {
-            case "github" -> root.path("repository").path("full_name").asText("unknown");
-            case "gitlab" -> root.path("project").path("path_with_namespace").asText("unknown");
-            default -> root.path("repository").path("full_name").asText("unknown");
+            case GITHUB_PROVIDER -> root.path(REPOSITORY_KEY).path("full_name").asText(UNKNOWN_VALUE);
+            case GITLAB_PROVIDER -> root.path("project").path("path_with_namespace").asText(UNKNOWN_VALUE);
+            default -> root.path(REPOSITORY_KEY).path("full_name").asText(UNKNOWN_VALUE);
         };
     }
 
     private String extractBranch(JsonNode root, String provider) {
         return switch (provider.toLowerCase()) {
-            case "github" -> root.path("ref").asText("unknown").replace("refs/heads/", "");
-            case "gitlab" -> root.path("ref").asText("unknown").replace("refs/heads/", "");
-            default -> root.path("ref").asText("unknown").replace("refs/heads/", "");
+            case GITHUB_PROVIDER -> root.path("ref").asText(UNKNOWN_VALUE).replace("refs/heads/", "");
+            case GITLAB_PROVIDER -> root.path("ref").asText(UNKNOWN_VALUE).replace("refs/heads/", "");
+            default -> root.path("ref").asText(UNKNOWN_VALUE).replace("refs/heads/", "");
         };
     }
 
     private String extractCommitSha(JsonNode root, String provider) {
         return switch (provider.toLowerCase()) {
-            case "github" -> root.path("after").asText(root.path("head_commit").path("id").asText("unknown"));
-            case "gitlab" -> root.path("after").asText(root.path("checkout_sha").asText("unknown"));
-            default -> root.path("after").asText("unknown");
+            case GITHUB_PROVIDER -> root.path("after").asText(root.path("head_commit").path("id").asText(UNKNOWN_VALUE));
+            case GITLAB_PROVIDER -> root.path("after").asText(root.path("checkout_sha").asText(UNKNOWN_VALUE));
+            default -> root.path("after").asText(UNKNOWN_VALUE);
         };
     }
 
     private void validateWebhookRepository(String repository) {
-        if (repository == null || repository.isBlank() || "unknown".equals(repository)) {
+        if (repository == null || repository.isBlank() || UNKNOWN_VALUE.equals(repository)) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Webhook repository is required");
         }
     }

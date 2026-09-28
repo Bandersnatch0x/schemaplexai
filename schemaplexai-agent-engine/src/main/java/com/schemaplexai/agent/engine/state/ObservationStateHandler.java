@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 public class ObservationStateHandler implements AgentStateHandler {
 
     private static final int DEFAULT_MAX_ITERATIONS = 10;
+    private static final String ITERATIONS_METADATA_KEY = "iterations=";
 
     @Override
     public AgentExecutionState getState() {
@@ -62,9 +63,9 @@ public class ObservationStateHandler implements AgentStateHandler {
      */
     private int resolveIterationCount(SfAgentExecution execution) {
         String meta = execution.getTokenBudgetJson();
-        if (meta != null && meta.contains("iterations=")) {
+        if (meta != null && meta.contains(ITERATIONS_METADATA_KEY)) {
             try {
-                String val = meta.substring(meta.indexOf("iterations=") + 11);
+                String val = meta.substring(meta.indexOf(ITERATIONS_METADATA_KEY) + 11);
                 int commaIdx = val.indexOf(',');
                 if (commaIdx > 0) val = val.substring(0, commaIdx);
                 return Integer.parseInt(val.trim());
@@ -83,12 +84,12 @@ public class ObservationStateHandler implements AgentStateHandler {
         int next = current + 1;
         String existing = execution.getTokenBudgetJson();
         if (existing == null || existing.isBlank()) {
-            execution.setTokenBudgetJson("iterations=" + next);
-        } else if (existing.contains("iterations=")) {
-            String updated = existing.replaceAll("iterations=\\d+", "iterations=" + next);
+            execution.setTokenBudgetJson(ITERATIONS_METADATA_KEY + next);
+        } else if (existing.contains(ITERATIONS_METADATA_KEY)) {
+            String updated = existing.replaceAll("iterations=\\d+", ITERATIONS_METADATA_KEY + next);
             execution.setTokenBudgetJson(updated);
         } else {
-            execution.setTokenBudgetJson(existing + ",iterations=" + next);
+            execution.setTokenBudgetJson(existing + "," + ITERATIONS_METADATA_KEY + next);
         }
         stateMachine.saveExecution(execution);
     }

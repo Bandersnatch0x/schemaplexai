@@ -13,6 +13,7 @@ public final class TenantRedisKeyResolver {
 
     private static final String PREFIX = "sf";
     private static final String GLOBAL = "global";
+    private static final String CATEGORY_BLANK_MESSAGE = "category must not be blank";
 
     private TenantRedisKeyResolver() {}
 
@@ -50,7 +51,7 @@ public final class TenantRedisKeyResolver {
             throw new IllegalArgumentException("tenantId must not be blank");
         }
         if (category == null || category.isBlank()) {
-            throw new IllegalArgumentException("category must not be blank");
+            throw new IllegalArgumentException(CATEGORY_BLANK_MESSAGE);
         }
         return PREFIX + ":" + tenantId + ":" + category + ":" + detail;
     }
@@ -63,7 +64,7 @@ public final class TenantRedisKeyResolver {
             throw new IllegalArgumentException("tenantId must not be blank");
         }
         if (category == null || category.isBlank()) {
-            throw new IllegalArgumentException("category must not be blank");
+            throw new IllegalArgumentException(CATEGORY_BLANK_MESSAGE);
         }
         return PREFIX + ":" + tenantId + ":" + category + ":" + sub + ":" + detail;
     }
@@ -77,7 +78,7 @@ public final class TenantRedisKeyResolver {
      */
     public static String globalKey(String category, String detail) {
         if (category == null || category.isBlank()) {
-            throw new IllegalArgumentException("category must not be blank");
+            throw new IllegalArgumentException(CATEGORY_BLANK_MESSAGE);
         }
         return PREFIX + ":" + GLOBAL + ":" + category + ":" + detail;
     }
@@ -87,7 +88,7 @@ public final class TenantRedisKeyResolver {
      */
     public static String globalKey(String category, String sub, String detail) {
         if (category == null || category.isBlank()) {
-            throw new IllegalArgumentException("category must not be blank");
+            throw new IllegalArgumentException(CATEGORY_BLANK_MESSAGE);
         }
         return PREFIX + ":" + GLOBAL + ":" + category + ":" + sub + ":" + detail;
     }

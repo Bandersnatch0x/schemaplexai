@@ -21,6 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WorkflowTemplateServiceImpl extends ServiceImpl<SfWorkflowTemplateMapper, SfWorkflowTemplate> implements WorkflowTemplateService {
 
+    private static final String WORKFLOW_TEMPLATE_NOT_FOUND_PREFIX = "Workflow template not found: ";
     private static final String STATUS_DRAFT = "draft";
     private static final String STATUS_DEPLOYED = "deployed";
     private static final String STATUS_INACTIVE = "inactive";
@@ -29,7 +30,7 @@ public class WorkflowTemplateServiceImpl extends ServiceImpl<SfWorkflowTemplateM
     public SfWorkflowTemplate deployTemplate(Long templateId) {
         SfWorkflowTemplate template = baseMapper.selectById(templateId);
         if (template == null) {
-            throw new BaseException(ResultCode.WORKFLOW_NOT_FOUND, "Workflow template not found: " + templateId);
+            throw new BaseException(ResultCode.WORKFLOW_NOT_FOUND, WORKFLOW_TEMPLATE_NOT_FOUND_PREFIX + templateId);
         }
         if (STATUS_DEPLOYED.equals(template.getStatus())) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Template is already deployed: " + templateId);
@@ -44,7 +45,7 @@ public class WorkflowTemplateServiceImpl extends ServiceImpl<SfWorkflowTemplateM
     public boolean validateTemplate(Long templateId) {
         SfWorkflowTemplate template = baseMapper.selectById(templateId);
         if (template == null) {
-            throw new BaseException(ResultCode.WORKFLOW_NOT_FOUND, "Workflow template not found: " + templateId);
+            throw new BaseException(ResultCode.WORKFLOW_NOT_FOUND, WORKFLOW_TEMPLATE_NOT_FOUND_PREFIX + templateId);
         }
         if (template.getNodeConfigJson() == null || template.getNodeConfigJson().isBlank()) {
             log.warn("Template validation failed - missing node config: id={}", templateId);
@@ -62,7 +63,7 @@ public class WorkflowTemplateServiceImpl extends ServiceImpl<SfWorkflowTemplateM
     public SfWorkflowTemplate cloneTemplate(Long templateId, String newName) {
         SfWorkflowTemplate source = baseMapper.selectById(templateId);
         if (source == null) {
-            throw new BaseException(ResultCode.WORKFLOW_NOT_FOUND, "Workflow template not found: " + templateId);
+            throw new BaseException(ResultCode.WORKFLOW_NOT_FOUND, WORKFLOW_TEMPLATE_NOT_FOUND_PREFIX + templateId);
         }
         if (newName == null || newName.isBlank()) {
             throw new BaseException(ResultCode.PARAM_ERROR, "New name is required for cloning");
@@ -92,7 +93,7 @@ public class WorkflowTemplateServiceImpl extends ServiceImpl<SfWorkflowTemplateM
     public SfWorkflowTemplate deactivateTemplate(Long templateId) {
         SfWorkflowTemplate template = baseMapper.selectById(templateId);
         if (template == null) {
-            throw new BaseException(ResultCode.WORKFLOW_NOT_FOUND, "Workflow template not found: " + templateId);
+            throw new BaseException(ResultCode.WORKFLOW_NOT_FOUND, WORKFLOW_TEMPLATE_NOT_FOUND_PREFIX + templateId);
         }
         if (!STATUS_DEPLOYED.equals(template.getStatus())) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Only deployed templates can be deactivated: " + templateId);

@@ -24,6 +24,8 @@ public class ReflectingStateHandler implements AgentStateHandler {
 
     private static final int MAX_REFLECTION_ROUNDS = 2;
     private static final double REFLECTION_TEMPERATURE = 0.3;
+    private static final String THOUGHT_EVENT_TYPE = "thought";
+    private static final String REFLECTIONS_METADATA_KEY = "reflections=";
 
     private final AiModelRouter modelRouter;
     private final GuardrailsEngine guardrailsEngine;
@@ -48,7 +50,7 @@ public class ReflectingStateHandler implements AgentStateHandler {
     @Override
     public void handle(AgentStateMachine stateMachine, SfAgentExecution execution) {
         log.info("Agent {} entering REFLECTING state, execution {}", execution.getAgentId(), execution.getId());
-        stateMachine.emitTimelineEvent(execution, "thought",
+        stateMachine.emitTimelineEvent(execution, THOUGHT_EVENT_TYPE,
                 "Entering REFLECTING state — self-evaluation (round " + (getReflectionCount(execution) + 1) + ")");
 
         int reflectionCount = getReflectionCount(execution);
@@ -57,7 +59,7 @@ public class ReflectingStateHandler implements AgentStateHandler {
         if (reflectionCount >= MAX_REFLECTION_ROUNDS) {
             log.info("Max reflection rounds ({}) reached for execution {}, accepting output",
                     MAX_REFLECTION_ROUNDS, execution.getId());
-            stateMachine.emitTimelineEvent(execution, "thought",
+            stateMachine.emitTimelineEvent(execution, THOUGHT_EVENT_TYPE,
                     "Max reflection rounds reached, accepting output");
             stateMachine.transition(AgentExecutionState.COMPLETED, execution);
             return;
@@ -96,7 +98,7 @@ public class ReflectingStateHandler implements AgentStateHandler {
             if (reflectionResult.needsRevision()) {
                 log.info("Execution {} reflection round {} requires revision: {}",
                         execution.getId(), reflectionCount + 1, reflectionResult.suggestions());
-                stateMachine.emitTimelineEvent(execution, "thought",
+                stateMachine.emitTimelineEvent(execution, THOUGHT_EVENT_TYPE,
                         "Reflection requires revision: " + truncate(reflectionResult.suggestions(), 300));
                 setReflectionCount(execution, reflectionCount + 1);
                 stateMachine.saveExecution(execution);
@@ -104,7 +106,7 @@ public class ReflectingStateHandler implements AgentStateHandler {
             } else {
                 log.info("Execution {} reflection round {} passed review",
                         execution.getId(), reflectionCount + 1);
-                stateMachine.emitTimelineEvent(execution, "thought",
+                stateMachine.emitTimelineEvent(execution, THOUGHT_EVENT_TYPE,
                         "Reflection passed review");
                 stateMachine.transition(AgentExecutionState.COMPLETED, execution);
             }
@@ -170,9 +172,9 @@ public class ReflectingStateHandler implements AgentStateHandler {
 
     int getReflectionCount(SfAgentExecution execution) {
         String budget = execution.getTokenBudgetJson();
-        if (budget != null && budget.contains("reflections=")) {
+        if (budget != null && budget.contains(REFLECTIONS_METADATA_KEY)) {
             try {
-                String val = budget.substring(budget.indexOf("reflections=") + 12);
+                String val = budget.substring(budget.indexOf(REFLECTIONS_METADATA_KEY) + 12);
                 int commaIdx = val.indexOf(',');
                 if (commaIdx > 0) val = val.substring(0, commaIdx);
                 return Integer.parseInt(val.trim());
@@ -186,12 +188,12 @@ public class ReflectingStateHandler implements AgentStateHandler {
     private void setReflectionCount(SfAgentExecution execution, int count) {
         String existing = execution.getTokenBudgetJson();
         if (existing == null || existing.isBlank()) {
-            execution.setTokenBudgetJson("reflections=" + count);
-        } else if (existing.contains("reflections=")) {
-            String updated = existing.replaceAll("reflections=\\d+", "reflections=" + count);
+            execution.setTokenBudgetJson(REFLECTIONS_METADATA_KEY + count);
+        } else if (existing.contains(REFLECTIONS_METADATA_KEY)) {
+            String updated = existing.replaceAll("reflections=\\d+", REFLECTIONS_METADATA_KEY + count);
             execution.setTokenBudgetJson(updated);
         } else {
-            execution.setTokenBudgetJson(existing + ",reflections=" + count);
+            execution.setTokenBudgetJson(existing + "," + REFLECTIONS_METADATA_KEY + count);
         }
     }
 

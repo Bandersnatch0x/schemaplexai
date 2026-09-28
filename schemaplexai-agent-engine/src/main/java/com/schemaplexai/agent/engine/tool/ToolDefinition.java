@@ -13,6 +13,9 @@ public record ToolDefinition(
         List<ToolParameter> parameters,
         String returnType) {
 
+    private static final String TYPE_KEY = "type";
+    private static final String DESCRIPTION_KEY = "description";
+
     /**
      * 转换为 OpenAI function calling 的 JSON Schema 格式。
      * <pre>
@@ -32,10 +35,10 @@ public record ToolDefinition(
      */
     public Map<String, Object> toOpenAiFunction() {
         return Map.of(
-                "type", "function",
+                TYPE_KEY, "function",
                 "function", Map.of(
                         "name", name,
-                        "description", description,
+                        DESCRIPTION_KEY, description,
                         "parameters", buildOpenAiParameters()
                 )
         );
@@ -47,8 +50,8 @@ public record ToolDefinition(
 
         for (ToolParameter p : parameters) {
             properties.put(p.name(), Map.of(
-                    "type", p.type(),
-                    "description", p.description()
+                    TYPE_KEY, p.type(),
+                    DESCRIPTION_KEY, p.description()
             ));
             if (p.required()) {
                 required.add(p.name());
@@ -56,7 +59,7 @@ public record ToolDefinition(
         }
 
         Map<String, Object> schema = new java.util.LinkedHashMap<>();
-        schema.put("type", "object");
+        schema.put(TYPE_KEY, "object");
         schema.put("properties", properties);
         if (!required.isEmpty()) {
             schema.put("required", required);
@@ -84,8 +87,8 @@ public record ToolDefinition(
 
         for (ToolParameter p : parameters) {
             properties.put(p.name(), Map.of(
-                    "type", p.type(),
-                    "description", p.description()
+                    TYPE_KEY, p.type(),
+                    DESCRIPTION_KEY, p.description()
             ));
             if (p.required()) {
                 required.add(p.name());
@@ -93,7 +96,7 @@ public record ToolDefinition(
         }
 
         Map<String, Object> inputSchema = new java.util.LinkedHashMap<>();
-        inputSchema.put("type", "object");
+        inputSchema.put(TYPE_KEY, "object");
         inputSchema.put("properties", properties);
         if (!required.isEmpty()) {
             inputSchema.put("required", required);
@@ -101,7 +104,7 @@ public record ToolDefinition(
 
         return Map.of(
                 "name", name,
-                "description", description,
+                DESCRIPTION_KEY, description,
                 "input_schema", inputSchema
         );
     }

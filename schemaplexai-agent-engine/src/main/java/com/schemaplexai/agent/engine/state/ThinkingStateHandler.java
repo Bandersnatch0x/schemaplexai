@@ -46,6 +46,10 @@ public class ThinkingStateHandler implements AgentStateHandler {
 
     private static final double DEFAULT_TEMPERATURE = 0.7;
     private static final String METADATA_KEY_PLAN = "subTaskPlan";
+    private static final String THOUGHT_EVENT_TYPE = "thought";
+    private static final String BLOCKED_REASON_METADATA_KEY = "blockedReason";
+    private static final String ADMISSION_TYPE_METADATA_KEY = "admissionType";
+    private static final String STRATEGY_MESSAGE_PREFIX = "Strategy ";
 
     private final ContextInjector contextInjector;
     private final CompositeChatMemoryStore chatMemoryStore;
@@ -113,7 +117,7 @@ public class ThinkingStateHandler implements AgentStateHandler {
     @Override
     public void handle(AgentStateMachine stateMachine, SfAgentExecution execution) {
         log.info("Agent {} entering THINKING state, execution {}", execution.getAgentId(), execution.getId());
-        stateMachine.emitTimelineEvent(execution, "thought",
+        stateMachine.emitTimelineEvent(execution, THOUGHT_EVENT_TYPE,
                 "Entering THINKING state — loading context and reasoning");
 
         try {
@@ -132,8 +136,8 @@ public class ThinkingStateHandler implements AgentStateHandler {
                 } else if (!compaction.success()) {
                     log.warn("Compaction failed for execution {}: {}",
                             execution.getId(), compaction.failureReason());
-                    execution.setMetadata("blockedReason", "compaction_failed: " + compaction.failureReason());
-                    execution.setMetadata("admissionType", "COMPACTION");
+                    execution.setMetadata(BLOCKED_REASON_METADATA_KEY, "compaction_failed: " + compaction.failureReason());
+                    execution.setMetadata(ADMISSION_TYPE_METADATA_KEY, "COMPACTION");
                     stateMachine.transition(AgentExecutionState.GATE_BLOCKED, execution);
                     return;
                 }
@@ -153,8 +157,8 @@ public class ThinkingStateHandler implements AgentStateHandler {
             if (!inputGuardResult.success()) {
                 log.warn("Guardrails blocked input for execution {}: {}",
                         execution.getId(), inputGuardResult.errorMessage());
-                execution.setMetadata("blockedReason", inputGuardResult.errorMessage());
-                execution.setMetadata("admissionType", "GUARDRAILS");
+                execution.setMetadata(BLOCKED_REASON_METADATA_KEY, inputGuardResult.errorMessage());
+                execution.setMetadata(ADMISSION_TYPE_METADATA_KEY, "GUARDRAILS");
                 stateMachine.transition(AgentExecutionState.GATE_BLOCKED, execution);
                 return;
             }
@@ -166,8 +170,8 @@ public class ThinkingStateHandler implements AgentStateHandler {
             if (budget != null && !budget.consumeInput(inputTokens)) {
                 log.warn("Token budget exceeded for execution {} (input: {}, remaining: {})",
                         execution.getId(), inputTokens, budget.remainingInput());
-                execution.setMetadata("blockedReason", "token_budget_exceeded");
-                execution.setMetadata("admissionType", "BUDGET");
+                execution.setMetadata(BLOCKED_REASON_METADATA_KEY, "token_budget_exceeded");
+                execution.setMetadata(ADMISSION_TYPE_METADATA_KEY, "BUDGET");
                 stateMachine.transition(AgentExecutionState.GATE_BLOCKED, execution);
                 return;
             }
@@ -179,7 +183,7 @@ public class ThinkingStateHandler implements AgentStateHandler {
                 if (strategy.canContinue(agentContext)) {
                     log.info("Execution {} delegating to reasoning strategy '{}'",
                             execution.getId(), strategy.getName());
-                    stateMachine.emitTimelineEvent(execution, "thought",
+                    stateMachine.emitTimelineEvent(execution, THOUGHT_EVENT_TYPE,
                             "Using reasoning strategy: " + strategy.getName());
                     executeWithStrategy(strategy, agentContext, execution, budget, stateMachine);
                     return;
@@ -190,7 +194,7 @@ public class ThinkingStateHandler implements AgentStateHandler {
 
             // 6b. Call LLM with fallback (inline reasoning — existing ReAct loop)
             String modelId = resolveModelId(execution);
-            stateMachine.emitTimelineEvent(execution, "thought",
+            stateMachine.emitTimelineEvent(execution, THOUGHT_EVENT_TYPE,
                     "Calling LLM (model=" + modelId + ", tokens≈" + inputTokens + ")");
             String response = modelRouter.generateWithFallback(prompt, modelId, DEFAULT_TEMPERATURE);
             long outputTokens = estimateTokens(response);
@@ -201,8 +205,8 @@ public class ThinkingStateHandler implements AgentStateHandler {
                 if (!budget.consumeOutput(outputTokens)) {
                     log.warn("Output token budget exceeded for execution {} (output: {}, remaining: {})",
                             execution.getId(), outputTokens, budget.remainingOutput());
-                    execution.setMetadata("blockedReason", "output_token_budget_exceeded");
-                    execution.setMetadata("admissionType", "BUDGET");
+                    execution.setMetadata(BLOCKED_REASON_METADATA_KEY, "output_token_budget_exceeded");
+                    execution.setMetadata(ADMISSION_TYPE_METADATA_KEY, "BUDGET");
                     stateMachine.transition(AgentExecutionState.GATE_BLOCKED, execution);
                     return;
                 }
@@ -224,14 +228,14 @@ public class ThinkingStateHandler implements AgentStateHandler {
                 if (loopResult.loopDetected()) {
                     log.warn("Loop detected in THINKING for execution {}: {}",
                             execution.getId(), loopResult.reason());
-                    execution.setMetadata("blockedReason", "agent_loop_" + loopResult.reason());
-                    execution.setMetadata("admissionType", "LOOP");
+                    execution.setMetadata(BLOCKED_REASON_METADATA_KEY, "agent_loop_" + loopResult.reason());
+                    execution.setMetadata(ADMISSION_TYPE_METADATA_KEY, "LOOP");
                     stateMachine.transition(AgentExecutionState.GATE_BLOCKED, execution);
                     return;
                 }
 
                 log.info("Execution {} detected tool calls, transitioning to TOOL_CALLING", execution.getId());
-                stateMachine.emitTimelineEvent(execution, "thought",
+                stateMachine.emitTimelineEvent(execution, THOUGHT_EVENT_TYPE,
                         "Detected tool calls: " + String.join(", ", toolNames));
                 execution.setMetadata("iterationToolCallCount", 0);
                 stateMachine.transition(AgentExecutionState.TOOL_CALLING, execution);
@@ -324,7 +328,7 @@ public class ThinkingStateHandler implements AgentStateHandler {
                     AgentExecutionState nextState = resolveNextStateForPlan(execution);
                     loopDetection.clearRecords(execution.getId());
                     stateMachine.emitTimelineEvent(execution, "output",
-                            "Strategy " + strategy.getName() + " produced final answer");
+                            STRATEGY_MESSAGE_PREFIX + strategy.getName() + " produced final answer");
                     stateMachine.transition(nextState, execution);
                 }
                 case TOOL_CALL -> {
@@ -334,28 +338,28 @@ public class ThinkingStateHandler implements AgentStateHandler {
                     if (loopResult.loopDetected()) {
                         log.warn("Loop detected via strategy {} for execution {}: {}",
                                 strategy.getName(), execution.getId(), loopResult.reason());
-                        execution.setMetadata("blockedReason", "agent_loop_" + loopResult.reason());
-                        execution.setMetadata("admissionType", "LOOP");
+                        execution.setMetadata(BLOCKED_REASON_METADATA_KEY, "agent_loop_" + loopResult.reason());
+                        execution.setMetadata(ADMISSION_TYPE_METADATA_KEY, "LOOP");
                         stateMachine.transition(AgentExecutionState.GATE_BLOCKED, execution);
                         return;
                     }
-                    stateMachine.emitTimelineEvent(execution, "thought",
-                            "Strategy " + strategy.getName() + " requested tool: " + toolName);
+                    stateMachine.emitTimelineEvent(execution, THOUGHT_EVENT_TYPE,
+                            STRATEGY_MESSAGE_PREFIX + strategy.getName() + " requested tool: " + toolName);
                     execution.setMetadata("iterationToolCallCount", 0);
                     stateMachine.transition(AgentExecutionState.TOOL_CALLING, execution);
                 }
                 case EXHAUSTED -> {
                     log.warn("Strategy {} exhausted for execution {}: {}",
                             strategy.getName(), execution.getId(), result.errorMessage());
-                    execution.setMetadata("blockedReason", result.errorMessage());
-                    execution.setMetadata("admissionType", "BUDGET");
+                    execution.setMetadata(BLOCKED_REASON_METADATA_KEY, result.errorMessage());
+                    execution.setMetadata(ADMISSION_TYPE_METADATA_KEY, "BUDGET");
                     stateMachine.transition(AgentExecutionState.GATE_BLOCKED, execution);
                 }
                 case ERROR -> {
                     log.error("Strategy {} error for execution {}: {}",
                             strategy.getName(), execution.getId(), result.errorMessage());
                     stateMachine.emitTimelineEvent(execution, "error",
-                            "Strategy " + strategy.getName() + " failed: " + result.errorMessage());
+                            STRATEGY_MESSAGE_PREFIX + strategy.getName() + " failed: " + result.errorMessage());
                     stateMachine.transition(AgentExecutionState.FAILED, execution);
                 }
             }
@@ -363,7 +367,7 @@ public class ThinkingStateHandler implements AgentStateHandler {
             log.error("Strategy {} threw exception for execution {}",
                     strategy.getName(), execution.getId(), e);
             stateMachine.emitTimelineEvent(execution, "error",
-                    "Strategy " + strategy.getName() + " exception: " + e.getMessage());
+                    STRATEGY_MESSAGE_PREFIX + strategy.getName() + " exception: " + e.getMessage());
             stateMachine.transition(AgentExecutionState.FAILED, execution);
         }
     }

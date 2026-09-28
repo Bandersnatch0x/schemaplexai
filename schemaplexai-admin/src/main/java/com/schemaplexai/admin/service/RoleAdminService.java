@@ -25,6 +25,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RoleAdminService extends ServiceImpl<SfRoleMapper, SfRole> {
 
+    private static final String ROLE_NOT_FOUND_MESSAGE = "role not found";
+
     private final SfPermissionMapper permissionMapper;
     private final SfRolePermissionMapper rolePermissionMapper;
     private final SfUserRoleMapper userRoleMapper;
@@ -42,7 +44,7 @@ public class RoleAdminService extends ServiceImpl<SfRoleMapper, SfRole> {
     public RoleAdminDTO getRoleDetail(Long roleId) {
         SfRole role = getById(roleId);
         if (role == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "role not found");
+            throw new BaseException(ResultCode.NOT_FOUND, ROLE_NOT_FOUND_MESSAGE);
         }
         return toRoleAdminDTO(role);
     }
@@ -71,7 +73,7 @@ public class RoleAdminService extends ServiceImpl<SfRoleMapper, SfRole> {
     public void updateRole(Long roleId, String name) {
         SfRole role = getById(roleId);
         if (role == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "role not found");
+            throw new BaseException(ResultCode.NOT_FOUND, ROLE_NOT_FOUND_MESSAGE);
         }
         role.setName(name);
         updateById(role);
@@ -82,7 +84,7 @@ public class RoleAdminService extends ServiceImpl<SfRoleMapper, SfRole> {
     public void deleteRole(Long roleId) {
         SfRole role = getById(roleId);
         if (role == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "role not found");
+            throw new BaseException(ResultCode.NOT_FOUND, ROLE_NOT_FOUND_MESSAGE);
         }
 
         Long userCount = userRoleMapper.selectCount(
@@ -106,7 +108,7 @@ public class RoleAdminService extends ServiceImpl<SfRoleMapper, SfRole> {
     public void assignPermissions(Long roleId, List<Long> permissionIds) {
         SfRole role = getById(roleId);
         if (role == null) {
-            throw new BaseException(ResultCode.NOT_FOUND, "role not found");
+            throw new BaseException(ResultCode.NOT_FOUND, ROLE_NOT_FOUND_MESSAGE);
         }
 
         rolePermissionMapper.delete(

@@ -20,6 +20,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SystemConfigController extends BaseAdminController {
 
+    private static final String ENABLED_KEY = "enabled";
+
     private final SystemConfigService systemConfigService;
 
     @Operation(summary = "分页查询系统配置")
@@ -64,7 +66,7 @@ public class SystemConfigController extends BaseAdminController {
     @Operation(summary = "设置维护模式")
     @PostMapping("/maintenance-mode")
     public Result<Void> setMaintenanceMode(@RequestBody Map<String, Object> request) {
-        boolean enabled = Boolean.TRUE.equals(request.get("enabled"));
+        boolean enabled = Boolean.TRUE.equals(request.get(ENABLED_KEY));
         String tenantId = (String) request.get("tenantId");
         systemConfigService.setMaintenanceMode(enabled, tenantId);
         return success();
@@ -74,7 +76,7 @@ public class SystemConfigController extends BaseAdminController {
     @PostMapping("/feature-flag")
     public Result<Void> setFeatureFlag(@RequestBody Map<String, Object> request) {
         String featureKey = (String) request.get("featureKey");
-        boolean enabled = Boolean.TRUE.equals(request.get("enabled"));
+        boolean enabled = Boolean.TRUE.equals(request.get(ENABLED_KEY));
         String tenantId = (String) request.get("tenantId");
         systemConfigService.setFeatureFlag(featureKey, enabled, tenantId);
         return success();
@@ -83,7 +85,7 @@ public class SystemConfigController extends BaseAdminController {
     @Operation(summary = "检查维护模式")
     @GetMapping("/maintenance-mode")
     public Result<Map<String, Boolean>> isMaintenanceMode(@RequestParam String tenantId) {
-        return success(Map.of("enabled", systemConfigService.isMaintenanceMode(tenantId)));
+        return success(Map.of(ENABLED_KEY, systemConfigService.isMaintenanceMode(tenantId)));
     }
 
     @Operation(summary = "检查功能开关")
@@ -91,6 +93,6 @@ public class SystemConfigController extends BaseAdminController {
     public Result<Map<String, Boolean>> isFeatureEnabled(
             @RequestParam String featureKey,
             @RequestParam String tenantId) {
-        return success(Map.of("enabled", systemConfigService.isFeatureEnabled(featureKey, tenantId)));
+        return success(Map.of(ENABLED_KEY, systemConfigService.isFeatureEnabled(featureKey, tenantId)));
     }
 }

@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class ApiGatewayServiceImpl extends ServiceImpl<ApiGatewayConfigMapper, SfApiGatewayConfig> implements ApiGatewayService {
 
+    private static final String GATEWAY_NOT_FOUND_PREFIX = "Gateway not found: ";
     private final RestTemplate restTemplate;
 
     // In-memory route store: gatewayId -> list of routes
@@ -60,7 +61,7 @@ public class ApiGatewayServiceImpl extends ServiceImpl<ApiGatewayConfigMapper, S
     public void upsertRoute(Long gatewayId, String routeId, String path, String targetUrl, Integer priority) {
         SfApiGatewayConfig gateway = getById(gatewayId);
         if (gateway == null) {
-            throw new BaseException(ResultCode.INTEGRATION_NOT_FOUND, "Gateway not found: " + gatewayId);
+            throw new BaseException(ResultCode.INTEGRATION_NOT_FOUND, GATEWAY_NOT_FOUND_PREFIX + gatewayId);
         }
         if (routeId == null || routeId.isBlank() || path == null || path.isBlank() || targetUrl == null || targetUrl.isBlank()) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Route ID, path, and target URL are required");
@@ -84,7 +85,7 @@ public class ApiGatewayServiceImpl extends ServiceImpl<ApiGatewayConfigMapper, S
     public List<Map<String, Object>> listRoutes(Long gatewayId) {
         SfApiGatewayConfig gateway = getById(gatewayId);
         if (gateway == null) {
-            throw new BaseException(ResultCode.INTEGRATION_NOT_FOUND, "Gateway not found: " + gatewayId);
+            throw new BaseException(ResultCode.INTEGRATION_NOT_FOUND, GATEWAY_NOT_FOUND_PREFIX + gatewayId);
         }
         return List.copyOf(routeStore.getOrDefault(gatewayId, List.of()));
     }
@@ -93,7 +94,7 @@ public class ApiGatewayServiceImpl extends ServiceImpl<ApiGatewayConfigMapper, S
     public void deleteRoute(Long gatewayId, String routeId) {
         SfApiGatewayConfig gateway = getById(gatewayId);
         if (gateway == null) {
-            throw new BaseException(ResultCode.INTEGRATION_NOT_FOUND, "Gateway not found: " + gatewayId);
+            throw new BaseException(ResultCode.INTEGRATION_NOT_FOUND, GATEWAY_NOT_FOUND_PREFIX + gatewayId);
         }
         List<Map<String, Object>> routes = routeStore.get(gatewayId);
         if (routes == null || !routes.removeIf(r -> routeId.equals(r.get("routeId")))) {
@@ -106,7 +107,7 @@ public class ApiGatewayServiceImpl extends ServiceImpl<ApiGatewayConfigMapper, S
     public void updateRateLimit(Long gatewayId, Integer requestsPerSecond, Integer burstCapacity) {
         SfApiGatewayConfig gateway = getById(gatewayId);
         if (gateway == null) {
-            throw new BaseException(ResultCode.INTEGRATION_NOT_FOUND, "Gateway not found: " + gatewayId);
+            throw new BaseException(ResultCode.INTEGRATION_NOT_FOUND, GATEWAY_NOT_FOUND_PREFIX + gatewayId);
         }
         if (requestsPerSecond == null || requestsPerSecond < 1) {
             throw new BaseException(ResultCode.PARAM_ERROR, "Requests per second must be at least 1");
