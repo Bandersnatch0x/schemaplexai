@@ -186,7 +186,7 @@ finish() {
 
 TOTAL_STAGES=5
 
-banner "RuleOps GitHub Shadow setup"
+banner "RuleOps GitHub PR gate setup"
 
 stage "准备已发布的运行时与规则包"
 say "此向导只配置 GitHub Actions 的公开仓库变量，不保存令牌、不写本地 .env。"
@@ -220,7 +220,7 @@ if [[ ! "$REPO_URL" =~ ^https://github\.com/[^/]+/[^/]+$ ]]; then
 fi
 open_url "$REPO_URL/settings/variables/actions"
 note "该页面用于核对变量；实际写入由 gh variable set 完成，目标由当前 checkout 的 GitHub remote 决定。"
-set_var RULEOPS_SHADOW_ENABLED "true"
+set_var RULEOPS_GATE_ENABLED "true"
 set_var RULEOPS_RUNTIME_URL "$RULEOPS_RUNTIME_URL"
 set_var RULEOPS_RUNTIME_SHA256 "$RULEOPS_RUNTIME_SHA256"
 set_var RULEOPS_RULE_BUNDLE_URL "$RULEOPS_RULE_BUNDLE_URL"
@@ -228,7 +228,7 @@ set_var RULEOPS_RULE_BUNDLE_SHA256 "$RULEOPS_RULE_BUNDLE_SHA256"
 pause "确认页面中已出现 5 个 RULEOPS_* 变量后按 Enter"
 
 stage "确认 Actions 权限边界"
-say "Shadow 工作流只读、非阻断，不创建检查状态，不评论 PR，也不上传源代码。"
+say "PR gate 只读仓库内容，不修改 SCM、不评论 PR，也不上传源代码；它只发布检查状态和诊断 artifact。"
 open_url "$REPO_URL/settings/actions"
 step "确认 Actions 已启用，并允许仓库工作流以只读方式读取内容。"
 step "不要为 RuleOps 增加 contents: write、pull-requests: write 或其他写权限。"
@@ -239,29 +239,29 @@ else
   warn "请在启用真实接入前完成权限检查。"
 fi
 
-stage "执行第一次 Shadow 验证"
-say "首次运行只验证接入链路与证据产物，不把扫描结果接入合并门禁。"
+stage "执行第一次 PR 门禁验证"
+say "首次运行验证接入链路、证据产物和新发现阻断逻辑。"
 open_url "$REPO_URL/actions/workflows/ruleops-shadow.yml"
 step "选择 Run workflow，在目标分支上手动运行一次。"
-step "打开本次运行的 ruleops-shadow-* artifact，检查 config.yaml、doctor.json、scan.json 和 shadow-status.txt。"
-step "scan.json 中的 LOCAL_UNATTESTED 或 workspace facts 不完整，表示当前仍是 Shadow 证据，不是成功认证。"
-if confirm "已看到完整 artifact，并确认 scan/doctor 结果可追溯？"; then
-  note "首次 Shadow 运行已人工确认。"
+step "打开本次运行的 ruleops-pr-gate-* artifact，检查 config.yaml、doctor.json、scan.json 和 gate-status.txt。"
+step "确认 gate-status.txt 的 gate_decision、new_findings 和 historical_findings 符合预期。"
+if confirm "已看到完整 artifact，并确认 gate 结果可追溯？"; then
+  note "首次 PR gate 运行已人工确认。"
 else
-  SKIPPED+=("复核第一次 RuleOps Shadow artifact")
+  SKIPPED+=("复核第一次 RuleOps PR gate artifact")
   warn "请修复下载、摘要、配置或运行时问题后再继续。"
 fi
 
-stage "保持非阻断"
-say "在证据窗口和真实项目样本稳定前，RuleOps 不应影响合并。"
+stage "启用 master 分支门禁"
+say "RuleOps 只阻断未进入 baseline 的新发现；baseline 内的历史发现不阻断。"
 open_url "$REPO_URL/settings/rules"
-step "检查目标分支规则，不要把 ruleops-shadow (non-blocking) 设置为 required check。"
-step "保留现有 CI 作为唯一合并门禁；RuleOps artifact 供人工复核和后续收敛使用。"
-if confirm "已确认 RuleOps Shadow 未加入 required checks？"; then
-  note "非阻断边界已确认。"
+step "在 master 分支保护规则中，将 ruleops-pr-gate 设置为 required status check。"
+step "保留现有 CI 检查；RuleOps 只新增一项规则门禁。"
+if confirm "已确认 ruleops-pr-gate 已加入 required checks？"; then
+  note "PR 门禁已确认。"
 else
-  SKIPPED+=("确认 RuleOps Shadow 未进入 required checks")
-  warn "不要在证据窗口结束前把 Shadow 设为必需检查。"
+  SKIPPED+=("确认 ruleops-pr-gate 已进入 required checks")
+  warn "请在合并前完成 master 分支保护配置。"
 fi
 
 finish
