@@ -1,0 +1,368 @@
+name: RuleOps Trusted PR Gate
+
+on:
+  # Run the base-branch workflow for PRs. The gate receives untrusted source,
+  # but its workflow and signing policy must not come from that source.
+  pull_request_target:
+    branches: [main, master, develop]
+  workflow_dispatch:
+
+# The gate is read-only with respect to SCM and source code. It publishes a
+# check, uploads only digest-only evidence, and uses GitHub's short-lived
+# Sigstore attestation only after the untrusted scan has completed.
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  ruleops-trusted-pr-gate:
+    name: ruleops-trusted-pr-gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      RULEOPS_GATE_ENABLED: ${{ vars.RULEOPS_GATE_ENABLED }}
+      RULEOPS_RUNTIME_URL: ${{ vars.RULEOPS_RUNTIME_URL }}
+      RULEOPS_RUNTIME_SHA256: ${{ vars.RULEOPS_RUNTIME_SHA256 }}
+      RULEOPS_RULE_BUNDLE_URL: ${{ vars.RULEOPS_RULE_BUNDLE_URL }}
+      RULEOPS_RULE_BUNDLE_SHA256: ${{ vars.RULEOPS_RULE_BUNDLE_SHA256 }}
+
+    steps:
+      - name: Checkout pull request
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          # The repository contains three documentation symlinks whose target
+          # names exceed the runner's symlink limit. They are not source or
+          # RuleOps inputs, so exclude only those paths from the checkout.
+          sparse-checkout: |
+            /*
+            !/docs/standards/coding-style.md
+            !/docs/standards/feature-workflow.md
+            !/docs/standards/review-checklists.md
+          sparse-checkout-cone-mode: false
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v6
+        with:
+          java-version: '21'
+          distribution: temurin
+
+      - name: Validate PR gate inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            RULEOPS_GATE_ENABLED
+            RULEOPS_RUNTIME_URL
+            RULEOPS_RUNTIME_SHA256
+            RULEOPS_RULE_BUNDLE_URL
+            RULEOPS_RULE_BUNDLE_SHA256
+          )
+          for name in "${required[@]}"; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error title=HUMAN_INPUT_REQUIRED::Missing repository variable ${name}; run scripts/ruleops-shadow-setup.sh first."
+              exit 2
+            fi
+          done
+          if [[ "$RULEOPS_GATE_ENABLED" != "true" ]]; then
+            echo "::error title=HUMAN_INPUT_REQUIRED::Set RULEOPS_GATE_ENABLED=true before enabling the PR gate."
+            exit 2
+          fi
+
+      - name: Download and verify RuleOps runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime_archive="$RUNNER_TEMP/ruleops-runtime.tar.gz"
+          runtime_home="$RUNNER_TEMP/ruleops-runtime"
+          curl --fail --location --retry 3 --silent --show-error "$RULEOPS_RUNTIME_URL" --output "$runtime_archive"
+          printf '%s  %s\n' "$RULEOPS_RUNTIME_SHA256" "$runtime_archive" | sha256sum --check --strict
+          mkdir -p "$runtime_home"
+          tar --extract --file "$runtime_archive" --directory "$runtime_home" --no-same-owner --no-same-permissions
+          test -x "$runtime_home/rf"
+          test -f "$runtime_home/runtime-manifest.json"
+          {
+            printf 'runtime_home=%s\n' "$runtime_home"
+            printf 'runtime_sha256=%s\n' "$RULEOPS_RUNTIME_SHA256"
+          } >> "$GITHUB_ENV"
+
+      - name: Download and verify RuleBundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle_archive="$RUNNER_TEMP/ruleops-bundle.tar.gz"
+          bundle_home="$RUNNER_TEMP/ruleops-bundle"
+          curl --fail --location --retry 3 --silent --show-error "$RULEOPS_RULE_BUNDLE_URL" --output "$bundle_archive"
+          printf '%s  %s\n' "$RULEOPS_RULE_BUNDLE_SHA256" "$bundle_archive" | sha256sum --check --strict
+          mkdir -p "$bundle_home"
+          tar --extract --file "$bundle_archive" --directory "$bundle_home" --no-same-owner --no-same-permissions
+          if [[ ! -f "$bundle_home/manifest.json" ]]; then
+            mapfile -t roots < <(find "$bundle_home" -mindepth 1 -maxdepth 1 -type d -print)
+            [[ "${#roots[@]}" -eq 1 && -f "${roots[0]}/manifest.json" ]] || {
+              echo "::error title=DELIVERY_INVALID::RuleBundle archive must contain manifest.json at its root."
+              exit 2
+            }
+            bundle_home="${roots[0]}"
+          fi
+          printf 'bundle_home=%s\n' "$bundle_home" >> "$GITHUB_ENV"
+
+      - name: Initialize and validate project scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f "$GITHUB_WORKSPACE/.ruleops/config.yaml" ]]; then
+            "$runtime_home/rf" init \
+              --repo-root "$GITHUB_WORKSPACE" \
+              --non-interactive \
+              --language java \
+              --build-system maven
+          else
+            echo "Using committed .ruleops/config.yaml"
+          fi
+          "$runtime_home/rf" config validate --repo-root "$GITHUB_WORKSPACE"
+
+      - name: Run PR gate scan
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p .ruleops
+          gate_rc=0
+          doctor_rc=0
+          env -u GITHUB_TOKEN -u ACTIONS_ID_TOKEN_REQUEST_URL -u ACTIONS_ID_TOKEN_REQUEST_TOKEN \
+            "$runtime_home/rf" doctor \
+            --repo-root "$GITHUB_WORKSPACE" \
+            --format json \
+            > .ruleops/doctor.json || doctor_rc=$?
+          scan_rc=0
+          env -u GITHUB_TOKEN -u ACTIONS_ID_TOKEN_REQUEST_URL -u ACTIONS_ID_TOKEN_REQUEST_TOKEN \
+            "$runtime_home/rf" scan \
+            --repo-root "$GITHUB_WORKSPACE" \
+            --candidate "$bundle_home" \
+            --format json \
+            --progress none \
+            --output .ruleops/scan.json || scan_rc=$?
+          if [[ "$scan_rc" -ne 0 ]]; then
+            echo "::error title=RULEOPS_SCAN_FAILED::RuleOps scan exited with status $scan_rc."
+            gate_rc=1
+          fi
+          baseline_status=HUMAN_INPUT_REQUIRED
+          baseline_commit=UNKNOWN
+          baseline_findings=0
+          new_findings=0
+          historical_findings=0
+          : > .ruleops/new-findings.tsv
+          : > .ruleops/historical-findings.tsv
+          if command -v jq >/dev/null 2>&1 &&
+             [[ -f .ruleops/baseline.tsv && -f .ruleops/scan.json ]]; then
+            baseline_format="$(awk -F= '$1 == "format" {print $2; exit}' .ruleops/baseline.tsv)"
+            if [[ "$baseline_format" == "erf-pilot-baseline-v0" ]]; then
+              baseline_commit="$(awk -F= '$1 == "commit" {print $2; exit}' .ruleops/baseline.tsv)"
+              baseline_fingerprints="$RUNNER_TEMP/ruleops-baseline-fingerprints.tsv"
+              current_fingerprints="$RUNNER_TEMP/ruleops-current-fingerprints.tsv"
+              awk -F= '$1 == "fingerprint" && $2 != "" {print $2}' .ruleops/baseline.tsv | sort -u > "$baseline_fingerprints"
+              jq -r '.findingRecords[]?.fingerprint // empty' .ruleops/scan.json | sort -u > "$current_fingerprints"
+              comm -23 "$current_fingerprints" "$baseline_fingerprints" > .ruleops/new-findings.tsv
+              comm -12 "$current_fingerprints" "$baseline_fingerprints" > .ruleops/historical-findings.tsv
+              baseline_findings="$(wc -l < "$baseline_fingerprints" | tr -d ' ')"
+              new_findings="$(wc -l < .ruleops/new-findings.tsv | tr -d ' ')"
+              historical_findings="$(wc -l < .ruleops/historical-findings.tsv | tr -d ' ')"
+              baseline_status=READY
+            else
+              echo "::error title=HUMAN_INPUT_REQUIRED::Invalid .ruleops/baseline.tsv format; the PR gate cannot compare new findings."
+              gate_rc=1
+            fi
+          else
+            echo "::error title=HUMAN_INPUT_REQUIRED::Missing scan or baseline input; the PR gate cannot compare new findings."
+            gate_rc=1
+          fi
+          if [[ "$scan_rc" -eq 0 && -f .ruleops/scan.json ]] && command -v jq >/dev/null 2>&1; then
+            completeness_complete="$(jq -r '.completeness.complete // false' .ruleops/scan.json)"
+            observation_errors="$(jq -r '.completeness.observationErrors // 0' .ruleops/scan.json)"
+            failed_executions="$(jq -r '.completeness.failed // 0' .ruleops/scan.json)"
+            if [[ "$completeness_complete" != "true" || "$observation_errors" -ne 0 || "$failed_executions" -ne 0 ]]; then
+              echo "::error title=RULEOPS_SCAN_INCOMPLETE::RuleOps scan was incomplete (complete=$completeness_complete observationErrors=$observation_errors failed=$failed_executions)."
+              gate_rc=1
+            fi
+          fi
+          if [[ "$new_findings" -gt 0 ]]; then
+            echo "::error title=RULEOPS_NEW_FINDINGS::$new_findings new finding(s) are not in the approved baseline."
+            sed 's/^/::error file=.::/' .ruleops/new-findings.tsv || true
+            gate_rc=1
+          fi
+          gate_decision=PASS
+          [[ "$gate_rc" -eq 0 ]] || gate_decision=FAIL
+          {
+            printf 'doctor_exit=%s\n' "$doctor_rc"
+            printf 'scan_exit=%s\n' "$scan_rc"
+            printf 'authority=LOCAL_UNATTESTED\n'
+            printf 'mode=PR_GATE\n'
+            printf 'baseline_status=%s\n' "$baseline_status"
+            printf 'baseline_commit=%s\n' "$baseline_commit"
+            printf 'baseline_findings=%s\n' "$baseline_findings"
+            printf 'new_findings=%s\n' "$new_findings"
+            printf 'historical_findings=%s\n' "$historical_findings"
+            printf 'gate_decision=%s\n' "$gate_decision"
+          } > .ruleops/gate-status.txt
+          # Keep the scan decision visible and let the following attestation
+          # steps run even for a FAIL result. The final enforcement step below
+          # returns the gate decision after the proof is verified.
+          exit 0
+
+      - name: Create digest-only gate evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .ruleops/gate-status.txt
+          test -f .ruleops/scan.json
+          repository='${{ github.repository }}'
+          commit='${{ github.event.pull_request.head.sha || github.sha }}'
+          workflow_ref='${{ github.workflow_ref }}'
+          scan_digest="$(sha256sum .ruleops/scan.json | awk '{print $1}')"
+          baseline_digest="$(sha256sum .ruleops/baseline.tsv | awk '{print $1}')"
+          gate_decision="$(awk -F= '$1 == "gate_decision" {print $2; exit}' .ruleops/gate-status.txt)"
+          baseline_status="$(awk -F= '$1 == "baseline_status" {print $2; exit}' .ruleops/gate-status.txt)"
+          baseline_findings="$(awk -F= '$1 == "baseline_findings" {print $2; exit}' .ruleops/gate-status.txt)"
+          new_findings="$(awk -F= '$1 == "new_findings" {print $2; exit}' .ruleops/gate-status.txt)"
+          historical_findings="$(awk -F= '$1 == "historical_findings" {print $2; exit}' .ruleops/gate-status.txt)"
+          doctor_exit="$(awk -F= '$1 == "doctor_exit" {print $2; exit}' .ruleops/gate-status.txt)"
+          scan_exit="$(awk -F= '$1 == "scan_exit" {print $2; exit}' .ruleops/gate-status.txt)"
+          completeness_complete="$(jq -r '.completeness.complete // false' .ruleops/scan.json)"
+          observation_errors="$(jq -r '.completeness.observationErrors // 0' .ruleops/scan.json)"
+          failed_executions="$(jq -r '.completeness.failed // 0' .ruleops/scan.json)"
+          jq -S -n \
+            --arg schema "github-gate-evidence-v1" \
+            --arg repository "$repository" \
+            --arg commit "$commit" \
+            --arg workflow_ref "$workflow_ref" \
+            --arg run_id "${GITHUB_RUN_ID}" \
+            --arg scan_digest "sha256:${scan_digest}" \
+            --arg baseline_digest "sha256:${baseline_digest}" \
+            --arg runtime_digest "${RULEOPS_RUNTIME_SHA256}" \
+            --arg bundle_digest "${RULEOPS_RULE_BUNDLE_SHA256}" \
+            --arg gate_decision "$gate_decision" \
+            --arg baseline_status "$baseline_status" \
+            --argjson baseline_findings "$baseline_findings" \
+            --argjson new_findings "$new_findings" \
+            --argjson historical_findings "$historical_findings" \
+            --argjson doctor_exit "$doctor_exit" \
+            --argjson scan_exit "$scan_exit" \
+            --argjson completeness_complete "$completeness_complete" \
+            --argjson observation_errors "$observation_errors" \
+            --argjson failed_executions "$failed_executions" \
+            '{schemaVersion:$schema, repository:$repository, commit:$commit,
+              workflowRef:$workflow_ref, runId:$run_id,
+              inputs:{runtimeDigest:$runtime_digest, ruleBundleDigest:$bundle_digest,
+                      baselineDigest:$baseline_digest},
+              scan:{resultDigest:$scan_digest, doctorExit:$doctor_exit,
+                    scanExit:$scan_exit, completeness:{complete:$completeness_complete,
+                    observationErrors:$observation_errors, failed:$failed_executions}},
+              gate:{decision:$gate_decision, baselineStatus:$baseline_status,
+                    baselineFindings:$baseline_findings, newFindings:$new_findings,
+                    historicalFindings:$historical_findings}}' \
+            > .ruleops/gate-evidence.json
+          subject_digest="$(sha256sum .ruleops/gate-evidence.json | awk '{print $1}')"
+          jq -S --arg subject_digest "sha256:${subject_digest}" \
+            '. + {subjectDigest:$subject_digest}' \
+            .ruleops/gate-evidence.json > .ruleops/gate-predicate.json
+          printf 'github_attestation_predicate_type=https://rulefactory.io/attestations/github-gate/v1\n' >> .ruleops/gate-status.txt
+          printf 'gate_evidence_subject=sha256:%s\n' "$subject_digest" >> .ruleops/gate-status.txt
+
+      - name: Sign gate evidence with GitHub OIDC
+        id: github-attest
+        if: always()
+        continue-on-error: true
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        with:
+          subject-path: .ruleops/gate-evidence.json
+          predicate-type: https://rulefactory.io/attestations/github-gate/v1
+          predicate-path: .ruleops/gate-predicate.json
+
+      - name: Verify GitHub gate attestation
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREDICATE_TYPE: https://rulefactory.io/attestations/github-gate/v1
+        run: |
+          set -u
+          verified=0
+          verification_file=.ruleops/attestation-verification.json
+          bundle_path='${{ steps.github-attest.outputs.bundle-path }}'
+          if [[ -n "$bundle_path" && -f "$bundle_path" ]]; then
+            cp "$bundle_path" .ruleops/gate-attestation.bundle.json
+          fi
+          for attempt in 1 2 3 4 5 6; do
+            if gh attestation verify .ruleops/gate-evidence.json \
+              --repo "$GITHUB_REPOSITORY" \
+              --predicate-type "$PREDICATE_TYPE" \
+              --format json > "$verification_file" 2>.ruleops/attestation-verification.stderr; then
+              verified=1
+              break
+            fi
+            sleep 5
+          done
+          if [[ "$verified" -ne 1 ]]; then
+            echo "::error title=TRUST_ATTESTATION_INVALID::GitHub gate attestation could not be verified."
+            printf 'trust_proof=UNVERIFIED\n' >> .ruleops/gate-status.txt
+            exit 0
+          fi
+          expected_predicate="$(jq -S -c . .ruleops/gate-predicate.json)"
+          actual_predicate="$(jq -S -c --arg type "$PREDICATE_TYPE" \
+            '[.[] | select(.verificationResult.statement.predicateType == $type)][0].verificationResult.statement.predicate' \
+            "$verification_file")"
+          expected_subject="$(jq -r '.subjectDigest | sub("^sha256:"; "")' .ruleops/gate-predicate.json)"
+          actual_subject="$(jq -r --arg type "$PREDICATE_TYPE" \
+            '[.[] | select(.verificationResult.statement.predicateType == $type)][0].verificationResult.statement.subject[0].digest.sha256' \
+            "$verification_file")"
+          if [[ "$actual_predicate" != "$expected_predicate" || "$actual_subject" != "$expected_subject" ]]; then
+            echo "::error title=TRUST_ATTESTATION_MISMATCH::Verified GitHub attestation does not match the gate evidence."
+            printf 'trust_proof=UNVERIFIED\n' >> .ruleops/gate-status.txt
+            exit 0
+          fi
+          sed -i 's/^authority=.*/authority=TRUSTED/' .ruleops/gate-status.txt
+          printf 'trust_proof=VERIFIED\n' >> .ruleops/gate-status.txt
+          printf 'trust_provider=github-sigstore\n' >> .ruleops/gate-status.txt
+
+      - name: Enforce trusted PR gate
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .ruleops/gate-status.txt
+          grep -qx 'authority=TRUSTED' .ruleops/gate-status.txt || {
+            echo "::error title=TRUST_REQUIRED::The PR gate has no verified GitHub trust proof."
+            exit 1
+          }
+          grep -qx 'trust_proof=VERIFIED' .ruleops/gate-status.txt || {
+            echo "::error title=TRUST_REQUIRED::The GitHub gate attestation was not verified."
+            exit 1
+          }
+          grep -qx 'gate_decision=PASS' .ruleops/gate-status.txt || {
+            echo "::error title=RULEOPS_NEW_FINDINGS::The trusted RuleOps gate did not PASS."
+            exit 1
+          }
+
+      - name: Upload PR gate evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ruleops-trusted-pr-gate-${{ github.run_id }}
+          if-no-files-found: warn
+          path: |
+            .ruleops/config.yaml
+            .ruleops/baseline.tsv
+            .ruleops/doctor.json
+            .ruleops/scan.json
+            .ruleops/new-findings.tsv
+            .ruleops/historical-findings.tsv
+            .ruleops/gate-status.txt
+            .ruleops/gate-evidence.json
+            .ruleops/gate-predicate.json
+            .ruleops/gate-attestation.bundle.json
+            .ruleops/attestation-verification.json
+            .ruleops/attestation-verification.stderr
