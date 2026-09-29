@@ -186,7 +186,7 @@ finish() {
 
 TOTAL_STAGES=5
 
-banner "RuleOps GitHub PR gate setup"
+banner "RuleOps GitHub Trusted PR gate setup"
 
 stage "准备已发布的运行时与规则包"
 say "此向导只配置 GitHub Actions 的公开仓库变量，不保存令牌、不写本地 .env。"
@@ -228,39 +228,39 @@ set_var RULEOPS_RULE_BUNDLE_SHA256 "$RULEOPS_RULE_BUNDLE_SHA256"
 pause "确认页面中已出现 5 个 RULEOPS_* 变量后按 Enter"
 
 stage "确认 Actions 权限边界"
-say "PR gate 只读仓库内容，不修改 SCM、不评论 PR，也不上传源代码；它只发布检查状态和诊断 artifact。"
+say "Trusted PR gate 不修改 SCM、不评论 PR，也不上传源代码；它只读取 checkout，使用 GitHub OIDC 为 digest-only gate evidence 生成短期证明。"
 open_url "$REPO_URL/settings/actions"
 step "确认 Actions 已启用，并允许仓库工作流以只读方式读取内容。"
-step "不要为 RuleOps 增加 contents: write、pull-requests: write 或其他写权限。"
-if confirm "已检查 Actions 设置并保持只读权限？"; then
-  note "已确认只读权限边界。"
+step "保留 id-token: write 与 attestations: write；不要增加 contents: write、pull-requests: write 或其他写权限。"
+if confirm "已检查 Actions 设置并保持最小权限边界？"; then
+  note "已确认最小权限边界。"
 else
-  SKIPPED+=("确认 GitHub Actions 只读权限")
+  SKIPPED+=("确认 GitHub Actions 最小权限")
   warn "请在启用真实接入前完成权限检查。"
 fi
 
-stage "执行第一次 PR 门禁验证"
+stage "执行第一次 Trusted PR 门禁验证"
 say "首次运行验证接入链路、证据产物和新发现阻断逻辑。"
-open_url "$REPO_URL/actions/workflows/ruleops-shadow.yml"
+open_url "$REPO_URL/actions/workflows/ruleops-trusted-gate.yml"
 step "选择 Run workflow，在目标分支上手动运行一次。"
-step "打开本次运行的 ruleops-pr-gate-* artifact，检查 config.yaml、doctor.json、scan.json 和 gate-status.txt。"
-step "确认 gate-status.txt 的 gate_decision、new_findings 和 historical_findings 符合预期。"
+step "打开本次运行的 ruleops-trusted-pr-gate-* artifact，检查 config.yaml、doctor.json、scan.json 和 gate-status.txt。"
+step "确认 gate-status.txt 的 authority=TRUSTED、trust_proof=VERIFIED、gate_decision、new_findings 和 historical_findings 符合预期。"
 if confirm "已看到完整 artifact，并确认 gate 结果可追溯？"; then
-  note "首次 PR gate 运行已人工确认。"
+  note "首次 Trusted PR gate 运行已人工确认。"
 else
-  SKIPPED+=("复核第一次 RuleOps PR gate artifact")
+  SKIPPED+=("复核第一次 Trusted PR gate artifact")
   warn "请修复下载、摘要、配置或运行时问题后再继续。"
 fi
 
-stage "启用 master 分支门禁"
+stage "启用 master Trusted 分支门禁"
 say "RuleOps 只阻断未进入 baseline 的新发现；baseline 内的历史发现不阻断。"
 open_url "$REPO_URL/settings/rules"
-step "在 master 分支保护规则中，将 ruleops-pr-gate 设置为 required status check。"
+step "在 master 分支保护规则中，将 ruleops-trusted-pr-gate 设置为 required status check。"
 step "保留现有 CI 检查；RuleOps 只新增一项规则门禁。"
-if confirm "已确认 ruleops-pr-gate 已加入 required checks？"; then
-  note "PR 门禁已确认。"
+if confirm "已确认 ruleops-trusted-pr-gate 已加入 required checks？"; then
+  note "Trusted PR 门禁已确认。"
 else
-  SKIPPED+=("确认 ruleops-pr-gate 已进入 required checks")
+  SKIPPED+=("确认 ruleops-trusted-pr-gate 已进入 required checks")
   warn "请在合并前完成 master 分支保护配置。"
 fi
 

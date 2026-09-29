@@ -324,6 +324,23 @@ jobs:
             printf 'trust_proof=UNVERIFIED\n' >> .ruleops/gate-status.txt
             exit 0
           fi
+          workflow_identity_ok="$(jq -e --arg repo "$GITHUB_REPOSITORY" \
+            --arg workflow_ref "refs/heads/master" \
+            --arg workflow_sha "$GITHUB_SHA" \
+            '[.[] | .verificationResult.signature.certificate |
+              select(.githubWorkflowRepository == $repo and
+                     .githubWorkflowRef == $workflow_ref and
+                     .githubWorkflowSHA == $workflow_sha and
+                     (.githubWorkflowTrigger == "pull_request_target" or
+                      .githubWorkflowTrigger == "workflow_dispatch") and
+                     .buildSignerURI == ("https://github.com/" + $repo +
+                       "/.github/workflows/ruleops-trusted-gate.yml@" + $workflow_ref))] |
+              length == 1' "$verification_file")"
+          if [[ "$workflow_identity_ok" != "true" ]]; then
+            echo "::error title=TRUST_ATTESTATION_IDENTITY::The proof was not signed by the protected master Trusted workflow."
+            printf 'trust_proof=UNVERIFIED\n' >> .ruleops/gate-status.txt
+            exit 0
+          fi
           sed -i 's/^authority=.*/authority=TRUSTED/' .ruleops/gate-status.txt
           printf 'trust_proof=VERIFIED\n' >> .ruleops/gate-status.txt
           printf 'trust_provider=github-sigstore\n' >> .ruleops/gate-status.txt
