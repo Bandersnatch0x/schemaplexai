@@ -1,23 +1,22 @@
-name: RuleOps Shadow
+name: RuleOps PR Gate
 
 on:
   pull_request:
     branches: [main, master, develop]
   workflow_dispatch:
 
-# Shadow is deliberately read-only. It does not publish a check, mutate SCM,
-# upload source, or participate in branch protection.
+# The gate is read-only with respect to SCM and source code. It publishes a
+# check, uploads only diagnostic evidence, and blocks new findings on PRs.
 permissions:
   contents: read
 
 jobs:
-  ruleops-shadow:
-    name: ruleops-shadow (non-blocking)
+  ruleops-pr-gate:
+    name: ruleops-pr-gate
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    continue-on-error: true
     env:
-      RULEOPS_SHADOW_ENABLED: ${{ vars.RULEOPS_SHADOW_ENABLED }}
+      RULEOPS_GATE_ENABLED: ${{ vars.RULEOPS_GATE_ENABLED }}
       RULEOPS_RUNTIME_URL: ${{ vars.RULEOPS_RUNTIME_URL }}
       RULEOPS_RUNTIME_SHA256: ${{ vars.RULEOPS_RUNTIME_SHA256 }}
       RULEOPS_RULE_BUNDLE_URL: ${{ vars.RULEOPS_RULE_BUNDLE_URL }}
@@ -44,12 +43,12 @@ jobs:
           java-version: '21'
           distribution: temurin
 
-      - name: Validate Shadow inputs
+      - name: Validate PR gate inputs
         shell: bash
         run: |
           set -euo pipefail
           required=(
-            RULEOPS_SHADOW_ENABLED
+            RULEOPS_GATE_ENABLED
             RULEOPS_RUNTIME_URL
             RULEOPS_RUNTIME_SHA256
             RULEOPS_RULE_BUNDLE_URL
@@ -61,8 +60,8 @@ jobs:
               exit 2
             fi
           done
-          if [[ "$RULEOPS_SHADOW_ENABLED" != "true" ]]; then
-            echo "::error title=HUMAN_INPUT_REQUIRED::Set RULEOPS_SHADOW_ENABLED=true after reviewing the non-blocking boundary."
+          if [[ "$RULEOPS_GATE_ENABLED" != "true" ]]; then
+            echo "::error title=HUMAN_INPUT_REQUIRED::Set RULEOPS_GATE_ENABLED=true before enabling the PR gate."
             exit 2
           fi
 
@@ -118,11 +117,12 @@ jobs:
           fi
           "$runtime_home/rf" config validate --repo-root "$GITHUB_WORKSPACE"
 
-      - name: Capture doctor and Shadow scan
+      - name: Run PR gate scan
         shell: bash
         run: |
           set -uo pipefail
           mkdir -p .ruleops
+          gate_rc=0
           doctor_rc=0
           "$runtime_home/rf" doctor \
             --repo-root "$GITHUB_WORKSPACE" \
@@ -135,6 +135,10 @@ jobs:
             --format json \
             --progress none \
             --output .ruleops/scan.json || scan_rc=$?
+          if [[ "$scan_rc" -ne 0 ]]; then
+            echo "::error title=RULEOPS_SCAN_FAILED::RuleOps scan exited with status $scan_rc."
+            gate_rc=1
+          fi
           baseline_status=HUMAN_INPUT_REQUIRED
           baseline_commit=UNKNOWN
           baseline_findings=0
@@ -158,31 +162,51 @@ jobs:
               historical_findings="$(wc -l < .ruleops/historical-findings.tsv | tr -d ' ')"
               baseline_status=READY
             else
-              echo "::warning title=HUMAN_INPUT_REQUIRED::Invalid .ruleops/baseline.tsv format; historical/new comparison was not produced."
+              echo "::error title=HUMAN_INPUT_REQUIRED::Invalid .ruleops/baseline.tsv format; the PR gate cannot compare new findings."
+              gate_rc=1
             fi
           else
-            echo "::warning title=HUMAN_INPUT_REQUIRED::Missing scan or baseline input; historical/new comparison was not produced."
+            echo "::error title=HUMAN_INPUT_REQUIRED::Missing scan or baseline input; the PR gate cannot compare new findings."
+            gate_rc=1
           fi
+          if [[ "$scan_rc" -eq 0 && -f .ruleops/scan.json ]] && command -v jq >/dev/null 2>&1; then
+            completeness_complete="$(jq -r '.completeness.complete // false' .ruleops/scan.json)"
+            observation_errors="$(jq -r '.completeness.observationErrors // 0' .ruleops/scan.json)"
+            failed_executions="$(jq -r '.completeness.failed // 0' .ruleops/scan.json)"
+            if [[ "$completeness_complete" != "true" || "$observation_errors" -ne 0 || "$failed_executions" -ne 0 ]]; then
+              echo "::error title=RULEOPS_SCAN_INCOMPLETE::RuleOps scan was incomplete (complete=$completeness_complete observationErrors=$observation_errors failed=$failed_executions)."
+              gate_rc=1
+            fi
+          fi
+          if [[ "$new_findings" -gt 0 ]]; then
+            echo "::error title=RULEOPS_NEW_FINDINGS::$new_findings new finding(s) are not in the approved baseline."
+            sed 's/^/::error file=.::/' .ruleops/new-findings.tsv || true
+            gate_rc=1
+          fi
+          gate_decision=PASS
+          [[ "$gate_rc" -eq 0 ]] || gate_decision=FAIL
           {
             printf 'doctor_exit=%s\n' "$doctor_rc"
             printf 'scan_exit=%s\n' "$scan_rc"
             printf 'authority=LOCAL_UNATTESTED\n'
-            printf 'mode=SHADOW\n'
+            printf 'mode=PR_GATE\n'
             printf 'baseline_status=%s\n' "$baseline_status"
             printf 'baseline_commit=%s\n' "$baseline_commit"
             printf 'baseline_findings=%s\n' "$baseline_findings"
             printf 'new_findings=%s\n' "$new_findings"
             printf 'historical_findings=%s\n' "$historical_findings"
-          } > .ruleops/shadow-status.txt
-          # The job is non-blocking, but the artifact records incomplete input
-          # and runtime failures instead of hiding them behind a green check.
-          exit 0
+            printf 'gate_decision=%s\n' "$gate_decision"
+          } > .ruleops/gate-status.txt
+          # Keep the doctor exit visible without making LOCAL_UNATTESTED alone
+          # block this repository's scan gate. Scan completeness and new
+          # findings are the merge policy enforced here.
+          exit "$gate_rc"
 
-      - name: Upload Shadow evidence
+      - name: Upload PR gate evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: ruleops-shadow-${{ github.run_id }}
+          name: ruleops-pr-gate-${{ github.run_id }}
           if-no-files-found: warn
           path: |
             .ruleops/config.yaml
@@ -191,4 +215,4 @@ jobs:
             .ruleops/scan.json
             .ruleops/new-findings.tsv
             .ruleops/historical-findings.tsv
-            .ruleops/shadow-status.txt
+            .ruleops/gate-status.txt
